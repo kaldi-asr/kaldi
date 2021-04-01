@@ -15,13 +15,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#if HAVE_CUDA == 1
-
-#define KALDI_CUDA_DECODER_WAIT_FOR_CALLBACKS_US 10000
-#define KALDI_CUDA_DECODER_WAIT_FOR_CPU_FEATURES_THREADS_US 1000
-#define KALDI_CUDA_DECODER_WAIT_FOR_AVAILABLE_CHANNEL_US 1000
+#if !HAVE_CUDA
+#error CUDA support must be configured to compile this library.
+#endif
 
 #include "cudadecoder/batched-threaded-nnet3-cuda-online-pipeline.h"
+
+#include <mutex>
+#include <numeric>
+#include <tuple>
 
 #include <nvToolsExt.h>
 
@@ -31,6 +33,11 @@
 
 namespace kaldi {
 namespace cuda_decoder {
+
+const double kSleepForCallBack = 10e-3;
+const double kSleepForCpuFeatures = 1e-3;
+const double kSleepForChannelAvailable = 1e-3;
+
 void BatchedThreadedNnet3CudaOnlinePipeline::Initialize(
     const fst::Fst<fst::StdArc> &decode_fst) {
   ReadParametersFromModel();
@@ -115,7 +122,7 @@ void BatchedThreadedNnet3CudaOnlinePipeline::SetBestPathCallback(
 }
 
 bool BatchedThreadedNnet3CudaOnlinePipeline::TryInitCorrID(
-    CorrelationID corr_id, int wait_for) {
+    CorrelationID corr_id, int32 wait_for_us) {
   bool inserted;
   decltype(corr_id2channel_.end()) it;
   std::tie(it, inserted) = corr_id2channel_.insert({corr_id, -1});
@@ -127,10 +134,10 @@ bool BatchedThreadedNnet3CudaOnlinePipeline::TryInitCorrID(
     if (!channel_available) {
       // We cannot use that corr_id
       int waited_for = 0;
-      while (waited_for < wait_for) {
+      while (waited_for < wait_for_us) {
         lk.unlock();
-        usleep(KALDI_CUDA_DECODER_WAIT_FOR_AVAILABLE_CHANNEL_US);
-        waited_for += KALDI_CUDA_DECODER_WAIT_FOR_AVAILABLE_CHANNEL_US;
+        Sleep(kSleepForChannelAvailable);
+        waited_for += int32(kSleepForChannelAvailable * 1e6);
         lk.lock();
         channel_available = (available_channels_.size() > 0);
         if (channel_available) break;
@@ -162,7 +169,7 @@ bool BatchedThreadedNnet3CudaOnlinePipeline::TryInitCorrID(
 
   channel_frame_offset_[ichannel] = 0;
   return true;
-}  // namespace cuda_decoder
+}
 
 void BatchedThreadedNnet3CudaOnlinePipeline::CompactWavesToMatrix(
     const std::vector<SubVector<BaseFloat>> &wave_samples) {
@@ -217,7 +224,7 @@ void BatchedThreadedNnet3CudaOnlinePipeline::ComputeCPUFeatureExtraction(
   }
 
   while (n_compute_features_not_done_.load(std::memory_order_acquire))
-    usleep(KALDI_CUDA_DECODER_WAIT_FOR_CPU_FEATURES_THREADS_US);
+    Sleep(kSleepForCpuFeatures);
 
   KALDI_ASSERT(d_all_features_.NumRows() == h_all_features_.NumRows() &&
                d_all_features_.NumCols() == h_all_features_.NumCols());
@@ -402,7 +409,7 @@ void BatchedThreadedNnet3CudaOnlinePipeline::ComputeOneFeature(int element) {
   n_input_frames_valid_[element] = nframes;
 
   n_compute_features_not_done_.fetch_sub(1, std::memory_order_release);
-}  // namespace cuda_decoder
+}
 
 void BatchedThreadedNnet3CudaOnlinePipeline::RunCallbacksAndFinalize(
     const std::vector<CorrelationID> &corr_ids,
@@ -486,7 +493,7 @@ void BatchedThreadedNnet3CudaOnlinePipeline::RunCallbacksAndFinalize(
         {&BatchedThreadedNnet3CudaOnlinePipeline::FinalizeDecodingWrapper, this,
          ichannel, static_cast<void *>(lattice_callback)});
   }
-}  // namespace cuda_decoder
+}
 
 void BatchedThreadedNnet3CudaOnlinePipeline::ListIChannelsInBatch(
     const std::vector<CorrelationID> &corr_ids, std::vector<int> *channels) {
@@ -606,9 +613,9 @@ void BatchedThreadedNnet3CudaOnlinePipeline::FinalizeDecoding(
 
 void BatchedThreadedNnet3CudaOnlinePipeline::WaitForLatticeCallbacks() {
   while (n_lattice_callbacks_not_done_.load() != 0)
-    usleep(KALDI_CUDA_DECODER_WAIT_FOR_CALLBACKS_US);
+    Sleep(kSleepForCallBack);
 }
+
+
 }  // namespace cuda_decoder
 }  // namespace kaldi
-
-#endif  // HAVE_CUDA

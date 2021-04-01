@@ -15,10 +15,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#if HAVE_CUDA == 1
-#include <nvToolsExt.h>
-#endif
 #include "cudafeat/feature-window-cuda.h"
+
+#include <nvToolsExt.h>
+
 #include "matrix/matrix-functions.h"
 
 namespace kaldi {
@@ -28,10 +28,10 @@ CudaFeatureWindowFunction::CudaFeatureWindowFunction(
   nvtxRangePushA("CudaFeatureWindowFunction::CudaFeatureWindowFunction");
   int32 frame_length = opts.WindowSize();
 
-  // Create CPU feature window
+  // Create CPU feature window.
   FeatureWindowFunction feature_window(opts);
 
-  // Copy into GPU memory
+  // Copy into GPU memory.
   cu_window.Resize(frame_length, kUndefined);
   cu_window.CopyFromVec(feature_window.window);
   nvtxRangePop();

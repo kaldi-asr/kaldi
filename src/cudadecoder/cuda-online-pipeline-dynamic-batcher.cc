@@ -15,15 +15,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#if !HAVE_CUDA
+#error CUDA support must be configured to compile this library.
+#endif
+
 #include "cudadecoder/cuda-online-pipeline-dynamic-batcher.h"
-
-#include <unistd.h>
-
-// Tries to generate a batch every n us
-#define KALDI_CUDA_DECODER_DYNAMIC_BATCHER_LOOP_US 100
 
 namespace kaldi {
 namespace cuda_decoder {
+
+// Delay between iterations of the batcher thread loop.
+const double kDynamicBatcherLoopTick = 100e-6;
 
 CudaOnlinePipelineDynamicBatcher::CudaOnlinePipelineDynamicBatcher(
     CudaOnlinePipelineDynamicBatcherConfig config,
@@ -57,31 +59,29 @@ void CudaOnlinePipelineDynamicBatcher::Push(
   // Try to add the chunk is the batch right away
   if (!TryAddChunkToNextBatchDeepCopy(corr_id, is_first_chunk, is_last_chunk,
                                       wave_samples_subv)) {
-    // If we cannot add the chunk to the next batch,
-    // put it in the backlog
-    Vector<BaseFloat> wave_samples(wave_samples_subv);  // deep copy
+    // If we cannot add the chunk to the next batch, put it in the backlog.
+    Vector<BaseFloat> wave_samples(wave_samples_subv);  // Make a deep copy.
     backlog_.push_back(
         {corr_id, is_first_chunk, is_last_chunk, std::move(wave_samples)});
   }
   n_chunks_not_done_.fetch_add(1, std::memory_order_release);
 }
 
+// CONTRACT: The executing thread must own the next_batch_and_backlog_m_ mutex.
 bool CudaOnlinePipelineDynamicBatcher::TryAddChunkToNextBatchDeepCopy(
     CorrelationID corr_id, bool is_first_chunk, bool is_last_chunk,
     const VectorBase<BaseFloat> &wave_samples) {
-  // Assuming the thread executing this owns next_batch_and_backlog_m_
 
   if (next_batch_->Size() == max_batch_size_) {
-    return false;
-  }  // batch is full
+    return false;  // The batch is full.
+  }
 
   bool corr_id_not_in_batch;
   decltype(next_batch_->is_corr_id_in_batch.end()) is_corr_id_in_batch_it;
   std::tie(is_corr_id_in_batch_it, corr_id_not_in_batch) =
       next_batch_->is_corr_id_in_batch.insert(corr_id);
   if (!corr_id_not_in_batch) {
-    // We already have that corr_id in batch
-    // not adding it for now
+    // We already have that corr_id in batch. Not adding it for now.
     return false;
   }
 
@@ -91,33 +91,29 @@ bool CudaOnlinePipelineDynamicBatcher::TryAddChunkToNextBatchDeepCopy(
       KALDI_LOG << "All decoding channels are in use. Consider "
                    "increasing --num-channels";
       next_batch_->is_corr_id_in_batch.erase(
-          is_corr_id_in_batch_it);  // this elt won't be in the batch
+          is_corr_id_in_batch_it);  // This elt won't be in the batch.
       return false;
     }
   }
 
-  // If everything looks good, skipping the backlog_ and adding directly to the
-  // next batch
-  // Deep copy of wave_samples
+  // If everything looks good, skip the backlog_ and add a deep copy of
+  // wave_samples directly to the next batch.
   next_batch_->PushBack(corr_id, is_first_chunk, is_last_chunk, wave_samples);
 
   return true;
 }
 
+// CONTRACT: The executing thread must own the next_batch_and_backlog_m_ mutex.
 void CudaOnlinePipelineDynamicBatcher::FillNextBatchWithBacklog() {
-  // Assuming this thread owns next_batch_and_backlog_m_
-
   for (auto it = backlog_.begin(); it != backlog_.end(); /* nothing */) {
     if (next_batch_->Size() == max_batch_size_) break;
 
     if (TryAddChunkToNextBatchDeepCopy(it->corr_id, it->is_first_chunk,
                                        it->is_last_chunk, it->wave_samples)) {
-      // This chunk made it into the batch
-      // Removing it from the backlog
+      // This chunk made it into the batch. Remove it from the backlog.
       it = backlog_.erase(it);
     } else {
-      // Cannot add chunk to batch
-      // Will retry later
+      // Cannot add chunk to batch. Will retry later.
       ++it;
     }
   }
@@ -129,20 +125,20 @@ void CudaOnlinePipelineDynamicBatcher::BatcherThreadLoop() {
   while (run_batcher_thread_) {
     if (n_chunks_not_done_.load() >= max_batch_size_ ||
         timer.Elapsed() >= next_timeout_at) {
-      // Time to run the batch
+      // Time to run the batch.
       {
-        // lock protects next_batch_, backlog_
+        // Take ownership of the lock protecting next_batch_, backlog_.
         std::lock_guard<std::mutex> lk(next_batch_and_backlog_m_);
         std::swap(curr_batch_, next_batch_);
-        // We will soon run curr_batch_
-        // Before releasing the lock, we'll add the backlog to next_batch_
-        // Once the lock is released, Push(..) will start adding things in
-        // next_batch_
-        // We want to preserve FIFO property, so considering the backlog first
+        // We will soon run curr_batch_.
+        // Before releasing the lock, we'll add the backlog to next_batch_.
+        // Once the lock is released, Push() will start adding things in
+        // next_batch_.
+        // We want to preserve FIFO property, so considering the backlog first.
         FillNextBatchWithBacklog();
-      }  // lock_guard
+      }  // Release the lock.
 
-      // Batch created, push batch
+      // Batch created, push batch.
       if (curr_batch_->Size() > 0) {
         cuda_pipeline_.DecodeBatch(
             curr_batch_->corr_ids, curr_batch_->h_all_waveform,
@@ -157,19 +153,19 @@ void CudaOnlinePipelineDynamicBatcher::BatcherThreadLoop() {
       timer.Reset();  // to avoid some kind of overflow..
       next_timeout_at = timer.Elapsed() + config_.dynamic_batcher_timeout;
     } else {
-      usleep(KALDI_CUDA_DECODER_DYNAMIC_BATCHER_LOOP_US);
+      Sleep(kDynamicBatcherLoopTick);
     }
   }
-}  // namespace cuda_decoder
+}
 
 void CudaOnlinePipelineDynamicBatcher::WaitForCompletion() {
   // Waiting for the batcher to be done sending work to pipeline
   while (n_chunks_not_done_.load() > 0) {
-    usleep(KALDI_CUDA_DECODER_DYNAMIC_BATCHER_LOOP_US);
+    Sleep(kDynamicBatcherLoopTick);
   }
   // Waiting for pipeline to complete
   cuda_pipeline_.WaitForLatticeCallbacks();
 }
 
 }  // namespace cuda_decoder
-}  // end namespace kaldi.
+}  // namespace kaldi

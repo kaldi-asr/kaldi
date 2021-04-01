@@ -15,7 +15,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#if HAVE_CUDA == 1
+#if !HAVE_CUDA
+#error CUDA support must be configured to compile this library.
+#endif
 
 #include "cudadecoder/cuda-fst.h"
 
@@ -205,5 +207,3 @@ void CudaFst::Finalize() {
 
 }  // end namespace cuda_decoder
 }  // end namespace kaldi
-
-#endif  // HAVE_CUDA == 1

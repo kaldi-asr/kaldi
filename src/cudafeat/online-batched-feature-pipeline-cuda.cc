@@ -16,11 +16,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#if HAVE_CUDA
+
 #include "cudafeat/online-batched-feature-pipeline-cuda.h"
 
-#if HAVE_CUDA == 1
 #include <nvToolsExt.h>
-#endif
 
 namespace kaldi {
 
@@ -197,3 +197,5 @@ void OnlineBatchedFeaturePipelineCuda::ComputeFeaturesBatched(
 }
 
 }  // namespace kaldi
+
+#endif  // HAVE_CUDA

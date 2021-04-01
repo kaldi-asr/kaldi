@@ -15,12 +15,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#if HAVE_CUDA == 1
+#include "cudafeat/feature-spectral-cuda.h"
+
 #include <nvToolsExt.h>
 #include <cub/cub.cuh>
-#endif
 
-#include "cudafeat/feature-spectral-cuda.h"
 #include "cudamatrix/cu-rand.h"
 
 // Each thread block processes a unique frame

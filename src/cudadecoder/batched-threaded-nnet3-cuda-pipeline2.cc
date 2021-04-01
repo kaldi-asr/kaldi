@@ -15,18 +15,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <atomic>
-#if HAVE_CUDA == 1
-
-#define KALDI_CUDA_DECODER_WAIT_FOR_TASKS_US 10000
-#define KALDI_CUDA_DECODER_WAIT_FOR_NEW_TASKS_US 100
-
-#include <nvToolsExt.h>
+#if !HAVE_CUDA
+#error CUDA support is required to compile this library.
+#endif
 
 #include "cudadecoder/batched-threaded-nnet3-cuda-pipeline2.h"
 
+#include <atomic>
+
+#include <nvToolsExt.h>
+
 namespace kaldi {
 namespace cuda_decoder {
+
+const float kSleepForTaskComplete = 10e-3;
+const float kSleepForNewTask = 100e-6;
 
 BatchedThreadedNnet3CudaPipeline2::BatchedThreadedNnet3CudaPipeline2(
     const BatchedThreadedNnet3CudaPipeline2Config &config,
@@ -147,7 +150,7 @@ void BatchedThreadedNnet3CudaPipeline2::BuildBatchFromCurrentTasks() {
 
 void BatchedThreadedNnet3CudaPipeline2::WaitForAllTasks() {
   while (n_tasks_not_done_.load() != 0) {
-    usleep(KALDI_CUDA_DECODER_WAIT_FOR_TASKS_US);
+    Sleep(kSleepForTaskComplete);
   }
 }
 
@@ -180,7 +183,7 @@ void BatchedThreadedNnet3CudaPipeline2::WaitForGroup(const std::string &group) {
   }
 
   while (n_not_done->load(std::memory_order_consume) != 0)
-    usleep(KALDI_CUDA_DECODER_WAIT_FOR_TASKS_US);
+    Sleep(kSleepForTaskComplete);
 }
 
 void BatchedThreadedNnet3CudaPipeline2::CreateTask(
@@ -446,7 +449,7 @@ void BatchedThreadedNnet3CudaPipeline2::ComputeTasks() {
     if (current_tasks_.size() < max_batch_size_) AcquireTasks();
     if (current_tasks_.empty()) {
       // If we still have nothing to do, let's sleep a bit
-      usleep(KALDI_CUDA_DECODER_WAIT_FOR_NEW_TASKS_US);
+      Sleep(kSleepForNewTask);
       continue;
     }
     BuildBatchFromCurrentTasks();
@@ -475,6 +478,4 @@ void BatchedThreadedNnet3CudaPipeline2::SetLatticePostprocessor(
 }
 
 }  // namespace cuda_decoder
-}  // end namespace kaldi.
-
-#endif  // HAVE_CUDA
+}  // namespace kaldi
