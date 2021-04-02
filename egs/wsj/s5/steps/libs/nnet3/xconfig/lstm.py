@@ -159,7 +159,7 @@ class XconfigLstmLayer(XconfigLayerBase):
         # <layer-name>.W_<outputname>.<input_name> e.g. Lstm1.W_i.xr for matrix
         # providing output to gate i and operating on an appended vector [x,r]
 
-        configs.append("### Begin LSTM layer '{0}'".format(name))
+        configs.append("### Begin LTSM layer '{0}'".format(name))
         configs.append("# Input gate control : W_i* matrices")
         configs.append("component name={0}.W_i.xr type=NaturalGradientAffineComponent input-dim={1} "
                        "output-dim={2} {3} {4}".format(name, input_dim + cell_dim, cell_dim,
@@ -252,7 +252,7 @@ class XconfigLstmLayer(XconfigLayerBase):
         configs.append("component name={0}.r type=BackpropTruncationComponent dim={1} {2}"
                        "".format(name, cell_dim, bptrunc_str))
         configs.append("component-node name={0}.r_t component={0}.r input={0}.m_t".format(name))
-        configs.append("### End LSTM layer '{0}'".format(name))
+        configs.append("### End LTSM layer '{0}'".format(name))
         return configs
 
 
@@ -710,7 +710,7 @@ class XconfigFastLstmLayer(XconfigLayerBase):
         # naming convention
         # <layer-name>.W_<outputname>.<input_name> e.g. Lstm1.W_i.xr for matrix
         # providing output to gate i and operating on an appended vector [x,r]
-        configs.append("### Begin LSTM layer '{0}'".format(name))
+        configs.append("### Begin LTSM layer '{0}'".format(name))
         configs.append("# Gate control: contains W_i, W_f, W_c and W_o matrices as blocks.")
 
         configs.append("component name={0}.W_all type=NaturalGradientAffineComponent input-dim={1} "
@@ -749,7 +749,7 @@ class XconfigFastLstmLayer(XconfigLayerBase):
                 name, cell_dim))
             configs.append("component-node name={0}.m_batchnorm component={0}.m_batchnorm "
                            "input={0}.m".format(name))
-        configs.append("### End LSTM layer '{0}'".format(name))
+        configs.append("### End LTSM layer '{0}'".format(name))
         return configs
 
 
@@ -898,7 +898,7 @@ class XconfigLstmbLayer(XconfigLayerBase):
         # pieces constrained to have orthonormal rows).  Note: we don't apply l2
         # regularization to this layer, since, with the orthonormality
         # constraint, it's meaningless.
-        configs.append("### Begin LSTM layer '{0}'".format(name))
+        configs.append("### Begin LTSM layer '{0}'".format(name))
         configs.append("component name={0}.W_all_a type=LinearComponent input-dim={1} "
                        "orthonormal-constraint={2} output-dim={3} {4}".format(
                            name, input_dim + cell_dim,
@@ -946,7 +946,7 @@ class XconfigLstmbLayer(XconfigLayerBase):
                        "dim={1}".format(name, cell_dim))
         configs.append("component-node name={0}.m_batchnorm component={0}.m_batchnorm "
                        "input={0}.m".format(name))
-        configs.append("### End LSTM layer '{0}'".format(name))
+        configs.append("### End LTSM layer '{0}'".format(name))
         return configs
 
 
@@ -1126,7 +1126,7 @@ class XconfigFastLstmpLayer(XconfigLayerBase):
         # See equations (7) to (14).
         # naming convention
         # <layer-name>.W_<outputname>.<input_name> e.g. Lstm1.W_i.xr for matrix providing output to gate i and operating on an appended vector [x,r]
-        configs.append("##  Begin LSTM layer '{0}'".format(name))
+        configs.append("##  Begin LTSM layer '{0}'".format(name))
         configs.append("# Gate control: contains W_i, W_f, W_c and W_o matrices as blocks.")
         configs.append("component name={0}.W_all type=NaturalGradientAffineComponent input-dim={1} "
                        "output-dim={2} {3} {4}".format(
