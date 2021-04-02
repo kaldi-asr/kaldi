@@ -36,15 +36,15 @@ int main(int argc, char *argv[]) {
       "Usage: lattice-expand-ngram [options] lattice-rspecifier "
       "lattice-wspecifier\n"
       "e.g.: lattice-expand-ngram --n=3 ark:lat ark:expanded_lat\n";
-      
+
     ParseOptions po(usage);
     int32 n = 3;
 
     std::string word_syms_filename;
     po.Register("n", &n, "n-gram context to expand to.");
-    
+
     po.Read(argc, argv);
- 
+
     if (po.NumArgs() != 2) {
       po.PrintUsage();
       exit(1);
@@ -58,10 +58,10 @@ int main(int argc, char *argv[]) {
     fst::UnweightedNgramFst<CompactLatticeArc> expand_fst(n);
 
     SequentialCompactLatticeReader lat_reader(lats_rspecifier);
-    CompactLatticeWriter lat_writer(lats_wspecifier); 
+    CompactLatticeWriter lat_writer(lats_wspecifier);
 
     int32 n_done = 0, n_fail = 0;
-    
+
     for (; !lat_reader.Done(); lat_reader.Next()) {
       std::string key = lat_reader.Key();
       KALDI_LOG << "Processing lattice for key " << key;
@@ -69,14 +69,14 @@ int main(int argc, char *argv[]) {
       CompactLattice expanded_lat;
       ComposeDeterministicOnDemand(lat, &expand_fst, &expanded_lat);
       if (expanded_lat.Start() == fst::kNoStateId) {
-        KALDI_WARN << "Empty lattice for utterance " << key << std::endl;
+        KALDI_WARN << "Empty lattice for utterance " << key;
        n_fail++;
       } else {
         if (lat.NumStates() == expanded_lat.NumStates()) {
-          KALDI_LOG << "Lattice for key " << key 
+          KALDI_LOG << "Lattice for key " << key
             << " did not need to be expanded for order " << n << ".";
         } else {
-          KALDI_LOG << "Lattice expanded from " << lat.NumStates() << " to " 
+          KALDI_LOG << "Lattice expanded from " << lat.NumStates() << " to "
             << expanded_lat.NumStates() << " states for order " << n << ".";
         }
         lat_writer.Write(key, expanded_lat);
@@ -84,7 +84,7 @@ int main(int argc, char *argv[]) {
       }
       lat_reader.FreeCurrent();
     }
-    KALDI_LOG << "Processed " << n_done << " lattices with " << n_fail 
+    KALDI_LOG << "Processed " << n_done << " lattices with " << n_fail
       << " failures.";
     return 0;
   } catch(const std::exception &e) {

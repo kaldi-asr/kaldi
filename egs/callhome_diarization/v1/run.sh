@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2017-2018  David Snyder
 #           2017-2018  Matthew Maciejewski
 # Apache 2.0.
@@ -188,7 +188,7 @@ if [ $stage -le 6 ]; then
 
       der=$(grep -oP 'DIARIZATION\ ERROR\ =\ \K[0-9]+([.][0-9]+)?' \
         exp/tuning/${dataset}_t${threshold})
-      if [ $(echo $der'<'$best_der | bc -l) -eq 1 ]; then
+      if [ $(perl -e "print ($der < $best_der ? 1 : 0);") -eq 1 ]; then
         best_der=$der
         best_threshold=$threshold
       fi

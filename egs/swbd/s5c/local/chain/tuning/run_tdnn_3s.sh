@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _3s is as _3r but reducing jesus-forward-input-dim from 500 to 400.
 # num-params is quite small now: 5.4 million, vs. 12.1 million in 2y, and 8.8 million in 3p.

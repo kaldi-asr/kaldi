@@ -400,7 +400,7 @@ BaseFloat FindBestSplitForKey(const BuildTreeStatsType &stats,
     for (size_t i = 0;i < assignments.size();i++) if (assignments[i] == 1) yes_set.push_back(i);
   }
   *yes_set_out = yes_set;
-    
+
   DeletePointers(&clusters);
 #ifdef KALDI_PARANOID
   {  // Check the "ans" is correct.
@@ -763,10 +763,9 @@ EventMap *GetToLengthMap(const BuildTreeStatsType &stats, int32 P,
   std::vector<BuildTreeStatsType> stats_by_phone;
   try {
     SplitStatsByKey(stats, P, &stats_by_phone);
-  } catch(const std::runtime_error &err) {
-    KALDI_ERR << "Caught exception in GetToLengthMap: you seem "
-        "to have provided invalid stats [no central-phone "
-        "key].  Message was: " << err.what();
+  } catch(const KaldiFatalError &) {
+    KALDI_ERR <<
+        "You seem to have provided invalid stats [no central-phone key].";
   }
   std::map<EventValueType, EventAnswerType> phone_to_length;
   for (size_t p = 0; p < stats_by_phone.size(); p++) {
@@ -774,10 +773,9 @@ EventMap *GetToLengthMap(const BuildTreeStatsType &stats, int32 P,
       std::vector<BuildTreeStatsType> stats_by_length;
       try {
         SplitStatsByKey(stats_by_phone[p], kPdfClass, &stats_by_length);
-      } catch(const std::runtime_error &err) {
-        KALDI_ERR << "Caught exception in GetToLengthMap: you seem "
-            "to have provided invalid stats [no position "
-            "key].  Message was: " << err.what();
+      } catch(const KaldiFatalError &) {
+        KALDI_ERR <<
+            "You seem to have provided invalid stats [no position key].";
       }
       size_t length = stats_by_length.size();
       for (size_t i = 0; i < length; i++) {
@@ -868,7 +866,7 @@ EventMap *ClusterEventMapToNClustersRestrictedByMap(
     int32 *num_removed_ptr) {
   std::vector<BuildTreeStatsType> split_stats;
   SplitStatsByMap(stats, e_restrict, &split_stats);
-  
+
   if (num_clusters_required < split_stats.size()) {
     KALDI_WARN << "num-clusters-required is less than size of map. Not doing anything.";
     if (num_removed_ptr) *num_removed_ptr = 0;
@@ -904,10 +902,10 @@ EventMap *ClusterEventMapToNClustersRestrictedByMap(
           if (j > max_index) max_index = j;
         }
       }
-      
+
       normalizer += SumClusterableNormalizer(summed_stats_contiguous[i]);
-    } else { 
-      // Even if split_stats[i] is empty, a cluster will be assigned to 
+    } else {
+      // Even if split_stats[i] is empty, a cluster will be assigned to
       // that. To compensate, we decrease the num-clusters required.
       num_non_empty_clusters_required--;
     }
@@ -919,7 +917,7 @@ EventMap *ClusterEventMapToNClustersRestrictedByMap(
   if (num_non_empty_clusters_required > num_non_empty_clusters) {
     KALDI_WARN << "Cannot get required num-clusters " << num_clusters_required
                << " as number of non-empty clusters required is larger than "
-               << " number of non-empty clusters: " << num_non_empty_clusters_required 
+               << " number of non-empty clusters: " << num_non_empty_clusters_required
                << " > " << num_non_empty_clusters;
     if (num_removed_ptr) *num_removed_ptr = 0;
     return e_in.Copy();
@@ -929,7 +927,7 @@ EventMap *ClusterEventMapToNClustersRestrictedByMap(
   BaseFloat change = ClusterBottomUpCompartmentalized(
       summed_stats_contiguous,
       std::numeric_limits<BaseFloat>::infinity(),
-      num_non_empty_clusters_required,  
+      num_non_empty_clusters_required,
       NULL,  // don't need clusters out.
       &assignments);  // this algorithm is quadratic, so might be quite slow.
 
@@ -1052,7 +1050,7 @@ EventMap *GetStubMap(int32 P,
     // Do a split.  Recurse.
     size_t half_sz = phone_sets.size() / 2;
     std::vector<std::vector<int32> >::const_iterator half_phones =
-        phone_sets.begin() + half_sz;  
+        phone_sets.begin() + half_sz;
     std::vector<bool>::const_iterator half_share =
         share_roots.begin() + half_sz;
     std::vector<std::vector<int32> > phone_sets_1, phone_sets_2;
@@ -1127,4 +1125,3 @@ bool ConvertStats(int32 oldN, int32 oldP, int32 newN, int32 newP,
 
 
 } // end namespace kaldi
-

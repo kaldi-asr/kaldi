@@ -38,10 +38,10 @@ def get_args():
     parser = argparse.ArgumentParser("Prepare NA News Text corpus (LDC95T21).")
     parser.add_argument("--verbose", type=int, choices=[0, 1, 2, 3], default=0,
                         help="Use larger verbosity for more verbose logging.")
-    parser.add_argument("file_list", type=str,
+    parser.add_argument("file_list",
                         help="List of compressed source files for NA News Text. "
                         "e.g: /export/corpora/LDC/LDC95T21/na_news_1/latwp/1994")
-    parser.add_argument("out_file", type=str,
+    parser.add_argument("out_file",
                         help="Output file to write to.")
 
     args = parser.parse_args()
@@ -85,7 +85,7 @@ def process_file_lines(lines, out_file_handle):
                 continue
             for para in art.find_all('p'):
                 assert para.name == 'p'
-                text = ' '.join([unicode(x).strip() for x in para.contents])
+                text = ' '.join([str(x).strip() for x in para.contents])
                 normalized_text = normalize_text(text)
                 out_file_handle.write("{0}\n".format(
                     normalized_text.encode('ascii')))

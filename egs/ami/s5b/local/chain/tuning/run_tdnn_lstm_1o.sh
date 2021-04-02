@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # same as 1n but replacing proportional-shrink with l2-regularize.
 # Also applied similar changes from 1i to 1j:
@@ -182,7 +182,7 @@ if [ $stage -le 15 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
 
   num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
-  learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+  learning_rate_factor=$(echo "print (0.5/$xent_regularize)" | python)
   tdnn_opts="l2-regularize=0.025"
   lstm_opts="l2-regularize=0.01"
   output_opts="l2-regularize=0.004"

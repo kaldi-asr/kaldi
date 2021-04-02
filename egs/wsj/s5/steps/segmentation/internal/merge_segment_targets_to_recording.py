@@ -9,6 +9,7 @@ segments into targets matrix for whole recording. The frames that are not
 in any of the segments are assigned the default targets vector, specified by
 the option --default-targets or [ 0 0 0 ] if unspecified.
 """
+from __future__ import division
 
 import argparse
 import logging
@@ -158,7 +159,7 @@ def run(args):
     num_reco = 0
 
     with common_lib.smart_open(args.out_targets_ark, 'w') as fh:
-        for reco, utts in reco2utt.iteritems():
+        for reco, utts in reco2utt.items():
             # Read a recording and the list of its utterances from the
             # reco2utt dictionary
             reco_mat = np.repeat(default_targets, reco2num_frames[reco],

@@ -25,6 +25,7 @@
       data/lang/oov.int
 """
 import argparse
+import io
 import os
 import sys
 parser = argparse.ArgumentParser(description="""uses phones to convert unk to word""")
@@ -42,17 +43,17 @@ parser.add_argument('--output-text', type=str, default='-', help='File containin
 args = parser.parse_args()
 
 ### main ###
-phone_handle = open(args.phones, 'r', encoding='latin-1') # Create file handles 
-word_handle = open(args.words, 'r', encoding='latin-1')
-unk_handle = open(args.unk,'r', encoding='latin-1')
+phone_handle = open(args.phones, 'r', encoding='utf8') # Create file handles 
+word_handle = open(args.words, 'r', encoding='utf8')
+unk_handle = open(args.unk,'r', encoding='utf8')
 if args.one_best_arc_post == '-':
-    arc_post_handle = sys.stdin
+    arc_post_handle = io.TextIOWrapper(sys.stdin.buffer, encoding='utf8')
 else:
-    arc_post_handle = open(args.one_best_arc_post, 'r', encoding='latin-1')
+    arc_post_handle = open(args.one_best_arc_post, 'r', encoding='utf8')
 if args.output_text == '-':
-    output_text_handle = sys.stdout
+    output_text_handle = io.TextIOWrapper(sys.stdout.buffer, encoding='utf8')
 else:
-    output_text_handle = open(args.output_text, 'w', encoding='latin-1')
+    output_text_handle = open(args.output_text, 'w', encoding='utf8')
 
 id2phone = dict() # Stores the mapping from phone_id (int) to phone (char)
 phones_data = phone_handle.read().strip().split("\n")

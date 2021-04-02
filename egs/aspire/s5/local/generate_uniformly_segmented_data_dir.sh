@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright Vijayaditya Peddinti, 2016.
 # Apache 2.0.
@@ -63,7 +63,8 @@ if [ $stage -le 3 ]; then
   [ -d data/${segmented_data_set}_hires ] && rm -r data/${segmented_data_set}_hires
   if [ ! -f data/${data_set}_hires/segments ]; then
     utils/data/get_segments_for_data.sh data/${data_set}_hires > \
-      data/${data_set}_hires/segments
+      data/${data_set}_hires/segments.tmp
+    mv data/${data_set}_hires/segments.tmp data/${data_set}_hires/segments
   fi
 
   mkdir -p data/${segmented_data_set}_hires

@@ -10,6 +10,7 @@ commonly used in many kaldi python scripts.
 """
 
 from __future__ import print_function
+from __future__ import division
 import argparse
 import logging
 import math
@@ -71,35 +72,6 @@ class NullstrToNoneAction(argparse.Action):
             setattr(namespace, self.dest, None)
         else:
             setattr(namespace, self.dest, values)
-
-
-class smart_open(object):
-    """
-    This class is designed to be used with the "with" construct in python
-    to open files. It is similar to the python open() function, but
-    treats the input "-" specially to return either sys.stdout or sys.stdin
-    depending on whether the mode is "w" or "r".
-
-    e.g.: with smart_open(filename, 'w') as fh:
-            print ("foo", file=fh)
-    """
-    def __init__(self, filename, mode="r"):
-        self.filename = filename
-        self.mode = mode
-        assert self.mode == "w" or self.mode == "r"
-
-    def __enter__(self):
-        if self.filename == "-" and self.mode == "w":
-            self.file_handle = sys.stdout
-        elif self.filename == "-" and self.mode == "r":
-            self.file_handle = sys.stdin
-        else:
-            self.file_handle = open(self.filename, self.mode)
-        return self.file_handle
-
-    def __exit__(self, *args):
-        if self.filename != "-":
-            self.file_handle.close()
 
 
 class smart_open(object):
@@ -316,7 +288,7 @@ def read_kaldi_matrix(matrix_file):
     'matrix_file' and stores it as a list of rows, where each row is a list.
     """
     try:
-        lines = map(lambda x: x.split(), open(matrix_file).readlines())
+        lines = [x.split() for x in open(matrix_file).readlines()]
         first_field = lines[0][0]
         last_field = lines[-1][-1]
         lines[0] = lines[0][1:]
@@ -326,7 +298,7 @@ def read_kaldi_matrix(matrix_file):
                 "Kaldi matrix file has incorrect format, "
                 "only text format matrix files can be read by this script")
         for i in range(len(lines)):
-            lines[i] = map(lambda x: int(float(x)), lines[i])
+            lines[i] = [int(float(x)) for x in lines[i]]
         return lines
     except IOError:
         raise Exception("Error while reading the kaldi matrix file "
@@ -348,7 +320,7 @@ def write_kaldi_matrix(output_file, matrix):
             if num_cols != len(matrix[row_index]):
                 raise Exception("All the rows of a matrix are expected to "
                                 "have the same length")
-            f.write(" ".join(map(lambda x: str(x), matrix[row_index])))
+            f.write(" ".join([str(x) for x in matrix[row_index]]))
             if row_index != num_rows - 1:
                 f.write("\n")
         f.write(" ]")
@@ -508,7 +480,7 @@ def compute_idct_matrix(K, N, cepstral_lifter=0):
         lifter_coeffs = compute_lifter_coeffs(cepstral_lifter, K)
         for k in range(0, K):
             for n in range(0, N):
-                matrix[n][k] = matrix[n][k] / lifter_coeffs[k]
+                matrix[n][k] = float(matrix[n][k]) / lifter_coeffs[k]
 
     return matrix
 

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 1g is as 1f but adding dropout (well, something like dropout-- the mask
 #   is shared across time and it's continuous rather than zero-one), increasing
@@ -155,7 +155,7 @@ if [ $stage -le 13 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
 
   num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
-  learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+  learning_rate_factor=$(echo "print (0.5/$xent_regularize)" | python)
   opts="l2-regularize=0.05 dropout-per-dim-continuous=true"
   output_opts="l2-regularize=0.02 bottleneck-dim=192"
 

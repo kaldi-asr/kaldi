@@ -34,12 +34,21 @@
 #include <cusparse.h>
 #include <curand.h>
 #include <cuda_runtime_api.h>
+#include "nvToolsExt.h"
 
 #define CU_SAFE_CALL(fun) \
 { \
   int32 ret; \
   if ((ret = (fun)) != 0) { \
     KALDI_ERR << "cudaError_t " << ret << " : \"" << cudaGetErrorString((cudaError_t)ret) << "\" returned from '" << #fun << "'"; \
+  } \
+}
+
+#define CUFFT_SAFE_CALL(fun) \
+{ \
+  int32 ret; \
+  if ((ret = (fun)) != CUFFT_SUCCESS) { \
+    KALDI_ERR << "cublasResult " << ret << " returned from '" << #fun << "'"; \
   } \
 }
 
@@ -50,6 +59,15 @@
     KALDI_ERR << "cublasStatus_t " << ret << " : \"" << cublasGetStatusString((cublasStatus_t)ret) << "\" returned from '" << #fun << "'"; \
   } \
 }
+
+#define CUSOLVER_SAFE_CALL(fun) \
+{ \
+  int32 ret; \
+  if ((ret = (fun)) != 0) { \
+    KALDI_ERR << "cusolverStatus_t " << ret << " : \"" << ret << "\" returned from '" << #fun << "'"; \
+  } \
+}
+
 
 #define CUSPARSE_SAFE_CALL(fun) \
 { \
@@ -76,6 +94,17 @@
 
 
 namespace kaldi {
+
+#ifdef USE_NVTX
+class NvtxTracer {
+public:
+    NvtxTracer(const char* name);
+    ~NvtxTracer();
+};
+#define NVTX_RANGE(name) NvtxTracer uniq_name_using_macros(name);
+#else
+#define NVTX_RANGE(name)
+#endif
 
 /** Number of blocks in which the task of size 'size' is splitted **/
 inline int32 n_blocks(int32 size, int32 block_size) {
@@ -109,6 +138,10 @@ const char* cusparseGetStatusString(cusparseStatus_t status);
 const char* curandGetStatusString(curandStatus_t status);
 }
 
+#else
+namespace kaldi {
+#define NVTX_RANGE(name)
+};
 #endif // HAVE_CUDA
 
 namespace kaldi {

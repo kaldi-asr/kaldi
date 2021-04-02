@@ -1,0 +1,18 @@
+###
+# MGB-5 corpus: Moroccan Arabic Automatic Speech Recognition
+# Created in collaboration between QCRI and ELRA
+# More details can be found here: https://arabicspeech.org/mgb5
+###
+
+
+## INTRODUCTION ##
+Training data: 10.2 hours from 69 programs
+Development data: 1.8 hours from 10 programs
+Testing data: 2.0 hours from 14 programs
+
+## KNOWN ISSUES ##
+1- The dev data does not have the same alignment across the four annotators 
+2- Once alignment is consistent, we can include multi-refence word error rate
+3- Use MGB-2 as background model
+
+

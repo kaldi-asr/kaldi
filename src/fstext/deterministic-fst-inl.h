@@ -292,7 +292,7 @@ bool LmExampleDeterministicOnDemandFst<Arc>::GetArc(
     // note: if your histories are the other way round, you might just do
     // wseq.pop() here.
   }
-  if (log_prob == -numeric_limits<float>::infinity()) { // assume this
+  if (log_prob == -std::numeric_limits<float>::infinity()) { // assume this
     // is what happens if prob of the word is zero.  Some LMs will never
     // return zero.
     return false; // no arc.

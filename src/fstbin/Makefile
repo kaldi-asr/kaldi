@@ -26,6 +26,6 @@ TESTFILES =
 LIBFILE =
 
 ADDLIBS = ../decoder/kaldi-decoder.a ../fstext/kaldi-fstext.a \
-          ../util/kaldi-util.a ../matrix/kaldi-matrix.a ../base/kaldi-base.a
+          ../util/kaldi-util.a ../matrix/kaldi-matrix.a ../base/kaldi-base.a 
 
 include ../makefiles/default_rules.mk

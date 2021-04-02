@@ -759,7 +759,7 @@ void CRnnLM::restoreNet() {   // will read whole network structure
     }
   }
   if (filetype == TEXT) {
-    goToDelimiter(':', fi);    // direct conenctions
+    goToDelimiter(':', fi);    // direct connections
     long long aa;
     for (aa = 0; aa < direct_size; aa++) {
       unused_size = fscanf(fi, "%lf", &d);

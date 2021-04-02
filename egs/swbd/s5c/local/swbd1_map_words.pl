@@ -44,7 +44,7 @@ while (<>) {
       # which is a  mistake in the input.
       $a =~ s:^\{(.+)\}$:$1:;                 # e.g. {YUPPIEDOM} -> YUPPIEDOM
       $a =~ s:[A-Z]\[([^][])+\][A-Z]:$1-$3:i; # e.g. AMMU[N]IT- -> AMMU-IT-
-      $a =~ s:_\d$::;                         # e.g. THEM_1 -> THEM 
+      $a =~ s:_\d::;                         # e.g. THEM_1 -> THEM, THEM_1's -> THEM's
     }
     $A[$n] = $a;
   }

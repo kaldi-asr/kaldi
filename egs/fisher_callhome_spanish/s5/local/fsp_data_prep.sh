@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # Copyright 2014  Gaurav Kumar.   Apache 2.0
 # The input is the Fisher Dataset which contains DISC1 and DISC2. (*.sph files)
@@ -134,6 +134,7 @@ if [ $stage -le 2 ]; then
   sed 's:<foreign langengullís>::g' | \
   sed 's:foreign>::g' | \
   sed 's:>::g' | \
+  sed 's/\[noise\]/[noise] /g' | \
   #How do you handle numbers?
   grep -v '()' | \
   #Now go after the non-printable characters and multiple spaces

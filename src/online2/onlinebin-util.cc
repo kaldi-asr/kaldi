@@ -20,11 +20,11 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#include "onlinebin-util.h"
+#include "online2/onlinebin-util.h"
 
 namespace kaldi {
 
-fst::Fst<fst::StdArc> *ReadDecodeGraph(std::string filename) {
+fst::Fst<fst::StdArc> *ReadDecodeGraph(const std::string &filename) {
   // read decoding network FST
   Input ki(filename); // use ki.Stream() instead of is.
   if (!ki.Stream().good()) KALDI_ERR << "Could not open decoding-graph FST "
@@ -57,7 +57,7 @@ fst::Fst<fst::StdArc> *ReadDecodeGraph(std::string filename) {
 }
 
 
-void PrintPartialResult(const std::vector<int32>& words,
+void PrintPartialResult(const std::vector<int32> &words,
                         const fst::SymbolTable *word_syms,
                         bool line_break) {
   KALDI_ASSERT(word_syms != NULL);

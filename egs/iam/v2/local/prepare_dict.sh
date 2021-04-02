@@ -39,7 +39,7 @@ while(<>){
 }' | sort -u > $dir/lexicon.txt
 
 
-sed -i "s/#/<HASH>/" $dir/nonsilence_phones.txt
+perl -i -pe "s/#/<HASH>/" $dir/nonsilence_phones.txt
 
 echo '<sil> SIL' >> $dir/lexicon.txt
 

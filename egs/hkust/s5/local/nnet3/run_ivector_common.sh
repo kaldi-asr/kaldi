@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This script is modified based on swbd/s5c/local/nnet3/run_ivector_common.sh
 

@@ -103,6 +103,39 @@ struct NnetSimpleComputationOptions {
     ParseOptions compute_opts("computation", opts);
     compute_config.Register(&compute_opts);
   }
+
+  void CheckAndFixConfigs(int32 nnet_modulus) {
+    static bool warned_frames_per_chunk = false;
+    if (frame_subsampling_factor < 1 || frames_per_chunk < 1) {
+      KALDI_ERR << "--frame-subsampling-factor and "
+                << "--frames-per-chunk must be > 0";
+    }
+    KALDI_ASSERT(nnet_modulus > 0);
+    int32 n = Lcm(frame_subsampling_factor, nnet_modulus);
+
+    if (frames_per_chunk % n != 0) {
+      // round up to the nearest multiple of n.
+      int32 new_frames_per_chunk = n * ((frames_per_chunk + n - 1) / n);
+      if (!warned_frames_per_chunk) {
+        warned_frames_per_chunk = true;
+        if (nnet_modulus == 1) {
+          // simpler error message.
+          KALDI_LOG << "Increasing --frames-per-chunk from " << frames_per_chunk
+                    << " to " << new_frames_per_chunk
+                    << " to make it a multiple of "
+                    << "--frame-subsampling-factor="
+                    << frame_subsampling_factor;
+        } else {
+          KALDI_LOG << "Increasing --frames-per-chunk from " << frames_per_chunk
+                    << " to " << new_frames_per_chunk << " due to "
+                    << "--frame-subsampling-factor=" << frame_subsampling_factor
+                    << " and "
+                    << "nnet shift-invariance modulus = " << nnet_modulus;
+        }
+      }
+      frames_per_chunk = new_frames_per_chunk;
+    }
+  }
 };
 
 /*

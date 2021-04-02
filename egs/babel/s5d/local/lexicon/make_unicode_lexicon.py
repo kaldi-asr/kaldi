@@ -106,6 +106,7 @@
 # Import Statements
 
 from __future__ import print_function
+from __future__ import division
 import codecs
 import argparse
 import unicodedata
@@ -340,7 +341,7 @@ def encode(unicode_transcription, tag_percentage, log=False):
     int2graph = {v: k for k, v in graph2int.items()}
     graph_list_int = [graph2int[g] for g in graph_list]
     bin_edges = range(0, len(int2graph.keys()) + 1)
-    graph_counts = np.histogram(graph_list_int, bins=bin_edges)[0] / float(len(graph_list_int))
+    graph_counts = np.histogram(graph_list_int, bins=bin_edges)[0]/float(len(graph_list_int))
     # Set count threshold to frequency that tags the bottom 10% of graphemes
     bottom_idx = int(np.floor(tag_percentage * len(graph_counts)))
     count_thresh = sorted(graph_counts)[bottom_idx]
@@ -465,7 +466,7 @@ def encode(unicode_transcription, tag_percentage, log=False):
     for g_dict in table:
         g_map = ""
         map_number = 0
-        for g_field, g_val in sorted(g_dict.iteritems()):
+        for g_field, g_val in sorted(g_dict.items()):
             if(g_field == ("MAP" + str(map_number))):
                 g_map = g_map + g_val + " "
                 map_number = map_number + 1
@@ -561,7 +562,7 @@ def write_table(table, outfile):
     # Start writing to output
     with codecs.open(outfile, "w", "utf-8") as fo:
         # Get header names
-        header_names = sorted(set().union(*[d.keys() for d in table]))
+        header_names = sorted(set().union(*[list(d.keys()) for d in table]))
         # Write headers
         for h in header_names[:-1]:
             fo.write("%s\t" % h)
@@ -595,7 +596,7 @@ def write_map(grapheme_map, mapfile):
 
     '''
     with codecs.open(mapfile, 'w', encoding='utf-8') as f:
-        for g, g_map in grapheme_map.iteritems():
+        for g, g_map in grapheme_map.items():
             print(g, g_map, file=f)
 
 
@@ -613,14 +614,14 @@ def write_lexicon(baseforms, encoded_transcription, outfile, sil_lex=None,
     with codecs.open(outfile, "w", "utf-8") as f:
         # First write the non-speech words
         try:
-            for w in sil_lex.iterkeys():
+            for w in sil_lex.keys():
                 f.write("%s\t%s\n" % (w, sil_lex[w]))
         except AttributeError:
             pass
         
         # Then write extra-speech words 
         try:
-            for w in extra_lex.iterkeys():
+            for w in extra_lex.keys():
                 f.write("%s\t%s\n" % (w, extra_lex[w]))
         except AttributeError:
             pass
@@ -629,9 +630,9 @@ def write_lexicon(baseforms, encoded_transcription, outfile, sil_lex=None,
         for idx, w in enumerate(baseforms):
             # This is really just for BABEL in case <hes> is written as a word
             if(w[0].lower() == "<hes>"):
-                f.write("%s\t<hes>\n" % (unicode(w[0])))
+                f.write("%s\t<hes>\n" % (w[0]))
             else:
-                f.write("%s\t%s\n" % (unicode(w[0]),
+                f.write("%s\t%s\n" % (w[0],
                                       encoded_transcription[idx]))
 
 if __name__ == "__main__":

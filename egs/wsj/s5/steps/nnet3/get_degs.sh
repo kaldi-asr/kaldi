@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2012-2016   Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 # Copyright 2014-2015   Vimal Manohar
@@ -471,7 +471,6 @@ if [ $stage -le 10 ] && $cleanup; then
 fi
 
 
-exit 0
-
-
 echo "$0: Finished decoding and preparing training examples"
+
+exit 0

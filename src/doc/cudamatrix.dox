@@ -103,8 +103,8 @@ on the GPU- mainly neural net training.
  caused by the virtualization, and we're not sure whether that problem still exists.
  Anyway, the memory caching can cause a problem if for some reason you run using
  the default (non-exclusive) compute mode, because it can cause allocation
- failures.  You can disable it at the code level by calling
- <tt>CuDevice::Instantiate().DisableCaching()</tt>, if needed.
+ failures.  You can disable it at the code level by setting
+ <tt>CuAllocatorOptions::cache_memory</tt> to <tt>false</tt>, if needed.
 
 
 

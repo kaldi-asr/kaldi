@@ -1,7 +1,15 @@
-#!/bin/bash
+#!/usr/bin/env bash
+
 VER=1.10
+
+WGET=${WGET:-wget}
+
 if [ ! -f liblbfgs-$VER.tar.gz ]; then
-  wget https://github.com/downloads/chokkan/liblbfgs/liblbfgs-$VER.tar.gz
+  if [ -d "$DOWNLOAD_DIR" ]; then
+    cp -p "$DOWNLOAD_DIR/liblbfgs-$VER.tar.gz" . || exit 1
+  else
+    $WGET https://github.com/downloads/chokkan/liblbfgs/liblbfgs-$VER.tar.gz || exit 1
+  fi
 fi
 
 tar -xzf liblbfgs-$VER.tar.gz

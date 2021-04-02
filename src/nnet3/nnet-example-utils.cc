@@ -81,7 +81,13 @@ static void GetIoSizes(const std::vector<NnetExample> &src,
 }
 
 
-
+static int32 FindMaxNValue(const NnetIo &io) {
+  int32 max_n = 0;
+  for (auto &index: io.indexes)
+    if (index.n > max_n)
+      max_n = index.n;
+  return max_n;
+}
 
 // Do the final merging of NnetIo, once we have obtained the names, dims and
 // sizes for each feature/supervision type.
@@ -98,6 +104,9 @@ static void MergeIo(const std::vector<NnetExample> &src,
   // The features in the different NnetIo in the Indexes across all examples
   std::vector<std::vector<GeneralMatrix const*> > output_lists(num_feats);
 
+  // This is 1 for single examples and larger than 1 for already-merged egs, and
+  // it must be the same for all io's across all examples:
+  int32 example_stride = FindMaxNValue(src[0].io[0]) + 1;
   // Initialize the merged_eg
   merged_eg->io.clear();
   merged_eg->io.resize(num_feats);
@@ -139,9 +148,11 @@ static void MergeIo(const std::vector<NnetExample> &src,
       for (int32 i = this_offset; i < this_offset + this_size; i++) {
         // we could easily support merging already-merged egs, but I don't see a
         // need for it right now.
-        KALDI_ASSERT(output_iter[i].n == 0 &&
-                     "Merging already-merged egs?  Not currentlysupported.");
-        output_iter[i].n = n;
+        /* KALDI_ASSERT(output_iter[i].n == 0 && */
+        /*              "Merging already-merged egs?  Not currentlysupported."); */
+        KALDI_ASSERT(output_iter[i].n < example_stride);
+        output_iter[i].n += n * example_stride;
+        //output_iter[i].n = n;
       }
       this_offset += this_size;  // note: this_offset is a reference.
     }
@@ -214,8 +225,8 @@ void GetComputationRequest(const Nnet &nnet,
     const NnetIo &io = eg.io[i];
     const std::string &name = io.name;
     int32 node_index = nnet.GetNodeIndex(name);
-    if (node_index == -1 &&
-        !nnet.IsInputNode(node_index) && !nnet.IsOutputNode(node_index))
+    if (node_index == -1 ||
+        (!nnet.IsInputNode(node_index) && !nnet.IsOutputNode(node_index)))
       KALDI_ERR << "Nnet example has input or output named '" << name
                 << "', but no such input or output node is in the network.";
 
@@ -354,10 +365,15 @@ UtteranceSplitter::UtteranceSplitter(const ExampleGenerationConfig &config):
 }
 
 UtteranceSplitter::~UtteranceSplitter() {
+  /* KALDI_LOG << "Split " << total_num_utterances_ << " utts, with " */
+  /*           << "total length " << total_input_frames_ << " frames (" */
+  /*           << (total_input_frames_ / 360000.0) << " hours assuming " */
+  /*           << "100 frames per second)"; */
   KALDI_LOG << "Split " << total_num_utterances_ << " utts, with "
             << "total length " << total_input_frames_ << " frames ("
             << (total_input_frames_ / 360000.0) << " hours assuming "
-            << "100 frames per second)";
+            << "100 frames per second) into " << total_num_chunks_
+            << " chunks.";
   float average_chunk_length = total_frames_in_chunks_ * 1.0 / total_num_chunks_,
       overlap_percent = total_frames_overlap_ * 100.0 / total_input_frames_,
       output_percent = total_frames_in_chunks_ * 100.0 / total_input_frames_,

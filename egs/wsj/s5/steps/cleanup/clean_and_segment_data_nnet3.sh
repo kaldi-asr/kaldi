@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2016  Vimal Manohar
 #           2016  Johns Hopkins University (author: Daniel Povey)
@@ -23,8 +23,12 @@ cleanup=true  # remove temporary directories and files
 nj=4
 # Decode options
 graph_opts=
+scale_opts=
 beam=15.0
 lattice_beam=1.0
+
+acwt=0.1  # Just a default value, used for adaptation and beam-pruning..
+lmwt=10
 
 # Contexts must ideally match training
 extra_left_context=0  # Set to some large value, typically 40 for LSTM (must match training)
@@ -36,7 +40,7 @@ frames_per_chunk=150
 # i-vector options
 extractor=    # i-Vector extractor. If provided, will extract i-vectors.
               # Required if the network was trained with i-vector extractor.
-use_vad=   # Use energy-based VAD for i-vector extraction
+use_vad=false # Use energy-based VAD for i-vector extraction
 
 segmentation_opts=
 
@@ -105,6 +109,22 @@ cp $srcdir/cmvn_opts $dir
 cp $srcdir/{splice_opts,delta_opts,final.mat,final.alimdl} $dir 2>/dev/null || true
 cp $srcdir/frame_subsampling_factor $dir 2>/dev/null || true
 
+if [ -f $srcdir/frame_subsampling_factor ]; then
+  echo "$0: guessing that this is a chain system, checking parameters."
+  if [ -z $scale_opts ]; then
+    echo "$0: setting scale_opts"
+    scale_opts="--self-loop-scale=1.0 --transition-scale=1.0"
+  fi
+  if [ $acwt == 0.1 ]; then
+    echo "$0: setting acwt=1.0"
+    acwt=1.0
+  fi
+  if [ $lmwt == 10 ]; then
+    echo "$0: setting lmwt=1.0"
+    lmwt=1
+  fi
+fi
+
 utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt
 cp $lang/phones.txt $dir
 
@@ -112,25 +132,25 @@ if [ $stage -le 1 ]; then
   echo "$0: Building biased-language-model decoding graphs..."
 
 
-  steps/cleanup/make_biased_lm_graphs.sh $graph_opts \
+  steps/cleanup/make_biased_lm_graphs.sh $graph_opts --scale-opts "$scale_opts" \
     --nj $nj --cmd "$cmd" \
      $data $lang $dir $dir/graphs
 fi
 
 online_ivector_dir=
 if [ ! -z "$extractor" ]; then
-  online_ivector_dir=$dir/ivectors_$(basename $data_uniform_seg)
+  online_ivector_dir=$dir/ivectors_$(basename $data)
 
   if [ $stage -le 2 ]; then
     # Compute energy-based VAD
     if $use_vad; then
-      steps/compute_vad_decision.sh $data_uniform_seg \
-        $data_uniform_seg/log $data_uniform_seg/data
+      steps/compute_vad_decision.sh $data \
+        $data/log $data/data
     fi
 
     steps/online/nnet2/extract_ivectors_online.sh \
       --nj $nj --cmd "$cmd --mem 4G" --use-vad $use_vad \
-      $data_uniform_seg $extractor $online_ivector_dir
+      $data $extractor $online_ivector_dir
   fi
 fi
 
@@ -138,6 +158,7 @@ if [ $stage -le 3 ]; then
   echo "$0: Decoding with biased language models..."
 
   steps/cleanup/decode_segmentation_nnet3.sh \
+    --acwt $acwt  \
     --beam $beam --lattice-beam $lattice_beam --nj $nj --cmd "$cmd --mem 4G" \
     --skip-scoring true --allow-partial false \
     --extra-left-context $extra_left_context \
@@ -154,7 +175,7 @@ fi
 
 frame_shift_opt=
 if [ -f $srcdir/frame_subsampling_factor ]; then
-  frame_shift_opt="--frame-shift=0.0$(cat $srcdir/frame_subsampling_factor)"
+  frame_shift_opt="--frame-shift 0.0$(cat $srcdir/frame_subsampling_factor)"
 fi
 
 if [ $stage -le 4 ]; then

@@ -1,6 +1,7 @@
 #! /usr/bin/env python
 
 # Copyright 2016    Vimal Manohar
+#           2020    Dongji Gao
 # Apache 2.0.
 
 """This module aligns a hypothesis (CTM or text) with a reference to
@@ -127,7 +128,7 @@ def read_text(text_file):
                 "Did not get enough columns; line {0} in {1}"
                 "".format(line, text_file.name))
         elif len(parts) == 1:
-            logger.warn("Empty transcript for utterance %s in %s", 
+            logger.warn("Empty transcript for utterance %s in %s",
                         parts[0], text_file.name)
             yield parts[0], []
         else:
@@ -283,11 +284,17 @@ def smith_waterman_alignment(ref, hyp, similarity_score_function,
            or (align_full_hyp and hyp_index > 0)):
         try:
             prev_ref_index, prev_hyp_index = bp[ref_index][hyp_index]
-
             if ((prev_ref_index, prev_hyp_index) == (ref_index, hyp_index)
                     or (prev_ref_index, prev_hyp_index) == (0, 0)):
-                ref_index, hyp_index = (prev_ref_index, prev_hyp_index)
                 score = H[ref_index][hyp_index]
+                if score != 0:
+                    ref_word = ref[ref_index-1] if ref_index > 0 else eps_symbol
+                    hyp_word = hyp[hyp_index-1] if hyp_index > 0 else eps_symbol
+                    output.append((ref_word, hyp_word, prev_ref_index,
+                        prev_hyp_index, ref_index, hyp_index))
+
+                    ref_index, hyp_index = (prev_ref_index, prev_hyp_index)
+                    score = H[ref_index][hyp_index]
                 break
 
             if (ref_index == prev_ref_index + 1
@@ -313,6 +320,7 @@ def smith_waterman_alignment(ref, hyp, similarity_score_function,
                      prev_ref_index, prev_hyp_index, ref_index, hyp_index))
             else:
                 raise RuntimeError
+
 
             ref_index, hyp_index = (prev_ref_index, prev_hyp_index)
             score = H[ref_index][hyp_index]

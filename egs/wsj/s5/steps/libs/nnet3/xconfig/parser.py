@@ -27,6 +27,7 @@ config_to_layer = {
         'relu-batchnorm-layer' : xlayers.XconfigBasicLayer,
         'relu-batchnorm-so-layer' : xlayers.XconfigBasicLayer,
         'batchnorm-so-relu-layer' : xlayers.XconfigBasicLayer,
+        'batchnorm-layer' : xlayers.XconfigBasicLayer,
         'sigmoid-layer' : xlayers.XconfigBasicLayer,
         'tanh-layer' : xlayers.XconfigBasicLayer,
         'fixed-affine-layer' : xlayers.XconfigFixedAffineLayer,
@@ -68,15 +69,24 @@ config_to_layer = {
         'opgru-layer' : xlayers.XconfigOpgruLayer,
         'norm-pgru-layer' : xlayers.XconfigNormPgruLayer,
         'norm-opgru-layer' : xlayers.XconfigNormOpgruLayer,
+        'fast-gru-layer' : xlayers.XconfigFastGruLayer,
+        'fast-pgru-layer' : xlayers.XconfigFastPgruLayer,
+        'fast-norm-pgru-layer' : xlayers.XconfigFastNormPgruLayer,
+        'fast-opgru-layer' : xlayers.XconfigFastOpgruLayer,
+        'fast-norm-opgru-layer' : xlayers.XconfigFastNormOpgruLayer,
         'tdnnf-layer': xlayers.XconfigTdnnfLayer,
         'prefinal-layer': xlayers.XconfigPrefinalLayer,
+        'spec-augment-layer': xlayers.XconfigSpecAugmentLayer,
         'renorm-component': xlayers.XconfigRenormComponent,
         'batchnorm-component': xlayers.XconfigBatchnormComponent,
         'no-op-component': xlayers.XconfigNoOpComponent,
         'linear-component': xlayers.XconfigLinearComponent,
         'affine-component': xlayers.XconfigAffineComponent,
         'scale-component':  xlayers.XconfigPerElementScaleComponent,
-        'combine-feature-maps-layer': xlayers.XconfigCombineFeatureMapsLayer
+        'dim-range-component': xlayers.XconfigDimRangeComponent,
+        'offset-component':  xlayers.XconfigPerElementOffsetComponent,
+        'combine-feature-maps-layer': xlayers.XconfigCombineFeatureMapsLayer,
+        'delta-layer': xlayers.XconfigDeltaLayer
 }
 
 # Turn a config line and a list of previous layers into

@@ -42,7 +42,7 @@ int main(int argc, char *argv[]) {
     po.Register("convert-to-mean-and-var", &convert_to_mean_and_var,
                 "If true, convert the stats to a matrix containing the mean "
                 "and the centered variance in each dimension");
-    
+
     po.Read(argc, argv);
 
     if (po.NumArgs() != 2 && po.NumArgs() != 3) {
@@ -52,7 +52,7 @@ int main(int argc, char *argv[]) {
 
     int32 num_done = 0;
 
-    
+
     std::string skip_dims_str, rspecifier, wspecifier;
     if (po.NumArgs() == 3) {
       skip_dims_str = po.GetArg(1);
@@ -61,14 +61,14 @@ int main(int argc, char *argv[]) {
     } else {
       rspecifier = po.GetArg(1);
       wspecifier = po.GetArg(2);
-    }      
+    }
 
     std::vector<int32> skip_dims;
     if (!SplitStringToIntegers(skip_dims_str, ":", false, &skip_dims)) {
       KALDI_ERR << "Bad first argument (should be colon-separated list of "
                 <<  "integers)";
     }
-    
+
     SequentialDoubleMatrixReader reader(rspecifier);
     DoubleMatrixWriter writer(wspecifier);
 
@@ -96,7 +96,7 @@ int main(int argc, char *argv[]) {
               variance = mat(1, i) / count - mean * mean;
           modified_mat(0, i) = mean;
           modified_mat(1, i) = variance;
-        }  
+        }
         writer.Write(reader.Key(), modified_mat);
         num_done++;
       }

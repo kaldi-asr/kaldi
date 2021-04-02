@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 from __future__ import print_function
 import sys
@@ -6,6 +6,11 @@ import argparse
 import math
 import subprocess
 from collections import defaultdict
+
+import io
+sys.stdout = io.TextIOWrapper(sys.stdout.buffer,encoding="utf8")
+sys.stderr = io.TextIOWrapper(sys.stderr.buffer,encoding="utf8")
+sys.stdin = io.TextIOWrapper(sys.stdin.buffer,encoding="utf8")
 
 parser = argparse.ArgumentParser(description="""
 This script is a wrapper for make_one_biased_lm.py that reads a Kaldi archive
@@ -31,7 +36,7 @@ args = parser.parse_args()
 
 
 try:
-    utterance_map_file = open(args.utterance_map, "w")
+    utterance_map_file = open(args.utterance_map, "w", encoding="utf-8")
 except:
     sys.exit("make_biased_lms.py: error opening {0} to write utterance map".format(
             args.utterance_map))
@@ -55,7 +60,7 @@ def ProcessGroupOfLines(group_of_lines):
     try:
         command = "steps/cleanup/internal/make_one_biased_lm.py " + args.lm_opts
         p = subprocess.Popen(command, shell = True, stdin = subprocess.PIPE,
-                            stdout = sys.stdout, stderr = sys.stderr)
+                             stdout = sys.stdout, stderr = sys.stderr)
         for line in group_of_lines:
             a = line.split()
             if len(a) == 0:
@@ -63,13 +68,15 @@ def ProcessGroupOfLines(group_of_lines):
             utterance_id = a[0]
             # print <utt> <utt-group> to utterance-map file
             print(utterance_id, group_utterance_id, file = utterance_map_file)
-            rest_of_line = ' '.join(a[1:])  # get rid of utterance id.
-            print(rest_of_line, file=p.stdin)
+            rest_of_line = ' '.join(a[1:]) + '\n' # get rid of utterance id.
+            p.stdin.write(rest_of_line.encode('utf-8'))
         p.stdin.close()
         assert p.wait() == 0
-    except Exception as e:
-        sys.exit("make_biased_lms.py: error calling subprocess, command was: " +
-                 command + ", error was : " + str(e))
+    except Exception:
+        sys.stderr.write(
+            "make_biased_lms.py: error calling subprocess, command was: " +
+            command)
+        raise
     # Print a blank line; this terminates the FST in the Kaldi fst-archive
     # format.
     print("")

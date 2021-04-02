@@ -18,8 +18,7 @@ endif
 
 LIBNAME = kaldi-cudamatrix
 
-ADDLIBS = ../util/kaldi-util.a \
-          ../matrix/kaldi-matrix.a ../base/kaldi-base.a
+ADDLIBS = ../util/kaldi-util.a ../matrix/kaldi-matrix.a ../base/kaldi-base.a 
 
 # Make sure we have CUDA_ARCH from kaldi.mk,
 ifeq ($(CUDA), true)

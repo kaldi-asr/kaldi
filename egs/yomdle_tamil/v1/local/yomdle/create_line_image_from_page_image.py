@@ -29,7 +29,8 @@ from collections import namedtuple
 from scipy.spatial import ConvexHull
 from PIL import Image
 from scipy.misc import toimage
-
+from pathlib import Path
+from glob import glob
 parser = argparse.ArgumentParser(description="Creates line images from page image")
 parser.add_argument('image_dir', type=str, help='Path to full page images')
 parser.add_argument('csv_dir', type=str, help='Path to csv files')
@@ -115,7 +116,7 @@ def bounding_area(index, hull):
     return {'area': len_p * len_o,
             'length_parallel': len_p,
             'length_orthogonal': len_o,
-            'rectangle_center': (min_p + len_p / 2, min_o + len_o / 2),
+            'rectangle_center': (min_p + float(len_p) / 2, min_o + float(len_o) / 2),
             'unit_vector': unit_vector_p,
             }
 
@@ -220,8 +221,8 @@ def get_center(im):
     -------
     (int, int): center of the image
     """
-    center_x = im.size[0] / 2
-    center_y = im.size[1] / 2
+    center_x = float(im.size[0]) / 2
+    center_y = float(im.size[1]) / 2
     return int(center_x), int(center_y)
 
 
@@ -321,10 +322,18 @@ def update_minimum_bounding_box_input(bounding_box_input):
 ### main ###
 globvar = 0
 text_fh = open(args.output_file, 'w', encoding='utf-8')
-for filename in sorted(os.listdir(args.csv_dir)):
-    with open(os.path.join(args.csv_dir, filename), 'r', encoding='utf-8') as f:
-        image_file = os.path.join(args.image_dir, filename.split('.')[0] + args.ext)
-        im = Image.open(image_file).convert('L')
+file_list = list(Path(args.csv_dir).rglob("*.[cC][sS][vV]"))
+for filename in sorted(file_list):
+    filename = str(filename)
+    with open(str(filename), 'r', encoding='utf-8') as f:
+        base_name = os.path.basename(filename)
+        image_file = os.path.join(args.image_dir, base_name.split('.')[0] + args.ext)
+        try:
+            im = Image.open(image_file).convert('L')
+        except Exception as e:
+            print("Error: No such Image " + row[1])
+            globvar += 1
+            continue
         im = pad_image(im)
         for row in itertools.islice(csv.reader(f), 1, None):
             points = []

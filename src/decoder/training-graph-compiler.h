@@ -24,6 +24,7 @@
 #include "hmm/transition-model.h"
 #include "fst/fstlib.h"
 #include "fstext/fstext-lib.h"
+#include "tree/context-dep.h"
 
 
 namespace kaldi {
@@ -73,6 +74,10 @@ class TrainingGraphCompiler {
   // if not for "table_compose" we could make it const.
   bool CompileGraph(const fst::VectorFst<fst::StdArc> &word_grammar,
                     fst::VectorFst<fst::StdArc> *out_fst);
+
+  // Same as `CompileGraph`, but uses an external LG fst.
+  bool CompileGraphFromLG(const fst::VectorFst<fst::StdArc> &phone2word_fst,
+                                   fst::VectorFst<fst::StdArc> * out_fst);
 
   // CompileGraphs allows you to compile a number of graphs at the same
   // time.  This consumes more memory but is faster.

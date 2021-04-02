@@ -37,7 +37,7 @@ namespace kaldi {
   We currently have three separate codebases for deep neural nets in Kaldi.  All
   are still active in the sense that the up-to-date recipes refer to all of
   them.  The first one ("nnet1"( is located in code subdirectories nnet/ and
-  nnetbin/, and is primiarly maintained by Karel Vesely.  The second is located
+  nnetbin/, and is primarily maintained by Karel Vesely.  The second is located
   in code subdirectories nnet2/ and nnet2bin/, and is primarily maintained by
   Daniel Povey (this code was originally based on an earlier version of Karel's
   code, but it has been extensively rewritten).  The third is located

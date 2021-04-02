@@ -27,6 +27,7 @@
 # Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
 #
 
+from __future__ import print_function
 import sys, getopt, codecs, os, re
 
 # Declare a dictionary with Buckwalter's ASCII symbols as the keys, and
@@ -87,7 +88,7 @@ buck2uni = {"'": u"\u0621", # hamza-on-the-line
 uni2buck = {}
 
 # Iterate through all the items in the buck2uni dict.
-for (key, value) in buck2uni.iteritems():
+for (key, value) in buck2uni.items():
 		# The value from buck2uni becomes a key in uni2buck, and vice
 		# versa for the keys.
 		uni2buck[value] = key
@@ -108,103 +109,103 @@ reverse = 0      # When equal to 1, perform reverse transliteration, i.e.,
 # A function to print to screen the usage details of this script.
 
 def usage():
-	print "Usage:", sys.argv[0], "-i INFILE -o OUTFILE [-g CHARS -c RANGE -d CHAR"
-	print "       -r -e INPUT_ENCODING, -E OUTPUT ENCODING]"
-	print "      ", sys.argv[0], "-l"
-	print "      ", sys.argv[0], "-h"
-	print ""
-	print "  -i INFILE, --input=INFILE:"
-	print "    Path to text file to be transliterated to Unicode."
-	print "  -o OUTFILE, --output=OUTFILE:"
-	print "    Path of file to output the newly transliterated text."
-	print "  -e ENC, --input-encoding=ENC:"
-	print "    Specify the text encoding of the source file. Default: latin_1."
-	print "  -E ENC, --output-encoding=ENC:"
-	print "    Specify the text encoding of the target file. Default: utf_8."
-	print "  -g CHARS, --ignore-lines=CHARS:"
-	print "    Will not transliterate lines that start with any of the CHARS"
-	print "    given. E.g., -g #; will not alter lines starting with # or ;."
-	print "    (May need to be -g \#\; on some platforms. See README.txt.)"
-	print "  -c RANGE, --columns=RANGE:"
-	print "    If in columns, select columns to apply transliteration. Can be"
-	print "    comma separated numbers, or a range. E.g., -c 1, -c 1-3, -c 1,3."
-	print "  -d CHAR, --delimiter=CHAR:"
-	print "    Specify the delimiter that defines the column if using the -c"
-	print "    option above. Default is ' ' (space)."
-	print "  -r, --reverse:"
-	print "    Reverses the transliteration, i.e., Arabic to Buckwalter."
-	print "    When used, it will change the default input encoding to utf_8 and"
-	print "    output encoding to latin_1" 
-	print "  -l, --list-encodings:"
-	print "    Displays all supported file encodings."
-	print "  -h, --help:"
-	print "    Displays this page."
-	print ""
+	print("Usage: {} -i INFILE -o OUTFILE [-g CHARS -c RANGE -d CHAR".format(sys.argv[0]))
+	print("       -r -e INPUT_ENCODING, -E OUTPUT ENCODING]")
+	print("      {} -l".format(sys.argv[0]))
+	print("      {} -h".format(sys.argv[0]))
+	print("")
+	print("  -i INFILE, --input=INFILE:")
+	print("    Path to text file to be transliterated to Unicode.")
+	print("  -o OUTFILE, --output=OUTFILE:")
+	print("    Path of file to output the newly transliterated text.")
+	print("  -e ENC, --input-encoding=ENC:")
+	print("    Specify the text encoding of the source file. Default: latin_1.")
+	print("  -E ENC, --output-encoding=ENC:")
+	print("    Specify the text encoding of the target file. Default: utf_8.")
+	print("  -g CHARS, --ignore-lines=CHARS:")
+	print("    Will not transliterate lines that start with any of the CHARS")
+	print("    given. E.g., -g #; will not alter lines starting with # or ;.")
+	print("    (May need to be -g \#\; on some platforms. See README.txt.)")
+	print("  -c RANGE, --columns=RANGE:")
+	print("    If in columns, select columns to apply transliteration. Can be")
+	print("    comma separated numbers, or a range. E.g., -c 1, -c 1-3, -c 1,3.")
+	print("  -d CHAR, --delimiter=CHAR:")
+	print("    Specify the delimiter that defines the column if using the -c")
+	print("    option above. Default is ' ' (space).")
+	print("  -r, --reverse:")
+	print("    Reverses the transliteration, i.e., Arabic to Buckwalter.")
+	print("    When used, it will change the default input encoding to utf_8 and")
+	print("    output encoding to latin_1") 
+	print("  -l, --list-encodings:")
+	print("    Displays all supported file encodings.")
+	print("  -h, --help:")
+	print("    Displays this page.")
+	print("")
 
 # A function to print to screen all the available encodings supported by
 # Python.
 
 def displayEncodings():
-	print "Codec		Aliases				Languages"
-	print "ascii		646, us-ascii 			English"
-	print "cp037 		IBM037, IBM039 			English"
-	print "cp424 		EBCDIC-CP-HE, IBM424		Hebrew"
-	print "cp437 		437, IBM437 			English"
-	print "cp500 		EBCDIC-CP-BE, EBCDIC-CP-CH, IBM500 	Western Europe"
-	print "cp737						Greek"
-	print "cp775 		IBM775				Baltic languages"
-	print "cp850 		850, IBM850 			Western Europe"
-	print "cp852 		852, IBM852 			Central and Eastern Europe"
-	print "cp855 		855, IBM855 			Bulgarian, Byelorussian, Macedonian, Russian, Serbian"
-	print "cp856 		 	 			Hebrew"
-	print "cp857 		857, IBM857 			Turkish"
-	print "cp860 		860, IBM860 			Portuguese"
-	print "cp861 		861, CP-IS, IBM861		Icelandic"
-	print "cp862 		862, IBM862 			Hebrew"
-	print "cp863 		863, IBM863 			Canadian"
-	print "cp864 		IBM864				Arabic"
-	print "cp865 		865, IBM865 			Danish, Norwegian"
-	print "cp869 		869, CP-GR, IBM869 		Greek"
-	print "cp874 	  					Thai"
-	print "cp875 	  					Greek"
-	print "cp1006 	  					Urdu"
-	print "cp1026 		ibm1026				Turkish"
-	print "cp1140 		ibm1140				Western Europe"
-	print "cp1250 		windows-1250 			Central and Eastern Europe"
-	print "cp1251 		windows-1251 			Bulgarian, Byelorussian, Macedonian, Russian, Serbian"
-	print "cp1252 		windows-1252 			Western Europe"
-	print "cp1253 		windows-1253 			Greek"
-	print "cp1254 		windows-1254 			Turkish"
-	print "cp1255 		windows-1255 			Hebrew"
-	print "cp1256 		windows-1256 			Arabic"
-	print "cp1257 		windows-1257		 	Baltic languages"
-	print "cp1258 		windows-1258		 	Vietnamese"
-	print "latin_1		iso-8859-1, iso8859-1, 8859, cp819, latin, latin1, L1	West Europe"
-	print "iso8859_2 	iso-8859-2, latin2, L2		Central and Eastern Europe"
-	print "iso8859_3 	iso-8859-3, latin3, L3		Esperanto, Maltese"
-	print "iso8859_4 	iso-8859-4, latin4, L4		Baltic languagues"
-	print "iso8859_5 	iso-8859-5, cyrillic		Bulgarian, Byelorussian, Macedonian, Russian, Serbian"
-	print "iso8859_6 	iso-8859-6, arabic		Arabic"
-	print "iso8859_7 	iso-8859-7, greek, greek8	Greek"
-	print "iso8859_8 	iso-8859-8, hebrew		Hebrew"
-	print "iso8859_9 	iso-8859-9, latin5, L5		Turkish"
-	print "iso8859_10 	iso-8859-10, latin6, L6 	Nordic languages"
-	print "iso8859_13 	iso-8859-13			Baltic languages"
-	print "iso8859_14 	iso-8859-14, latin8, L8		Celtic languages"
-	print "iso8859_15 	iso-8859-15			Western Europe"
-	print "koi8_r						Russian"
-	print "koi8_u						Ukrainian"
-	print "mac_cyrillic	maccyrillic			Bulgarian, Byelorussian, Macedonian, Russian, Serbian"
-	print "mac_greek	macgreek			Greek"
-	print "mac_iceland	maciceland			Icelandic"
-	print "mac_latin2	maclatin2, maccentraleurope	Central and Eastern Europe"
-	print "mac_roman 	macroman 			Western Europe"
-	print "mac_turkish 	macturkish 			Turkish"
-	print "utf_16 		U16, utf16 			all languages"
-	print "utf_16_be 	UTF-16BE 			all languages (BMP only)"
-	print "utf_16_le 	UTF-16LE 			all languages (BMP only)"
-	print "utf_7 		U7 				all languages"
-	print "utf_8 		U8, UTF, utf8 			all languages"
+	print("Codec		Aliases				Languages")
+	print("ascii		646, us-ascii 			English")
+	print("cp037 		IBM037, IBM039 			English")
+	print("cp424 		EBCDIC-CP-HE, IBM424		Hebrew")
+	print("cp437 		437, IBM437 			English")
+	print("cp500 		EBCDIC-CP-BE, EBCDIC-CP-CH, IBM500 	Western Europe")
+	print("cp737						Greek")
+	print("cp775 		IBM775				Baltic languages")
+	print("cp850 		850, IBM850 			Western Europe")
+	print("cp852 		852, IBM852 			Central and Eastern Europe")
+	print("cp855 		855, IBM855 			Bulgarian, Byelorussian, Macedonian, Russian, Serbian")
+	print("cp856 		 	 			Hebrew")
+	print("cp857 		857, IBM857 			Turkish")
+	print("cp860 		860, IBM860 			Portuguese")
+	print("cp861 		861, CP-IS, IBM861		Icelandic")
+	print("cp862 		862, IBM862 			Hebrew")
+	print("cp863 		863, IBM863 			Canadian")
+	print("cp864 		IBM864				Arabic")
+	print("cp865 		865, IBM865 			Danish, Norwegian")
+	print("cp869 		869, CP-GR, IBM869 		Greek")
+	print("cp874 	  					Thai")
+	print("cp875 	  					Greek")
+	print("cp1006 	  					Urdu")
+	print("cp1026 		ibm1026				Turkish")
+	print("cp1140 		ibm1140				Western Europe")
+	print("cp1250 		windows-1250 			Central and Eastern Europe")
+	print("cp1251 		windows-1251 			Bulgarian, Byelorussian, Macedonian, Russian, Serbian")
+	print("cp1252 		windows-1252 			Western Europe")
+	print("cp1253 		windows-1253 			Greek")
+	print("cp1254 		windows-1254 			Turkish")
+	print("cp1255 		windows-1255 			Hebrew")
+	print("cp1256 		windows-1256 			Arabic")
+	print("cp1257 		windows-1257		 	Baltic languages")
+	print("cp1258 		windows-1258		 	Vietnamese")
+	print("latin_1		iso-8859-1, iso8859-1, 8859, cp819, latin, latin1, L1	West Europe")
+	print("iso8859_2 	iso-8859-2, latin2, L2		Central and Eastern Europe")
+	print("iso8859_3 	iso-8859-3, latin3, L3		Esperanto, Maltese")
+	print("iso8859_4 	iso-8859-4, latin4, L4		Baltic languagues")
+	print("iso8859_5 	iso-8859-5, cyrillic		Bulgarian, Byelorussian, Macedonian, Russian, Serbian")
+	print("iso8859_6 	iso-8859-6, arabic		Arabic")
+	print("iso8859_7 	iso-8859-7, greek, greek8	Greek")
+	print("iso8859_8 	iso-8859-8, hebrew		Hebrew")
+	print("iso8859_9 	iso-8859-9, latin5, L5		Turkish")
+	print("iso8859_10 	iso-8859-10, latin6, L6 	Nordic languages")
+	print("iso8859_13 	iso-8859-13			Baltic languages")
+	print("iso8859_14 	iso-8859-14, latin8, L8		Celtic languages")
+	print("iso8859_15 	iso-8859-15			Western Europe")
+	print("koi8_r						Russian")
+	print("koi8_u						Ukrainian")
+	print("mac_cyrillic	maccyrillic			Bulgarian, Byelorussian, Macedonian, Russian, Serbian")
+	print("mac_greek	macgreek			Greek")
+	print("mac_iceland	maciceland			Icelandic")
+	print("mac_latin2	maclatin2, maccentraleurope	Central and Eastern Europe")
+	print("mac_roman 	macroman 			Western Europe")
+	print("mac_turkish 	macturkish 			Turkish")
+	print("utf_16 		U16, utf16 			all languages")
+	print("utf_16_be 	UTF-16BE 			all languages (BMP only)")
+	print("utf_16_le 	UTF-16LE 			all languages (BMP only)")
+	print("utf_7 		U7 				all languages")
+	print("utf_8 		U8, UTF, utf8 			all languages")
 
 def parseIgnoreString(string):
 	
@@ -254,13 +255,13 @@ for (x, y) in options:
 		delimiter = delimiter.replace("\\t", "\t")
 		# Do some error checking
 		if len(delimiter) > 1:
-			print >>sys.stderr, "Delimeter should only be a single character. Using first character" + delimiter[0]
+			print("Delimeter should only be a single character. Using first character" + delimiter[0], file=sys.stderr)
 			delimiter = delimiter[0]
 		
 		if buck2uni.get(delimiter):
-			print >> sys.stderr, "Invalid delimiter. \"" + delimiter + "\" is part of the Buckwalter character set."
-			print >> sys.stderr, "This will obviously cause much confusion as a delimiter!"
-			print >> sys.stderr, "Please try again. Aborting..."
+			print("Invalid delimiter. \"" + delimiter + "\" is part of the Buckwalter character set.", file=sys.stderr)
+			print("This will obviously cause much confusion as a delimiter!", file=sys.stderr)
+			print("Please try again. Aborting...", file=sys.stderr)
 			sys.exit(1)
 
 # If no delimiter was set then, set the default to " " (space)
@@ -303,16 +304,16 @@ if outFilename:
 		# specified output encoding.
 		outFile = codecs.open(outFilename, "w", outEnc)
 
-    except IOError, msg:
+    except IOError as msg:
 		# A problem occurred when trying to open this file. Report to
 		# user...
-        print msg
+        print(msg)
         sys.exit(1)
 
 # Script can not work without somewhere to store the transliteration.
 # Exit. 
 else:
-	print "Must specify a file to use store the output! Aborting..."
+	print("Must specify a file to use store the output! Aborting...")
 	sys.exit(1)
 
 # Providing a file for input was specified...
@@ -322,15 +323,15 @@ if inFilename:
 		# specified input encoding.
 		inFile = codecs.open(inFilename, "r", inEnc)
 
-    except IOError, msg:
+    except IOError as msg:
 		# A problem occurred when trying to open this file. Report to
 		# user...
-        print msg
+        print(msg)
         sys.exit(1)
 
 # This script requires a file to read from. Exit.
 else:
-	print "Must specify a file to use as input! Aborting..."
+	print("Must specify a file to use as input! Aborting...")
 	sys.exit(1)
 
 def getColsFromRange(cRange):
@@ -344,7 +345,7 @@ def getColsFromRange(cRange):
 		# If it contains a hyphen (e.g., 1-3)
 		if hyphenSearch.search(i):
 			[start, end] = i.split("-")
-			columns = columns + range(int(start)-1,int(end))
+			columns = columns + list(range(int(start)-1,int(end)))
 		else:
 			columns.append(int(i)-1)
 
@@ -441,9 +442,9 @@ for line in lines:
 		
 		currentLineNumber = currentLineNumber + 1
 
-	except UnicodeError, msg:
+	except UnicodeError as msg:
 		# A problem when writing occurred. Report to user...
-		print msg
+		print(msg)
 		sys.exit(1)
 
 # All done! Better close the files used before terminating...

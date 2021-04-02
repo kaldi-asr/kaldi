@@ -17,6 +17,7 @@
 
 # Generated Nnet prototype, to be initialized by 'nnet-initialize'.
 
+from __future__ import print_function
 import sys
 
 ###
@@ -52,7 +53,7 @@ if len(args) != 2 :
   parser.print_help()
   sys.exit(1)
 
-(feat_dim, num_leaves) = map(int,args);
+(feat_dim, num_leaves) = [int(i) for i in args];
 
 # Original prototype from Jiayu,
 #<NnetProto>
@@ -73,14 +74,14 @@ softmax_affine_opts=""
 if None != o.param_stddev:     softmax_affine_opts += "<ParamStddev> %f " % o.param_stddev
 
 # The LSTM layers,
-print "<LstmProjected> <InputDim> %d <OutputDim> %d <CellDim> %s" % (feat_dim, o.proj_dim, o.cell_dim) + lstm_extra_opts
+print("<LstmProjected> <InputDim> %d <OutputDim> %d <CellDim> %s" % (feat_dim, o.proj_dim, o.cell_dim) + lstm_extra_opts)
 for l in range(o.num_layers - 1):
-  print "<LstmProjected> <InputDim> %d <OutputDim> %d <CellDim> %s" % (o.proj_dim, o.proj_dim, o.cell_dim) + lstm_extra_opts
+  print("<LstmProjected> <InputDim> %d <OutputDim> %d <CellDim> %s" % (o.proj_dim, o.proj_dim, o.cell_dim) + lstm_extra_opts)
 
 # Adding <Tanh> for more stability,
-print "<Tanh> <InputDim> %d <OutputDim> %d" % (o.proj_dim, o.proj_dim)
+print("<Tanh> <InputDim> %d <OutputDim> %d" % (o.proj_dim, o.proj_dim))
 
 # Softmax layer,
-print "<AffineTransform> <InputDim> %d <OutputDim> %d <BiasMean> 0.0 <BiasRange> 0.0" % (o.proj_dim, num_leaves) + softmax_affine_opts
-print "<Softmax> <InputDim> %d <OutputDim> %d" % (num_leaves, num_leaves)
+print("<AffineTransform> <InputDim> %d <OutputDim> %d <BiasMean> 0.0 <BiasRange> 0.0" % (o.proj_dim, num_leaves) + softmax_affine_opts)
+print("<Softmax> <InputDim> %d <OutputDim> %d" % (num_leaves, num_leaves))
 

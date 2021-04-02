@@ -130,10 +130,15 @@ sub format_sys {
 }
 
 open(UTT2SPK,$ARGV[0]) or die "Could not open the utt2spk file $ARGV[0]";
-while(<UTT2SPK>) {
-  chomp;
-  my @F=split;
-  die "Incompatible format of the utt2spk file: $_" if @F != 2; 
+
+(my $utt_is_utf8, my @utt_lines) = get_utf8_or_bytestream(\*UTT2SPK);
+die "Cannot read file" unless @utt_lines;
+
+while (@utt_lines) {
+  my $line = shift @utt_lines;
+  chomp $line;
+  my @F=split(" ", $line);
+  die "Incompatible format of the utt2spk file: $_" if @F != 2;
   $UTTMAP{$F[0]} = $F[1];
   # Set width of speaker column by its longest label,
   if($SPK_WIDTH < length($F[1])) { $SPK_WIDTH = length($F[1]) }

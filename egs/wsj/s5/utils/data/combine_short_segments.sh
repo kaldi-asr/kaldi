@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2013  Johns Hopkins University (author: Daniel Povey)
 # Apache 2.0
@@ -16,7 +16,12 @@
 
 # begin configuration section
 cleanup=true
+speaker_only=false  # If true, utterances are only combined from the same speaker.
+                    # It may be useful for the speaker recognition task.
+                    # If false, utterances are preferentially combined from the same speaker,
+                    # and then combined across different speakers.
 # end configuration section
+
 
 . utils/parse_options.sh
 
@@ -25,7 +30,8 @@ if [ $# != 3 ]; then
   echo "  $0 [options] <srcdir> <min-segment-length-in-seconds> <dir>"
   echo "e.g.:"
   echo " $0 data/train 1.55 data/train_comb"
-  # options documentation here.
+  echo " Options:"
+  echo "  --speaker-only <true|false>  # options to internal/choose_utts_to_combine.py, default false."
   exit 1;
 fi
 
@@ -55,7 +61,7 @@ if ! mkdir -p $dir; then
   exit 1;
 fi
 
-if ! utils/validate_data_dir.sh $srcdir; then
+if ! utils/validate_data_dir.sh --no-text $srcdir; then
   echo "$0: failed to validate input directory $srcdir.  If needed, run   utils/fix_data_dir.sh $srcdir"
   exit 1
 fi
@@ -72,6 +78,7 @@ set -o pipefail
 utils/data/get_utt2dur.sh $srcdir
 
 utils/data/internal/choose_utts_to_combine.py --min-duration=$min_seg_len \
+  --merge-within-speakers-only=$speaker_only \
   $srcdir/spk2utt $srcdir/utt2dur $dir/utt2utts $dir/utt2spk $dir/utt2dur
 
 utils/utt2spk_to_spk2utt.pl < $dir/utt2spk > $dir/spk2utt
@@ -87,7 +94,9 @@ utils/apply_map.pl -f 2- $srcdir/feats.scp <$dir/utt2utts | \
 
 # create $dir/text by concatenating the source 'text' entries for the original
 # utts.
-utils/apply_map.pl -f 2- $srcdir/text <$dir/utt2utts > $dir/text
+if [ -f $srcdir/text ]; then
+  utils/apply_map.pl -f 2- $srcdir/text <$dir/utt2utts > $dir/text
+fi
 
 if [ -f $srcdir/utt2uniq ]; then
   # the utt2uniq file is such that if 2 utts were derived from the same original
@@ -125,7 +134,7 @@ if [ -f $srcdir/utt2uniq ]; then
   # they have to be merged into the same set, and we name that set 'a'
   # (in general, we take the lowest string in lexicographical order).
 
-  cat $dir/uniq_sets | LC_ALL=C python -c '
+  cat $dir/uniq_sets | LC_ALL=C python3 -c '
 import sys;
 from collections import defaultdict
 uniq2orig_uniq = dict()
@@ -149,7 +158,7 @@ while changed:
                  changed = True
 
 for uniq in sorted(uniq2orig_uniq.keys()):
-    print uniq, uniq2orig_uniq[uniq]
+    print(uniq, uniq2orig_uniq[uniq])
 ' > $dir/uniq_to_orig_uniq
   rm $dir/uniq_sets
 
@@ -171,7 +180,7 @@ fi
 # note: the user will have to recompute the cmvn, as the speakers may have changed.
 rm $dir/cmvn.scp 2>/dev/null || true
 
-utils/validate_data_dir.sh --no-wav $dir
+utils/validate_data_dir.sh --no-text --no-wav $dir
 
 if $cleanup; then
   rm $dir/utt2utts

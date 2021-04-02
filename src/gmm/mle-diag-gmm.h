@@ -85,7 +85,7 @@ struct MapDiagGmmOptions {
   /// Tau value for the weights-- this tau value is applied
   /// per state, not per Gaussian.
   BaseFloat weight_tau;
-  
+
   MapDiagGmmOptions(): mean_tau(10.0),
                              variance_tau(50.0),
                              weight_tau(10.0) { }
@@ -150,8 +150,8 @@ class AccumDiagGmm {
       const MatrixBase<BaseFloat> &data,
       const VectorBase<BaseFloat> &frame_weights,
       int32 num_threads);
-  
-  
+
+
   /// Increment the stats for this component by the specified amount
   /// (not all parts may be taken, depending on flags).
   /// Note: x_stats and x2_stats are assumed to already be multiplied by "occ"
@@ -162,7 +162,7 @@ class AccumDiagGmm {
 
   /// Increment with stats from this other accumulator (times scale)
   void Add(double scale, const AccumDiagGmm &acc);
-  
+
   /// Smooths the accumulated counts by adding 'tau' extra frames. An example
   /// use for this is I-smoothing for MMIE.   Calls SmoothWithAccum.
   void SmoothStats(BaseFloat tau);
@@ -179,13 +179,13 @@ class AccumDiagGmm {
   void SmoothWithModel(BaseFloat tau, const DiagGmm &src_gmm);
 
   // Const accessors
-  const GmmFlagsType Flags() const { return flags_; }
+  GmmFlagsType Flags() const { return flags_; }
   const VectorBase<double> &occupancy() const { return occupancy_; }
   const MatrixBase<double> &mean_accumulator() const { return mean_accumulator_; }
   const MatrixBase<double> &variance_accumulator() const { return variance_accumulator_; }
 
   // used in testing.
-  void AssertEqual(const AccumDiagGmm &other); 
+  void AssertEqual(const AccumDiagGmm &other);
  private:
   int32 dim_;
   int32 num_comp_;

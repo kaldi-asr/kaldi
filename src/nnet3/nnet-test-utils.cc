@@ -1400,7 +1400,7 @@ void ComputeExampleComputationRequestSimple(
 static void GenerateRandomComponentConfig(std::string *component_type,
                                           std::string *config) {
 
-  int32 n = RandInt(0, 35);
+  int32 n = RandInt(0, 37);
   BaseFloat learning_rate = 0.001 * RandInt(1, 100);
 
   std::ostringstream os;
@@ -1755,6 +1755,22 @@ static void GenerateRandomComponentConfig(std::string *component_type,
          << " learning-rate=" << learning_rate << " time-offsets=0"
          << " use-natural-gradient=" << (RandInt(0,1) == 0 ? "true":"false")
          << " use-bias=" << (RandInt(0,1) == 0 ? "true":"false");
+      break;
+    }
+    case 36: {
+      *component_type = "GruNonlinearityComponent";
+      int32 cell_dim = RandInt(10, 20);
+      int32 recurrent_dim = (RandInt(0, 1) == 0 ?
+                             RandInt(5, cell_dim - 1) : cell_dim);
+      os << "cell-dim=" << cell_dim
+         << " recurrent-dim=" << recurrent_dim;
+      break;
+    }
+    case 37: {
+      *component_type = "OutputGruNonlinearityComponent";
+      os << "cell-dim=" << RandInt(10, 20)
+         << " learning-rate=" << learning_rate;
+
       break;
     }
     default:

@@ -14,6 +14,8 @@
 # MERCHANTABLITY OR NON-INFRINGEMENT.
 # See the Apache 2 License for the specific language governing permissions and
 # limitations under the License. #
+from __future__ import division
+from __future__ import print_function
 import argparse
 import glob
 import sys
@@ -29,8 +31,8 @@ def extract_stat(wer_file):
             ser = float(s[2].split()[1])
 
     except Exception as e:
-        print sys.stderr, 'Error parsing file %s' % wer_file
-        print sys.stderr, str(e)
+        print(sys.stderr, 'Error parsing file %s' % wer_file)
+        print(sys.stderr, str(e))
     return wer, ser
 
 
@@ -47,8 +49,8 @@ def extractResults(path):
             wer, ser = extract_stat(wf)
             table.append((exp, dataset, lm,  lm_w, wer, ser))
         except Exception as e:
-            print >> sys.stderr, 'failed to parse %s' % wf
-            print >> sys.stderr, str(e)
+            print('failed to parse %s' % wf, file=sys.stderr)
+            print(str(e), file=sys.stderr)
     return table
 
 
@@ -105,7 +107,7 @@ def Table2LatexTable(table):
 
 def createSmallTable(r):
     d = []
-    for k, v in r.iteritems():
+    for k, v in r.items():
         w, s, r = v
         if w == []:
             minw = None
@@ -115,7 +117,7 @@ def createSmallTable(r):
             mins = None
         else:
             mins = min(s)  # returns tuple if s is list of tuples
-        mean_r = sum(r) / float(len(r))
+        mean_r = float(sum(r)) / len(r)
         d.append([k, mean_r, minw, mins])
     t = Table(d, ['exp', 'RT coef', 'WER', 'SER'])
     return t
@@ -167,7 +169,7 @@ if __name__ == "__main__":
 
     # remove duplicates: duplicates if equal mimimum wer in dev set
     min_dev_un = [(e, lm, lmw) for ((e, lm), lmw) in
-                  dict([((e, lm), lmw) for e, lm, lmw in min_dev]).items()]
+                  list(dict([((e, lm), lmw) for e, lm, lmw in min_dev]).items())]
     # sort according LM -> sort results according experiment & LMs
     min_dev_un.sort(key=lambda x: (x[1], x[0]))
 
@@ -182,6 +184,6 @@ if __name__ == "__main__":
         d.append(x[0])
 
     t = Table(data=d, colnames=['exp', 'set', 'LM', 'LMW', 'WER', 'SER'])
-    print str(t)
+    print(str(t))
     if args.latex:
-        print Table2LatexTable(t)
+        print(Table2LatexTable(t))

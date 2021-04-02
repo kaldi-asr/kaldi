@@ -26,8 +26,8 @@
 
 namespace fst
 {
-
-
+using std::vector;
+using std::cout;
 
 // Don't instantiate with log semiring, as RandEquivalent may fail.
 template<class Arc> static void TestRemoveEpsLocal() {

@@ -249,7 +249,7 @@ struct RnnlmEgsConfig {
                  "Must be at least num-chunks-per-minibatch * sample-group-size.  "
                  "If you don't supply the ARPA LM to the program, or you set "
                  "num-samples to zero, or num-samples exceeds the number of words "
-                 "with nonzero probability, the no sampling will be done.");
+                 "with nonzero probability, then no sampling will be done.");
     po->Register("chunk-buffer-size", &chunk_buffer_size,
                  "Number of chunks of sentence that we buffer while "
                  "processing the input.  Larger means more complete "
@@ -401,7 +401,7 @@ class RnnlmExampleCreator {
                       TableWriter<KaldiObjectHolder<RnnlmExample> > *writer):
       config_(config), minibatch_sampler_(NULL),
       sampling_sequencer_(TaskSequencerConfig()),
-      writer_(writer),
+      writer_(writer), num_sequences_processed_(0),
       num_chunks_processed_(0), num_words_processed_(0),
       num_minibatches_written_(0) { Check(); }
 

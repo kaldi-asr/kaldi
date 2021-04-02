@@ -26,6 +26,9 @@
 
 namespace fst
 {
+  using std::vector;
+  using std::cout;
+
 // Don't instantiate with log semiring, as RandEquivalent may fail.
 template<class Arc>  void TestPreDeterminize() {
   typedef typename Arc::Label Label;

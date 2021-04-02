@@ -100,7 +100,7 @@ class DiagGmm {
                                const std::vector<int32> &indices,
                                Vector<BaseFloat> *loglikes) const;
 
-  /// Get gaussian selection information for one frame.  Returns og-like
+  /// Get gaussian selection information for one frame.  Returns log-like
   /// this frame.  Output is the best "num_gselect" indices, sorted from best to
   /// worst likelihood.  If "num_gselect" > NumGauss(), sets it to NumGauss().
   BaseFloat GaussianSelection(const VectorBase<BaseFloat> &data,
@@ -188,7 +188,7 @@ class DiagGmm {
 
   /// Mutators for both float or double
   template<class Real>
-  void SetWeights(const VectorBase<Real> &w);    ///< Set mixure weights
+  void SetWeights(const VectorBase<Real> &w);    ///< Set mixture weights
 
   /// Use SetMeans to update only the Gaussian means (and not variances)
   template<class Real>

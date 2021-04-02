@@ -34,9 +34,7 @@ where:
 
 import argparse
 import sys
-
-sys.path.append('steps/libs')
-import common as common_lib
+import codecs
 
 
 def get_args():
@@ -51,6 +49,9 @@ def get_args():
                       help="Input labels file")
   parser.add_argument("rttm_file", type=str,
                       help="Output RTTM file")
+  parser.add_argument("--rttm-channel", type=int, default=0,
+                      help="The value passed into the RTTM channel field. \
+                      Only affects the format of the RTTM file.")
 
   args = parser.parse_args()
   return args
@@ -60,14 +61,14 @@ def main():
 
   # File containing speaker labels per segment
   seg2label = {}
-  with common_lib.smart_open(args.labels) as labels_file:
+  with codecs.open(args.labels, 'r', 'utf-8') as labels_file:
     for line in labels_file:
       seg, label = line.strip().split()
       seg2label[seg] = label
 
   # Segments file
   reco2segs = {}
-  with common_lib.smart_open(args.segments) as segments_file:
+  with codecs.open(args.segments, 'r', 'utf-8') as segments_file:
     for line in segments_file:
       seg, reco, start, end = line.strip().split()
       try:
@@ -80,7 +81,7 @@ def main():
 
   # Cut up overlapping segments so they are contiguous
   contiguous_segs = []
-  for reco in reco2segs:
+  for reco in sorted(reco2segs):
     segs = reco2segs[reco].strip().split()
     new_segs = ""
     for i in range(1, len(segs)-1):
@@ -114,14 +115,14 @@ def main():
     new_segs += " " + start + "," + end + "," + label
     merged_segs.append(reco + new_segs)
 
-  with common_lib.smart_open(args.rttm_file, 'w') as rttm_writer:
+  with codecs.open(args.rttm_file, 'w', 'utf-8') as rttm_writer:
     for reco_line in merged_segs:
       segs = reco_line.strip().split()
       reco = segs[0]
       for i in range(1, len(segs)):
         start, end, label = segs[i].strip().split(',')
-        print("SPEAKER {0} 0 {1:7.3f} {2:7.3f} <NA> <NA> {3} <NA> <NA>".format(
-          reco, float(start), float(end)-float(start), label), file=rttm_writer)
+        print("SPEAKER {0} {1} {2:7.3f} {3:7.3f} <NA> <NA> {4} <NA> <NA>".format(
+          reco, args.rttm_channel, float(start), float(end)-float(start), label), file=rttm_writer)
 
 if __name__ == '__main__':
   main()

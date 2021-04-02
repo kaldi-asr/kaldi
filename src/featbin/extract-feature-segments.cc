@@ -25,7 +25,7 @@
 #include "matrix/kaldi-matrix.h"
 
 /** @brief This is a program for extracting segments from feature files/archives
- - usage : 
+ - usage :
      - extract-feature-segments [options ..]  <scriptfile/archive> <segments-file> <features-written-specifier>
      - "segments-file" should have the information of the segments that needs to be extracted from the feature files
      - the format of the segments file : speaker_name filename start_time(in secs) end_time(in secs)
@@ -37,6 +37,10 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Create feature files by segmenting input files.\n"
+        "Note: this program should no longer be needed now that\n"
+        "'ranges' in scp files are supported; search for 'ranges' in\n"
+        "http://kaldi-asr.org/doc/io_tut.html, or see the script\n"
+        "utils/data/subsegment_data_dir.sh.\n"
         "Usage:  "
         "extract-feature-segments [options...] <feats-rspecifier> "
         " <segments-file> <feats-wspecifier>\n"
@@ -144,9 +148,9 @@ int main(int argc, char *argv[]) {
         }
       }
 
-      /* check whether a segment start time and end time exists in utterance 
+      /* check whether a segment start time and end time exists in utterance
        * if fails , skips the segment.
-       */ 
+       */
       if (!feat_reader.HasKey(utterance)) {
         KALDI_WARN << "Did not find features for utterance " << utterance
                    << ", skipping segment " << segment;
@@ -167,7 +171,7 @@ int main(int argc, char *argv[]) {
         end_samp -= snip_length;
       }
 
-      /* start sample must be less than total number of samples 
+      /* start sample must be less than total number of samples
        * otherwise skip the segment
        */
       if (start_samp < 0 || start_samp >= num_samp) {
@@ -177,7 +181,7 @@ int main(int argc, char *argv[]) {
         continue;
       }
 
-      /* end sample must be less than total number samples 
+      /* end sample must be less than total number samples
        * otherwise skip the segment
        */
       if (end_samp > num_samp) {
@@ -221,4 +225,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-

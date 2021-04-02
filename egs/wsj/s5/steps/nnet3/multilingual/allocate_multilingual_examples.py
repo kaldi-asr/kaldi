@@ -40,7 +40,6 @@
 
 """
 
-from __future__ import print_function
 import os, argparse, sys, random
 import logging
 import traceback
@@ -163,7 +162,7 @@ def process_multilingual_egs(args):
                        "not include any examples from this lang.")
         logger.info("The proportion of egs from lang {} is {:.2f}. The number of blocks "
                     "per archive for this lang is approximately {:.2f}. "
-                    "{}".format(lang, lang_to_num_examples[lang] / tot_num_egs,
+                    "{}".format(lang, float(lang_to_num_examples[lang]) / tot_num_egs,
                                 blocks_per_archive_this_lang,
                                 warning))
 
@@ -173,11 +172,11 @@ def process_multilingual_egs(args):
     lang_to_num_remaining_egs = [n for n in lang_to_num_examples]
     for archive_index in range(num_archives + 1):  #  +1 is because we write to the last archive in two rounds
         num_remaining_archives = num_archives - archive_index
-        num_remaining_blocks = num_remaining_egs / args.block_size
+        num_remaining_blocks = float(num_remaining_egs) / args.block_size
 
         last_round = (archive_index == num_archives)
         if not last_round:
-            num_blocks_this_archive = int(round(num_remaining_blocks / num_remaining_archives))
+            num_blocks_this_archive = int(round(float(num_remaining_blocks) / num_remaining_archives))
             logger.info("Generating archive {} containing {} blocks...".format(archive_index, num_blocks_this_archive))
         else:  # This is the second round for the last archive. Flush all the remaining egs...
             archive_index = num_archives - 1
@@ -194,7 +193,7 @@ def process_multilingual_egs(args):
 
         for block_index in range(num_blocks_this_archive):
             # Find the lang with the highest proportion of remaining examples
-            remaining_proportions = [remain / tot for remain, tot in zip(lang_to_num_remaining_egs, lang_to_num_examples)]
+            remaining_proportions = [float(remain) / tot for remain, tot in zip(lang_to_num_remaining_egs, lang_to_num_examples)]
             lang_index, max_proportion = max(enumerate(remaining_proportions), key=lambda a: a[1])
 
             # Read 'block_size' examples from the selected lang and write them to the current output scp file:

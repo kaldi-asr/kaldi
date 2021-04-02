@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2014 QCRI (author: Ahmed Ali)
 # Apache 2.0
@@ -25,9 +25,8 @@ echo SIL > $dir/optional_silence.txt
 cat $dir/lexicon.txt | cut -d ' ' -f2- | tr -s ' ' '\n' |\
 sort -u >  $dir/nonsilence_phones.txt || exit 1;
 
+perl -i -pe 'print "<UNK> SIL\n" if $.==1'  $dir/lexicon.txt
 
- sed -i '1i<UNK> SIL' $dir/lexicon.txt
- 
 echo Dictionary preparation succeeded
 
 exit 0

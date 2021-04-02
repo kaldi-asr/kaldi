@@ -32,11 +32,15 @@ namespace nnet3 {
 
 
 /**
-   The input to this function is a vector of lists of pairs, and this function
-   splits it up into a list of vectors of pairs.  In order to make the lists all
-   the same length it may have to insert "dummy" pairs with value (-1, -1).
-   In addition, this function implement certain heuristics to break up the
-   list into pairs in a particular desirable way, which we will describe below.
+   The input to this function is a vector (indexed by matrix-row-index) of lists
+   of pairs (submat_index, row_index), and this function splits it up into a
+   list of vectors of pairs, where those vectors are indexed by
+   matrix-row-index.
+
+   In order to make the lists all the same length it may have to insert "dummy"
+   pairs with value (-1, -1).  In addition, this function implement certain
+   heuristics to break up the list into pairs in a particular desirable way,
+   which we will describe below.
 
    Let the input be `submat_lists`, and let `num_rows = submat_lists.size()`.
    The value -1 is not expected to appear as either the .first or .second
@@ -74,7 +78,6 @@ namespace nnet3 {
 
    See documentation here: \ref dnn3_compile_compiler_split_locations
  */
-
 void SplitLocations(
     const std::vector<std::vector<std::pair<int32, int32> > > &submat_lists,
     std::vector<std::vector<std::pair<int32, int32> > > *split_lists);
@@ -179,4 +182,3 @@ void GetNxList(const std::vector<Index> &indexes,
 
 
 #endif
-

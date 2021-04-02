@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright  2016 Tokyo Institute of Technology (Authors: Tomohiro Tanaka, Takafumi Moriya and Takahiro Shinozaki)
 #            2016 Mitsubishi Electric Research Laboratories (Author: Shinji Watanabe)

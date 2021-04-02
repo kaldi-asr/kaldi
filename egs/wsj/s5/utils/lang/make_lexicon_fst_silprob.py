@@ -280,8 +280,8 @@ def write_fst(lexicon, silprobs, sil_phone, sil_disambig,
         phones that may appear as left-context, e.g. ['a', 'ah', ... '#nonterm_bos'].
     """
     silbeginprob, silendcorrection, nonsilendcorrection, siloverallprob = silprobs
-    sil_cost = -math.log(silbeginprob)
-    no_sil_cost = -math.log(1.0 - silbeginprob);
+    initial_sil_cost = -math.log(silbeginprob)
+    initial_non_sil_cost = -math.log(1.0 - silbeginprob);
     sil_end_correction_cost = -math.log(silendcorrection)
     non_sil_end_correction_cost = -math.log(nonsilendcorrection);
     start_state = 0
@@ -296,10 +296,10 @@ def write_fst(lexicon, silprobs, sil_phone, sil_disambig,
     # avoids having to introduce extra arcs).
     print('{src}\t{dest}\t{phone}\t{word}\t{cost}'.format(
         src=start_state, dest=non_sil_state,
-        phone=sil_phone, word='<eps>', cost=no_sil_cost))
+        phone=sil_disambig, word='<eps>', cost=initial_non_sil_cost))
     print('{src}\t{dest}\t{phone}\t{word}\t{cost}'.format(
         src=start_state, dest=sil_state,
-        phone=sil_disambig, word='<eps>', cost=sil_cost))
+        phone=sil_phone, word='<eps>', cost=initial_sil_cost))
 
     for (word, pronprob, wordsilprob, silwordcorrection, nonsilwordcorrection, pron) in lexicon:
         pron_cost = -math.log(pronprob)

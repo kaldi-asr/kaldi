@@ -204,7 +204,7 @@ void FastNnetCombiner::CombineNnets(const Vector<double> &scale_params,
   int32 num_nnets = nnets.size();
   KALDI_ASSERT(num_nnets >= 1);
   int32 num_uc = nnets[0].NumUpdatableComponents();
-  KALDI_ASSERT(num_nnets * nnets[0].NumUpdatableComponents());
+  KALDI_ASSERT(nnets[0].NumUpdatableComponents() >= 1);
 
 
   *dest = nnets[0];

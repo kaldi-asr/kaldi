@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # encoding: utf-8
 from __future__ import unicode_literals
+from __future__ import print_function
 
 import glob
 import sys
@@ -8,7 +9,7 @@ import os
 import codecs
 
 def build_reference(wav_scp, ref_path):
-    print wav_scp, ref_path
+    print(wav_scp, ref_path)
     with codecs.open(ref_path, 'w', 'utf-8') as w:
         with codecs.open(wav_scp, 'r', 'utf-8') as scp:
             for line in scp:
@@ -31,8 +32,8 @@ if __name__ == '__main__':
     usage_args = {'exec': sys.argv[0]}
 
     if len(sys.argv) != 3:
-        print >> sys.stderr, "Wrong number of arguments"
-        print >> sys.stderr, usage % {'exec': sys.argv[0]}
+        print("Wrong number of arguments", file=sys.stderr)
+        print(usage % {'exec': sys.argv[0]}, file=sys.stderr)
         sys.exit(1)
 
     if sys.argv[1].endswith('scp'):
@@ -41,12 +42,12 @@ if __name__ == '__main__':
         scps = glob.glob(os.path.join(sys.argv[1], '*.scp'))
     target_dir = sys.argv[2]
     if not len(scps):
-        print >> sys.stderr, "No '*.scp' files found"
-        print >> sys.stderr, usage % {'exec': sys.argv[0]}
+        print("No '*.scp' files found", file=sys.stderr)
+        print(usage % {'exec': sys.argv[0]}, file=sys.stderr)
         sys.exit(1)
     if not os.path.isdir(target_dir):
-        print >> sys.stderr, "No '*.scp' files found"
-        print >> sys.stderr, usage % {'exec': sys.argv[0]}
+        print("No '*.scp' files found", file=sys.stderr)
+        print(usage % {'exec': sys.argv[0]}, file=sys.stderr)
         sys.exit(1)
 
     refers = [os.path.join(target_dir, os.path.basename(scp) + '.tra') for scp in scps]

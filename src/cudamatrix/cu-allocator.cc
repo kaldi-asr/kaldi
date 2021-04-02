@@ -152,7 +152,7 @@ void CuMemoryAllocator::RemoveFromFreeBlocks(MemoryBlock *block) {
       largest_free_block_[subregion_index] = 0;
     else
       largest_free_block_[subregion_index] =
-          subregion->free_blocks.begin()->first;
+          subregion->free_blocks.rbegin()->first;
   }
 }
 
@@ -185,6 +185,19 @@ void* CuMemoryAllocator::MallocFromSubregion(SubRegion *subregion,
   // region was sufficiently large.  We don't check this; if it segfaults, we'll
   // debug.
 
+  // search for a block that we don't have to synchronize on
+  int max_iters = 20;
+  auto search_iter = iter;
+  for (int32 i = 0;
+       search_iter != subregion->free_blocks.end() && i < max_iters;
+       ++i, ++search_iter) {
+    if (search_iter->second->thread_id == std::this_thread::get_id() ||
+        search_iter->second->t <= synchronize_gpu_t_) {
+      iter = search_iter;
+      break;
+    }
+  }
+
   MemoryBlock *block = iter->second;
   // Erase 'block' from its subregion's free blocks list... the next lines are
   // similar to RemoveFromFreeBlocks(), but we code it directly as we have the
@@ -199,7 +212,7 @@ void* CuMemoryAllocator::MallocFromSubregion(SubRegion *subregion,
       largest_free_block_[subregion_index] = 0;
     else
       largest_free_block_[subregion_index] =
-          subregion->free_blocks.begin()->first;
+          subregion->free_blocks.rbegin()->first;
   }
 
   KALDI_PARANOID_ASSERT(block_size >= size && block->allocated == false);
@@ -223,6 +236,9 @@ void* CuMemoryAllocator::MallocFromSubregion(SubRegion *subregion,
   block->allocated = true;
   block->t = t_;
   allocated_block_map_[block->begin] = block;
+  allocated_memory_ += (block->end - block->begin);
+  if (allocated_memory_ > max_allocated_memory_)
+    max_allocated_memory_ = allocated_memory_;
   return block->begin;
 }
 
@@ -267,36 +283,8 @@ static inline size_t IntegerLog2(size_t i) {
 }
 
 std::string GetFreeGpuMemory(int64* free, int64* total) {
-#ifdef _MSC_VER
   size_t mem_free, mem_total;
   cuMemGetInfo_v2(&mem_free, &mem_total);
-#else
-  // define the function signature type
-  size_t mem_free, mem_total;
-  {
-    // we will load cuMemGetInfo_v2 dynamically from libcuda.so
-    // pre-fill ``safe'' values that will not cause problems
-    mem_free = 1; mem_total = 1;
-    // open libcuda.so
-    void* libcuda = dlopen("libcuda.so", RTLD_LAZY);
-    if (NULL == libcuda) {
-      KALDI_WARN << "cannot open libcuda.so";
-    } else {
-      // define the function signature type
-      // and get the symbol
-      typedef CUresult (*cu_fun_ptr)(size_t*, size_t*);
-      cu_fun_ptr dl_cuMemGetInfo = (cu_fun_ptr)dlsym(libcuda,"cuMemGetInfo_v2");
-      if (NULL == dl_cuMemGetInfo) {
-        KALDI_WARN << "cannot load cuMemGetInfo from libcuda.so";
-      } else {
-        // call the function
-        dl_cuMemGetInfo(&mem_free, &mem_total);
-      }
-      // close the library
-      dlclose(libcuda);
-    }
-  }
-#endif
   // copy the output values outside
   if (NULL != free) *free = mem_free;
   if (NULL != total) *total = mem_total;
@@ -359,7 +347,9 @@ void CuMemoryAllocator::PrintMemoryUsage() const {
             << tot_time_taken_ << "/" << malloc_time_taken_
             << ", synchronized the GPU " << num_synchronizations_
             << " times out of " << (t_/2) << " frees; "
-            << "device memory info: " << GetFreeGpuMemory(NULL, NULL);
+            << "device memory info: " << GetFreeGpuMemory(NULL, NULL)
+            << "maximum allocated: " << max_allocated_memory_
+            << "current allocated: " << allocated_memory_;
 }
 
 // Note: we just initialize with the default options, but we can change it later
@@ -370,7 +360,9 @@ CuMemoryAllocator::CuMemoryAllocator():
     synchronize_gpu_t_(0),
     num_synchronizations_(0),
     tot_time_taken_(0.0),
-    malloc_time_taken_(0.0) {
+    malloc_time_taken_(0.0),
+    max_allocated_memory_(0),
+    allocated_memory_(0) {
   // Note: we don't allocate any memory regions at the start; we wait for the user
   // to call Malloc() or MallocPitch(), and then allocate one when needed.
 }
@@ -398,7 +390,7 @@ void* CuMemoryAllocator::MallocPitch(size_t row_bytes,
 }
 
 void CuMemoryAllocator::Free(void *ptr) {
-  CuTimer tim;
+  Timer tim;
   if (!opts_.cache_memory) {
     CU_SAFE_CALL(cudaFree(ptr));
     tot_time_taken_ += tim.Elapsed();
@@ -413,6 +405,7 @@ void CuMemoryAllocator::Free(void *ptr) {
               << ptr;
   }
   MemoryBlock *block = iter->second;
+  allocated_memory_ -= (block->end - block->begin);
   allocated_block_map_.erase(iter);
   block->t = t_;
   block->thread_id = std::this_thread::get_id();
@@ -500,11 +493,13 @@ void CuMemoryAllocator::AllocateNewRegion(size_t size) {
                 << "switching the GPUs to exclusive mode (nvidia-smi -c 3) and using "
                 << "the option --use-gpu=wait to scripts like "
                 << "steps/nnet3/chain/train.py.  Memory info: "
-                << mem_info;
+                << mem_info
+                << " CUDA error: '" << cudaGetErrorString(e) << "'";
     } else {
       KALDI_ERR << "Failed to allocate a memory region of " << region_size
                 << " bytes.  Possibly smaller minibatch size would help.  "
-                << "Memory info: " << mem_info;
+                << "Memory info: " << mem_info
+                << " CUDA error: '" << cudaGetErrorString(e) << "'";
     }
   }
   // this_num_subregions would be approximately 'opts_.num_subregions' if
@@ -582,9 +577,26 @@ void CuMemoryAllocator::SortSubregions() {
     if (subregions_[i]->free_blocks.empty())
       largest_free_block_[i] = 0;
     else
-      largest_free_block_[i] = subregions_[i]->free_blocks.begin()->first;
+      largest_free_block_[i] = subregions_[i]->free_blocks.rbegin()->first;
   }
 }
+
+CuMemoryAllocator::~CuMemoryAllocator() {
+  // We mainly free these blocks of memory so that cuda-memcheck doesn't report
+  // spurious errors.
+  for (size_t i = 0; i < memory_regions_.size(); i++) {
+    // No need to check the return status here-- the program is exiting anyway.
+    cudaFree(memory_regions_[i].begin);
+  }
+  for (size_t i = 0; i < subregions_.size(); i++) {
+    SubRegion *subregion = subregions_[i];
+    for (auto iter = subregion->free_blocks.begin();
+         iter != subregion->free_blocks.end(); ++iter)
+      delete iter->second;
+    delete subregion;
+  }
+}
+
 
 CuMemoryAllocator g_cuda_allocator;
 

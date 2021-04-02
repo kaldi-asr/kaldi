@@ -77,7 +77,7 @@ DecodableAmNnetSimple::DecodableAmNnetSimple(
 
 BaseFloat DecodableAmNnetSimple::LogLikelihood(int32 frame,
                                                int32 transition_id) {
-  int32 pdf_id = trans_model_.TransitionIdToPdf(transition_id);
+  int32 pdf_id = trans_model_.TransitionIdToPdfFast(transition_id);
   return decodable_nnet_.GetOutput(frame, pdf_id);
 }
 
@@ -204,7 +204,7 @@ void DecodableNnetSimple::GetCurrentIvector(int32 output_t_start,
                 << ", only available till frame "
                 << online_ivector_feats_->NumRows()
                 << " * ivector-period=" << online_ivector_period_
-                << " (mismatched --ivector-period?)";
+                << " (mismatched --online-ivector-period?)";
     }
     ivector_frame = online_ivector_feats_->NumRows() - 1;
   }
@@ -357,7 +357,7 @@ void DecodableAmNnetSimpleParallel::DeletePointers() {
 
 BaseFloat DecodableAmNnetSimpleParallel::LogLikelihood(int32 frame,
                                                        int32 transition_id) {
-  int32 pdf_id = trans_model_.TransitionIdToPdf(transition_id);
+  int32 pdf_id = trans_model_.TransitionIdToPdfFast(transition_id);
   return decodable_nnet_->GetOutput(frame, pdf_id);
 }
 

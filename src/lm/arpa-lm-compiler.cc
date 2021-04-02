@@ -79,7 +79,7 @@ class GeneralHistKey {
 // in a 4-gram model, this optimized key is used for smaller models with up
 // to 4-gram and symbol values up to 2^21-1.
 //
-// See GeneralHistKey for interface requrements of a key class.
+// See GeneralHistKey for interface requirements of a key class.
 class OptimizedHistKey {
  public:
   enum {
@@ -140,12 +140,12 @@ ArpaLmCompilerImpl<HistKey>::ArpaLmCompilerImpl(
     : parent_(parent), fst_(fst), bos_symbol_(parent->Options().bos_symbol),
       eos_symbol_(parent->Options().eos_symbol), sub_eps_(sub_eps) {
   // The algorithm maintains state per history. The 0-gram is a special state
-  // for emptry history. All unigrams (including BOS) backoff into this state.
+  // for empty history. All unigrams (including BOS) backoff into this state.
   StateId zerogram = fst_->AddState();
   history_[HistKey()] = zerogram;
 
   // Also, if </s> is not treated as epsilon, create a common end state for
-  // all transitions acepting the </s>, since they do not back off. This small
+  // all transitions accepting the </s>, since they do not back off. This small
   // optimization saves about 2% states in an average grammar.
   if (sub_eps_ == 0) {
     eos_state_ = fst_->AddState();
@@ -288,7 +288,7 @@ void ArpaLmCompiler::HeaderAvailable() {
   int64 max_symbol = 0;
   if (Symbols() != NULL)
     max_symbol = Symbols()->AvailableKey() - 1;
-  // If augmenting the symbol table, assume the wors case when all words in
+  // If augmenting the symbol table, assume the worst case when all words in
   // the model being read are novel.
   if (Options().oov_handling == ArpaParseOptions::kAddToSymbols)
     max_symbol += NgramCounts()[0];

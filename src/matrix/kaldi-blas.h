@@ -50,8 +50,8 @@
 
 #ifdef HAVE_ATLAS
   extern "C" {
-    #include <cblas.h>
-    #include <clapack.h>
+    #include "cblas.h"
+    #include "clapack.h"
   }
 #elif defined(HAVE_CLAPACK)
   #ifdef __APPLE__
@@ -74,7 +74,7 @@
       // from the tools/CLAPACK_include directory.
       #include <cblas.h>
       #include <f2c.h>
-      #include <clapack.h>  
+      #include <clapack.h>
 
       // get rid of macros from f2c.h -- these are dangerous.
       #undef abs
@@ -93,6 +93,7 @@
     #include <mkl.h>
   }
 #elif defined(HAVE_OPENBLAS)
+  #include <complex>
   // getting cblas.h and lapacke.h from <openblas-install-dir>/.
   // putting in "" not <> to search -I before system libraries.
   #include "cblas.h"
@@ -110,7 +111,7 @@
   #undef bit_clear
   #undef bit_set
 #else
-  #error "You need to define (using the preprocessor) either HAVE_CLAPACK or HAVE_ATLAS or HAVE_MKL (but not more than one)"  
+  #error "You need to define (using the preprocessor) either HAVE_CLAPACK or HAVE_ATLAS or HAVE_MKL (but not more than one)"
 #endif
 
 #ifdef HAVE_OPENBLAS

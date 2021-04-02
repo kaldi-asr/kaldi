@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # b is as a, but using a different splice indexes with geometrically increasing
 # relu dims across layers. It gives better results but takes 2x time for training

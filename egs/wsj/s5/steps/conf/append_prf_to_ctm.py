@@ -3,6 +3,7 @@
 # Copyright 2015  Brno University of Technology (author: Karel Vesely)
 # Apache 2.0
 
+from __future__ import print_function
 import sys
 
 # Append Levenshtein alignment of 'hypothesis' and 'reference' into 'CTM':
@@ -16,7 +17,7 @@ import sys
 
 # Parse options,
 if len(sys.argv) != 4:
-  print "Usage: %s prf ctm_in ctm_out" % __file__
+  print("Usage: %s prf ctm_in ctm_out" % __file__)
   sys.exit(1)
 prf_file, ctm_file, ctm_out_file = sys.argv[1:]
 

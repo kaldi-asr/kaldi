@@ -76,8 +76,8 @@ def make_speech_corpus(top, dest, srcfolder):
         session.sessiondir = os.path.join(dest, session.filestem) +"."+ session.speaker_id
         if os.path.exists(session.sessiondir):
             n += 1
-            session.sessiondir = session.sessiondir+ "_" +str(n)
-            session.speaker_id+ "_" +str(n)
+            session.sessiondir = "{}_{}".format(session.sessiondir, n)
+            session.speaker_id = "{}_{}".format(session.speaker_id, n)
         os.mkdir(session.sessiondir)
         
         create_parallel_files(session)

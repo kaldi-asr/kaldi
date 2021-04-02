@@ -26,7 +26,7 @@ namespace kaldi {
 namespace discriminative {
 
 DiscriminativeObjectiveInfo::DiscriminativeObjectiveInfo() {
-  std::memset(this, 0, sizeof(*this));
+  std::memset((void *)this, 0, sizeof(*this));
 }
 
 DiscriminativeObjectiveInfo::DiscriminativeObjectiveInfo(int32 num_pdfs) :

@@ -1,0 +1,1 @@
+tuning/run_tdnnf_flatstart_char1b.sh

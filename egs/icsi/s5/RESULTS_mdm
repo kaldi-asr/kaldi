@@ -1,0 +1,24 @@
+#for d in exp/mdm4/tri*/decode_*pr1-7; do grep Sum $d/*scor*/*ys | utils/best_wer.sh; done
+
+%WER 51.4 | 4455 23302 | 55.2 31.0 13.8 6.6 51.4 57.6 | 0.533 | exp/mdm4/tri2/decode_dev_icsi_fsh.o3g.kn.pr1-7/ascore_13/dev_o4.ctm.filt.sys
+%WER 46.9 | 4329 30653 | 59.6 27.3 13.1 6.4 46.9 67.7 | 0.597 | exp/mdm4/tri2/decode_eval_icsi_fsh.o3g.kn.pr1-7/ascore_11/eval_o4.ctm.filt.sys
+%WER 51.6 | 3184 23306 | 55.6 32.4 12.0 7.2 51.6 80.0 | 0.638 | exp/mdm4/tri3/decode_dev_icsi_fsh.o3g.kn.pr1-7/ascore_15/dev_o4.ctm.filt.sys
+%WER 46.8 | 4914 30654 | 58.2 26.4 15.4 5.0 46.8 59.3 | 0.677 | exp/mdm4/tri3/decode_eval_icsi_fsh.o3g.kn.pr1-7/ascore_15/eval_o4.ctm.filt.sys
+
+#for d in exp/mdm4/chain_1a/tdnn_*/decode_*; do grep Sum $d/*scor*/*ys | utils/best_wer.sh; done
+
+#local/chain/tuning/run_tdnn_1a.sh --use-ihm-ali false --mic mdm4
+%WER 29.4 | 4835 23319 | 74.2 15.8 10.0 3.6 29.4 45.3 | 0.664 | exp/mdm4/chain_1a/tdnn_sp/decode_dev/ascore_10/dev_hires_o4.ctm.filt.sys
+%WER 27.1 | 5141 30798 | 76.0 14.0 10.0 3.1 27.1 49.1 | 0.693 | exp/mdm4/chain_1a/tdnn_sp/decode_eval/ascore_9/eval_hires_o4.ctm.filt.sys
+
+#local/chain/tuning/run_tdnn_1a.sh --use-ihm-ali true --mic mdm4
+%WER 29.6 | 3567 23325 | 74.2 16.8 9.0 3.8 29.6 60.8 | 0.647 | exp/mdm4/chain_1a/tdnn_sp_ihmali/decode_dev/ascore_10/dev_hires_o4.ctm.filt.sys
+%WER 26.6 | 3847 30791 | 76.5 14.2 9.3 3.1 26.6 65.2 | 0.662 | exp/mdm4/chain_1a/tdnn_sp_ihmali/decode_eval/ascore_10/eval_hires_o4.ctm.filt.sys
+
+#local/chain/tuning/run_tdnn_1b.sh --use-ihm-ali true --mic mdm4
+%WER 28.7 | 3566 23318 | 75.1 16.5 8.4 3.8 28.7 60.0 | 0.646 | exp/mdm4/chain_1a/tdnn_b_sp_ihmali/decode_dev/ascore_10/dev_hires_o4.ctm.filt.sys
+%WER 26.3 | 5729 30792 | 76.8 13.8 9.3 3.1 26.3 43.0 | 0.663 | exp/mdm4/chain_1a/tdnn_b_sp_ihmali/decode_eval/ascore_10/eval_hires_o4.ctm.filt.sys
+
+#local/chain/tuning/run_tdnn_1c.sh --use-ihm-ali true --mic mdm4
+%WER 24.5 | 3567 23312 | 78.8 14.0 7.2 3.3 24.5 56.7 | 0.707 | exp/mdm4/chain_1a/tdnn_c_sp_ihmali/decode_dev/ascore_11/dev_hires_o4.ctm.filt.sys
+%WER 22.6 | 4630 30638 | 80.6 12.0 7.4 3.2 22.6 50.0 | 0.724 | exp/mdm4/chain_1a/tdnn_c_sp_ihmali/decode_eval/ascore_10/eval_hires_o4.ctm.filt.sys

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Copyright 2016   Vimal Manohar
 #           2016   Johns Hopkins University (author: Daniel Povey)
@@ -7,6 +7,10 @@
 from __future__ import print_function
 import sys, operator, argparse, os
 from collections import defaultdict
+
+import io
+sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf8")
+
 
 # This script reads and writes the 'ctm-edits' file that is
 # produced by get_ctm_edits.py.
@@ -136,12 +140,12 @@ def ProcessUtterance(split_lines_of_utt, remove_deletions=True):
 
 def ProcessData():
     try:
-        f_in = open(args.ctm_edits_in)
+        f_in = open(args.ctm_edits_in, encoding="utf8")
     except:
         sys.exit("taint_ctm_edits.py: error opening ctm-edits input "
                  "file {0}".format(args.ctm_edits_in))
     try:
-        f_out = open(args.ctm_edits_out, 'w')
+        f_out = open(args.ctm_edits_out, 'w', encoding="utf8")
     except:
         sys.exit("taint_ctm_edits.py: error opening ctm-edits output "
                  "file {0}".format(args.ctm_edits_out))
@@ -201,7 +205,7 @@ def PrintNonScoredStats():
             percent_modified, percent_of_incorrect_modified),
           file = sys.stderr)
 
-    keys = sorted(ref_change_stats.keys(), reverse=True,
+    keys = sorted(list(ref_change_stats.keys()), reverse=True,
                   key = lambda x: ref_change_stats[x])
     num_keys_to_print = 40 if args.verbose >= 2 else 10
 
@@ -219,7 +223,7 @@ def PrintStats():
         return
     print("taint_ctm_edits.py: processed {0} input lines, whose edit-types were: ".format(tot_lines) +
           ', '.join([ '%s = %.2f%%' % (k, num_lines_of_type[k] * 100.0 / tot_lines)
-                      for k in sorted(num_lines_of_type.keys(), reverse = True,
+                      for k in sorted(list(num_lines_of_type.keys()), reverse = True,
                                       key = lambda k: num_lines_of_type[k])  ]),
           file = sys.stderr)
 
@@ -246,4 +250,3 @@ num_ins_lines_giving_taint = 0
 
 ProcessData()
 PrintStats()
-

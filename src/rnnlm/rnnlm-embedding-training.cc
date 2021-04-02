@@ -117,9 +117,9 @@ void RnnlmEmbeddingTrainer::TrainBackstitch(
     bool is_backstitch_step1,
     CuMatrixBase<BaseFloat> *embedding_deriv) {
 
-  // backstitch training is incompatible with momentum > 0  
+  // backstitch training is incompatible with momentum > 0
   KALDI_ASSERT(config_.momentum == 0.0);
-  
+
   // If relevant, do the following:
   // "embedding_deriv += - 2 * l2_regularize * embedding_mat_"
   // This is an approximate to the regular l2 regularization (add l2 regularization
@@ -130,7 +130,7 @@ void RnnlmEmbeddingTrainer::TrainBackstitch(
       embedding_deriv->AddMat(1.0 / (1.0 + config_.backstitch_training_scale) *
           l2_term, *embedding_mat_);
     }
-  } 
+  }
 
   BaseFloat scale = 1.0;
   if (config_.use_natural_gradient) {
@@ -213,7 +213,7 @@ void RnnlmEmbeddingTrainer::Train(
 }
 
 void RnnlmEmbeddingTrainer::TrainBackstitch(
-    bool is_backstitch_step1, 
+    bool is_backstitch_step1,
     const CuArrayBase<int32> &active_words,
     CuMatrixBase<BaseFloat> *embedding_deriv) {
 
@@ -232,7 +232,7 @@ void RnnlmEmbeddingTrainer::TrainBackstitch(
       embedding_deriv->AddRows(l2_term / (1.0 + config_.backstitch_training_scale),
                                *embedding_mat_, active_words);
     }
-  } 
+  }
   BaseFloat scale = 1.0;
   if (config_.use_natural_gradient) {
     if (is_backstitch_step1) preconditioner_.Freeze(true);
@@ -273,7 +273,7 @@ void RnnlmEmbeddingTrainer::PrintStats() {
                (num_minibatches_ *
                (config_.backstitch_training_scale == 0.0 ? 1.0 :
                1.0 + 1.0 / config_.backstitch_training_interval))
-            << " \% of the time.";
+            << " % of the time.";
 
   Matrix<BaseFloat> delta_embedding_mat(*embedding_mat_);
   delta_embedding_mat.AddMat(-1.0, initial_embedding_mat_);

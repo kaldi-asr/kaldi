@@ -127,16 +127,16 @@ void ConvertFstToLattice(
 
 
 /** Returns a default 2x2 matrix scaling factor for LatticeWeight */
-inline vector<vector<double> > DefaultLatticeScale() {
-  vector<vector<double> > ans(2);
+inline std::vector<std::vector<double> > DefaultLatticeScale() {
+  std::vector<std::vector<double> > ans(2);
   ans[0].resize(2, 0.0);
   ans[1].resize(2, 0.0);
   ans[0][0] = ans[1][1] = 1.0;
   return ans;
 }
 
-inline vector<vector<double> > AcousticLatticeScale(double acwt) {
-  vector<vector<double> > ans(2);
+inline std::vector<std::vector<double> > AcousticLatticeScale(double acwt) {
+  std::vector<std::vector<double> > ans(2);
   ans[0].resize(2, 0.0);
   ans[1].resize(2, 0.0);
   ans[0][0] = 1.0;
@@ -144,8 +144,8 @@ inline vector<vector<double> > AcousticLatticeScale(double acwt) {
   return ans;
 }
 
-inline vector<vector<double> > GraphLatticeScale(double lmwt) {
-  vector<vector<double> > ans(2);
+inline std::vector<std::vector<double> > GraphLatticeScale(double lmwt) {
+  std::vector<std::vector<double> > ans(2);
   ans[0].resize(2, 0.0);
   ans[1].resize(2, 0.0);
   ans[0][0] = lmwt;
@@ -153,8 +153,8 @@ inline vector<vector<double> > GraphLatticeScale(double lmwt) {
   return ans;
 }
 
-inline vector<vector<double> > LatticeScale(double lmwt, double acwt) {
-  vector<vector<double> > ans(2);
+inline std::vector<std::vector<double> > LatticeScale(double lmwt, double acwt) {
+  std::vector<std::vector<double> > ans(2);
   ans[0].resize(2, 0.0);
   ans[1].resize(2, 0.0);
   ans[0][0] = lmwt;
@@ -172,7 +172,7 @@ inline vector<vector<double> > LatticeScale(double lmwt, double acwt) {
  */
 template<class Weight, class ScaleFloat>
 void ScaleLattice(
-    const vector<vector<ScaleFloat> > &scale,
+    const std::vector<std::vector<ScaleFloat> > &scale,
     MutableFst<ArcTpl<Weight> > *fst);
 
 /// Removes state-level alignments (the strings that are

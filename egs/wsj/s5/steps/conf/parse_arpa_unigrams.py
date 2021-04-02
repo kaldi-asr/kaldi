@@ -3,11 +3,12 @@
 # Copyright 2015  Brno University of Technology (author: Karel Vesely)
 # Apache 2.0
 
+from __future__ import print_function
 import sys, gzip, re
 
 # Parse options,
 if len(sys.argv) != 4:
-  print "Usage: %s <words.txt> <arpa-gz> <unigrams>" % __file__
+  print("Usage: %s <words.txt> <arpa-gz> <unigrams>" % __file__)
   sys.exit(0)
 words_txt, arpa_gz, unigrams_out = sys.argv[1:]
 
@@ -31,7 +32,7 @@ with gzip.open(arpa_gz,'r') as f:
 # Create list, 'wrd id log_p_unigram',
 words_unigram = [[wrd, id, (wrd_log10[wrd] if wrd in wrd_log10 else -99)] for wrd,id in words ]
 
-print >>sys.stderr, words_unigram[0]
+print(words_unigram[0], file=sys.stderr)
 # Store,
 with open(unigrams_out,'w') as f:
   f.writelines(['%s %s %g\n' % (w,i,p) for (w,i,p) in words_unigram])

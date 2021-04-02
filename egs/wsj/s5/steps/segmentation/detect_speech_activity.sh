@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2016-17  Vimal Manohar
 #              2017  Nagendra Kumar Goel
@@ -17,7 +17,7 @@ if [ -f ./path.sh ]; then . ./path.sh; fi
 
 affix=  # Affix for the segmentation
 nj=32
-cmd=queue.pl
+cmd=run.pl
 stage=-1
 
 # Feature options (Must match training)
@@ -56,7 +56,15 @@ acwt=0.3
 # e.g. --speech-in-sil-weight=0.0 --garbage-in-sil-weight=0.0 --sil-in-speech-weight=0.0 --garbage-in-speech-weight=0.3
 transform_probs_opts=""
 
+# Postprocessing options
 segment_padding=0.2   # Duration (in seconds) of padding added to segments 
+min_segment_dur=0   # Minimum duration (in seconds) required for a segment to be included
+                    # This is before any padding. Segments shorter than this duration will be removed.
+                    # This is an alternative to --min-speech-duration above.
+merge_consecutive_max_dur=0   # Merge consecutive segments as long as the merged segment is no longer than this many
+                              # seconds. The segments are only merged if their boundaries are touching.
+                              # This is after padding by --segment-padding seconds.
+                              # 0 means do not merge. Use 'inf' to not limit the duration.
 
 echo $* 
 
@@ -225,7 +233,8 @@ fi
 
 if [ $stage -le 7 ]; then
   steps/segmentation/post_process_sad_to_segments.sh \
-    --segment-padding $segment_padding \
+    --segment-padding $segment_padding --min-segment-dur $min_segment_dur \
+    --merge-consecutive-max-dur $merge_consecutive_max_dur \
     --cmd "$cmd" --frame-shift $(perl -e "print $frame_subsampling_factor * $frame_shift") \
     ${test_data_dir} ${seg_dir} ${seg_dir}
 fi

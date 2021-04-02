@@ -284,11 +284,15 @@ static void ProcessRnnlmOutputNoSampling(
     CuMatrix<BaseFloat> word_probs(nnet_output.NumRows(),
                                    num_words - 1, kUndefined);
     word_probs.CopyFromMat(word_logprobs.ColRange(1, num_words - 1));
-    word_probs.ApplyExp();
+    word_probs.ApplyExpLimited(-80.0, 80.0);
     CuVector<BaseFloat> row_sums(nnet_output.NumRows());
     row_sums.AddColSumMat(1.0, word_probs, 0.0);
     row_sums.ApplyLog();
-    *objf_den_exact = -VecVec(row_sums, minibatch.output_weights);
+    BaseFloat ans = -VecVec(row_sums, minibatch.output_weights);
+    *objf_den_exact =  ans;
+    if (fabs(ans) > 1.0 * nnet_output.NumRows()) {
+      KALDI_WARN << "Big den objf "  << ans;
+    }
   }
 
   // In preparation for computing the denominator objf, change 'word_logprobs'

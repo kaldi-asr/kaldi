@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # same as 1e but with delay of -1
 # System                tdnn_lstm_1e_sp tdnn_lstm_1j_sp
@@ -25,7 +25,6 @@ decode_nj=50
 
 # training options
 xent_regularize=0.01
-self_repair_scale=0.00001
 label_delay=5
 
 chunk_left_context=40
@@ -120,7 +119,7 @@ if [ $stage -le 12 ]; then
 
   num_targets=$(tree-info $treedir/tree |grep num-pdfs|awk '{print $2}')
   [ -z $num_targets ] && { echo "$0: error getting num-targets"; exit 1; }
-  learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+  learning_rate_factor=$(echo "print (0.5/$xent_regularize)" | python)
 
   lstm_opts="decay-time=20"
 

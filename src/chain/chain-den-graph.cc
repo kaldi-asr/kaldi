@@ -132,7 +132,7 @@ void DenominatorGraph::SetInitialProbs(const fst::StdVectorFst &fst) {
     }
     cur_prob.Swap(&next_prob);
     next_prob.SetZero();
-    // Renormalize, beause the HMM won't sum to one even after the
+    // Renormalize, because the HMM won't sum to one even after the
     // previous normalization (due to final-probs).
     cur_prob.Scale(1.0 / cur_prob.Sum());
   }
@@ -181,7 +181,7 @@ void MapFstToPdfIdsPlusOne(const TransitionModel &trans_model,
 
 void MinimizeAcceptorNoPush(fst::StdVectorFst *fst) {
   BaseFloat delta = fst::kDelta * 10.0;  // use fairly loose delta for
-                                         // aggressive minimimization.
+                                         // aggressive minimization.
   fst::ArcMap(fst, fst::QuantizeMapper<fst::StdArc>(delta));
   fst::EncodeMapper<fst::StdArc> encoder(fst::kEncodeLabels | fst::kEncodeWeights,
                                          fst::ENCODE);
@@ -314,7 +314,7 @@ void CreateDenominatorFst(const ContextDependency &ctx_dep,
     AddSubsequentialLoop(subsequential_symbol, &phone_lm);
     fst::Project(&phone_lm, fst::PROJECT_INPUT);
   }
-  std::vector<int32> disambig_syms;  // empty list of diambiguation symbols.
+  std::vector<int32> disambig_syms;  // empty list of disambiguation symbols.
 
   // inv_cfst will be expanded on the fly, as needed.
   fst::InverseContextFst inv_cfst(subsequential_symbol,

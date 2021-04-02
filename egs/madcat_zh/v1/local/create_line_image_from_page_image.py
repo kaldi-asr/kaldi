@@ -76,8 +76,8 @@ def unit_vector(pt0, pt1):
         Eg.  0.31622776601683794, 0.9486832980505138
     """
     dis_0_to_1 = sqrt((pt0[0] - pt1[0])**2 + (pt0[1] - pt1[1])**2)
-    return (pt1[0] - pt0[0]) / dis_0_to_1, \
-           (pt1[1] - pt0[1]) / dis_0_to_1
+    return (pt1[0] - pt0[0])/ dis_0_to_1, \
+           (pt1[1] - pt0[1])/ dis_0_to_1
 
 
 def orthogonal_vector(vector):
@@ -124,7 +124,7 @@ def bounding_area(index, hull):
     return {'area': len_p * len_o,
             'length_parallel': len_p,
             'length_orthogonal': len_o,
-            'rectangle_center': (min_p + len_p / 2, min_o + len_o / 2),
+            'rectangle_center': (min_p + float(len_p)/ 2, min_o + float(len_o)/ 2),
             'unit_vector': unit_vector_p,
             }
 
@@ -140,7 +140,7 @@ def to_xy_coordinates(unit_vector_angle, point):
         (float, float): converted x,y coordinate of the unit vector.
         Eg. 0.680742447866183, 2.1299271629971663
     """
-    angle_orthogonal = unit_vector_angle + pi / 2
+    angle_orthogonal = unit_vector_angle + pi/ 2
     return point[0] * cos(unit_vector_angle) + point[1] * cos(angle_orthogonal), \
            point[0] * sin(unit_vector_angle) + point[1] * sin(angle_orthogonal)
 
@@ -246,8 +246,8 @@ def get_center(im):
         (int, int): center of the image
         Eg.  2550, 3300
     """
-    center_x = im.size[0] / 2
-    center_y = im.size[1] / 2
+    center_x = float(im.size[0])/ 2
+    center_y = float(im.size[1])/ 2
     return int(center_x), int(center_y)
 
 
@@ -262,9 +262,9 @@ def get_horizontal_angle(unit_vector_angle):
         Eg. 0.01543.
     """
 
-    if unit_vector_angle > pi / 2 and unit_vector_angle <= pi:
+    if unit_vector_angle > pi/ 2 and unit_vector_angle <= pi:
         unit_vector_angle = unit_vector_angle - pi
-    elif unit_vector_angle > -pi and unit_vector_angle < -pi / 2:
+    elif unit_vector_angle > -pi and unit_vector_angle < -pi/ 2:
         unit_vector_angle = unit_vector_angle + pi
 
     return unit_vector_angle

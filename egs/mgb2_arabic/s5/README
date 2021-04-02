@@ -1,0 +1,103 @@
+V##########################################################
+#
+#  Initial notes
+#
+##########################################################
+
+# To this recipe you'll need
+# 1) Download MGB-2 corpus from https://arabicspeech.org/mgb2 into a 
+#    DB directory. After downloading, it must have DB/{train,dev,test}.tar.gz
+# 2) Download lexicon from https://github.com/qcri/ArabicASRChallenge2016/blob/master/lexicon/ar-ar_grapheme_lexicon
+# 3) xmlstarlet 
+#    xml should be in the PATH. Most new linux distros will already have this.
+#    Otherwise, this should be obtained from http://xmlstar.sourceforge.net/ 
+
+
+##########################################################
+# Structure of the DB directory
+##########################################################
+
+DB:
+dev
+test
+train
+
+DB/dev:
+music
+non_overlap_speech
+original_txt
+overlap_speech
+README.md
+segments
+segments.all
+segments.non_overlap_speech
+silence
+text
+text.all
+text.non_overlap_speech
+wav
+wav.scp
+xml
+
+DB/dev/original_txt:
+Contains the original unsegmented transcription
+
+DB/dev/wav:
+Contains the audio wav files
+
+DB/dev/xml:
+bw
+utf8
+
+DB/dev/xml/bw:
+Contains the transcription in buckwalter transliteration
+
+DB/dev/xml/utf8:
+Contains the transcription in UTF-8
+
+DB/test:
+ar20160531mgb.glm
+non_overlap_speech.lst
+overlap_speech.lst
+README.md
+segments
+segments.all
+segments.non_overlap_speech
+stm_ndnp.stm
+stm_norm.stm
+stm_orig.stm
+text
+text.all
+text.non_overlap_speech
+wav
+wav.scp
+
+DB/test/wav:
+Contains the audio wav files
+
+DB/train:
+lm_text
+original_txt
+README.md
+wav
+xml
+
+DB/train/lm_text:
+lm_text_clean_bw
+lm_text_utf8
+
+DB/train/original_txt:
+Contains the original unsegmented transcription
+
+DB/train/wav:
+Contains the audio wav files
+
+DB/train/xml:
+bw
+utf8
+
+DB/train/xml/bw:
+Contains the transcription in buckwalter transliteration
+
+DB/train/xml/utf8:
+Contains the transcription in UTF-8

@@ -1,6 +1,8 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # The script downloads and installs jieba
+
+GIT=${GIT:-git}
 
 set -e
 
@@ -22,7 +24,7 @@ if [ -d ./jieba ] ; then
 fi
 
 if [ ! -d ./jieba ]; then
-  git clone https://github.com/fxsjy/jieba.git || exit 1;
+  $GIT clone https://github.com/fxsjy/jieba.git || exit 1;
 fi
 
 (

@@ -183,6 +183,98 @@ bool StringsApproxEqual(const std::string &a,
                         const std::string &b,
                         int32 decimal_places_check = 2);
 
+/**
+   This class is responsible for parsing input like
+    hi-there xx=yyy a=b c empty= f-oo=Append(bar, sss) ba_z=123 bing='a b c' baz="a b c d='a b' e"
+   and giving you access to the fields, in this case
+
+   FirstToken() == "hi-there", and key->value pairs:
+
+   xx->yyy, a->"b c", empty->"", f-oo->"Append(bar, sss)", ba_z->"123",
+   bing->"a b c", baz->"a b c d='a b' e"
+
+   The first token is optional, if the line started with a key-value pair then
+   FirstValue() will be empty.
+
+   Note: it can parse value fields with space inside them only if they are free of the '='
+   character.  If values are going to contain the '=' character, you need to quote them
+   with either single or double quotes.
+
+   Key values may contain -_a-zA-Z0-9, but must begin with a-zA-Z_.
+ */
+class ConfigLine {
+ public:
+  // Tries to parse the line as a config-file line.  Returns false
+  // if it could not for some reason, e.g. parsing failure.  In most cases
+  // prints no warnings; the user should do this.  Does not expect comments.
+  bool ParseLine(const std::string &line);
+
+  // the GetValue functions are overloaded for various types.  They return true
+  // if the key exists with value that can be converted to that type, and false
+  // otherwise.  They also mark the key-value pair as having been read.  It is
+  // not an error to read values twice.
+  bool GetValue(const std::string &key, std::string *value);
+  bool GetValue(const std::string &key, BaseFloat *value);
+  bool GetValue(const std::string &key, int32 *value);
+  // Values may be separated by ":" or by ",".
+  bool GetValue(const std::string &key, std::vector<int32> *value);
+  bool GetValue(const std::string &key, bool *value);
+
+  bool HasUnusedValues() const;
+  /// returns e.g. foo=bar xxx=yyy if foo and xxx were not consumed by one
+  /// of the GetValue() functions.
+  std::string UnusedValues() const;
+
+  const std::string &FirstToken() const { return first_token_; }
+
+  const std::string WholeLine() { return whole_line_; }
+  // use default assignment operator and copy constructor.
+ private:
+  std::string whole_line_;
+  // the first token of the line, e.g. if line is
+  // foo-bar baz=bing
+  // then first_token_ would be "foo-bar".
+  std::string first_token_;
+
+  // data_ maps from key to (value, is-this-value-consumed?).
+  std::map<std::string, std::pair<std::string, bool> > data_;
+
+};
+
+/// This function is like ExpectToken but for two tokens, and it will either
+/// accept token1 and then token2, or just token2.  This is useful in Read
+/// functions where the first token may already have been consumed.
+void ExpectOneOrTwoTokens(std::istream &is, bool binary,
+                          const std::string &token1,
+                          const std::string &token2);
+
+
+/**
+   This function reads in a config file and *appends* its contents to a vector of
+   lines; it is responsible for removing comments (anything after '#') and
+   stripping out any lines that contain only whitespace after comment removal.
+ */
+void ReadConfigLines(std::istream &is,
+                     std::vector<std::string> *lines);
+
+
+/**
+   This function converts config-lines from a simple sequence of strings
+   as output by ReadConfigLines(), into a sequence of first-tokens and
+   name-value pairs.  The general format is:
+      "command-type bar=baz xx=yyy"
+   etc., although there are subtleties as to what exactly is allowed, see
+   documentation for class ConfigLine for details.
+   This function will die if there was a parsing failure.
+ */
+void ParseConfigLines(const std::vector<std::string> &lines,
+                      std::vector<ConfigLine> *config_lines);
+
+
+/// Returns true if 'name' would be a valid name for a component or node in a
+/// nnet3Nnet.  This is a nonempty string beginning with A-Za-z_, and containing only
+/// '-', '_', '.', A-Z, a-z, or 0-9.
+bool IsValidName(const std::string &name);
 
 }  // namespace kaldi
 

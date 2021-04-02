@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 1g is like 1e, but reducing decay-time from 20 to 15, to see if
 # it reduces the difference between regular and looped decoding.
@@ -42,7 +42,6 @@ decode_iter=final
 
 # training options
 xent_regularize=0.01
-self_repair_scale=0.00001
 label_delay=5
 
 chunk_left_context=40
@@ -135,7 +134,7 @@ if [ $stage -le 12 ]; then
 
   num_targets=$(tree-info $treedir/tree |grep num-pdfs|awk '{print $2}')
   [ -z $num_targets ] && { echo "$0: error getting num-targets"; exit 1; }
-  learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+  learning_rate_factor=$(echo "print (0.5/$xent_regularize)" | python)
 
   lstm_opts="decay-time=15"
 

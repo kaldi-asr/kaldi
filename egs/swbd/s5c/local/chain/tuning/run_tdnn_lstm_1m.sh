@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # tdnn_lstm_1m is same as tdnn_lstm_1j, but with batchnorm-layer and decay-time
 # option
@@ -42,7 +42,6 @@ frames_per_chunk_primary=$(echo $frames_per_chunk | cut -d, -f1)
 chunk_left_context=40
 chunk_right_context=0
 xent_regularize=0.025
-self_repair_scale=0.00001
 label_delay=5
 # decode options
 extra_left_context=50
@@ -129,7 +128,7 @@ if [ $stage -le 12 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
 
   num_targets=$(tree-info $treedir/tree |grep num-pdfs|awk '{print $2}')
-  learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+  learning_rate_factor=$(echo "print (0.5/$xent_regularize)" | python)
 
   lstm_opts="decay-time=40"
 

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # run_cnn_tdnn_1a.sh is modified from run_tdnn_1b.sh but taking
 #   the xconfig from mini-librispeech's run_cnn_tdnn_1a54.sh; only
@@ -149,7 +149,7 @@ if [ $stage -le 13 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
 
   num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
-  learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+  learning_rate_factor=$(echo "print (0.5/$xent_regularize)" | python)
 
   cnn_opts="l2-regularize=0.03"
   ivector_layer_opts="l2-regularize=0.03"

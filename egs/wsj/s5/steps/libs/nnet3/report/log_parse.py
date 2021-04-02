@@ -322,7 +322,7 @@ def parse_progress_logs_for_param_diff(exp_dir, pattern):
         groups = mat_obj.groups()
         iteration = groups[0]
         differences = parse_difference_string(groups[1])
-        component_names = component_names.union(differences.keys())
+        component_names = component_names.union(list(differences.keys()))
         progress_per_iter[int(iteration)] = differences
 
     component_names = list(component_names)
@@ -435,14 +435,14 @@ def parse_prob_logs(exp_dir, key='accuracy', output="output"):
         raise KaldiLogParseException("Could not find any lines with {k} in "
                 " {l}".format(k=key, l=valid_prob_files))
 
-    iters = list(set(valid_objf.keys()).intersection(train_objf.keys()))
+    iters = list(set(valid_objf.keys()).intersection(list(train_objf.keys())))
     if not iters:
         raise KaldiLogParseException("Could not any common iterations with"
                 " key {k} in both {tl} and {vl}".format(
                     k=key, tl=train_prob_files, vl=valid_prob_files))
     iters.sort()
-    return list(map(lambda x: (int(x), float(train_objf[x]),
-                               float(valid_objf[x])), iters))
+    return list([(int(x), float(train_objf[x]),
+                               float(valid_objf[x])) for x in iters])
 
 def parse_rnnlm_prob_logs(exp_dir, key='objf'):
     train_prob_files = "%s/log/train.*.*.log" % (exp_dir)
@@ -498,14 +498,14 @@ def parse_rnnlm_prob_logs(exp_dir, key='objf'):
         raise KaldiLogParseException("Could not find any lines with {k} in "
                 " {l}".format(k=key, l=valid_prob_files))
 
-    iters = list(set(valid_objf.keys()).intersection(train_objf.keys()))
+    iters = list(set(valid_objf.keys()).intersection(list(train_objf.keys())))
     if not iters:
         raise KaldiLogParseException("Could not any common iterations with"
                 " key {k} in both {tl} and {vl}".format(
                     k=key, tl=train_prob_files, vl=valid_prob_files))
     iters.sort()
-    return map(lambda x: (int(x), float(train_objf[x]),
-                          float(valid_objf[x])), iters)
+    return [(int(x), float(train_objf[x]),
+                          float(valid_objf[x])) for x in iters]
 
 
 

@@ -25,7 +25,7 @@
 
 namespace kaldi {
 
-bool AccCmvnStatsWrapper(std::string utt,
+bool AccCmvnStatsWrapper(const std::string &utt,
                          const MatrixBase<BaseFloat> &feats,
                          RandomAccessBaseFloatVectorReader *weights_reader,
                          Matrix<double> *cmvn_stats) {
@@ -47,7 +47,7 @@ bool AccCmvnStatsWrapper(std::string utt,
     return true;
   }
 }
-                  
+
 
 }
 
@@ -64,7 +64,7 @@ int main(int argc, char *argv[]) {
         "e.g.: compute-cmvn-stats --spk2utt=ark:data/train/spk2utt"
         " scp:data/train/feats.scp ark,scp:/foo/bar/cmvn.ark,data/train/cmvn.scp\n"
         "See also: apply-cmvn, modify-cmvn-stats\n";
-    
+
     ParseOptions po(usage);
     std::string spk2utt_rspecifier, weights_rspecifier;
     bool binary = true;
@@ -72,7 +72,7 @@ int main(int argc, char *argv[]) {
     po.Register("binary", &binary, "write in binary mode (applies only to global CMN/CVN)");
     po.Register("weights", &weights_rspecifier, "rspecifier for a vector of floats "
                 "for each utterance, that's a per-frame weight.");
-    
+
     po.Read(argc, argv);
 
     if (po.NumArgs() != 2) {
@@ -85,7 +85,7 @@ int main(int argc, char *argv[]) {
     std::string wspecifier_or_wxfilename = po.GetArg(2);
 
     RandomAccessBaseFloatVectorReader weights_reader(weights_rspecifier);
-    
+
     if (ClassifyWspecifier(wspecifier_or_wxfilename, NULL, NULL, NULL)
         != kNoWspecifier) { // writing to a Table: per-speaker or per-utt CMN/CVN.
       std::string wspecifier = wspecifier_or_wxfilename;
@@ -95,7 +95,7 @@ int main(int argc, char *argv[]) {
       if (spk2utt_rspecifier != "") {
         SequentialTokenVectorReader spk2utt_reader(spk2utt_rspecifier);
         RandomAccessBaseFloatMatrixReader feat_reader(rspecifier);
-        
+
         for (; !spk2utt_reader.Done(); spk2utt_reader.Next()) {
           std::string spk = spk2utt_reader.Key();
           const std::vector<std::string> &uttlist = spk2utt_reader.Value();
@@ -127,7 +127,7 @@ int main(int argc, char *argv[]) {
         }
       } else {  // per-utterance normalization
         SequentialBaseFloatMatrixReader feat_reader(rspecifier);
-        
+
         for (; !feat_reader.Done(); feat_reader.Next()) {
           std::string utt = feat_reader.Key();
           Matrix<double> stats;
@@ -138,7 +138,7 @@ int main(int argc, char *argv[]) {
             num_err++;
             continue;
           }
-          writer.Write(feat_reader.Key(), stats);          
+          writer.Write(feat_reader.Key(), stats);
           num_done++;
         }
       }
@@ -170,7 +170,7 @@ int main(int argc, char *argv[]) {
     }
     KALDI_LOG << "Done accumulating CMVN stats for " << num_done
               << " utterances; " << num_err << " had errors.";
-    return (num_done != 0 ? 0 : 1);    
+    return (num_done != 0 ? 0 : 1);
   } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;

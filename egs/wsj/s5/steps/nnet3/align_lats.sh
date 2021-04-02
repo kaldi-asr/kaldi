@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2012  Brno University of Technology (Author: Karel Vesely)
 #           2013  Johns Hopkins University (Author: Daniel Povey)
 #           2015  Vijayaditya Peddinti
@@ -92,12 +92,16 @@ if [ -f $srcdir/frame_subsampling_factor ]; then
   frame_subsampling_factor=$(cat $srcdir/frame_subsampling_factor)
   frame_subsampling_opt="--frame-subsampling-factor=$frame_subsampling_factor"
   cp $srcdir/frame_subsampling_factor $dir
-  if [ "$frame_subsampling_factor" -gt 1 ] && \
-     [ "$scale_opts" == "--transition-scale=1.0 --self-loop-scale=0.1" ]; then
-    echo "$0: frame-subsampling-factor is not 1 (so likely a chain system),"
-    echo "...  but the scale opts are the defaults.  You probably want"
-    echo "--scale-opts '--transition-scale=1.0 --self-loop-scale=1.0'"
-    sleep 1
+  if [[ $frame_subsampling_factor -gt 1 ]]; then
+    # Assume a chain system, check agrument sanity.
+    if [[ ! ($scale_opts == *--self-loop-scale=1.0* &&
+             $scale_opts == *--transition-scale=1.0* &&
+             $acoustic_scale = '1.0') ]]; then
+      echo "$0: ERROR: frame-subsampling-factor is not 1, assuming a chain system."
+      echo "... You should pass the following options to this script:"
+      echo "  --scale-opts '--transition-scale=1.0 --self-loop-scale=1.0'" \
+           "--acoustic_scale 1.0"
+    fi
   fi
 fi
 

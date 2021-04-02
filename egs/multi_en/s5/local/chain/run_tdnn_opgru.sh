@@ -1,1 +1,1 @@
-tuning/run_tdnn_opgru_1a.sh
+tuning/run_tdnn_opgru_1b.sh

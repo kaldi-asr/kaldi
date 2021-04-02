@@ -8,7 +8,7 @@ import argparse
 import sys
 
 import re
-tab_or_space = re.compile('[ \t]+')
+
 
 parser = argparse.ArgumentParser(description="This script gets the unigram probabilities of words.",
                                  epilog="E.g. " + sys.argv[0] + " --vocab-file=data/rnnlm/vocab/words.txt "
@@ -27,7 +27,7 @@ parser.add_argument("--data-weights-file", type=str, default='', required=True,
                     help="File that specifies multiplicities and weights for each data source: "
                     "e.g. if <text_dir> contains foo.txt and bar.txt, then should have lines "
                     "like 'foo 1 0.5' and 'bar 5 1.5'.  These "
-                    "don't have to sum to on.")
+                    "don't have to sum to one.")
 parser.add_argument("--smooth-unigram-counts", type=float, default=1.0,
                     help="Specify the constant for smoothing. We will add "
                          "(smooth_unigram_counts * num_words_with_non_zero_counts / vocab_size) "
@@ -77,10 +77,10 @@ def get_all_data_sources_except_dev(text_dir):
 #                    value is a tuple (repeated_times_per_epoch, weight)
 def read_data_weights(weights_file, data_sources):
     data_weights = {}
-    with open(weights_file, 'r', encoding="latin-1") as f:
+    with open(weights_file, 'r', encoding="utf-8") as f:
         for line in f:
             try:
-                fields = re.split(tab_or_space, line)
+                fields = line.split()
                 assert len(fields) == 3
                 if fields[0] in data_weights:
                     raise Exception("duplicated data source({0}) specified in "
@@ -102,9 +102,9 @@ def read_data_weights(weights_file, data_sources):
 # return the vocab, which is a dict mapping the word to a integer id.
 def read_vocab(vocab_file):
     vocab = {}
-    with open(vocab_file, 'r', encoding="latin-1") as f:
+    with open(vocab_file, 'r', encoding="utf-8") as f:
         for line in f:
-            fields = re.split(tab_or_space, line)
+            fields = line.split()
             assert len(fields) == 2
             if fields[0] in vocab:
                 sys.exit(sys.argv[0] + ": duplicated word({0}) in vocab: {1}"
@@ -131,9 +131,9 @@ def get_counts(data_sources, data_weights, vocab):
         if weight == 0.0:
             continue
 
-        with open(counts_file, 'r', encoding="latin-1") as f:
+        with open(counts_file, 'r', encoding="utf-8") as f:
             for line in f:
-                fields = re.split(tab_or_space, line)
+                fields = line.split()
                 if len(fields) != 2: print("Warning, should be 2 cols:", fields, line, file=sys.stderr);
                 assert(len(fields) == 2)
                 word = fields[0]

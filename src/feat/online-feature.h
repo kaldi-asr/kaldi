@@ -41,6 +41,36 @@ namespace kaldi {
 /// @{
 
 
+/// This class serves as a storage for feature vectors with an option to limit
+/// the memory usage by removing old elements. The deleted frames indices are
+/// "remembered" so that regardless of the MAX_ITEMS setting, the user always
+/// provides the indices as if no deletion was being performed.
+/// This is useful when processing very long recordings which would otherwise
+/// cause the memory to eventually blow up when the features are not being removed.
+class RecyclingVector {
+public:
+  /// By default it does not remove any elements.
+  RecyclingVector(int items_to_hold = -1);
+
+  /// The ownership is being retained by this collection - do not delete the item.
+  Vector<BaseFloat> *At(int index) const;
+
+  /// The ownership of the item is passed to this collection - do not delete the item.
+  void PushBack(Vector<BaseFloat> *item);
+
+  /// This method returns the size as if no "recycling" had happened,
+  /// i.e. equivalent to the number of times the PushBack method has been called.
+  int Size() const;
+
+  ~RecyclingVector();
+
+private:
+  std::deque<Vector<BaseFloat>*> items_;
+  int items_to_hold_;
+  int first_available_index_;
+};
+
+
 /// This is a templated class for online feature extraction;
 /// it's templated on a class like MfccComputer or PlpComputer
 /// that does the basic feature extraction.
@@ -61,7 +91,7 @@ class OnlineGenericBaseFeature: public OnlineBaseFeature {
     return computer_.GetFrameOptions().frame_shift_ms / 1000.0f;
   }
 
-  virtual int32 NumFramesReady() const { return features_.size(); }
+  virtual int32 NumFramesReady() const { return features_.Size(); }
 
   virtual void GetFrame(int32 frame, VectorBase<BaseFloat> *feat);
 
@@ -83,14 +113,7 @@ class OnlineGenericBaseFeature: public OnlineBaseFeature {
   // more waveform.  This will help flush out the last frame or two
   // of features, in the case where snip-edges == false; it also
   // affects the return value of IsLastFrame().
-  virtual void InputFinished() {
-    input_finished_ = true;
-    ComputeFeatures();
-  }
-
-  ~OnlineGenericBaseFeature() {
-    DeletePointers(&features_);
-  }
+  virtual void InputFinished();
 
  private:
   // This function computes any additional feature frames that it is possible to
@@ -101,13 +124,19 @@ class OnlineGenericBaseFeature: public OnlineBaseFeature {
   // waveform_remainder_ while incrementing waveform_offset_ by the same amount.
   void ComputeFeatures();
 
+  void MaybeCreateResampler(BaseFloat sampling_rate);
+
   C computer_;  // class that does the MFCC or PLP or filterbank computation
+
+  // resampler in cases when the input sampling frequency is not equal to
+  // the expected sampling rate
+  std::unique_ptr<LinearResample> resampler_;
 
   FeatureWindowFunction window_function_;
 
   // features_ is the Mfcc or Plp or Fbank features that we have already computed.
 
-  std::vector<Vector<BaseFloat>*> features_;
+  RecyclingVector features_;
 
   // True if the user has called "InputFinished()"
   bool input_finished_;
@@ -117,7 +146,7 @@ class OnlineGenericBaseFeature: public OnlineBaseFeature {
   BaseFloat sampling_frequency_;
 
   // waveform_offset_ is the number of samples of waveform that we have
-  // already discarded, i.e. thatn were prior to 'waveform_remainder_'.
+  // already discarded, i.e. that were prior to 'waveform_remainder_'.
   int64 waveform_offset_;
 
   // waveform_remainder_ is a short piece of waveform that we may need to keep
@@ -182,7 +211,8 @@ struct OnlineCmvnOptions {
                   // class computes the cmvn internally.  smaller->more
                   // time-efficient but less memory-efficient.  Must be >= 1.
   int32 ring_buffer_size;  // not configurable from command line; size of ring
-                           // buffer used for caching CMVN stats.
+                           // buffer used for caching CMVN stats.  Must be >=
+                           // modulus.
   std::string skip_dims; // Colon-separated list of dimensions to skip normalization
                          // of, e.g. 13:14:15.
 
@@ -196,12 +226,12 @@ struct OnlineCmvnOptions {
       ring_buffer_size(20),
       skip_dims("") { }
 
-  void Check() {
+  void Check() const {
     KALDI_ASSERT(speaker_frames <= cmn_window && global_frames <= speaker_frames
                  && modulus > 0);
   }
 
-  void Register(ParseOptions *po) {
+  void Register(OptionsItf *po) {
     po->Register("cmn-window", &cmn_window, "Number of frames of sliding "
                  "context for cepstral mean normalization.");
     po->Register("global-frames", &global_frames, "Number of frames of "
@@ -240,7 +270,7 @@ struct OnlineCmvnState {
 
   // The following is the global CMVN stats, in the usual
   // format, of dimension 2 x (dim+1), as [  sum-stats          count
-  //                                       sum-sqared-stats   0    ]
+  //                                       sum-squared-stats   0    ]
   Matrix<double> global_cmvn_stats;
 
   // If nonempty, contains CMVN stats representing the "frozen" state
@@ -356,7 +386,7 @@ class OnlineCmvn: public OnlineFeatureInterface {
   void Freeze(int32 cur_frame);
 
   virtual ~OnlineCmvn();
- private:
+ protected:
 
   /// Smooth the CMVN stats "stats" (which are stored in the normal format as a
   /// 2 x (dim+1) matrix), by possibly adding some stats from "global_stats"
@@ -371,10 +401,10 @@ class OnlineCmvn: public OnlineFeatureInterface {
   /// were cached, sets up empty stats for frame zero and returns that].
   void GetMostRecentCachedFrame(int32 frame,
                                 int32 *cached_frame,
-                                Matrix<double> *stats);
+                                MatrixBase<double> *stats);
 
   /// Cache this frame of stats.
-  void CacheFrame(int32 frame, const Matrix<double> &stats);
+  void CacheFrame(int32 frame, const MatrixBase<double> &stats);
 
   /// Initialize ring buffer for caching stats.
   inline void InitRingBufferIfNeeded();
@@ -403,6 +433,12 @@ class OnlineCmvn: public OnlineFeatureInterface {
   // frame index.
   std::vector<std::pair<int32, Matrix<double> > > cached_stats_ring_;
 
+  // Some temporary variables used inside functions of this class, which
+  // put here to avoid reallocation.
+  Matrix<double> temp_stats_;
+  Vector<BaseFloat> temp_feats_;
+  Vector<double> temp_feats_dbl_;
+
   OnlineFeatureInterface *src_;  // Not owned here
 };
 
@@ -411,7 +447,7 @@ struct OnlineSpliceOptions {
   int32 left_context;
   int32 right_context;
   OnlineSpliceOptions(): left_context(4), right_context(4) { }
-  void Register(ParseOptions *po) {
+  void Register(OptionsItf *po) {
     po->Register("left-context", &left_context, "Left-context for frame "
                  "splicing prior to LDA");
     po->Register("right-context", &right_context, "Right-context for frame "
@@ -471,6 +507,9 @@ class OnlineTransform: public OnlineFeatureInterface {
   virtual int32 NumFramesReady() const { return src_->NumFramesReady(); }
 
   virtual void GetFrame(int32 frame, VectorBase<BaseFloat> *feat);
+
+  virtual void GetFrames(const std::vector<int32> &frames,
+                         MatrixBase<BaseFloat> *feats);
 
   //
   // Next, functions that are not in the interface.
@@ -536,6 +575,9 @@ class OnlineCacheFeature: public OnlineFeatureInterface {
   virtual int32 NumFramesReady() const { return src_->NumFramesReady(); }
 
   virtual void GetFrame(int32 frame, VectorBase<BaseFloat> *feat);
+
+  virtual void GetFrames(const std::vector<int32> &frames,
+                         MatrixBase<BaseFloat> *feats);
 
   virtual ~OnlineCacheFeature() { ClearCache(); }
 

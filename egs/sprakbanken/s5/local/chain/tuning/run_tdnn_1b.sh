@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # steps/info/chain_dir_info.pl exp/chain/tdnn_sp_bi/
 # exp/chain/tdnn_sp_bi/: num-iters=384 nj=2..12 num-params=7.0M dim=40+100->3557 combine=-0.08->-0.08 xent:train/valid[255,383,final]=(-0.954,-0.911,-0.911/-0.979,-0.953,-0.952) logprob:train/valid[255,383,final]=(-0.071,-0.064,-0.064/-0.084,-0.079,-0.079)
@@ -135,7 +135,7 @@ if [ $stage -le 17 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
 
   num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
-  learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+  learning_rate_factor=$(echo "print (0.5/$xent_regularize)" | python)
 
   mkdir -p $dir/configs
   cat <<EOF > $dir/configs/network.xconfig

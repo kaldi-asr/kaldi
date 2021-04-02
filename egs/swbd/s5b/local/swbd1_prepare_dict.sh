@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Formatting the Mississippi State dictionary for use in Edinburgh. Differs 
 # from the one in Kaldi s5 recipe in that it uses lower-case --Arnab (Jan 2013)

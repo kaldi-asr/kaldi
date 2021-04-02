@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # EVERY_N utterance is used for training
 # EVERY_N=3    ->   we use one third of training data

@@ -8,6 +8,7 @@ This script reads a wav.scp file from the input and perturbs the
 volume of the recordings and writes to stdout the contents of
 a new wav.scp file.
 """
+from __future__ import print_function
 
 import argparse
 import re

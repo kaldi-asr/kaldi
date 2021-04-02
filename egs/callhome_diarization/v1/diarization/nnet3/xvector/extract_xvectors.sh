@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright     2017-2018  Daniel Povey
 #               2017-2018  David Snyder
@@ -102,7 +102,7 @@ if [ $stage -le 0 ]; then
   fi
   utils/data/get_uniform_subsegments.py \
       --max-segment-duration=$window \
-      --overlap-duration=$(echo "$window-$period" | bc) \
+      --overlap-duration=$(perl -e "print ($window-$period);") \
       --max-remaining-duration=$min_segment \
       --constant-duration=True \
       $segments > $dir/subsegments

@@ -27,7 +27,14 @@
 namespace kaldi {
 
 bool EstPca(const Matrix<BaseFloat> &ivector_mat, BaseFloat target_energy,
-  Matrix<BaseFloat> *mat) {
+  const std::string &reco, Matrix<BaseFloat> *mat) {
+
+  // If the target_energy is 1.0, it's equivalent to not applying the
+  // conversation-dependent PCA at all, so it's better to exit this
+  // function before doing any computation.
+  if (ApproxEqual(target_energy, 1.0, 0.001))
+    return false;
+
   int32 num_rows = ivector_mat.NumRows(),
     num_cols = ivector_mat.NumCols();
   Vector<BaseFloat> sum;
@@ -50,6 +57,8 @@ bool EstPca(const Matrix<BaseFloat> &ivector_mat, BaseFloat target_energy,
     else
       Matrix<BaseFloat>(sumsq).Svd(&s, &P, NULL);
   } catch (...) {
+    KALDI_WARN << "Unable to compute conversation dependent PCA for"
+      << " recording " << reco << ".";
     return false;
   }
 
@@ -181,7 +190,7 @@ int main(int argc, char *argv[]) {
         for (size_t i = 0; i < ivectors.size(); i++) {
           ivector_mat.Row(i).CopyFromVec(ivectors[i]);
         }
-        if (EstPca(ivector_mat, target_energy, &pca_transform)) {
+        if (EstPca(ivector_mat, target_energy, reco, &pca_transform)) {
           // Apply the PCA transform to the raw i-vectors.
           ApplyPca(ivector_mat, pca_transform, &ivector_mat_pca);
 
@@ -192,8 +201,7 @@ int main(int argc, char *argv[]) {
           TransformIvectors(ivector_mat_pca, plda_config, this_plda,
             &ivector_mat_plda);
         } else {
-          KALDI_WARN << "Unable to compute conversation dependent PCA for"
-            << " recording " << reco << ".";
+          // If EstPca returns false, we won't apply any PCA.
           TransformIvectors(ivector_mat, plda_config, this_plda,
           &ivector_mat_plda);
         }

@@ -115,7 +115,8 @@ SingleUtteranceNnet2DecoderThreaded::SingleUtteranceNnet2DecoderThreaded(
     const nnet2::AmNnet &am_nnet,
     const fst::Fst<fst::StdArc> &fst,
     const OnlineNnet2FeaturePipelineInfo &feature_info,
-    const OnlineIvectorExtractorAdaptationState &adaptation_state):
+    const OnlineIvectorExtractorAdaptationState &adaptation_state,
+    const OnlineCmvnState &cmvn_state):
   config_(config), am_nnet_(am_nnet), tmodel_(tmodel), sampling_rate_(0.0),
   num_samples_received_(0), input_finished_(false),
   feature_pipeline_(feature_info),
@@ -129,6 +130,7 @@ SingleUtteranceNnet2DecoderThreaded::SingleUtteranceNnet2DecoderThreaded(
   // utterance(s)... this only makes sense if theose previous utterance(s) are
   // believed to be from the same speaker.
   feature_pipeline_.SetAdaptationState(adaptation_state);
+  feature_pipeline_.SetCmvnState(cmvn_state);
   // spawn threads.
   threads_[0] = std::thread(RunNnetEvaluation, this);
   decoder_.InitDecoding();
@@ -283,6 +285,13 @@ void SingleUtteranceNnet2DecoderThreaded::GetAdaptationState(
   std::lock_guard<std::mutex> lock(feature_pipeline_mutex_);
   // If this blocks, it shouldn't be for very long.
   feature_pipeline_.GetAdaptationState(adaptation_state);
+}
+
+void SingleUtteranceNnet2DecoderThreaded::GetCmvnState(
+    OnlineCmvnState *cmvn_state) {
+  std::lock_guard<std::mutex> lock(feature_pipeline_mutex_);
+  // If this blocks, it shouldn't be for very long.
+  feature_pipeline_.GetCmvnState(cmvn_state);
 }
 
 void SingleUtteranceNnet2DecoderThreaded::GetLattice(

@@ -167,15 +167,15 @@ void NnetComputation(const Nnet &nnet,
 }
 
 void NnetComputationChunked(const Nnet &nnet,
-                     const Matrix<BaseFloat> &input,  // features
+                     const CuMatrixBase<BaseFloat> &input,  // features
                      int32 chunk_size,
-                     Matrix<BaseFloat> *output) {
+                     CuMatrixBase<BaseFloat> *output) {
   int32 num_rows,
        num_chunks = ceil((BaseFloat)input.NumRows() / chunk_size),
        dim = input.NumCols(),
        left_context = nnet.LeftContext(),
        right_context = nnet.RightContext();
-  Matrix<BaseFloat> full_input;
+  CuMatrix<BaseFloat> full_input;
   num_rows = left_context + input.NumRows() + right_context;
   full_input.Resize(num_rows, dim);
   full_input.Range(left_context, input.NumRows(),
@@ -190,7 +190,7 @@ void NnetComputationChunked(const Nnet &nnet,
     int32 index = i * chunk_size,
           offset = std::min(num_rows - chunk_size * i, 
                             left_context + chunk_size + right_context);
-    SubMatrix<BaseFloat> chunk_input(full_input, index, offset, 0, dim);
+    CuSubMatrix<BaseFloat> chunk_input(full_input, index, offset, 0, dim);
     CuMatrix<BaseFloat> cu_chunk_input(chunk_input);
 
     // Note: we have already accounted for input padding, so we pass
@@ -198,7 +198,7 @@ void NnetComputationChunked(const Nnet &nnet,
     NnetComputer nnet_computer(nnet, cu_chunk_input, false, NULL);
     nnet_computer.Propagate();
     CuMatrix<BaseFloat> cu_chunk_output(nnet_computer.GetOutput());
-    SubMatrix<BaseFloat> chunk_out(*output, i * chunk_size, 
+    CuSubMatrix<BaseFloat> chunk_out(*output, i * chunk_size, 
                            cu_chunk_output.NumRows(), 0, 
                            cu_chunk_output.NumCols());
     chunk_out.CopyFromMat(cu_chunk_output);

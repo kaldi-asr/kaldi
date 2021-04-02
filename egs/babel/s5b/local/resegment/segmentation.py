@@ -3,6 +3,7 @@
 # Copyright 2014  Vimal Manohar
 # Apache 2.0
 
+from __future__ import division
 import os, glob, argparse, sys, re, time
 from argparse import ArgumentParser
 
@@ -19,12 +20,12 @@ global_analysis_final = None
 
 def mean(l):
   if len(l) > 0:
-    return float(sum(l)) / len(l)
+    return (float(sum(l))/len(l))
   return 0
 
 # Analysis class
 # Stores statistics like the confusion matrix, length of the segments etc.
-class Analysis:
+class Analysis(object):
   def __init__(self, file_id, frame_shift, prefix):
     self.confusion_matrix = [0] * 9
     self.type_counts = [ [[] for j in range(0,9)] for i in range(0,3) ]
@@ -274,8 +275,8 @@ def read_rttm_file(rttm_file, temp_dir, frame_shift):
     i = len(this_file)
     category = splits[6]
     word = splits[5]
-    start_time = int(float(splits[3])/frame_shift + 0.5)
-    duration = int(float(splits[4])/frame_shift + 0.5)
+    start_time = int((float(splits[3])/frame_shift) + 0.5)
+    duration = int((float(splits[4])/frame_shift) + 0.5)
     if i < start_time:
       this_file.extend(["0"]*(start_time - i))
     if type1 == "NON-LEX":
@@ -295,7 +296,7 @@ def read_rttm_file(rttm_file, temp_dir, frame_shift):
 # Stats class to store some basic stats about the number of
 # times the post-processor goes through particular loops or blocks
 # of code in the algorithm. This is just for debugging.
-class Stats:
+class Stats(object):
   def __init__(self):
     self.inter_utt_nonspeech = 0
     self.merge_nonspeech_segment = 0
@@ -321,7 +322,7 @@ class Stats:
     self.noise_only = 0
 
 # Timer class to time functions
-class Timer:
+class Timer(object):
   def __enter__(self):
     self.start = time.clock()
     return self
@@ -332,7 +333,7 @@ class Timer:
 # The main class for post-processing a file.
 # This does the segmentation either looking at the file isolated
 # or by looking at both classes simultaneously
-class JointResegmenter:
+class JointResegmenter(object):
   def __init__(self, P, A, f, options, phone_map, stats = None, reference = None):
 
     # Pointers to prediction arrays and Initialization
@@ -1290,22 +1291,22 @@ def main():
       dest='hard_max_segment_length', default=15.0, \
       help="Hard maximum on the segment length above which the segment " \
       + "will be broken even if in the middle of speech (default: %(default)s)")
-  parser.add_argument('--first-separator', type=str, \
+  parser.add_argument('--first-separator', \
       dest='first_separator', default="-", \
       help="Separator between recording-id and start-time (default: %(default)s)")
-  parser.add_argument('--second-separator', type=str, \
+  parser.add_argument('--second-separator', \
       dest='second_separator', default="-", \
       help="Separator between start-time and end-time (default: %(default)s)")
-  parser.add_argument('--remove-noise-only-segments', type=str, \
+  parser.add_argument('--remove-noise-only-segments', \
       dest='remove_noise_only_segments', default="true", choices=("true", "false"), \
       help="Remove segments that have only noise. (default: %(default)s)")
   parser.add_argument('--min-inter-utt-silence-length', type=float, \
       dest='min_inter_utt_silence_length', default=1.0, \
       help="Minimum silence that must exist between two separate utterances (default: %(default)s)");
-  parser.add_argument('--channel1-file', type=str, \
+  parser.add_argument('--channel1-file', \
       dest='channel1_file', default="inLine", \
       help="String that matches with the channel 1 file (default: %(default)s)")
-  parser.add_argument('--channel2-file', type=str, \
+  parser.add_argument('--channel2-file', \
       dest='channel2_file', default="outLine", \
       help="String that matches with the channel 2 file (default: %(default)s)")
   parser.add_argument('--isolated-resegmentation', \
@@ -1388,7 +1389,7 @@ def main():
 
   speech_cap = None
   if options.speech_cap_length != None:
-    speech_cap = int( options.speech_cap_length / options.frame_shift )
+    speech_cap = int(options.speech_cap_length/options.frame_shift)
   # End if
 
   for f in pred_files:
@@ -1454,7 +1455,7 @@ def main():
         f2 = f3
       # End if
 
-      if (len(A1) - len(A2)) > options.max_length_diff / options.frame_shift:
+      if (len(A1) - len(A2)) > int(options.max_length_diff/options.frame_shift):
         sys.stderr.write( \
             "%s: Warning: Lengths of %s and %s differ by more than %f. " \
             % (sys.argv[0], f1,f2, options.max_length_diff) \
