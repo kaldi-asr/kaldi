@@ -193,28 +193,34 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
       std::vector<const std::string *> *partial_hypotheses = nullptr,
       std::vector<bool> *end_point = nullptr);
 
+  void CompactWavesToMatrix(
+      const std::vector<SubVector<BaseFloat>> &wave_samples);
+
   // Version providing directly the features. Only runs nnet3 & decoder
   // Used when we want to provide the final ivectors (offline case)
   // channels can be provided if they are known (internal use)
-  void DecodeBatch(const std::vector<CorrelationID> &corr_ids,
-                   const std::vector<BaseFloat *> &d_features,
-                   const int features_frame_stride,
-                   const std::vector<int> &n_input_frames_valid,
-                   const std::vector<BaseFloat *> &d_ivectors,
-                   const std::vector<bool> &is_first_chunk,
-                   const std::vector<bool> &is_last_chunk,
-                   std::vector<int> *channels = NULL);
-
-  void ComputeGPUFeatureExtraction(
-      const std::vector<int> &channels,
-      const std::vector<SubVector<BaseFloat>> &wave_samples,
+  void DecodeBatch(
+      const std::vector<CorrelationID> &corr_ids,
+      const std::vector<BaseFloat *> &d_features,
+      const int features_frame_stride,
+      const std::vector<int> &n_input_frames_valid,
+      const std::vector<BaseFloat *> &d_ivectors,
       const std::vector<bool> &is_first_chunk,
-      const std::vector<bool> &is_last_chunk);
+      const std::vector<bool> &is_last_chunk, std::vector<int> *channels = NULL,
+      std::vector<const std::string *> *partial_hypotheses = nullptr,
+      std::vector<bool> *end_point = nullptr);
 
-  void ComputeCPUFeatureExtraction(
-      const std::vector<int> &channels,
-      const std::vector<SubVector<BaseFloat>> &wave_samples,
-      const std::vector<bool> &is_last_chunk);
+  // "Advanced user" version of DecodeBatch
+  // Can be changed without notice and break backward compatibility
+  // Accepts a compact Matrix of wave samples
+  void DecodeBatch(
+      const std::vector<CorrelationID> &corr_ids,
+      const Matrix<BaseFloat> &h_all_waveform,
+      const std::vector<int> &n_samples_valid,
+      const std::vector<bool> &is_first_chunk,
+      const std::vector<bool> &is_last_chunk,
+      std::vector<const std::string *> *in_partial_hypotheses = nullptr,
+      std::vector<bool> *in_end_points = nullptr);
 
   // Maximum number of samples per chunk
   int32 GetNSampsPerChunk() const { return samples_per_chunk_; }
@@ -256,19 +262,29 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
   // Filling  curr_batch_ichannels_
   void ListIChannelsInBatch(const std::vector<CorrelationID> &corr_ids,
                             std::vector<int> *channels);
-  void CPUFeatureExtraction(
-      const std::vector<int> &channels,
-      const std::vector<SubVector<BaseFloat>> &wave_samples);
+
+  void ComputeGPUFeatureExtraction(const std::vector<int> &channels,
+                                   const Matrix<BaseFloat> &h_all_waveform,
+                                   const std::vector<int> &n_samples_valid,
+                                   const std::vector<bool> &is_first_chunk,
+                                   const std::vector<bool> &is_last_chunk);
+
+  void ComputeCPUFeatureExtraction(const std::vector<int> &channels,
+                                   const Matrix<BaseFloat> &h_all_waveform,
+                                   const std::vector<int> &n_samples_valid,
+                                   const std::vector<bool> &is_last_chunk);
 
   // Compute features and ivectors for the chunk
   // curr_batch[element]
   // CPU function
   void ComputeOneFeature(int element);
+
   static void ComputeOneFeatureWrapper(void *obj, uint64_t element,
                                        void *ignored) {
     static_cast<BatchedThreadedNnet3CudaOnlinePipeline *>(obj)
         ->ComputeOneFeature(element);
   }
+
   void RunNnet3(const std::vector<int> &channels,
                 const std::vector<BaseFloat *> &d_features,
                 const int feature_stride,
@@ -282,6 +298,9 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
   void RunCallbacksAndFinalize(const std::vector<CorrelationID> &corr_ids,
                                const std::vector<int> &channels,
                                const std::vector<bool> &is_last_chunk);
+
+  // Set d_features_ptrs_ and d_ivectors_ptrs_ using channels_
+  void SetFeaturesPtrs();
 
   // If an utterance is done, we call FinalizeDecoding async on
   // the threadpool
@@ -376,11 +395,13 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
   // Current assignement buffers, when DecodeBatch is running
   std::vector<int> channels_;
   std::vector<BaseFloat *> d_features_ptrs_;
+  int features_frame_stride_;  // stride of d_features_ptrs_
   std::vector<BaseFloat *> d_ivectors_ptrs_;
 
   // Used by CPU FE threads. Could be merged with channels_
   const std::vector<int> *fe_threads_channels_;
-  const std::vector<SubVector<BaseFloat>> *fe_threads_wave_samples_;
+  const Matrix<BaseFloat> *fe_threads_h_all_waveform_;
+  const std::vector<int> *fe_threads_n_samples_valid_;
 
   std::unique_ptr<OnlineBatchedFeaturePipelineCuda> gpu_feature_pipeline_;
   std::unique_ptr<BatchedStaticNnet3> cuda_nnet3_;
