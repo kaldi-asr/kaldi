@@ -66,7 +66,7 @@ if [ "$stage" -le 2 ]; then
   fi
 
   mkdir -p $lm_dir/log || exit 1;
-  $cmd --mem $mem JOB=1:1 $lm_dir/log/ngram.JOB.log \
+  "$cmd --mem $mem" JOB=1:1 $lm_dir/log/ngram.JOB.log \
     $ngram -order $lm_order -interpolate -unk -map-unk \""<UNK>"\" \
     -limit-vocab -vocab $vocab -text $full_corpus -lm $lm || exit 1;
   du -h $lm

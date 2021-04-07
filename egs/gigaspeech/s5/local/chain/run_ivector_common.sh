@@ -122,7 +122,7 @@ if [ $stage -le 4 ]; then
   fi
 
   utils/data/subset_data_dir.sh data/${train_set}_sp_hires \
-     $num_utts ${temp_data_root}/${train_set}_sp_hires_subset
+     $subset_num ${temp_data_root}/${train_set}_sp_hires_subset
 
   echo "$0: computing a PCA transform from the hires data."
   steps/online/nnet2/get_pca_transform.sh --cmd "$train_cmd" \

@@ -57,7 +57,7 @@ if [ $stage -le 2 ]; then
   sed 's|\t| |' data/$train_combined/text |\
     cut -d " " -f 2- > $lm_dir/corpus.txt || exit 1;
   local/lm/train_lm.sh \
-    --cmd "$train_cmd" --mem 10GB --lm-order $lm_order \
+    --cmd "$train_cmd" --lm-order $lm_order \
     $lm_dir/corpus.txt $lm_dir || exit 1;
   echo "======Train lm END | current time : `date +%Y-%m-%d-%T`================"
 fi
@@ -267,7 +267,7 @@ if [ $stage -le 11 ]; then
     --stage 0 \
     --train-stage -10 \
     --get-egs-stage -10 \
-    --train_set data/${train_combined} \
+    --train_set ${train_combined} \
     --gmm tri4b \
     --test-sets "$test_sets" \
     --num-jobs-initial 16 \

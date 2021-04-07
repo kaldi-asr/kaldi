@@ -37,7 +37,8 @@ fi
 
 # Applies Sequitur G2P
 echo "$0: Applying Sequitur G2P to $words"
-$sequitur --model=$g2p_model --apply $words > ${lexicon}.tmp || exit 1;
+PYTHONPATH=$sequitur_path:$PYTHONPATH \
+           $sequitur --model=$g2p_model --apply $words > ${lexicon}.tmp || exit 1;
 
 # Turns out Sequitur has some sort of bug and it doesn't output pronunciations
 # for some (admittedly peculiar) words. We manually specify these exceptions

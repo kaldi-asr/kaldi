@@ -171,7 +171,7 @@ if [ $stage -le 15 ]; then
   fi
 
   steps/nnet3/chain/train.py --stage=$train_stage \
-    --cmd="$cuda_cmd" \
+    --cmd="$train_cmd" \
     --feat.online-ivector-dir=$train_ivector_dir \
     --feat.cmvn-opts="--norm-means=false --norm-vars=false" \
     --chain.xent-regularize $xent_regularize \
@@ -232,7 +232,44 @@ if [ $stage -le 17 ]; then
   fi
 fi
 
-if $test_online_decoding && [ $stage -le 18 ]; then
+if [ $stage -le 18 ]; then
+  # decode with rnnlm
+  run_backward_rnnlm=true
+
+  rm $dir/.error 2>/dev/null || true
+  ./local/rnnlm/run_rnnlm.sh --stage 0 \
+    --ngram-order 5 \
+    --words-per-split 300000 \
+    --text data/${train_set}/text \
+    --ac-model-dir $dir \
+    --test-sets "$test_sets" \
+    --decode-iter $decode_iter \
+    --test-sets "$test_sets" \
+    --lang data/lang_test \
+    --dir exp/rnnlm || touch $dir/.error &
+
+  # running backward RNNLM, which further improves WERS by combining backward with
+  # the forward RNNLM trained in this script.
+  if $run_backward_rnnlm; then
+    ./local/rnnlm/run_rnnlm_back.sh --stage 0 \
+      --ngram-order 5 \
+      --words-per-split 300000 \
+      --text data/${train_set}/text \
+      --ac-model-dir $dir \
+      --decode-iter $decode_iter \
+      --test-sets "$test_sets" \
+      --lang data/lang_test \
+      --dir exp/rnnlm_backward || touch $dir/.error &
+  fi
+
+  if [ -f $dir/.error ]; then
+    echo "$0: something went wrong in decoding with rnnlm"
+    exit 1
+  fi
+
+fi
+
+if $test_online_decoding && [ $stage -le 19 ]; then
   # note: if the features change (e.g. you add pitch features), you will have to
   # change the options of the following command line.
   steps/online/nnet3/prepare_online_decoding.sh \
