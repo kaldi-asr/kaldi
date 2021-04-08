@@ -34,6 +34,7 @@ remove_egs=false
 common_egs_dir=
 reporting_email=
 num_epochs=6
+frames_per_iter=3000000
 initial_effective_lrate=0.00015
 final_effective_lrate=0.000015
 num_jobs_initial=16
@@ -42,7 +43,8 @@ xent_regularize=0.1
 
 # decode options
 test_sets=""
-test_online_decoding=true  # if true, it will run the last decoding stage.
+test_online_decoding=false  # if true, it will run the last decoding stage.
+run_backward_rnnlm=false # if true, it will run backward rnnlm.
 
 
 # End configuration section.
@@ -183,7 +185,7 @@ if [ $stage -le 15 ]; then
     --trainer.srand=$srand \
     --trainer.max-param-change=2.0 \
     --trainer.num-epochs=$num_epochs \
-    --trainer.frames-per-iter=3000000 \
+    --trainer.frames-per-iter=$frames_per_iter \
     --trainer.optimization.num-jobs-initial=$num_jobs_initial \
     --trainer.optimization.num-jobs-final=$num_jobs_final \
     --trainer.optimization.initial-effective-lrate=$initial_effective_lrate \
@@ -234,32 +236,36 @@ fi
 
 if [ $stage -le 18 ]; then
   # decode with rnnlm
-  run_backward_rnnlm=true
-
   rm $dir/.error 2>/dev/null || true
+  echo "$0:run rnnlm forward"
   ./local/rnnlm/run_rnnlm.sh --stage 0 \
     --ngram-order 5 \
+    --num-jobs-initial 1 \
+    --num-jobs_final 3 \
     --words-per-split 300000 \
     --text data/${train_set}/text \
     --ac-model-dir $dir \
     --test-sets "$test_sets" \
-    --decode-iter $decode_iter \
+    --decode-iter "$decode_iter" \
     --test-sets "$test_sets" \
     --lang data/lang_test \
-    --dir exp/rnnlm || touch $dir/.error &
+    --dir exp/rnnlm || touch $dir/.error
 
   # running backward RNNLM, which further improves WERS by combining backward with
   # the forward RNNLM trained in this script.
   if $run_backward_rnnlm; then
+    echo "$0:run rnnlm backward"
     ./local/rnnlm/run_rnnlm_back.sh --stage 0 \
       --ngram-order 5 \
+      --num-jobs-initial 1 \
+      --num-jobs_final 3 \
       --words-per-split 300000 \
       --text data/${train_set}/text \
       --ac-model-dir $dir \
-      --decode-iter $decode_iter \
+      --decode-iter "$decode_iter" \
       --test-sets "$test_sets" \
       --lang data/lang_test \
-      --dir exp/rnnlm_backward || touch $dir/.error &
+      --dir exp/rnnlm_backward || touch $dir/.error
   fi
 
   if [ -f $dir/.error ]; then
@@ -276,7 +282,7 @@ if $test_online_decoding && [ $stage -le 19 ]; then
        --mfcc-config conf/mfcc_hires.conf \
        $lang exp/nnet3${nnet3_affix}/extractor $dir ${dir}_online
 
-  rm $dir/.error 2>/dev/null || true
+  rm ${dir}_online/.error 2>/dev/null || true
   for part_set in $test_sets; do
     (
       nspk=$(wc -l <data/${part_set}_hires/spk2utt)
@@ -287,10 +293,10 @@ if $test_online_decoding && [ $stage -le 19 ]; then
           --nj $nspk --cmd "$decode_cmd" \
           $graph_dir data/${part_set} ${dir}_online/decode_${part_set} || exit 1
 
-    ) || touch $dir/.error &
+    ) || touch ${dir}_online/.error &
   done
   wait
-  if [ -f $dir/.error ]; then
+  if [ -f ${dir}_online/.error ]; then
     echo "$0: something went wrong in decoding"
     exit 1
   fi

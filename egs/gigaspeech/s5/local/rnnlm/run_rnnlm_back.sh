@@ -8,7 +8,7 @@
 # a forward RNNLM. In order to run this, you must first run the forward RNNLM
 # recipe at local/rnnlm/run_rnnlm.sh
 
-set -e
+set -e -o pipefail
 
 # Begin configuration section.
 stage=0
@@ -19,8 +19,11 @@ ac_model_dir=
 lang=data/lang_test
 test_sets=
 text=data/train/text
-decode_iter=final
+decode_iter=
 
+num_epoch=10
+num_jobs_initial=1
+num_jobs_final=3
 words_per_split=300000
 embedding_dim=1024
 lstm_rpd=256
@@ -53,7 +56,8 @@ if [ $stage -le 0 ]; then
   # hold out one in every 50 lines as dev data.
   cat $text | sed 's/\t/ /g' | sed 's/[ ][ ]*/ /g' | cut -d ' ' -f2- \
     | awk '{for(i=NF;i>0;i--) printf("%s ", $i); print""}' \
-    | awk -v text_dir=$text_dir '{if(NR%50 == 0) { print >text_dir"/dev.txt"; } else {print;}}' >$text_dir/train.txt
+    | awk -v text_dir=$text_dir '{if(NR%50 == 0) { print >text_dir"/dev.txt"; } else {print;}}' \
+    >$text_dir/train.txt
 fi
 
 if [ $stage -le 1 ]; then
@@ -97,8 +101,13 @@ if [ $stage -le 2 ]; then
 fi
 
 if [ $stage -le 3 ]; then
-  rnnlm/train_rnnlm.sh --use-gpu-for-diagnostics true --num-jobs-initial 1 --num-jobs-final 3 \
-                  --stage $train_stage --num-epochs 10 --cmd "$cuda_cmd" $dir
+  rnnlm/train_rnnlm.sh --use-gpu-for-diagnostics true \
+    --num-jobs-initial $num_jobs_initial \
+    --num-jobs-final $num_jobs_final \
+    --stage $train_stage \
+    --num-epochs $num_epoch \
+    --cmd "$train_cmd" \
+    $dir || exit 1
 fi
 
 if [ $stage -le 4 ] && $run_lat_rescore; then
@@ -114,10 +123,11 @@ if [ $stage -le 4 ] && $run_lat_rescore; then
     # Lattice rescoring
     rnnlm/lmrescore_back.sh \
       --cmd "$decode_cmd --mem 5G" \
-      --weight 0.45 --max-ngram-order $ngram_order \
+      --weight 0.45 \
+      --max-ngram-order $ngram_order \
       $lang $dir \
       data/${decode_set} ${decode_dir}_${decode_dir_suffix_forward} \
-      ${decode_dir}_${decode_dir_suffix_backward}
+      ${decode_dir}_${decode_dir_suffix_backward} || exit 1
   done
 fi
 

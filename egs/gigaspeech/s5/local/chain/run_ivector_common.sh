@@ -6,7 +6,6 @@
 
 set -e -o pipefail
 
-
 # This script is called from local/nnet3/run_tdnn.sh and local/chain/run_tdnn.sh (and may eventually
 # be called by more scripts).  It contains the common feature preparation and iVector-related parts
 # of the script.  See those scripts for examples of usage.

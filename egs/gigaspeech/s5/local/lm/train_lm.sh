@@ -4,14 +4,13 @@
 
 # This script rains a typical ngram language model.
 
-set -e
-set -o pipefail
+set -e -o pipefail
 
 stage=0
 lm_order=4
 vocab_size=50000000      # Cap the vocabulary so that it won't blow up.
 cmd=run.pl
-mem=10GB
+mem=10G
 
 . ./cmd.sh || exit 1;
 . ./path.sh || exit 1;
@@ -66,7 +65,7 @@ if [ "$stage" -le 2 ]; then
   fi
 
   mkdir -p $lm_dir/log || exit 1;
-  "$cmd --mem $mem" JOB=1:1 $lm_dir/log/ngram.JOB.log \
+  $cmd --mem $mem JOB=1:1 $lm_dir/log/ngram.JOB.log \
     $ngram -order $lm_order -interpolate -unk -map-unk \""<UNK>"\" \
     -limit-vocab -vocab $vocab -text $full_corpus -lm $lm || exit 1;
   du -h $lm

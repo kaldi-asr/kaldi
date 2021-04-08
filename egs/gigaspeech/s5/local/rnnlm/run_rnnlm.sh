@@ -4,8 +4,9 @@
 #           2021  Xiaomi Corporation (Author: Yongqing Wang)
 # This script trains LMs on the whole LM-training data.
 
-# Begin configuration section.
+set -e -o pipefail
 
+# Begin configuration section.
 stage=0
 train_stage=-10
 
@@ -14,8 +15,11 @@ ac_model_dir=exp/chain_cleaned/cnn_tdnn_1c_sp
 lang=data/lang_test
 test_sets="dev test"
 text=data/train/text
-decode_iter="final"
+decode_iter=
 
+num_epoch=10
+num_jobs_initial=1
+num_jobs_final=3
 words_per_split=300000
 embedding_dim=1024
 lstm_rpd=256
@@ -37,7 +41,6 @@ run_backward_rnnlm=true
 wordlist=$lang/words.txt
 text_dir=data/rnnlm/text
 mkdir -p $dir/config
-set -e
 
 for f in $text $wordlist; do
   [ ! -f $f ] && \
@@ -49,7 +52,8 @@ if [ $stage -le 0 ]; then
   echo -n >$text_dir/dev.txt
   # hold out one in every 50 lines as dev data.
   cat $text | sed 's/\t/ /g' | sed 's/[ ][ ]*/ /g' | cut -d ' ' -f2- \
-    | awk -v text_dir=$text_dir '{if(NR%50 == 0) { print >text_dir"/dev.txt"; } else {print;}}' >$text_dir/train.txt
+    | awk -v text_dir=$text_dir '{if(NR%50 == 0) { print >text_dir"/dev.txt"; } else {print;}}' \
+    >$text_dir/train.txt
 fi
 
 if [ $stage -le 1 ]; then
@@ -93,8 +97,13 @@ if [ $stage -le 2 ]; then
 fi
 
 if [ $stage -le 3 ]; then
-  rnnlm/train_rnnlm.sh --use-gpu-for-diagnostics true --num-jobs-initial 1 --num-jobs-final 3 \
-                  --stage $train_stage --num-epochs 10 --cmd "$cuda_cmd" $dir
+  rnnlm/train_rnnlm.sh --use-gpu-for-diagnostics true \
+    --num-jobs-initial $num_jobs_initial \
+    --num-jobs-final $num_jobs_final \
+    --stage $train_stage \
+    --num-epochs $num_epoch \
+    --cmd "$train_cmd" \
+    $dir || exit 1
 fi
 
 if [ $stage -le 4 ] && $run_lat_rescore; then
@@ -108,11 +117,12 @@ if [ $stage -le 4 ] && $run_lat_rescore; then
    (
     # Lattice rescoring
     rnnlm/lmrescore$pruned.sh \
-      --cmd "$decode_cmd --mem 4G" \
-      --weight 0.45 --max-ngram-order $ngram_order \
+      --cmd "$decode_cmd" \
+      --weight 0.45 \
+      --max-ngram-order $ngram_order \
       $lang $dir \
       data/${decode_set} ${decode_dir} \
-      ${decode_dir}_${decode_dir_suffix}
+      ${decode_dir}_${decode_dir_suffix} || exit 1
    )
   done
 fi
