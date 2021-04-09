@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
 # Copyright 2021  Seasalt AI, Inc (Author: Guoguo Chen)
+#           2021  Xiaomi Corporation (Author: Yongqing Wang)
 
 # This script prepares the data folders for the GigaSpeech dataset.
 
-set -e
-set -o pipefail
+set -e -o pipefail
 
 stage=0
 train_subset=XL
+test_sets="gigaspeech_dev gigaspeech_test"
 
 . ./path.sh || exit 1;
 . ./utils/parse_options.sh || exit 1;
@@ -29,7 +30,7 @@ gigaspeech_repo=GigaSpeech_repo
 echo "$0: Cloning the GigaSpeech repo."
 [ -d "$gigaspeech_repo" ] && (rm -rf $gigaspeech_repo || exit 1)
 git clone \
-  https://github.com/SpeechColab/GigaSpeech.git $gigaspeech_repo || exit 1;
+  https://github.com/SpeechColab/GigaSpeech.git $gigaspeech_repo || exit 1
 
 if [ $stage -le 0 ]; then
   echo "======GigaSpeech Download START | current time : `date +%Y-%m-%d-%T`==="
@@ -46,9 +47,11 @@ if [ $stage -le 1 ]; then
   toolkits/kaldi/gigaspeech_data_prep.sh \
     --train-subset $train_subset $gigaspeech_root $data_dir || exit 1
   popd
-  utils/fix_data_dir.sh data/gigaspeech_dev || exit 1;
-  utils/fix_data_dir.sh data/gigaspeech_test || exit 1;
-  utils/fix_data_dir.sh data/gigaspeech_train_${train_subset,,} || exit 1;
+  utils/fix_data_dir.sh data/gigaspeech_train_${train_subset,,} || exit 1
+  for part_set in $test_sets; do
+    [ ! -d data/$part_set ] && echo "the name of test sets must be gigaspeech_dev and gigaspeech_test" && exit 1
+    utils/fix_data_dir.sh data/$part_set || exit 1
+  done
   echo "======GigaSpeech Preparation END | current time : `date +%Y-%m-%d-%T`=="
 fi
 

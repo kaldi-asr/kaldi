@@ -5,8 +5,7 @@
 # Prepares the dictionary and auto-generates pronunciations for the words that
 # are in our training data but not in the CMUdict.
 
-set -e
-set -o pipefail
+set -e -o pipefail
 
 nj=4 # number of parallel Sequitur G2P jobs, we would like to use
 stage=0

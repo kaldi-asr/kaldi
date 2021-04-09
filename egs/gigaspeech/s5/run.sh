@@ -3,8 +3,7 @@
 #                 Seasalt AI, Inc (Author: Guoguo Chen)
 # Apache 2.0
 
-set -e
-set -o pipefail
+set -e -o pipefail
 
 stage=0
 
@@ -13,11 +12,6 @@ gigaspeech_root=/data/GigaSpeech_Data/
 gigaspeech_train_subset=XL
 gigaspeech_test_sets="gigaspeech_dev gigaspeech_test"
 gigaspeech_train_sets="gigaspeech_train_${gigaspeech_train_subset,,}"
-
-# Train/Dev/Test sets.
-test_sets="$gigaspeech_test_sets"
-train_sets="$gigaspeech_train_sets"
-train_combined="$gigaspeech_train_sets"
 
 # G2P models.
 g2p_model=$gigaspeech_root/dict/g2p/g2p.model.4
@@ -33,11 +27,17 @@ dict_dir=data/local/dict
 . ./path.sh || exit 1;
 . ./utils/parse_options.sh || exit 1;
 
+# Train/Dev/Test sets.
+test_sets="$gigaspeech_test_sets"
+train_sets="$gigaspeech_train_sets"
+train_combined="$gigaspeech_train_sets"
+
 if [ $stage -le 0 ]; then
   echo "======Prepare GigaSpeech START | current time : `date +%Y-%m-%d-%T`===="
   local/gigaspeech_data_prep.sh \
     --stage 0 \
     --train-subset $gigaspeech_train_subset \
+    --test-sets "$gigaspeech_test_sets" \
     $gigaspeech_root data/ || exit 1;
   echo "======Prepare GigaSpeech END | current time : `date +%Y-%m-%d-%T`======"
 fi
@@ -57,7 +57,7 @@ if [ $stage -le 2 ]; then
   sed 's|\t| |' data/$train_combined/text |\
     cut -d " " -f 2- > $lm_dir/corpus.txt || exit 1;
   local/lm/train_lm.sh \
-    --cmd "$train_cmd" --mem 10GB --lm-order $lm_order \
+    --cmd "$train_cmd" --lm-order $lm_order \
     $lm_dir/corpus.txt $lm_dir || exit 1;
   echo "======Train lm END | current time : `date +%Y-%m-%d-%T`================"
 fi
@@ -202,7 +202,7 @@ if [ $stage -le 8 ]; then
     utils/mkgraph.sh data/lang_test exp/tri2b exp/tri2b/graph || exit 1
     for part in $test_sets; do
       [ ! -d data/$part ] &&\
-        echo "$0: Decoder tri2b Error: no such dir data/$part" || exit 1;
+        echo "$0: Decoder tri2b Error: no such dir data/$part" && exit 1;
       steps/decode.sh --nj "$decode_nj" --cmd "$decode_cmd" \
         exp/tri2b/graph data/${part} exp/tri2b/decode_${part} || exit 1;
       cat exp/tri2b/decode_${part}/wer_* | utils/best_wer.sh |\
@@ -227,7 +227,7 @@ if [ $stage -le 9 ]; then
     utils/mkgraph.sh data/lang_test exp/tri3b exp/tri3b/graph || exit 1;
     for part in $test_sets; do
       [ ! -d data/$part ] &&\
-        echo "$0: Decoder tri3b Error: no such dir data/$part" || exit 1;
+        echo "$0: Decoder tri3b Error: no such dir data/$part" && exit 1;
       steps/decode.sh --nj "$decode_nj" --cmd "$decode_cmd" \
         exp/tri3b/graph data/$part exp/tri3b/decode_${part} || exit 1;
       cat exp/tri3b/decode_${part}/wer_* | utils/best_wer.sh |\
@@ -267,9 +267,10 @@ if [ $stage -le 11 ]; then
     --stage 0 \
     --train-stage -10 \
     --get-egs-stage -10 \
-    --train_set data/${train_combined} \
+    --train_set ${train_combined} \
     --gmm tri4b \
     --test-sets "$test_sets" \
+    --frames_per_iter 3000000 \
     --num-jobs-initial 16 \
     --num-jobs-final 16 \
     --initial-effective-lrate 0.00015 \

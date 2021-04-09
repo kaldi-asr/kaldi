@@ -6,7 +6,6 @@
 
 set -e -o pipefail
 
-
 # This script is called from local/nnet3/run_tdnn.sh and local/chain/run_tdnn.sh (and may eventually
 # be called by more scripts).  It contains the common feature preparation and iVector-related parts
 # of the script.  See those scripts for examples of usage.
@@ -122,7 +121,7 @@ if [ $stage -le 4 ]; then
   fi
 
   utils/data/subset_data_dir.sh data/${train_set}_sp_hires \
-     $num_utts ${temp_data_root}/${train_set}_sp_hires_subset
+     $subset_num ${temp_data_root}/${train_set}_sp_hires_subset
 
   echo "$0: computing a PCA transform from the hires data."
   steps/online/nnet2/get_pca_transform.sh --cmd "$train_cmd" \

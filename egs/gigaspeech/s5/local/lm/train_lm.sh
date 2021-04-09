@@ -4,14 +4,13 @@
 
 # This script rains a typical ngram language model.
 
-set -e
-set -o pipefail
+set -e -o pipefail
 
 stage=0
 lm_order=4
 vocab_size=50000000      # Cap the vocabulary so that it won't blow up.
 cmd=run.pl
-mem=10GB
+mem=10G
 
 . ./cmd.sh || exit 1;
 . ./path.sh || exit 1;
