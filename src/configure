@@ -767,28 +767,35 @@ if $android && [[ "$CXX" != *clang++*  ]] ; then
 fi
 
 # If HOST is set
-# 1. We prepend it to CXX, AR, AS and RANLIB.
-# 2. We parse the target architecture from the HOST triple.
+# - If it is not equal to WASM
+#   1. We prepend it to CXX, AR, AS and RANLIB.
+#   2. We parse the target architecture from the HOST triple.
+# - Otherwise we take its value as the target architecture
 # Otherwise we set the target architecture to the output of `uname -m`.
 if is_set $HOST; then
-  CXX="$HOST-$CXX"
-  AR="$HOST-$AR"
-  AS="$HOST-$AS"
-  RANLIB="$HOST-$RANLIB"
-
   # The host triple will be something like "armv8-rpi3-linux-gnueabihf". We
   # need the first field which is the target architecture for this build. The
   # following command will take the host triple "armv8-rpi3-linux-gnueabihf"
   # and return ["armv8", "rpi3", "linux", "gnueabihf"] in PARTS.
   IFS='-' read -ra PARTS <<< "$HOST"
-  # The first field in the PARTS list is the target architecture.
-  TARGET_ARCH="$PARTS"
-  if [[ "$TARGET_ARCH" != aarch64* && "$TARGET_ARCH" != arm* && "$TARGET_ARCH" != ppc64le && \
-        "$TARGET_ARCH" != x86* && "$TARGET_ARCH" != i686* ]] ; then
-    # We currently only support building for x86[_64], arm*, aarch64* and ppc64le.
-    # If TARGET_ARCH was read from the HOST variable, it must be one of these.
-    failure "$TARGET_ARCH is not a supported architecture.
-             Supported architectures: x86[_64], arm*, aarch64*, ppc64le."
+
+  if [[ "$HOST" != WASM ]]; then
+    CXX="$HOST-$CXX"
+    AR="$HOST-$AR"
+    AS="$HOST-$AS"
+    RANLIB="$HOST-$RANLIB"
+
+    # The first field in the PARTS list is the target architecture.
+    TARGET_ARCH="$PARTS"
+    if [[ "$TARGET_ARCH" != aarch64* && "$TARGET_ARCH" != arm* && "$TARGET_ARCH" != ppc64le && \
+          "$TARGET_ARCH" != x86* && "$TARGET_ARCH" != i686* ]] ; then
+      # We currently only support building for x86[_64], arm*, aarch64* and ppc64le.
+      # If TARGET_ARCH was read from the HOST variable, it must be one of these.
+      failure "$TARGET_ARCH is not a supported architecture.
+      Supported architectures: x86[_64], arm*, aarch64*, ppc64le."
+    fi
+  else
+    TARGET_ARCH="$HOST"
   fi
 else
   TARGET_ARCH="`uname -m`"
@@ -877,6 +884,10 @@ echo >> kaldi.mk
 
 echo "Checking compiler $CXX ..."
 check_compiler $CXX
+
+echo "# Target achitecture" >> kaldi.mk
+echo "ARCH = $TARGET_ARCH" >> kaldi.mk
+echo >> kaldi.mk
 
 echo "# Base configuration" >> kaldi.mk
 echo >> kaldi.mk
