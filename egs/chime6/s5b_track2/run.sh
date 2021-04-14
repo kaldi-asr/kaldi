@@ -1,42 +1,38 @@
 #!/usr/bin/env bash
 #
-# Chime-6 Track 2 baseline. Based mostly on the Chime-5 recipe, with the exception
-# that we are required to perform speech activity detection and speaker
-# diarization before ASR, since we do not have access to the oracle SAD and 
-# diarization labels.
+# JHU-CLSP submission for Chime-6 Track 2.
+# This recipe uses the ASR from the s5b_track1 recipe. We also replace the 
+# baseline SAD with one that uses posterior fusion from the array outputs, 
+# and the baseline AHC diarization with VB-based overlap assignment.
+#
+# This is essentially a decoding script using pretrained models. For training
+# scripts for SAD and diarization, please refer to s5_track2 recipe.
 #
 # Copyright  2017  Johns Hopkins University (Author: Shinji Watanabe and Yenda Trmal)
 #            2019  Desh Raj, David Snyder, Ashish Arora
 # Apache 2.0
 
 # Begin configuration section.
-nj=50
-decode_nj=20
-stage=0
-nnet_stage=-10
+nj=8
+stage=-1
 sad_stage=0
+score_sad=true
 diarizer_stage=0
-decode_stage=0
-ts_vad_stage=0
-enhancement=beamformit # for a new enhancement method,
-                       # change this variable and decode stage
-decode_only=false
-num_data_reps=4
-snrs="20:10:15:5:0"
-foreground_snrs="20:10:15:5:0"
-background_snrs="20:10:15:5:0"
+decode_diarize_stage=0
+score_stage=0
 
-# End configuration section
-. ./utils/parse_options.sh
+enhancement=beamformit  # we will use GSS after diarization
 
-. ./cmd.sh
-. ./path.sh
+# GSS config (multi-array GSS)
+context_samples=320000
+iterations=5
+ref_array_gss=U01
 
-if [ $decode_only == "true" ]; then
-  stage=19
+# option to use the new RTTM reference for sad and diarization
+use_new_rttm_reference=false
+if $use_new_rttm_reference == "true"; then
+  git clone https://github.com/nateanl/chime6_rttm
 fi
-
-set -e # exit on error
 
 # chime5 main directory path
 # please change the path accordingly
@@ -47,17 +43,109 @@ chime6_corpus=${PWD}/CHiME6
 json_dir=${chime6_corpus}/transcriptions
 audio_dir=${chime6_corpus}/audio
 
-# training and test data
-train_set=train_worn_simu_u400k
-sad_train_set=train_worn_u400k
+enhanced_dir=enhanced
+enhanced_dir=$(utils/make_absolute.sh $enhanced_dir) || exit 1
+
+# training data
+train_set=train_worn_u400k
 test_sets="dev_${enhancement}_dereverb eval_${enhancement}_dereverb"
 
-# TS-VAD options
-ts_vad_dir=exp/ts-vad_1a
-ivector_dir=exp/nnet3_${train_set}_cleaned_rvb
+# End configuration section
+. ./utils/parse_options.sh
+
+. ./cmd.sh
+. ./path.sh
+
+set -e # exit on error
 
 # This script also needs the phonetisaurus g2p, srilm, beamformit
-./local/check_tools.sh || exit 1;
+# ./local/check_tools.sh || exit 1;
+
+# This stage demonstrates training of the i-vector extractor required
+# for VB resegmentation. The pretrained extractor can be downloaded
+# along with all other models in the next stage.
+if [ $stage -le -2 ]; then
+  if [ ! -d $chime6_corpus ]; then
+    echo "$0: Please run stage 0 to prepare CHiME-6 wav files (with WPE)" && exit 1
+  fi
+
+  echo "$0: Training UBM and i-vector extractor for VB resegmentation"
+  
+  # First prepare training data
+  for mictype in worn u01 u02 u05 u06; do
+    local/prepare_data.sh --mictype ${mictype} --train true \
+        ${audio_dir}/train ${json_dir}/train data/train_${mictype}
+  done
+  # remove possibly bad sessions (P11_S03, P52_S19, P53_S24, P54_S24)
+  # see http://spandh.dcs.shef.ac.uk/chime_challenge/data.html for more details
+  utils/copy_data_dir.sh data/train_worn data/train_worn_org # back up
+  grep -v -e "^P11_S03" -e "^P52_S19" -e "^P53_S24" -e "^P54_S24" data/train_worn_org/text > data/train_worn/text
+  utils/fix_data_dir.sh data/train_worn
+
+  # Remove S12_U05 from training data since it has known issues
+  utils/copy_data_dir.sh data/train_u05 data/train_u05_org # back up
+  grep -v -e "^S12_U05" data/train_u05_org/text > data/train_u05/text
+  utils/fix_data_dir.sh data/train_u05
+
+  # combine mix array and worn mics
+  # randomly extract first 400k utterances from all mics
+  # if you want to include more training data, you can increase the number of array mic utterances
+  utils/combine_data.sh data/train_uall data/train_u01 data/train_u02 data/train_u05 data/train_u06
+  utils/subset_data_dir.sh data/train_uall 400000 data/train_u400k
+  utils/combine_data.sh data/${train_set} data/train_worn data/train_u400k
+
+  echo "$0:  make features..."
+  mfccdir=mfcc
+  steps/make_mfcc.sh --nj 40 --cmd "$train_cmd" \
+             --mfcc-config conf/mfcc_hires.conf \
+             data/${train_set} exp/make_mfcc/${train_set} $mfccdir
+  steps/compute_cmvn_stats.sh data/${train_set} exp/make_mfcc/${train_set} $mfccdir
+  utils/fix_data_dir.sh data/${train_set}
+  
+  sid/compute_vad_decision.sh --nj 32 --cmd "$train_cmd" \
+    data/${train_set} exp/make_vad
+  utils/fix_data_dir.sh data/${train_set}
+  
+  sid/train_diag_ubm.sh --cmd "$train_cmd --mem 10G" --nj 32 \
+    --num-threads 8 --subsample 1 --delta-order 0 --apply-cmn false \
+    data/${train_set} 1024 exp/vb_reseg/diag_ubm_1024
+
+  diarization/train_ivector_extractor_diag.sh --cmd "$train_cmd --mem 10G" \
+    --ivector-dim 400 --num-iters 5 --apply-cmn false \
+    --num-threads 1 --num-processes 1 --nj 32 \
+    exp/vb_reseg/diag_ubm_1024/final.dubm data/${train_set} \
+    exp/vb_reseg/extractor_diag_c1024_i400
+fi
+
+# This stage downloads all pretrained models required for the inference
+# pipeline below.
+if [ $stage -le -1 ]; then
+  echo "$0: Downloading and extracting pretrained models for inference"
+  # Download pretrained SAD if not present
+  if [ ! -d exp/segmentation_1a ]; then
+    echo "$0: Downloading CHiME-6 baseline SAD"
+    wget -O 0012_sad_v1.tar.gz http://kaldi-asr.org/models/12/0012_sad_v1.tar.gz
+    tar -xvzf 0012_sad_v1.tar.gz
+    cp -r 0012_sad_v1/exp/segmentation_1a exp/
+  fi
+
+  # Download i-vector and x-vector extractor if not present
+  if [ ! -d exp/xvector_nnet_1a ] || [ ! -d exp/vb_reseg/extractor_diag_c1024_i400 ]; then
+    echo "$0: Downloading JHU-CLSP CHiME-6 i-vector and x-vector extractors"
+    wget -O 0012_diarization_v2.tar.gz http://kaldi-asr.org/models/12/0012_diarization_v2.tar.gz
+    tar -xvzf 0012_diarization_v2.tar.gz
+    cp -r 0012_diarization_v2/exp/* exp/
+  fi
+
+  # Download acoustic and language models if not present
+  if [ ! -d exp/rnnlm_lstm_1b ]; then
+    echo "$0: Downloading JHU-CLSP CNN-TDNNF acoustic model and RNNLM"
+    wget -O 0012_asr_v2.tar.gz http://kaldi-asr.org/models/12/0012_asr_v2.tar.gz
+    tar -xvzf 0012_asr_v2.tar.gz
+    cp -r 0012_asr_v2/exp/* exp/
+  fi
+  
+fi
 
 ###########################################################################
 # We first generate the synchronized audio files across arrays and
@@ -72,251 +160,238 @@ if [ $stage -le 0 ]; then
     ${chime6_corpus}
 fi
 
-###########################################################################
-# We prepare dict and lang in stages 1 to 3.
-###########################################################################
-
+#######################################################################
+# Prepare the dev and eval data with dereverberation (WPE) and
+# beamforming.
+#######################################################################
 if [ $stage -le 1 ]; then
-  # skip u03 and u04 as they are missing
-  for mictype in worn u01 u02 u05 u06; do
-    local/prepare_data.sh --mictype ${mictype} --train true \
-        ${audio_dir}/train ${json_dir}/train data/train_${mictype}
+  # Beamforming using reference arrays
+  # enhanced WAV directory
+  dereverb_dir=${PWD}/wav/wpe/
+
+  for dset in dev eval; do
+    for mictype in u01 u02 u03 u04 u06; do
+      local/run_wpe.sh --nj 4 --cmd "$train_cmd --mem 20G" \
+            ${audio_dir}/${dset} \
+            ${dereverb_dir}/${dset} \
+            ${mictype}
+    done
   done
-  for dataset in dev; do
-    for mictype in worn; do
-      local/prepare_data.sh --mictype ${mictype} --train true \
-          ${audio_dir}/${dataset} ${json_dir}/${dataset} \
-          data/${dataset}_${mictype}
+
+  for dset in dev eval; do
+    for mictype in u01 u02 u03 u04 u06; do
+      local/run_beamformit.sh --cmd "$train_cmd" \
+        ${dereverb_dir}/${dset} \
+        ${enhanced_dir}/${dset}_${enhancement}_${mictype} \
+        ${mictype}
+    done
+  done
+
+  # Note that for the evaluation sets, we use the flag
+  # "--train false". This keeps the files segments, text,
+  # and utt2spk with .bak extensions, so that they can
+  # be used later for scoring if needed but are not used
+  # in the intermediate stages.
+  for dset in dev eval; do
+    local/prepare_data.sh --mictype ref --train false \
+      "${enhanced_dir}/${dset}_${enhancement}_u0*" \
+      ${json_dir}/${dset} data/${dset}_${enhancement}_dereverb
+  done
+
+fi
+
+if [ $stage -le 2 ]; then
+  # mfccdir should be some place with a largish disk where you
+  # want to store MFCC features.
+  mfccdir=mfcc
+  for x in ${test_sets}; do
+    steps/make_mfcc.sh --nj $nj --cmd "$train_cmd" \
+      --mfcc-config conf/mfcc_hires.conf \
+      data/$x exp/make_mfcc/$x $mfccdir
+  done
+fi
+
+#######################################################################
+# Perform SAD on the dev/eval data
+#######################################################################
+nnet_type=stats
+dir=exp/segmentation_1a
+sad_work_dir=exp/sad_1a_${nnet_type}/
+sad_nnet_dir=$dir/tdnn_${nnet_type}_sad_1a
+
+if [ $stage -le 3 ]; then
+  for datadir in ${test_sets}; do
+    test_set=data/${datadir}
+    if [ ! -f ${test_set}/wav.scp ]; then
+      echo "$0: Not performing SAD on ${test_set}"
+      exit 0
+    fi
+    # Perform segmentation
+    local/segmentation/detect_speech_activity.sh --nj $nj --stage $sad_stage \
+      --cmd "$decode_cmd" \
+      $test_set $sad_nnet_dir mfcc $sad_work_dir \
+      data/${datadir} || exit 1
+
+    test_dir=data/${datadir}_max_seg
+    # Generate RTTM file from segmentation performed by SAD. This can
+    # be used to evaluate the performance of the SAD as an intermediate
+    # step.
+    steps/segmentation/convert_utt2spk_and_segments_to_rttm.py \
+      ${test_dir}/utt2spk ${test_dir}/segments ${test_dir}/rttm
+
+    if [ $score_sad == "true" ]; then
+      echo "Scoring $datadir.."
+      # We first generate the reference RTTM from the backed up utt2spk and segments
+      # files.
+      ref_rttm=${test_set}/ref_rttm
+      steps/segmentation/convert_utt2spk_and_segments_to_rttm.py ${test_set}/utt2spk.bak \
+        ${test_set}/segments.bak ${test_set}/ref_rttm
+
+      # To score, we select just U06 segments from the hypothesis RTTM.
+      hyp_rttm=${test_dir}/rttm
+      
+      if $use_new_rttm_reference == "true"; then
+        echo "Use the new RTTM reference."
+        mode="$(cut -d'_' -f1 <<<"$datadir")"
+        ref_rttm=./chime6_rttm/${mode}_rttm
+      fi
+
+      sed 's/_U0[1-6].ENH//g' $ref_rttm | sort -u > $ref_rttm.scoring
+      sed 's/.ENH//g' $hyp_rttm > $hyp_rttm.scoring
+      cat ./local/uem_file | grep 'U06' | sed 's/_U0[1-6]//g' > ./local/uem_file.tmp
+      md-eval.pl -1 -c 0.25 -u ./local/uem_file.tmp -r $ref_rttm.scoring -s $hyp_rttm.scoring |\
+        awk 'or(/MISSED SPEECH/,/FALARM SPEECH/)'
+    fi
+  done
+fi
+
+#######################################################################
+# Perform diarization on the dev/eval data
+#######################################################################
+if [ $stage -le 4 ]; then
+  for datadir in ${test_sets}; do
+    # First we prepare the SAD output dir for diarization. For this,
+    # we need to have the segment file contain all arrays present in
+    # wav.scp of the original test directory.
+    test_dir=${datadir}_max_seg
+    > data/${test_dir}/segments_all
+    > data/${test_dir}/utt2spk_all
+    cp data/${datadir}/{wav,feats}.scp data/${test_dir}/
+    sessions=$(cut -d' ' -f2 data/${test_dir}/segments | sort -u)
+    for session in $sessions; do
+      echo "$session"
+      arrays=$(cut -d' ' -f1 data/${test_dir}/wav.scp | grep "${session:0:3}")
+      for array in $arrays; do
+        echo "$array"
+        grep "$session" data/${test_dir}/segments |\
+          sed "s/$session/$array/g" >> data/${test_dir}/segments_all
+      done
+    done
+    mv data/${test_dir}/segments data/${test_dir}/segments.session
+    mv data/${test_dir}/segments_all data/${test_dir}/segments
+
+    # Also prepare utt2spk and spk2utt files
+    mv data/${test_dir}/utt2spk data/${test_dir}/utt2spk.session
+    paste -d' ' <(cut -d' ' -f1 data/${test_dir}/segments ) \
+      <(cut -d'-' -f1 data/${test_dir}/segments ) > data/${test_dir}/utt2spk
+    utils/utt2spk_to_spk2utt.pl data/${test_dir}/utt2spk > data/${test_dir}/spk2utt
+
+    # Prepare new feats.scp
+    steps/make_mfcc.sh --nj $nj --cmd "$train_cmd" \
+      --mfcc-config conf/mfcc_hires.conf \
+      data/${test_dir} exp/make_mfcc/${test_dir} $mfccdir
+  done
+fi
+
+if [ $stage -le 5 ]; then
+  for datadir in ${test_sets}; do
+    if $use_new_rttm_reference == "true"; then
+      mode="$(cut -d'_' -f1 <<<"$datadir")"
+      ref_rttm=./chime6_rttm/${mode}_rttm
+    else
+      ref_rttm=data/${datadir}/ref_rttm
+    fi
+    local/diarize_vb.sh --nj $nj --cmd "$decode_cmd" --stage $diarizer_stage \
+      --ref-rttm $ref_rttm \
+      exp/xvector_nnet_1a \
+      data/${datadir}_max_seg \
+      exp/${datadir}_max_seg_diarization
+  done
+fi
+
+#######################################################################
+# Perform GSS using diarized output segments
+#######################################################################
+if [ $stage -le 6 ]; then
+  if [ ! -d pb_chime5/ ]; then
+    local/install_pb_chime6.sh
+  fi
+
+  if [ ! -d pb_chime5/cache/CHiME6/transcriptions/dev ]; then
+    (
+    cd pb_chime5
+    miniconda_dir=$HOME/miniconda3/
+    export PATH=$miniconda_dir/bin:$PATH
+    make cache/CHiME6 CHIME5_DIR=${chime5_corpus}
+    )
+  fi
+
+  for datadir in ${test_sets}; do
+    # First we prepare the RTTM for GSS. For this we remove the introductions using UEM,
+    # and also remove any segments shorter than a specified length (for GSS)
+    out_dir=exp/${datadir}_max_seg_vb
+    test_dir=${datadir}_max_seg.bak # contains all arrays
+    data_name=$(echo ${datadir} | cut -d'_' -f1)
+    sessions=$(cut -d' ' -f2 data/${test_dir}/segments | cut -d'_' -f1 | sort -u)
+    > ${out_dir}/rttm 
+    for session in $sessions; do
+      echo ${session}
+      grep "$session" ${out_dir}/VB_rttm_ol |\
+        sed "s/.ENH//g" |\
+        local/truncate_rttm.py --min-segment-length 0.2 \
+          - local/uem_file - |\
+        sed "s/_U06//g" >> ${out_dir}/rttm 
     done
   done
 fi
 
-if [ $stage -le 2 ]; then
-  local/prepare_dict.sh
-
-  utils/prepare_lang.sh \
-    data/local/dict "<unk>" data/local/lang data/lang
-
-  local/train_lms_srilm.sh \
-    --train-text data/train_worn/text --dev-text data/dev_worn/text \
-    --oov-symbol "<unk>" --words-file data/lang/words.txt \
-    data/ data/srilm
-fi
-
-LM=data/srilm/best_3gram.gz
-if [ $stage -le 3 ]; then
-  # Compiles G for chime5 trigram LM
-  utils/format_lm.sh \
-    data/lang $LM data/local/dict/lexicon.txt data/lang
-
-fi
-
-if [ $stage -le 4 ]; then
-  # remove possibly bad sessions (P11_S03, P52_S19, P53_S24, P54_S24)
-  # see http://spandh.dcs.shef.ac.uk/chime_challenge/data.html for more details
-  utils/copy_data_dir.sh data/train_worn data/train_worn_org # back up
-  grep -v -e "^P11_S03" -e "^P52_S19" -e "^P53_S24" -e "^P54_S24" data/train_worn_org/text > data/train_worn/text
-  utils/fix_data_dir.sh data/train_worn
-
-  # Remove S12_U05 from training data since it has known issues
-  utils/copy_data_dir.sh data/train_u05 data/train_u05_org # back up
-  grep -v -e "^S12_U05" data/train_u05_org/text > data/train_u05/text
-  utils/fix_data_dir.sh data/train_u05
-fi
-
-#########################################################################################
-# In stages 5 and 6, we augment and fix train data for our training purpose. point source
-# noises are extracted from chime corpus. Here we use 400k utterances from array microphones,
-# its augmentation and all the worn set utterances in train.
-#########################################################################################
-
-if [ $stage -le 5 ]; then
-  echo "$0: Extracting noise list from training data"
-  local/extract_noises.py $chime6_corpus/audio/train $chime6_corpus/transcriptions/train \
-    local/distant_audio_list distant_noises
-  local/make_noise_list.py distant_noises > distant_noise_list
-
-  noise_list=distant_noise_list
-  
-  echo "$0: Preparing simulated RIRs for data augmentation"
-  if [ ! -d RIRS_NOISES/ ]; then
-    # Download the package that includes the real RIRs, simulated RIRs, isotropic noises and point-source noises
-    wget --no-check-certificate http://www.openslr.org/resources/28/rirs_noises.zip
-    unzip rirs_noises.zip
-  fi
-
-  # This is the config for the system using simulated RIRs and point-source noises
-  rvb_opts+=(--rir-set-parameters "0.5, RIRS_NOISES/simulated_rirs/smallroom/rir_list")
-  rvb_opts+=(--rir-set-parameters "0.5, RIRS_NOISES/simulated_rirs/mediumroom/rir_list")
-  rvb_opts+=(--noise-set-parameters $noise_list)
-
-  steps/data/reverberate_data_dir.py \
-    "${rvb_opts[@]}" \
-    --prefix "rev" \
-    --foreground-snrs $foreground_snrs \
-    --background-snrs $background_snrs \
-    --speech-rvb-probability 1 \
-    --pointsource-noise-addition-probability 1 \
-    --isotropic-noise-addition-probability 1 \
-    --num-replications $num_data_reps \
-    --max-noises-per-minute 1 \
-    --source-sampling-rate 16000 \
-    data/train_worn data/train_worn_rvb
-fi
-
-if [ $stage -le 6 ]; then
-  # combine mix array and worn mics
-  # randomly extract first 400k utterances from all mics
-  # if you want to include more training data, you can increase the number of array mic utterances
-  utils/combine_data.sh data/train_uall data/train_u01 data/train_u02 data/train_u05 data/train_u06
-  utils/subset_data_dir.sh data/train_uall 400000 data/train_u400k
-  utils/combine_data.sh data/${train_set} data/train_worn data/train_worn_rvb data/train_u400k
-  utils/combine_data.sh data/${sad_train_set} data/train_worn data/train_u400k
-fi
-
 if [ $stage -le 7 ]; then
-  # Split speakers up into 3-minute chunks.  This doesn't hurt adaptation, and
-  # lets us use more jobs for decoding etc.
-  utils/copy_data_dir.sh data/${train_set} data/${train_set}_nosplit
-  utils/data/modify_speaker_info.sh --seconds-per-spk-max 180 data/${train_set}_nosplit data/${train_set}
+  gss_enhanced_dir=${enhanced_dir}/gss_cs${context_samples}_it${iterations}
+  for dset in dev eval; do
+    echo "$0: Running GSS-based enhancement on $dset"
+    local/run_gss.sh \
+      --cmd "$train_cmd --max-jobs-run 80" --nj 100 \
+      --use_gss_multiarray true \
+      --bss_iterations $iterations \
+      --context_samples $context_samples \
+      exp/${dset}_beamformit_dereverb_max_seg_vb/rttm \
+      ${dset} \
+      ${gss_enhanced_dir} \
+      ${gss_enhanced_dir} || exit 1
+  done
 fi
-
-##################################################################################
-# Now make MFCC features. We use 13-dim MFCCs to train the GMM-HMM models.
-##################################################################################
-
+exit 1
 if [ $stage -le 8 ]; then
-  # Now make MFCC features.
-  # mfccdir should be some place with a largish disk where you
-  # want to store MFCC features.
-  echo "$0:  make features..."
-  mfccdir=mfcc
-  steps/make_mfcc.sh --nj $nj --cmd "$train_cmd" \
-             --mfcc-config conf/mfcc.conf \
-             data/${train_set} exp/make_mfcc/${train_set} $mfccdir
-  steps/compute_cmvn_stats.sh data/${train_set} exp/make_mfcc/${train_set} $mfccdir
-  utils/fix_data_dir.sh data/${train_set}
+  for datadir in ${test_sets}; do
+    local/decode_diarized.sh --nj $nj --cmd "$decode_cmd" --stage $decode_diarize_stage \
+      --rttm-file exp/${datadir}_max_seg_vb/rttm \
+      exp/${datadir}_${nnet_type}_seg_vb data/$datadir data/lang \
+      exp/chain_${train_set}_cleaned_rvb exp/nnet3_${train_set}_cleaned_rvb \
+      data/${datadir}_diarized || exit 1
+  done
 fi
-
-###################################################################################
-# Stages 9 to 14 train monophone and triphone models. They will be used for 
-# generating lattices for training the chain model and for obtaining targets
-# for training the SAD system.
-###################################################################################
-
-if [ $stage -le 9 ]; then
-  # make a subset for monophone training
-  utils/subset_data_dir.sh --shortest data/${train_set} 100000 data/${train_set}_100kshort
-  utils/subset_data_dir.sh data/${train_set}_100kshort 30000 data/${train_set}_30kshort
+exit 1
+#######################################################################
+# Score decoded dev/eval sets
+#######################################################################
+if [ $stage -le 8 ]; then
+  # final scoring to get the challenge result
+  # please specify both dev and eval set directories so that the search parameters
+  # (insertion penalty and language model weight) will be tuned using the dev set
+  local/score_for_submit.sh --stage $score_stage \
+      --dev_decodedir exp/chain_${train_set}_cleaned_rvb/tdnn1b_cnn_sp/decode_dev_beamformit_dereverb_diarized_2stage \
+      --dev_datadir dev_beamformit_dereverb_diarized_hires \
+      --eval_decodedir exp/chain_${train_set}_cleaned_rvb/tdnn1b_sp/decode_eval_beamformit_dereverb_diarized_2stage \
+      --eval_datadir eval_beamformit_dereverb_diarized_hires
 fi
-
-if [ $stage -le 10 ]; then
-  # Starting basic training on MFCC features
-  steps/train_mono.sh --nj $nj --cmd "$train_cmd" \
-          data/${train_set}_30kshort data/lang exp/mono
-fi
-
-if [ $stage -le 11 ]; then
-  steps/align_si.sh --nj $nj --cmd "$train_cmd" \
-        data/${train_set} data/lang exp/mono exp/mono_ali
-
-  steps/train_deltas.sh --cmd "$train_cmd" \
-      2500 30000 data/${train_set} data/lang exp/mono_ali exp/tri1
-fi
-
-if [ $stage -le 12 ]; then
-  steps/align_si.sh --nj $nj --cmd "$train_cmd" \
-        data/${train_set} data/lang exp/tri1 exp/tri1_ali
-
-  steps/train_lda_mllt.sh --cmd "$train_cmd" \
-        4000 50000 data/${train_set} data/lang exp/tri1_ali exp/tri2
-fi
-
-if [ $stage -le 13 ]; then
-  steps/align_si.sh --nj $nj --cmd "$train_cmd" \
-        data/${train_set} data/lang exp/tri2 exp/tri2_ali
-
-  steps/train_sat.sh --cmd "$train_cmd" \
-         5000 100000 data/${train_set} data/lang exp/tri2_ali exp/tri3
-fi
-
-if [ $stage -le 14 ]; then
-  # The following script cleans the data and produces cleaned data
-  steps/cleanup/clean_and_segment_data.sh --nj $nj --cmd "$train_cmd" \
-    --segmentation-opts "--min-segment-length 0.3 --min-new-segment-length 0.6" \
-    data/${train_set} data/lang exp/tri3 exp/tri3_cleaned data/${train_set}_cleaned
-fi
-
-##########################################################################
-# CHAIN MODEL TRAINING
-# You can also download a pretrained chain ASR model using:
-# wget http://kaldi-asr.org/models/12/0012_asr_v1.tar.gz
-# Once it is downloaded, extract using: tar -xvzf 0012_asr_v1.tar.gz
-# and copy the contents of the exp/ directory to your exp/
-##########################################################################
-if [ $stage -le 15 ]; then
-  # chain TDNN
-  local/chain/run_tdnn.sh --nj $nj \
-    --stage $nnet_stage \
-    --train-set ${train_set}_cleaned \
-    --test-sets "$test_sets" \
-    --gmm tri3_cleaned --nnet3-affix _${train_set}_cleaned_rvb
-fi
-
-##########################################################################
-# SAD MODEL TRAINING
-# You can also download a pretrained SAD model using:
-# wget http://kaldi-asr.org/models/12/0012_sad_v1.tar.gz
-# Once it is downloaded, extract using: tar -xvzf 0012_sad_v1.tar.gz
-# and copy the contents of the exp/ directory to your exp/
-##########################################################################
-if [ $stage -le 16 ]; then
-  local/train_sad.sh --stage $sad_stage --nj $nj \
-    --data-dir data/${sad_train_set} --test-sets "${test_sets}" \
-    --sat-model-dir exp/tri3_cleaned \
-    --model-dir exp/tri2
-fi
-
-##########################################################################
-# DIARIZATION MODEL TRAINING
-# You can also download a pretrained diarization model using:
-# wget http://kaldi-asr.org/models/12/0012_diarization_v1.tar.gz
-# Once it is downloaded, extract using: tar -xvzf 0012_diarization_v1.tar.gz
-# and copy the contents of the exp/ directory to your exp/
-##########################################################################
-if [ $stage -le 17 ]; then
-  local/train_diarizer.sh --stage $diarizer_stage \
-    --data-dir data/${train_set} \
-    --model-dir exp/xvector_nnet_1a
-fi
-
-##########################################################################
-# TS-VAD MODEL TRAINING
-# You can also download a pretrained diarization model using:
-# ts_vad_name=ts-vad_1a.tar.gz
-# ts_vad_link=https://github.com/yuri-hohlov/ts-vad-data/raw/master/${ts_vad_name}
-# [ ! -f $ts_vad_name ] && wget -O $ts_vad_name $ts_vad_link
-# [ ! -d $ts_vad_dir ] && tar -zxvf $ts_vad_name -C $(dirname $ts_vad_dir)
-##########################################################################
-if [ $stage -le 18 ]; then
-  local/train_ts-vad.sh --stage $ts_vad_stage \
-    --nnet3-affix _${train_set}_cleaned_rvb \
-    --basedata ${train_set}_cleaned_sp
-fi
-
-##########################################################################
-# DECODING: In track 2, we are given raw utterances without segment
-# or speaker information, so we have to decode the whole pipeline, i.e.,
-# SAD -> Diarization (x-vectors + Spectral Clustering) ->
-# 3 iterations of TS-VAD Diarization -> GSS -> ASR.
-# This is done in the local/decode_ts-vad.sh script.
-##########################################################################
-if [ $stage -le 19 ]; then
-  local/decode_ts-vad.sh --stage $decode_stage \
-    --ts-vad-dir $ts_vad_dir --ivector-dir $ivector_dir \
-    --enhancement $enhancement \
-    --test-sets "$test_sets"
-fi
-
 exit 0;
-
