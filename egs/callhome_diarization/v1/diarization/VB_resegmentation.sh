@@ -22,6 +22,12 @@ statScale=0.2
 llScale=1.0
 channel=0
 initialize=1
+
+# The following performs VB-based overlap assignment (see https://arxiv.org/abs/1910.11646)
+# It should be an RTTM file marking the segments which contain overlaps.
+# See, for example, egs/chime6/s5b_track2/local/overlap/detect_overlaps.sh for
+# using Pyannote overlap detector to get such an RTTM.
+overlap_rttm=
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -72,6 +78,8 @@ if [ $# != 5 ]; then
   echo "                                                   # speaker posterior (if not)"
   echo "                                                   # the speaker posterior will be"
   echo "                                                   # randomly initilized"
+  echo "  --overlap-rttm <str|>                            # If provided, performs overlap"
+  echo "                                                   # assignment using Q-matrix"
 
   exit 1;
 fi
@@ -87,29 +95,43 @@ mkdir -p $output_dir/tmp
 sdata=$data_dir/split$nj;
 utils/split_data.sh $data_dir $nj || exit 1;
 
+save_opts=""
+if [ ! -z "$overlap_rttm" ]; then
+  save_opts="--save-posterior"
+fi
+
 if [ $stage -le 0 ]; then
   # Dump the diagonal UBM model into txt format.
-  "$train_cmd" $output_dir/log/convert_diag_ubm.log \
+  $cmd $output_dir/log/convert_diag_ubm.log \
     gmm-global-copy --binary=false \
       $dubm_model \
       $output_dir/tmp/dubm.tmp || exit 1;
 
   # Dump the ivector extractor model into txt format.
-  "$train_cmd" $output_dir/log/convert_ie.log \
+  $cmd $output_dir/log/convert_ie.log \
     ivector-extractor-copy --binary=false \
       $ie_model \
       $output_dir/tmp/ie.tmp || exit 1;
 fi
 
 if [ $stage -le 1 ]; then
-    # VB resegmentation
-    $cmd JOB=1:$nj $output_dir/log/VB_resegmentation.JOB.log \
-      python3 diarization/VB_resegmentation.py --max-speakers $max_speakers \
-        --max-iters $max_iters --downsample $downsample --alphaQInit $alphaQInit \
-	--sparsityThr $sparsityThr --epsilon $epsilon --minDur $minDur \
-	--loopProb $loopProb --statScale $statScale --llScale $llScale \
-	--channel $channel --initialize $initialize \
-        $sdata/JOB $init_rttm_filename $output_dir/tmp $output_dir/tmp/dubm.tmp $output_dir/tmp/ie.tmp || exit 1;
+  # VB resegmentation
+  $cmd JOB=1:$nj $output_dir/log/VB_resegmentation.JOB.log \
+    python3 diarization/VB_resegmentation.py --max-speakers $max_speakers \
+      --max-iters $max_iters --downsample $downsample --alphaQInit $alphaQInit \
+      --sparsityThr $sparsityThr --epsilon $epsilon --minDur $minDur \
+      --loopProb $loopProb --statScale $statScale --llScale $llScale \
+      --channel $channel --initialize $initialize "$save_opts" \
+      $sdata/JOB $init_rttm_filename $output_dir/tmp $output_dir/tmp/dubm.tmp $output_dir/tmp/ie.tmp || exit 1;
 
-    cat $output_dir/tmp/*.rttm > $output_dir/rttm/VB_rttm
+  cat $output_dir/tmp/*_predict.rttm > $output_dir/VB_rttm
+fi
+
+if [ $stage -le 2 ] && [ ! -z "$overlap_rttm" ]; then
+  # Overlap assignment
+  $cmd JOB=1:$nj $output_dir/log/VB_overlap.JOB.log \
+    python3 diarization/VB_overlap_assign.py \
+      $sdata/JOB $overlap_rttm $init_rttm_filename $output_dir/tmp || exit 1;
+
+  cat $output_dir/tmp/*ovl*.rttm > $output_dir/VB_rttm_ol
 fi

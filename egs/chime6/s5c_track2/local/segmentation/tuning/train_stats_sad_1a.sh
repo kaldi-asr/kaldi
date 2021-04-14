@@ -98,7 +98,7 @@ if [ $stage -le 6 ]; then
   num_utts_subset=`perl -e '$n=int($ARGV[0] * 0.005); print ($n > 300 ? 300 : ($n < 12 ? 12 : $n))' $num_utts`
 
   steps/nnet3/train_raw_rnn.py --stage=$train_stage \
-    --feat.cmvn-opts="$cmvn_opts" \
+    --feat.cmvn-opts=$cmvn_opts \
     --egs.chunk-width=$chunk_width \
     --egs.dir="$egs_dir" --egs.stage=$get_egs_stage \
     --egs.chunk-left-context=$extra_left_context \
@@ -143,7 +143,7 @@ if [ $stage -le 7 ]; then
   # Dev (using -c 0.25)
   # MISSED SPEECH =   1188.59 secs (  3.3 percent of scored time)
   # FALARM SPEECH =    539.37 secs (  1.5 percent of scored time)
-  echo " [ 30 2 1 ]" > $dir/post_output.vec || exit 1
+  echo "[ 30 2 1 ]" > $dir/post_output.vec || exit 1
 
   echo 3 > $dir/frame_subsampling_factor
 fi

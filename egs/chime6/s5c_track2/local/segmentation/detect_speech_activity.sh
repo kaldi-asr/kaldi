@@ -17,7 +17,7 @@ if [ -f ./path.sh ]; then . ./path.sh; fi
 
 affix=  # Affix for the segmentation
 nj=32
-cmd=run.pl
+cmd=queue.pl
 stage=-1
 
 # Feature options (Must match training)
@@ -143,44 +143,15 @@ if [ $stage -le 1 ]; then
     ${test_data_dir} $dir $sad_dir || exit 1
 fi
 
-if [ $stage -le 2 ]; then
-  # In this stage we perform posterior combination by taking max of all outputs
-  paste -d' ' <(cut -d' ' -f1 $sad_dir/output.scp ) <(cut -d' ' -f1 \
-    $sad_dir/output.scp | sed 's/_U0[1-6]//g' ) > $sad_dir/output2session
-  utils/utt2spk_to_spk2utt.pl $sad_dir/output2session > $sad_dir/session2output
-  matrix-max ark:$sad_dir/session2output scp:$sad_dir/output.scp \
-    ark,scp:$sad_dir/output_max.ark,$sad_dir/output_max.scp
-
-  mv $sad_dir/output.scp $sad_dir/output.scp.bak
-  mv $sad_dir/output_max.scp $sad_dir/output.scp
-fi
-
-if [ $stage -le 3 ]; then
-  # In this stage we keep shortest utterance for each session in the
-  # utt2dur and discard others. We also create a new data directory
-  # for the new data.
-  mkdir -p ${test_data_dir}_max
-  rm $test_data_dir/utt2dur
-  utils/data/get_utt2dur.sh --nj $nj --cmd "$cmd" $test_data_dir || exit 1
-  sed 's/_U0[1-6]//g' $test_data_dir/utt2dur > $test_data_dir/utt2dur.bak
-  sort -k1,1n -k2,2g $test_data_dir/utt2dur.bak |\
-    awk '!a[$1] {a[$1] = $2} $2 == a[$1]' > ${test_data_dir}_max/utt2dur
-
-  paste -d' ' <(cut -d' ' -f1 ${test_data_dir}_max/utt2dur ) \
-    <(cut -d' ' -f1 ${test_data_dir}_max/utt2dur ) \
-    > ${test_data_dir}_max/utt2spk
-  cp ${test_data_dir}_max/utt2spk ${test_data_dir}_max/spk2utt
-fi
-
-nj=$(wc -l < "$sad_dir/output.scp")
 ###############################################################################
 ## Prepare FST we search to make speech/silence decisions.
 ###############################################################################
 
+utils/data/get_utt2dur.sh --nj $nj --cmd "$cmd" $test_data_dir || exit 1
 frame_shift=$(utils/data/get_frame_shift.sh $test_data_dir) || exit 1
 
 graph_dir=${dir}/graph_${output_name}
-if [ $stage -le 4 ]; then
+if [ $stage -le 2 ]; then
   mkdir -p $graph_dir
 
   # 1 for silence and 2 for speech
@@ -215,7 +186,7 @@ if [ ! -f $sad_nnet_dir/post_${output_name}.vec ]; then
 fi
 
 mkdir -p $seg_dir
-if [ $stage -le 5 ]; then
+if [ $stage -le 3 ]; then
   steps/segmentation/internal/get_transform_probs_mat.py \
     --priors="$post_vec" $transform_probs_opts > $seg_dir/transform_probs.mat
 
@@ -229,18 +200,18 @@ fi
 ## Post-process segmentation to create kaldi data directory.
 ###############################################################################
 
-if [ $stage -le 6 ]; then
+if [ $stage -le 4 ]; then
   steps/segmentation/post_process_sad_to_segments.sh \
     --segment-padding $segment_padding --min-segment-dur $min_segment_dur \
     --merge-consecutive-max-dur $merge_consecutive_max_dur \
     --cmd "$cmd" --frame-shift $(perl -e "print $frame_subsampling_factor * $frame_shift") \
-    ${test_data_dir}_max ${seg_dir} ${seg_dir}
+    ${test_data_dir} ${seg_dir} ${seg_dir}
 fi
 
-if [ $stage -le 7 ]; then
-  utils/data/subsegment_data_dir.sh ${test_data_dir}_max ${seg_dir}/segments \
-    ${data_dir}_max_seg
+if [ $stage -le 5 ]; then
+  utils/data/subsegment_data_dir.sh ${test_data_dir} ${seg_dir}/segments \
+    ${data_dir}_seg
 fi
 
-echo "$0: Created output segmented kaldi data directory in ${data_dir}_max_seg"
+echo "$0: Created output segmented kaldi data directory in ${data_dir}_seg"
 exit 0
