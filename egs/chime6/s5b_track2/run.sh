@@ -332,13 +332,14 @@ if [ $stage -le 6 ]; then
     cd pb_chime5
     miniconda_dir=$HOME/miniconda3/
     export PATH=$miniconda_dir/bin:$PATH
-    make cache/CHiME6 CHIME5_DIR=${chime5_corpus}
+    make cache/CHiME6 CHIME5_DIR=${chime5_corpus} CHIME6_DIR=${chime6_corpus}
     )
   fi
 
   for datadir in ${test_sets}; do
     # First we prepare the RTTM for GSS. For this we remove the introductions using UEM,
-    # and also remove any segments shorter than a specified length (for GSS)
+    # and also remove any segments shorter than a specified length (for GSS).
+    # We also convert the RTTM to JSON format.
     out_dir=exp/${datadir}_max_seg_vb
     test_dir=${datadir}_max_seg.bak # contains all arrays
     data_name=$(echo ${datadir} | cut -d'_' -f1)
@@ -350,21 +351,28 @@ if [ $stage -le 6 ]; then
         sed "s/.ENH//g" |\
         local/truncate_rttm.py --min-segment-length 0.2 \
           - local/uem_file - |\
-        sed "s/_U06//g" >> ${out_dir}/rttm 
+        sed "s/U06/${ref_array_gss}/g" |\
+        awk '($8=="5"){$8="1"}{print $0}' |\
+        local/convert_rttm_to_json.py - pb_chime5/cache/CHiME6/transcriptions/${data_name}/${session}.json
     done
   done
+
+  pushd pb_chime5
+  export LC_ALL=C.UTF-8
+  export LANG=C.UTF-8
+  $HOME/miniconda3/bin/python -m pb_chime5.database.chime5.create_json -j cache/chime6.json -db cache/CHiME6 --transcription-path cache/CHiME6/transcriptions --chime6
+  popd
 fi
 
 if [ $stage -le 7 ]; then
   gss_enhanced_dir=${enhanced_dir}/gss_cs${context_samples}_it${iterations}
+  mkdir -p ${enhanced_dir}
   for dset in dev eval; do
-    echo "$0: Running GSS-based enhancement on $dset"
+    echo "$0: Performing GSS-based ennhancement on ${dset}"
     local/run_gss.sh \
       --cmd "$train_cmd --max-jobs-run 80" --nj 100 \
-      --use_gss_multiarray true \
       --bss_iterations $iterations \
       --context_samples $context_samples \
-      exp/${dset}_beamformit_dereverb_max_seg_vb/rttm \
       ${dset} \
       ${gss_enhanced_dir} \
       ${gss_enhanced_dir} || exit 1

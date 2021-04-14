@@ -82,7 +82,7 @@ def load_rttm(rttmf):
 
 def write_rttm(rttmf, turns, n_digits=3):
     with common_lib.smart_open(rttmf, 'w') as f:
-        for turn in turns:
+        for turn in sorted(turns, key=lambda x:x.onset):
             fields = ['SPEAKER',
                       turn.file_id,
                       '1',

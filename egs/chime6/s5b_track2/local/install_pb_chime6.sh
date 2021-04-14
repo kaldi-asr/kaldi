@@ -9,8 +9,9 @@ if [ ! -d $miniconda_dir ]; then
     echo "$miniconda_dir does not exist. Please run 'tools/extras/install_miniconda.sh" && exit 1;
 fi
 
-git clone https://github.com/fgnt/pb_chime5.git
+git clone https://github.com/sas91/pb_chime5.git
 cd pb_chime5
+git apply ../local/gss_track2.patch
 # Download submodule dependencies  # https://stackoverflow.com/a/3796947/5766934
 git submodule init  
 git submodule update
