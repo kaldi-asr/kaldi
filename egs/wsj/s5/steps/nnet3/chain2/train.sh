@@ -130,7 +130,7 @@ if [ $stage -le -1 ]; then
   if [ $num_langs -eq 1 ]; then
       echo "$0: Num langs is 1"
       cp $dir/init/default.raw $dir/0.raw
-      if [ ! -f $dir/init/default_trans.mdl ]; then
+      if [ ! -f $dir/0_trans.mdl ]; then
           cp $dir/init/default_trans.mdl $dir/0_trans.mdl 
       fi
   else
