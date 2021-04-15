@@ -367,7 +367,7 @@ fi
 if [ $stage -le 7 ]; then
   gss_enhanced_dir=${enhanced_dir}/gss_cs${context_samples}_it${iterations}
   mkdir -p ${enhanced_dir}
-  for dset in dev eval; do
+  for dset in eval; do
     echo "$0: Performing GSS-based ennhancement on ${dset}"
     local/run_gss.sh \
       --cmd "$train_cmd --max-jobs-run 80" --nj 100 \
@@ -378,6 +378,35 @@ if [ $stage -le 7 ]; then
       ${gss_enhanced_dir} || exit 1
   done
 fi
+
+if [ $stage -le 8 ]; then
+  echo "$0: Renaming GSS ouput wav files for decoding"
+  gss_enhanced_dir=${enhanced_dir}/gss_cs${context_samples}_it${iterations}
+  for datadir in ${test_sets}; do
+    test_dir=${datadir}_max_seg.bak # contains all arrays
+    data_name=$(echo ${datadir} | cut -d'_' -f1)
+    sessions=$(cut -d' ' -f2 data/${test_dir}/segments | cut -d'_' -f1 | sort -u)
+    for session in $sessions; do
+      echo "$session"
+      for spk in `seq 1 4`; do
+        find ${gss_enhanced_dir}/audio/${data_name} -name *.wav -exec \
+          rename "s/${spk}_${session}/${session}_U06.ENH-${spk}/" {} \;
+      done
+    done
+  done
+fi
+exit 1
+if [ $stage -le 9 ]; then
+  rm -rf data/dev_${datadir}_dereverb_diarized_hires
+  local/prepare_data_gss.sh ${enhanced_dir}/audio/dev \
+    data/dev_${datadir}_dereverb_diarized_hires \
+    ${rttm_dir_dev} ${rttm_file} data/dev_gss_MA_cs320000_rttm_overlap_dereverb_diarized_hires || exit 1
+  rm -rf data/eval_${datadir}_dereverb_diarized_hires
+  local/prepare_data_gss.sh ${enhanced_dir}/audio/eval \
+    data/eval_${datadir}_dereverb_diarized_hires \
+    ${rttm_dir_eval} ${rttm_file} data/eval_gss_MA_cs320000_rttm_overlap_dereverb_diarized_hires || exit 1
+fi
+
 exit 1
 if [ $stage -le 8 ]; then
   for datadir in ${test_sets}; do

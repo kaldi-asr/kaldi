@@ -108,7 +108,6 @@ if [ $stage -le 7 ]; then
   echo "$0: VB-based overlap assignment"
   diarization/VB_resegmentation.sh --nj $nj --cmd "$cmd" \
     --initialize 1 --overlap-rttm exp/${name}_ovl/rttm \
-    --sad-rttm data/${name}_whole/vad.rttm \
     --max-speakers 4 --max-iters 1 --loopProb 0.9 \
     data/${name}_whole ${out_dir}/rttm exp/${name}_vb \
     ${nnet_dir}/final.dubm ${nnet_dir}/final.ie || exit 1;
