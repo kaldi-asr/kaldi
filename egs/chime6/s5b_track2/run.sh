@@ -367,7 +367,7 @@ fi
 if [ $stage -le 7 ]; then
   gss_enhanced_dir=${enhanced_dir}/gss_cs${context_samples}_it${iterations}
   mkdir -p ${enhanced_dir}
-  for dset in eval; do
+  for dset in dev eval; do
     echo "$0: Performing GSS-based ennhancement on ${dset}"
     local/run_gss.sh \
       --cmd "$train_cmd --max-jobs-run 80" --nj 100 \
@@ -397,18 +397,17 @@ if [ $stage -le 8 ]; then
 fi
 exit 1
 if [ $stage -le 9 ]; then
-  rm -rf data/dev_${datadir}_dereverb_diarized_hires
-  local/prepare_data_gss.sh ${enhanced_dir}/audio/dev \
-    data/dev_${datadir}_dereverb_diarized_hires \
-    ${rttm_dir_dev} ${rttm_file} data/dev_gss_MA_cs320000_rttm_overlap_dereverb_diarized_hires || exit 1
-  rm -rf data/eval_${datadir}_dereverb_diarized_hires
-  local/prepare_data_gss.sh ${enhanced_dir}/audio/eval \
-    data/eval_${datadir}_dereverb_diarized_hires \
-    ${rttm_dir_eval} ${rttm_file} data/eval_gss_MA_cs320000_rttm_overlap_dereverb_diarized_hires || exit 1
+  echo "$0: Preparing data for ASR"
+  gss_enhanced_dir=${enhanced_dir}/gss_cs${context_samples}_it${iterations}
+  for dset in dev eval; do
+    datadir=${dset}_beamformit_dereverb
+    local/prepare_data_gss.sh ${gss_enhanced_dir}/audio/${dset} \
+      exp/${datadir}_max_seg_vb/VB_rttm_ol \
+      data/${dset}_diarized_hires || exit 1
+  done
 fi
-
 exit 1
-if [ $stage -le 8 ]; then
+if [ $stage -le 10 ]; then
   for datadir in ${test_sets}; do
     local/decode_diarized.sh --nj $nj --cmd "$decode_cmd" --stage $decode_diarize_stage \
       --rttm-file exp/${datadir}_max_seg_vb/rttm \

@@ -1,10 +1,13 @@
 #!/bin/bash
 #
 # Copyright  2017  Johns Hopkins University (Author: Shinji Watanabe, Yenda Trmal)
+#            2021  Johns Hopkins University (Author: Desh Raj)
 # Apache 2.0
 
+# This scripts prepares the data directory from the enhanced wav files and the
+# RTTM file.
+
 # Begin configuration section.
-mictype=worn # worn, ref or others
 cleanup=true
 # End configuration section
 . ./utils/parse_options.sh  # accept options.. you can run this run.sh with the
@@ -12,23 +15,21 @@ cleanup=true
 . ./path.sh
 
 echo >&2 "$0" "$@"
-if [ $# -ne 5 ] ; then
+if [ $# -ne 3 ] ; then
   echo >&2 "$0" "$@"
   echo >&2 "$0: Error: wrong number of arguments"
-  echo -e >&2 "Usage:\n  $0 [opts] <audio-dir> <output-dir>"
-  echo -e >&2 "eg:\n  $0 /corpora/chime5/audio/train data/train"
+  echo -e >&2 "Usage:\n  $0 [opts] <audio-dir> <rttm-file> <out-data-dir>"
+  echo -e >&2 "eg:\n  $0 enhanced/gss/dev exp/dev_diarization/rttm data/dev_gss"
   exit 1
 fi
 
 set -e -o pipefail
 
 adir=$(utils/make_absolute.sh $1)
-dir=$2
-rttm_dir=$3
-rttm_file=$4
-data_in_gss=$5
+rttm_file=$2
+data_dir=$3
 
-mkdir -p $dir
+mkdir -p $data_dir
 
 find -L $adir -name  "S[0-9]*.wav" | \
   perl -ne '{
@@ -38,31 +39,21 @@ find -L $adir -name  "S[0-9]*.wav" | \
     @F = split "/", $path;
     ($f = $F[@F-1]) =~ s/.wav//;
     print "$f $path\n";
-  }' | sort > $dir/wav.list
+  }' | sort > $data_dir/wav.scp
 
-$cleanup && rm -f $dir/text.* $dir/wav.scp.* $dir/wav.flist
+$cleanup && rm -f $data_dir/text.* $data_dir/wav.scp.* $data_dir/wav.flist
 
-cp $rttm_dir/${rttm_file} $rttm_dir/${rttm_file}_1
-sed -i 's/'.ENH'//g' $rttm_dir/${rttm_file}_1
-local/convert_rttm_to_utt2spk_and_segments.py --append-reco-id-to-spkr=true $rttm_dir/${rttm_file}_1 \
-  <(awk '{print $2".ENH "$2" "$3}' ${rttm_dir}/${rttm_file}_1 |sort -u) \
-  ${dir}/utt2spk ${dir}/segments_full
+cat ${rttm_file} |\
+  sed 's/'.ENH'//g' |\
+  local/truncate_rttm.py --min-segment-length 0.2 - local/uem_file - |\
+  sed 's/_U06/_U06.ENH/g' |\
+  awk '($8=="5"){$8="1"}{print $0}' > ${rttm_file}_1
 
-local/truncate_rttm.py $rttm_dir/${rttm_file}_1 local/uem_file $rttm_dir/${rttm_file}_introduction_removed
-local/convert_rttm_to_utt2spk_and_segments.py --append-reco-id-to-spkr=true $rttm_dir/${rttm_file}_introduction_removed \
-  <(awk '{print $2".ENH "$2" "$3}' $rttm_dir/${rttm_file}_introduction_removed |sort -u) \
-  ${dir}/utt2spk ${dir}/segments_select_1
+local/convert_rttm_to_utt2spk_and_segments.py --append-reco-id-to-spkr=true ${rttm_file}_1 \
+  <(awk '{print $2,$2,$3}' ${rttm_file}_1 | sort -u) \
+  ${data_dir}/utt2spk ${data_dir}/segments_all
 
-paste ${dir}/segments_select_1 $dir/wav.list | awk '{print $1 " " $6}' > $dir/wav_full.scp
-awk 'NR==FNR{seen[$1]; next} $1 in seen' ${data_in_gss}/wav.scp ${dir}/wav_full.scp > ${dir}/wav.scp
-
-#awk 'NR==FNR{seen[$1]; next} $1 in seen' ${dir}/segments_select ${dir}/wav_full.scp > $dir/wav.scp
-
-awk '{split($1, lst, "-"); spk=lst[1]"-"lst[2]; print($1, spk)}' $dir/wav.scp > $dir/utt2spk
-#cut -f 1 -d ' ' $dir/wav.scp | \
-#  perl -ne 'chomp;$utt=$_;s/-.*//;print "$utt $_\n";' > $dir/utt2spk
-
-utils/utt2spk_to_spk2utt.pl $dir/utt2spk > $dir/spk2utt
+utils/utt2spk_to_spk2utt.pl $data_dir/utt2spk > $data_dir/spk2utt
 
 # Check that data dirs are okay!
-utils/validate_data_dir.sh --no-text --no-feats $dir || exit 1
+utils/validate_data_dir.sh --no-text --no-feats $data_dir || exit 1
