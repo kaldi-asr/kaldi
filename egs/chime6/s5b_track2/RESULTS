@@ -16,5 +16,5 @@ Eval (old RTTM)   59.96     65.76
 Eval (new RTTM)   71.67     67.46
 
 # ASR nnet3: model from s5b_track1 (with RNNLM rescoring)
-Dev:  %WER 84.25 [ 49610 / 58881, 1937 ins, 34685 del, 12988 sub ]
-Eval: %WER 77.94 [ 42971 / 55132, 1086 ins, 30839 del, 11046 sub ]
+Dev:  %WER 70.27 [ 41375 / 58881, 2009 ins, 24361 del, 15005 sub ]
+Eval: %WER 69.02 [ 38052 / 55132, 1737 ins, 24531 del, 11784 sub ]

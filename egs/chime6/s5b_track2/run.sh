@@ -28,6 +28,16 @@ context_samples=320000
 iterations=5
 ref_array_gss=U01
 
+# RNNLM rescore options
+ngram_order=4 # approximate the lattice-rescoring by limiting the max-ngram-order
+              # if it's set, it merges histories in the lattice if they share
+              # the same ngram history and this prevents the lattice from 
+              # exploding exponentially
+pruned_rescore=true
+rnnlm_dir=exp/rnnlm_lstm_1b
+
+asr_model_dir=exp/chain_train_worn_simu_u400k_cleaned_rvb/tdnn1b_cnn_sp
+
 # option to use the new RTTM reference for sad and diarization
 use_new_rttm_reference=false
 if $use_new_rttm_reference == "true"; then
@@ -395,39 +405,54 @@ if [ $stage -le 8 ]; then
     done
   done
 fi
-exit 1
+
 if [ $stage -le 9 ]; then
   echo "$0: Preparing data for ASR"
   gss_enhanced_dir=${enhanced_dir}/gss_cs${context_samples}_it${iterations}
   for dset in dev eval; do
     datadir=${dset}_beamformit_dereverb
     local/prepare_data_gss.sh ${gss_enhanced_dir}/audio/${dset} \
-      exp/${datadir}_max_seg_vb/VB_rttm_ol \
-      data/${dset}_diarized_hires || exit 1
+      data/${dset}_diarized || exit 1
+    cp data/${datadir}/text.bak data/${dset}_diarized/text
   done
 fi
-exit 1
+
 if [ $stage -le 10 ]; then
-  for datadir in ${test_sets}; do
-    local/decode_diarized.sh --nj $nj --cmd "$decode_cmd" --stage $decode_diarize_stage \
-      --rttm-file exp/${datadir}_max_seg_vb/rttm \
-      exp/${datadir}_${nnet_type}_seg_vb data/$datadir data/lang \
-      exp/chain_${train_set}_cleaned_rvb exp/nnet3_${train_set}_cleaned_rvb \
-      data/${datadir}_diarized || exit 1
+  for dset in dev eval; do
+    data_dir=data/${dset}_diarized
+    local/nnet3/decode.sh --affix 2stage --acwt 1.0 --post-decode-acwt 10.0 \
+      --frames-per-chunk 150 --nj $nj --ivector-dir exp/nnet3_train_worn_simu_u400k_cleaned_rvb \
+      $data_dir data/lang $asr_model_dir/tree_sp/graph $asr_model_dir/tdnn1b_cnn_sp/
   done
 fi
-exit 1
+
+if [ $stage -le 11 ]; then
+  for dset in dev eval; do
+    echo "$0: Perform RNNLM lattice-rescoring on $dset"
+    decode_dir=${asr_model_dir}/decode_${dset}_diarized_2stage
+    # Lattice rescoring
+    rnnlm/lmrescore_pruned.sh \
+        --cmd "$decode_cmd --mem 8G" --skip-scoring true \
+        --weight 0.45 --max-ngram-order $ngram_order \
+        data/lang $rnnlm_dir \
+        data/${dset}_diarized ${decode_dir} \
+        ${asr_model_dir}/decode_${dset}_diarized_2stage_rescore
+    local/score.sh --cmd "$decode_cmd --mem 8G" data/${dset}_diarized data/lang \
+      ${asr_model_dir}/decode_${dset}_diarized_2stage_rescore
+  done
+fi
+
 #######################################################################
 # Score decoded dev/eval sets
 #######################################################################
-if [ $stage -le 8 ]; then
+if [ $stage -le 12 ]; then
   # final scoring to get the challenge result
   # please specify both dev and eval set directories so that the search parameters
   # (insertion penalty and language model weight) will be tuned using the dev set
   local/score_for_submit.sh --stage $score_stage \
-      --dev_decodedir exp/chain_${train_set}_cleaned_rvb/tdnn1b_cnn_sp/decode_dev_beamformit_dereverb_diarized_2stage \
-      --dev_datadir dev_beamformit_dereverb_diarized_hires \
-      --eval_decodedir exp/chain_${train_set}_cleaned_rvb/tdnn1b_sp/decode_eval_beamformit_dereverb_diarized_2stage \
-      --eval_datadir eval_beamformit_dereverb_diarized_hires
+      --dev_decodedir ${asr_model_dir}/decode_dev_diarized_2stage_rescore \
+      --dev_datadir dev_diarized \
+      --eval_decodedir ${asr_model_dir}/decode_eval_diarized_2stage_rescore \
+      --eval_datadir eval_diarized
 fi
 exit 0;
