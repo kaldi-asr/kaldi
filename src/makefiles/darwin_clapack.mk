@@ -22,7 +22,7 @@ CXXFLAGS = -std=c++11 -I.. -I$(OPENFSTINC) -O1 $(EXTRA_CXXFLAGS) \
            -Wno-deprecated-declarations -Winit-self \
            -DKALDI_DOUBLEPRECISION=$(DOUBLE_PRECISION) \
            -DHAVE_EXECINFO_H=1 -DHAVE_CXXABI_H -DHAVE_CLAPACK -I../../tools/CLAPACK \
-           -msse -msse2 -pthread \
+           -msse -msse2 \
            -g
 
 ifeq ($(KALDI_FLAVOR), dynamic)
@@ -47,4 +47,9 @@ CXXFLAGS += -flax-vector-conversions
 endif
 
 LDFLAGS = $(EXTRA_LDFLAGS) $(OPENFSTLDFLAGS) -g
-LDLIBS = $(EXTRA_LDLIBS) $(OPENFSTLIBS) $(CLAPACKLIBS) -lm -lpthread -ldl
+LDLIBS = $(EXTRA_LDLIBS) $(OPENFSTLIBS) $(CLAPACKLIBS) -lm -ldl
+
+ifneq ($(ARCH), WASM)
+    CXXFLAGS += -pthread
+    LDLIBS += -lpthread
+endif
