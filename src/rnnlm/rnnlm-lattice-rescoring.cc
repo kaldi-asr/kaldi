@@ -94,7 +94,7 @@ bool KaldiRnnlmDeterministicFst::GetArc(StateId s, Label ilabel,
   }
 
   std::pair<const std::vector<Label>, StateId> wseq_state_pair(
-      word_seq, static_cast<Label>(state_to_wseq_.size()));
+      word_seq, static_cast<StateId>(state_to_wseq_.size()));
 
   // Attemps to insert the current <wseq_state_pair>. If the pair already exists
   // then it returns false.
