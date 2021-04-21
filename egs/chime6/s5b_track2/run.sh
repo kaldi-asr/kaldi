@@ -36,7 +36,7 @@ ngram_order=4 # approximate the lattice-rescoring by limiting the max-ngram-orde
 pruned_rescore=true
 rnnlm_dir=exp/rnnlm_lstm_1b
 
-asr_model_dir=exp/chain_train_worn_simu_u400k_cleaned_rvb/tdnn1b_cnn_sp
+asr_model_dir=exp/chain_train_worn_simu_u400k_cleaned_rvb/
 
 # option to use the new RTTM reference for sad and diarization
 use_new_rttm_reference=false
