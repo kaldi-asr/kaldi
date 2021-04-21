@@ -429,7 +429,7 @@ fi
 if [ $stage -le 11 ]; then
   for dset in dev eval; do
     echo "$0: Perform RNNLM lattice-rescoring on $dset"
-    decode_dir=${asr_model_dir}/decode_${dset}_diarized_2stage
+    decode_dir=${asr_model_dir}/tdnn1b_cnn_sp/decode_${dset}_diarized_2stage
     # Lattice rescoring
     rnnlm/lmrescore_pruned.sh \
         --cmd "$decode_cmd --mem 8G" --skip-scoring true \
@@ -450,9 +450,9 @@ if [ $stage -le 12 ]; then
   # please specify both dev and eval set directories so that the search parameters
   # (insertion penalty and language model weight) will be tuned using the dev set
   local/score_for_submit.sh --stage $score_stage \
-      --dev_decodedir ${asr_model_dir}/decode_dev_diarized_2stage_rescore \
+      --dev_decodedir ${asr_model_dir}/tdnn1b_cnn_sp/decode_dev_diarized_2stage_rescore \
       --dev_datadir dev_diarized \
-      --eval_decodedir ${asr_model_dir}/decode_eval_diarized_2stage_rescore \
+      --eval_decodedir ${asr_model_dir}/tdnn1b_cnn_sp/decode_eval_diarized_2stage_rescore \
       --eval_datadir eval_diarized
 fi
 exit 0;
