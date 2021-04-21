@@ -1,6 +1,6 @@
 // featbin/matrix-mean.cc
 
-// Copyright 2013-2014  Daniel Povey
+// Copyright 2021  Desh Raj
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -17,11 +17,9 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-
 #include "base/kaldi-common.h"
-#include "util/common-utils.h"
 #include "matrix/kaldi-matrix.h"
-
+#include "util/common-utils.h"
 
 int main(int argc, char *argv[]) {
   using namespace kaldi;
@@ -63,44 +61,43 @@ int main(int argc, char *argv[]) {
       std::string spk = spk2utt_reader.Key();
       const std::vector<std::string> &uttlist = spk2utt_reader.Value();
       if (uttlist.empty()) {
-        KALDI_ERR << "Speaker with no utterances.";
+        KALDI_WARN << "Speaker " << spk << " has no utterances. Not processing further.";
+        continue;
       }
       Matrix<BaseFloat> spk_max;
       int32 utt_count = 0;
 
       // All matrices may be unequal size. First we drop last
       // rows of matrices and make them the same size.
-      int32 min_length = std::numeric_limits<std::int32_t>::max();;
-      for (size_t i = 0; i < uttlist.size(); i++) {
-        std::string utt = uttlist[i];
+      int32 min_length = std::numeric_limits<int32>::max();
+      for (const std::string& utt : uttlist) {
         if (matrix_reader.HasKey(utt)) {
           min_length = std::min(min_length, matrix_reader.Value(utt).NumRows());
         }
       }
-      for (size_t i = 0; i < uttlist.size(); i++) {
-        std::string utt = uttlist[i];
+      for (const std::string& utt : uttlist) {
         if (!matrix_reader.HasKey(utt)) {
           KALDI_WARN << "No matrix present in input for utterance " << utt;
           num_utt_err++;
-        } else {
-          if (utt_count == 0)
-            spk_max.Resize(min_length, matrix_reader.Value(utt).NumCols());
-          if (matrix_reader.Value(utt).NumRows() > min_length) {
-            KALDI_WARN << "Cropping rows of matrix " << utt << " from "
-                        << matrix_reader.Value(utt).NumRows() << " to " 
-                        << min_length;
-          
-          }
-          SubMatrix<BaseFloat> temp(matrix_reader.Value(utt), 0, min_length, 
-              0, matrix_reader.Value(utt).NumCols());
-          spk_max.Max(temp);
-          num_utt_done++;
-          utt_count++;
+          continue;
         }
+        if (utt_count == 0) {
+          spk_max.Resize(min_length, matrix_reader.Value(utt).NumCols());
+        }
+        if (matrix_reader.Value(utt).NumRows() > min_length) {
+          KALDI_WARN << "Cropping rows of matrix " << utt << " from "
+                      << matrix_reader.Value(utt).NumRows() << " to "
+                      << min_length;
+        }
+        SubMatrix<BaseFloat> temp(matrix_reader.Value(utt), 0, min_length,
+            0, matrix_reader.Value(utt).NumCols());
+        spk_max.Max(temp);
+        num_utt_done++;
+        utt_count++;
       }
       if (utt_count == 0) {
         KALDI_WARN << "Not producing output for speaker " << spk
-                    << " since no utterances had matrices";
+                   << " since no utterances had matrices";
         num_spk_err++;
       } else {
         matrix_writer.Write(spk, spk_max);
@@ -113,7 +110,7 @@ int main(int argc, char *argv[]) {
               << num_utt_done << " utterances (" << num_utt_err
               << " absent from input).";
 
-    return (num_spk_done != 0 ? 0 : 1);
+    return num_spk_done != 0 ? 0 : 1;
   } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
