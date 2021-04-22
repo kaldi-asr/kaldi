@@ -7,9 +7,7 @@ CC ?= gcc        # used for sph2pipe
 
 WGET ?= wget
 
-# Note: OpenFst requires a relatively recent C++ compiler with C++11 support,
-# e.g. g++ >= 4.7, Apple clang >= 5.0 or LLVM clang >= 3.3.
-OPENFST_VERSION ?= 1.6.7
+OPENFST_VERSION ?= 1.7.2
 CUB_VERSION ?= 1.8.0
 # No '?=', since there exists only one version of sph2pipe.
 SPH2PIPE_VERSION = 2.5
@@ -22,9 +20,9 @@ OPENFST_CONFIGURE ?= --enable-static --enable-shared --enable-far \
                      --enable-ngram-fsts --enable-lookahead-fsts --with-pic
 
 OPENFST_VER_NUM := $(shell echo $(OPENFST_VERSION) | sed 's/\./ /g' | xargs printf "%d%02d%02d")
-ifeq ("$(shell expr $(OPENFST_VER_NUM) \< 10600)","1")
+ifeq ("$(shell expr $(OPENFST_VER_NUM) \< 10607)","1")
     $(error OpenFst-$(OPENFST_VERSION) is not supported. \
-            Supported versions: >= 1.6.0)
+            Supported versions: >= 1.6.7)
 endif
 
 .PHONY: all clean distclean
@@ -84,7 +82,7 @@ endif
 openfst-$(OPENFST_VERSION)/Makefile: openfst-$(OPENFST_VERSION)
 	cd openfst-$(OPENFST_VERSION)/ && \
 	./configure --prefix=`pwd` $(OPENFST_CONFIGURE) CXX="$(CXX)" \
-		CXXFLAGS="$(CXXFLAGS) $(openfst_add_CXXFLAGS)" \
+		CXXFLAGS="$(openfst_add_CXXFLAGS) $(CXXFLAGS)" \
 		LDFLAGS="$(LDFLAGS)" LIBS="-ldl"
 
 openfst-$(OPENFST_VERSION): openfst-$(OPENFST_VERSION).tar.gz
