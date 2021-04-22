@@ -17,8 +17,7 @@ SCTK_GITHASH = 20159b5
 
 # Default features configured for OpenFST; can be overridden in the make command line.
 OPENFST_CONFIGURE ?= --enable-static --enable-shared --enable-far \
-                     --enable-ngram-fsts --enable-lookahead-fsts \
-                     --disable-dependency-tracking --with-pic
+                     --enable-ngram-fsts --enable-lookahead-fsts --with-pic
 
 OPENFST_VER_NUM := $(shell echo $(OPENFST_VERSION) | sed 's/\./ /g' | xargs printf "%d%02d%02d")
 ifeq ("$(shell expr $(OPENFST_VER_NUM) \< 10607)","1")
