@@ -22,6 +22,7 @@
 #define KALDI_CUDA_DECODER_WAIT_FOR_NEW_TASKS_US 100
 
 #include <nvToolsExt.h>
+
 #include "cudadecoder/batched-threaded-nnet3-cuda-pipeline2.h"
 
 namespace kaldi {
