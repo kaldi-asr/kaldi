@@ -3,6 +3,8 @@
 # Copyright 2016    Vijayaditya Peddinti.
 #           2016    Vimal Manohar
 #           2017    Hossein Hadian
+#           2021    Behavox Ltd. (author: Hossein Hadian)
+
 # Apache 2.0.
 
 """ This script does flat-start chain training and is based on
@@ -100,6 +102,15 @@ def get_args():
 
 
     # trainer options
+    parser.add_argument("--trainer.input-model", type=str,
+                        dest='input_model', default=None,
+                        action=common_lib.NullstrToNoneAction,
+                        help="If specified, this model is used as initial "
+                             "'raw' model (0.raw in the script) instead of "
+                             "initializing the model from the xconfig. "
+                             "Also configs dir is not expected to exist "
+                             "and left/right context is computed from this "
+                             "model.")
     parser.add_argument("--trainer.num-epochs", type=float, dest='num_epochs',
                         default=10.0,
                         help="Number of epochs to train the model")
@@ -202,10 +213,11 @@ def process_args(args):
             "--trainer.deriv-truncate-margin.".format(
                 args.deriv_truncate_margin))
 
-    if (not os.path.exists(args.dir + "/configs")):
-        raise Exception("This scripts expects the directory specified with "
-                        "--dir={0} to exist and have a configs/ directory which "
-                        "is the output of make_configs.py script".format(args.dir))
+    if (not os.path.exists(args.dir + "/configs") and
+        (args.input_model is None or not os.path.exists(args.input_model))):
+        raise Exception("Either --trainer.input-model option should be supplied, "
+                        "and exist; or the {0}/configs directory should exist."
+                        "".format(args.dir))
 
     # set the options corresponding to args.use_gpu
     run_opts = common_train_lib.RunOpts()
@@ -280,10 +292,15 @@ def train(args, run_opts):
     with open('{0}/num_jobs'.format(args.dir), 'w') as f:
         f.write(str(num_jobs))
 
-    config_dir = '{0}/configs'.format(args.dir)
-    var_file = '{0}/vars'.format(config_dir)
+    if args.input_model is None:
+        config_dir = '{0}/configs'.format(args.dir)
+        var_file = '{0}/vars'.format(config_dir)
 
-    variables = common_train_lib.parse_generic_config_vars_file(var_file)
+        variables = common_train_lib.parse_generic_config_vars_file(var_file)
+    else:
+        # If args.input_model is specified, the model left and right contexts
+        # are computed using input_model.
+        variables = common_train_lib.get_input_model_info(args.input_model)
 
     # Set some variables.
     try:
@@ -309,7 +326,9 @@ def train(args, run_opts):
         logger.info("Creating denominator FST")
         chain_lib.create_denominator_fst(args.dir, args.tree_dir, run_opts)
 
-    if (args.stage <= -4):
+    if ((args.stage <= -4) and
+            os.path.exists("{0}/configs/init.config".format(args.dir))
+            and (args.input_model is None)):
         logger.info("Initializing a basic network...")
         common_lib.execute_command(
             """{command} {dir}/log/nnet_init.log \
@@ -384,7 +403,8 @@ def train(args, run_opts):
 
     if (args.stage <= -1):
         logger.info("Preparing the initial acoustic model.")
-        chain_lib.prepare_initial_acoustic_model(args.dir, run_opts)
+        chain_lib.prepare_initial_acoustic_model(args.dir, run_opts,
+                                                 input_model=args.input_model)
 
     with open("{0}/frame_subsampling_factor".format(args.dir), "w") as f:
         f.write(str(args.frame_subsampling_factor))
