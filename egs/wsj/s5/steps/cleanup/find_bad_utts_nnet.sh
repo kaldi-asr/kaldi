@@ -126,7 +126,7 @@ if [ $stage -le 1 ]; then
 
   rm $dir/edits.*.txt $dir/aligned_ref.*.txt 2>/dev/null
 
-  $cmd JOB=1:$nj $dir/log/decode.JOB.log \
+  $cmd $queue_opt JOB=1:$nj $dir/log/decode.JOB.log \
     utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt $sdata/JOB/text \| \
     steps/cleanup/make_utterance_fsts.pl $dir/top_words.int \| \
     compile-train-graphs-fsts $scale_opts --read-disambig-syms=$lang/phones/disambig.int \
