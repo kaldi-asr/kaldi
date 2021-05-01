@@ -6,19 +6,15 @@
 #           2017  Xiaohui Zhang
 #           2020  Ke Li
 
-# This script trains a backward LSTM based LM on reversed transcription, and use
-# it to rescore either decoded lattices, or lattices that are just rescored with
-# a forward RNNLM. In order to run this, you must first run the forward RNNLM
-# recipe at local/rnnlm/run_tdnn_lstm.sh
+# This script trains LSTM based LMs on transcription and perform lattice rescoring
+# on 1st pass decoding results.
+# Begin configuration section.
 
 #rnnlm/train_rnnlm.sh: best iteration (out of 6) was 2, linking it to final iteration.
 #rnnlm/train_rnnlm.sh: train/dev perplexity was 62.4 / 142.0.
 #Train objf: -4.40 -4.12 -3.88 -3.64 -3.40
 #Dev objf:   -5.05 -4.96 -5.02 -5.20 -5.43
 
-# Begin configuration section.
-
-# 1b is emb-dim = 512 and lstm_rpd and lstm_nrpd = 128
 dir=exp/rnnlm_lstm_1b_backward
 embedding_dim=512
 lstm_rpd=128
@@ -28,21 +24,14 @@ comp_l2=0.003 # component-level l2 regularize
 output_l2=0.001 # output-layer l2 regularize
 stage=-10
 train_stage=-10
+score_stage=0
 
 # variables for lattice rescoring
 run_lat_rescore=true
 run_nbest_rescore=true
 run_backward_rnnlm=false
 
-# ac_model_dir=exp/chain_train_worn_simu_u400k_cleaned_rvb/tdnn1b_cnn_sp
-# Single model 1
-# ac_model_dir=exp/chain_train_worn_simu_u400k_cleaned_rvb/tdnn1b_cnn_l2_03_4500_ep6_sp
-# Single model 2
-# ac_model_dir=exp/chain_train_worn_simu_u400k_cleaned_rvb/tdnn1b_cnn_ep6_lm03_1_sp
-# Single model 3
-# ac_model_dir=exp/chain_train_worn_simu_u400k_cleaned_rvb/tdnn1b_cnn_overlap_sp
-# Single model 4
-ac_model_dir=exp/chain_train_worn_simu_u400k_cleaned_rvb/tdnn1b_silence2
+ac_model_dir=exp/chain_train_worn_simu_u400k_cleaned_rvb/tdnn1b_cnn_sp
 
 decode_dir_suffix_forward=rnnlm_1b
 decode_dir_suffix_backward=rnnlm_1b_back
@@ -60,13 +49,13 @@ pruned_rescore=true
 
 train_text=data/train_worn/text
 dev_text=data/dev_worn/text
-text_dir=data/rnnlm/text_back
+text_dir=data/rnnlm/text
 mkdir -p $dir/config
 set -e
 
-for f in $train_text $dev_text; do
+for f in $text; do
   [ ! -f $f ] && \
-    echo "$0: expected file $f to exist" && exit 1
+    echo "$0: expected file $f to exist; search for local/wsj_extend_dict.sh in run.sh" && exit 1
 done
 
 if [ $stage -le 0 ]; then
@@ -128,25 +117,16 @@ fi
 # old 3-gram LM is data/lang/G.fst 
 if [ $stage -le 4 ] && $run_lat_rescore; then
   echo "$0: Perform lattice-rescoring on $ac_model_dir"
-  for decode_set in dev_gss_multiarray eval_gss_multiarray; do
-    decode_dir=${ac_model_dir}/decode_${decode_set}_2stage
 
+  for decode_set in dev_${enhancement} eval_${enhancement}; do
+    decode_dir=${ac_model_dir}/decode_${decode_set}_2stage
     # Lattice rescoring
     rnnlm/lmrescore_back.sh \
       --cmd "$decode_cmd --mem 4G" \
       --weight 0.2 --max-ngram-order $ngram_order \
       data/lang $dir \
-      data/${decode_set}_hires ${decode_dir}_${decode_dir_suffix_forward}_0.45 \
+      data/${decode_set}_hires ${decode_dir}_${decode_dir_suffix_forward}_0.4 \
       ${decode_dir}_${decode_dir_suffix_backward}_0.2
   done
-fi
-
-if [ $stage -le 5 ]; then
-  # final scoring to get the official challenge result
-  # please specify both dev and eval set directories so that the search parameters
-  # (insertion penalty and language model weight) will be tuned using the dev set
-  local/score_for_submit.sh --enhancement $enhancement --json $json_dir \
-      --dev ${ac_model_dir}/decode_dev_${enhancement}_2stage_${decode_dir_suffix_backward}_0.2 \
-      --eval ${ac_model_dir}/decode_eval_${enhancement}_2stage_${decode_dir_suffix_backward}_0.2
 fi
 exit 0

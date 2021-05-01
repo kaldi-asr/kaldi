@@ -36,7 +36,7 @@ set -e # exit on error
 
 # chime5 main directory path
 # please change the path accordingly
-chime5_corpus=/export/corpora4/CHiME5
+chime5_corpus=/export/corpora5/CHiME5
 # chime6 data directories, which are generated from ${chime5_corpus},
 # to synchronize audio files across arrays and modify the annotation (JSON) file accordingly
 chime6_corpus=${PWD}/CHiME6
@@ -172,8 +172,6 @@ fi
 
 
 if [ $stage -le 6 ]; then
-  # TODO: change training data to 280h including train_worn (40 * 2), gss (40),
-  # and beamformit(40 * 4)
   utils/combine_data.sh data/train_uall data/train_u01 data/train_u02 data/train_u05 data/train_u06
   utils/combine_data.sh data/${train_set} data/train_worn train_uall data/train_gss_multiarray
 

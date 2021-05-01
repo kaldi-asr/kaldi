@@ -1,41 +1,42 @@
 #!/usr/bin/env bash
 
-# 80 dim, results
-# %WER 12.48 [ 2433 / 19498, 229 ins, 1122 del, 1082 sub ] exp/chain_all/tdnn_all_cnn/decode_safe_t_dev1/wer_8_1.0
-# exp/chain_all/tdnn_all_cnn: num-iters=502 nj=3..5 num-params=15.1M dim=80+100->4520 combine=-0.065->-0.063 (over 7) xent:train/valid[333,501,final]=(-1.40,-1.16,-1.14/-1.41,-1.23,-1.21) logprob:train/valid[333,501,final]=(-0.076,-0.057,-0.056/-0.090,-0.075,-0.074)
+# %WER 46.07 [ 27124 / 58881, 2905 ins, 9682 del, 14537 sub ] exp/chain_train_worn_simu_u400k_cleaned_rvb/tdnn1b_cnn_sp/decode_dev_gss_multiarray_2stage/wer_10_0.0 
+# %WER 45.97 [ 25344 / 55132, 2144 ins, 11128 del, 12072 sub ] exp/chain_train_worn_simu_u400k_cleaned_rvb/tdnn1b_cnn_sp/decode_eval_gss_multiarray_2stage/wer_9_0.5
 
-# 40 dim results
-# 40 dim: %WER 12.85 [ 2507 / 19507, 254 ins, 1107 del, 1146 sub ] exp/chain_all/tdnn_all/decode_safe_t_dev1/wer_8_1.0
-# 40 dim: %WER 12.61 [ 2460 / 19507, 245 ins, 1119 del, 1096 sub ] exp/chain_all/tdnn_all_2/decode_safe_t_dev1/wer_9_0.5
+set -e
 
-# ./local/chain/compare_wer.sh exp/chain_all/tdnn_all_2/
-# System                       tdnn_all_2
-# WER                             12.61
-# Final train prob              -0.0573
-# Final valid prob              -0.0744
-# Final train prob (xent)       -1.1640
-# Final valid prob (xent)       -1.2260
-# Parameters                     14.39M
-
-set -e -o pipefail
+# configs for 'chain'
 stage=0
-nj=90
-train_set=train_all
+nj=96
+train_set=train_worn_u400k
+test_sets="dev_worn dev_beamformit_ref"
 gmm=tri3
-num_epochs=10
+nnet3_affix=_train_worn_u400k
+lm_suffix=
 
 # The rest are configs specific to this script.  Most of the parameters
 # are just hardcoded at this level, in the commands below.
+affix=1b_cnn_10ep   # affix for the TDNN directory name
+tree_affix=
 train_stage=-10
-xent_regularize=0.1
 get_egs_stage=-10
-tree_affix=_all  # affix for tree directory, e.g. "a" or "b", in case we change the configuration.
-tdnn_affix=_all  #affix for TDNN directory, e.g. "a" or "b", in case we change the configuration.
-nnet3_affix=_all
-common_egs_dir= 
-dropout_schedule='0,0@0.20,0.5@0.50,0'
-remove_egs=true
+decode_iter=
+
+num_epochs=6
+common_egs_dir=
+# training options
+# training chunk-options
 chunk_width=140,100,160
+xent_regularize=0.1
+dropout_schedule='0,0@0.20,0.5@0.50,0'
+
+# training options
+srand=0
+remove_egs=true
+
+#decode options
+test_online_decoding=false  # if true, it will run the last decoding stage.
+skip_decoding=true
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 
@@ -51,65 +52,79 @@ where "nvcc" is installed.
 EOF
 fi
 
+# The iVector-extraction and feature-dumping parts are the same as the standard
+# nnet3 setup, and you can skip them by setting "--stage 11" if you have already
+# run those things.
 local/nnet3/run_ivector_common.sh --stage $stage \
-                                  --nj $nj \
                                   --train-set $train_set \
                                   --gmm $gmm \
-                                  --nnet3-affix "$nnet3_affix"
+                                  --nnet3-affix "$nnet3_affix" || exit 1;
 
-gmm_dir=exp/${gmm}_${train_set}
-ali_dir=exp/${gmm}_${train_set}_ali_sp
-lores_train_data_dir=data/${train_set}_sp
+# Problem: We have removed the "train_" prefix of our training set in
+# the alignment directory names! Bad!
+gmm_dir=exp/$gmm
+tree_dir=exp/chain${nnet3_affix}/tree_sp${tree_affix:+_$tree_affix}
+lang=data/lang_chain
+lat_dir=exp/chain${nnet3_affix}/${gmm}_${train_set}_sp_lats
+dir=exp/chain${nnet3_affix}/tdnn${affix}_sp
 train_data_dir=data/${train_set}_sp_hires
-lang_dir=data/lang_nosp_test
-tree_dir=exp/chain${nnet3_affix}/tree_bi${tree_affix}
-lat_dir=exp/tri3_${train_set}_lats_sp
-dir=exp/chain${nnet3_affix}/cnn_tdnn${tdnn_affix}
+lores_train_data_dir=data/${train_set}_sp
 train_ivector_dir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires
 
-for f in $gmm_dir/final.mdl $lores_train_data_dir/feats.scp \
-   $train_data_dir/feats.scp $train_ivector_dir/ivector_online.scp; do
+for f in $gmm_dir/final.mdl $train_data_dir/feats.scp $train_ivector_dir/ivector_online.scp \
+    $lores_train_data_dir/feats.scp; do
   [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1
 done
 
-
-if [ $stage -le 11 ]; then
-  nj=$(cat $ali_dir/num_jobs) || exit 1;
-  steps/align_fmllr_lats.sh --nj $nj --cmd "$train_cmd" $lores_train_data_dir \
-    $lang_dir $gmm_dir $lat_dir
-  rm $lat_dir/fsts.*.gz
-fi
-
-if [ $stage -le 12 ]; then
-  echo "$0: creating lang directory with one state per phone."
+if [ $stage -le 10 ]; then
+  echo "$0: creating lang directory $lang with chain-type topology"
   # Create a version of the lang/ directory that has one state per phone in the
   # topo file. [note, it really has two states.. the first one is only repeated
   # once, the second one has zero or more repeats.]
-  if [ -d data/lang_chain ]; then
-    if [ data/lang_chain/L.fst -nt $lang_dir/L.fst ]; then
-      echo "$0: data/lang_chain already exists, not overwriting it; continuing"
+  if [ -d $lang ]; then
+    if [ $lang/L.fst -nt data/lang/L.fst ]; then
+      echo "$0: $lang already exists, not overwriting it; continuing"
     else
-      echo "$0: data/lang_chain already exists and seems to be older than data/lang..."
+      echo "$0: $lang already exists and seems to be older than data/lang..."
       echo " ... not sure what to do.  Exiting."
       exit 1;
     fi
   else
-    cp -r $lang_dir data/lang_chain
-    silphonelist=$(cat data/lang_chain/phones/silence.csl) || exit 1;
-    nonsilphonelist=$(cat data/lang_chain/phones/nonsilence.csl) || exit 1;
-    # Use our special topology... note that later on may have to tune this topology.
-    steps/nnet3/chain/gen_topo.py $nonsilphonelist $silphonelist >data/lang_chain/topo
+    cp -r data/lang $lang
+    silphonelist=$(cat $lang/phones/silence.csl) || exit 1;
+    nonsilphonelist=$(cat $lang/phones/nonsilence.csl) || exit 1;
+    # Use our special topology... note that later on may have to tune this
+    # topology.
+    steps/nnet3/chain/gen_topo.py $nonsilphonelist $silphonelist >$lang/topo
   fi
 fi
 
-if [ $stage -le 13 ]; then
-  steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
-      --context-opts "--context-width=2 --central-position=1" \
-      --leftmost-questions-truncate -1 \
-      --cmd "$train_cmd" 5000 ${lores_train_data_dir} data/lang_chain $ali_dir $tree_dir
+if [ $stage -le 11 ]; then
+  # Get the alignments as lattices (gives the chain training more freedom).
+  # use the same num-jobs as the alignments
+  steps/align_fmllr_lats.sh --nj ${nj} --cmd "$train_cmd" --generate-ali-from-lats true \
+    ${lores_train_data_dir} \
+    data/lang $gmm_dir $lat_dir
+  rm $lat_dir/fsts.*.gz # save space
 fi
 
-if [ $stage -le 14 ]; then
+if [ $stage -le 12 ]; then
+  # Build a tree using our new topology.  We know we have alignments for the
+  # speed-perturbed data (local/nnet3/run_ivector_common.sh made them), so use
+  # those.  The num-leaves is always somewhat less than the num-leaves from
+  # the GMM baseline.
+  if [ -f $tree_dir/final.mdl ]; then
+     echo "$0: $tree_dir/final.mdl already exists, refusing to overwrite it."
+     exit 1;
+  fi
+  steps/nnet3/chain/build_tree.sh \
+    --frame-subsampling-factor 3 \
+    --context-opts "--context-width=2 --central-position=1" \
+    --cmd "$train_cmd" 4500 ${lores_train_data_dir} \
+    $lang $lat_dir $tree_dir
+fi
+
+if [ $stage -le 13 ]; then
   mkdir -p $dir
 
   echo "$0: creating neural net configs using the xconfig parser";
@@ -147,7 +162,6 @@ if [ $stage -le 14 ]; then
   # the first TDNN-F layer has no bypass (since dims don't match), and a larger bottleneck so the
   # information bottleneck doesn't become a problem.  (we use time-stride=0 so no splicing, to
   # limit the num-parameters).
-
   tdnnf-layer name=tdnnf7 $tdnnf_first_opts dim=1536 bottleneck-dim=256 time-stride=0
   tdnnf-layer name=tdnnf8 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=3
   tdnnf-layer name=tdnnf9 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=3
@@ -158,7 +172,6 @@ if [ $stage -le 14 ]; then
   tdnnf-layer name=tdnnf14 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=3
   tdnnf-layer name=tdnnf15 $tdnnf_opts dim=1536 bottleneck-dim=160 time-stride=3
   linear-component name=prefinal-l dim=256 $linear_opts
-
   ## adding the layers for chain branch
   prefinal-layer name=prefinal-chain input=prefinal-l $prefinal_opts small-dim=256 big-dim=1536
   output-layer name=output include-log-softmax=false dim=$num_targets $output_opts
@@ -170,20 +183,20 @@ EOF
 
 fi
 
-if [ $stage -le 15 ]; then
+if [ $stage -le 14 ]; then
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $dir/egs/storage ]; then
     utils/create_split_dir.pl \
-     /export/b0{5,6,7,8}/$USER/kaldi-data/egs/opensat-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
+     /export/b0{3,4,5,6}/$USER/kaldi-data/egs/chime5-$(date +'%m_%d_%H_%M')/s5/$dir/egs/storage $dir/egs/storage
   fi
 
 steps/nnet3/chain/train.py --stage $train_stage \
-    --cmd "$decode_cmd" \
+    --cmd "$gpu_cmd" \
     --feat.online-ivector-dir $train_ivector_dir \
     --feat.cmvn-opts "--norm-means=false --norm-vars=false" \
     --chain.xent-regularize $xent_regularize \
-    --chain.leaky-hmm-coefficient=0.1 \
-    --chain.l2-regularize=0.0 \
-    --chain.apply-deriv-weights=false \
+    --chain.leaky-hmm-coefficient 0.1 \
+    --chain.l2-regularize 0.0 \
+    --chain.apply-deriv-weights false \
     --chain.lm-opts="--num-extra-lm-states=2000" \
     --trainer.dropout-schedule $dropout_schedule \
     --trainer.add-option="--optimization.memory-compression-level=2" \
@@ -194,7 +207,7 @@ steps/nnet3/chain/train.py --stage $train_stage \
     --trainer.frames-per-iter 3000000 \
     --trainer.num-epochs 10 \
     --trainer.optimization.num-jobs-initial 3 \
-    --trainer.optimization.num-jobs-final 5 \
+    --trainer.optimization.num-jobs-final 16 \
     --trainer.optimization.initial-effective-lrate 0.00025 \
     --trainer.optimization.final-effective-lrate 0.000025 \
     --trainer.max-param-change 2.0 \
@@ -204,21 +217,4 @@ steps/nnet3/chain/train.py --stage $train_stage \
     --lat-dir $lat_dir \
     --dir $dir  || exit 1;
 fi
-
-
-if [ $stage -le 16 ]; then
-  steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 20 \
-    data/safe_t_dev1_hires exp/nnet3${nnet3_affix}/extractor \
-    exp/nnet3${nnet3_affix}/ivectors_safe_t_dev1_hires
-
-  utils/mkgraph.sh --self-loop-scale 1.0 data/lang_nosp_test $dir $dir/graph
-fi
-
-if [ $stage -le 17 ]; then
-    steps/nnet3/decode.sh --num-threads 4 --nj 20 --cmd "$decode_cmd" \
-        --acwt 1.0 --post-decode-acwt 10.0 \
-        --online-ivector-dir exp/nnet3${nnet3_affix}/ivectors_safe_t_dev1_hires \
-       $dir/graph data/safe_t_dev1_hires $dir/decode_safe_t_dev1 || exit 1;
-fi
-exit 0
-
+exit 0;
