@@ -48,7 +48,7 @@
 { \
   int32 ret; \
   if ((ret = (fun)) != CUFFT_SUCCESS) { \
-    KALDI_ERR << "cublasResult " << ret << " returned from '" << #fun << "'"; \
+    KALDI_ERR << "cufftResult " << ret << " returned from '" << #fun << "'"; \
   } \
 }
 

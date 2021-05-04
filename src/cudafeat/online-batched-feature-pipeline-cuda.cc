@@ -94,7 +94,7 @@ OnlineBatchedFeaturePipelineCuda::OnlineBatchedFeaturePipelineCuda(
   current_samples_stash_ = new int32_t[num_channels_];
 
   // allocated pinned memory for storing channel desc
-  cudaMallocHost(&h_lanes_, sizeof(LaneDesc) * max_lanes_);
+  CU_SAFE_CALL(cudaMallocHost(&h_lanes_, sizeof(LaneDesc) * max_lanes_));
 
   // allocate device memory
   lanes_ =
@@ -108,13 +108,13 @@ OnlineBatchedFeaturePipelineCuda::~OnlineBatchedFeaturePipelineCuda() {
   if (cmvn_ != NULL) delete cmvn_;
   if (ivector_ != NULL) delete ivector_;
 
-  cudaFreeHost(h_lanes_);
+  CU_SAFE_CALL(cudaFreeHost(h_lanes_));
 
   delete[] current_samples_stash_;
 
   CuDevice::Instantiate().Free(lanes_);
 
-  cudaEventDestroy(event_);
+  CU_SAFE_CALL(cudaEventDestroy(event_));
 }
 
 void OnlineBatchedFeaturePipelineCuda::ComputeFeaturesBatched(

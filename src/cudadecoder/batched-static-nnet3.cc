@@ -92,9 +92,9 @@ void BatchedStaticNnet3::Allocate() {
 }
 
 void BatchedStaticNnet3::Deallocate() {
-  cudaFreeHost(h_batch_slot_assignement_);
-  cudaFreeHost(d_batch_slot_assignement_);
-  cudaEventDestroy(batch_slot_assignement_copy_evt_);
+  CU_SAFE_CALL(cudaFreeHost(h_batch_slot_assignement_));
+  CU_SAFE_CALL(cudaFree(d_batch_slot_assignement_));
+  CU_SAFE_CALL(cudaEventDestroy(batch_slot_assignement_copy_evt_));
 }
 
 void BatchedStaticNnet3::CompileNnet3() {
