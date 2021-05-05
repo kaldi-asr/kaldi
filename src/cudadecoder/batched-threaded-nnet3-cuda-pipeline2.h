@@ -15,10 +15,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#if HAVE_CUDA == 1
-
 #ifndef KALDI_CUDA_DECODER_BATCHED_THREADED_NNET3_CUDA_PIPELINE2_H_
 #define KALDI_CUDA_DECODER_BATCHED_THREADED_NNET3_CUDA_PIPELINE2_H_
+
+#if HAVE_CUDA
 
 #include <atomic>
 #include <thread>
@@ -241,5 +241,5 @@ class BatchedThreadedNnet3CudaPipeline2 {
 }  // end namespace cuda_decoder
 }  // namespace kaldi
 
-#endif  // KALDI_CUDA_DECODER_BATCHED_THREADED_CUDA_DECODER_H_
 #endif  // HAVE_CUDA
+#endif  // KALDI_CUDA_DECODER_BATCHED_THREADED_CUDA_DECODER_H_

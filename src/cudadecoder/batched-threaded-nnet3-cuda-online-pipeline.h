@@ -15,10 +15,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#if HAVE_CUDA == 1
+#ifndef KALDI_CUDADECODER_BATCHED_THREADED_CUDA_ONLINE_PIPELINE_H_
+#define KALDI_CUDADECODER_BATCHED_THREADED_CUDA_ONLINE_PIPELINE_H_
 
-#ifndef KALDI_CUDA_DECODER_BATCHED_THREADED_CUDA_ONLINE_PIPELINE_H_
-#define KALDI_CUDA_DECODER_BATCHED_THREADED_CUDA_ONLINE_PIPELINE_H_
+#if HAVE_CUDA
 
 #define KALDI_CUDA_DECODER_MIN_NCHANNELS_FACTOR 2
 
@@ -427,5 +427,5 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
 }  // end namespace cuda_decoder
 }  // end namespace kaldi.
 
-#endif  // KALDI_CUDA_DECODER_BATCHED_THREADED_CUDA_ONLINE_PIPELINE_H_
 #endif  // HAVE_CUDA
+#endif  // KALDI_CUDADECODER_BATCHED_THREADED_CUDA_ONLINE_PIPELINE_H_

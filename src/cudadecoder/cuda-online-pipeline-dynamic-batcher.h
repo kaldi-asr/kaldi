@@ -36,8 +36,24 @@ struct CudaOnlinePipelineDynamicBatcherConfig {
 };
 
 class CudaOnlinePipelineDynamicBatcher {
+ public:
   typedef BatchedThreadedNnet3CudaOnlinePipeline::CorrelationID CorrelationID;
 
+  CudaOnlinePipelineDynamicBatcher(
+      CudaOnlinePipelineDynamicBatcherConfig config,
+      BatchedThreadedNnet3CudaOnlinePipeline &cuda_pipeline);
+
+  virtual ~CudaOnlinePipelineDynamicBatcher();
+
+  // Push a new chunk to the dynamic batcher
+  // the wave_samples will be deep copied,
+  // the caller can safely reuse or free wave_samples's storage after Push's
+  // return
+  void Push(CorrelationID corr_id, bool is_first_chunk, bool is_last_chunk,
+            const SubVector<BaseFloat> &wave_samples);
+  void WaitForCompletion();
+
+ private:
   // Batches created by this Batcher
   struct Batch {
     std::vector<CorrelationID> corr_ids;
@@ -79,22 +95,13 @@ class CudaOnlinePipelineDynamicBatcher {
     size_t Size() { return corr_ids.size(); }
   };
 
- public:
-  CudaOnlinePipelineDynamicBatcher(
-      CudaOnlinePipelineDynamicBatcherConfig config,
-      BatchedThreadedNnet3CudaOnlinePipeline &cuda_pipeline);
+  struct Chunk {
+    CorrelationID corr_id;
+    bool is_first_chunk;
+    bool is_last_chunk;
+    Vector<BaseFloat> wave_samples;  // deep copy, owns data
+  };
 
-  virtual ~CudaOnlinePipelineDynamicBatcher();
-
-  // Push a new chunk to the dynamic batcher
-  // the wave_samples will be deep copied,
-  // the caller can safely reuse or free wave_samples's storage after Push's
-  // return
-  void Push(CorrelationID corr_id, bool is_first_chunk, bool is_last_chunk,
-            const SubVector<BaseFloat> &wave_samples);
-  void WaitForCompletion();
-
- private:
   // Either add to next_batch_ or to backlog_
   bool TryAddChunkToNextBatchDeepCopy(
       CorrelationID corr_id, bool is_first_chunk, bool is_last_chunk,
@@ -106,12 +113,6 @@ class CudaOnlinePipelineDynamicBatcher {
   void FillNextBatchWithBacklog();
 
   CudaOnlinePipelineDynamicBatcherConfig config_;
-  struct Chunk {
-    CorrelationID corr_id;
-    bool is_first_chunk;
-    bool is_last_chunk;
-    Vector<BaseFloat> wave_samples;  // deep copy, owns data
-  };
 
   void BatcherThreadLoop();
   std::list<Chunk> backlog_;

@@ -15,8 +15,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_CUDA_DECODER_CUDA_DECODER_H_
-#define KALDI_CUDA_DECODER_CUDA_DECODER_H_
+#ifndef KALDI_CUDADECODER_CUDA_DECODER_H_
+#define KALDI_CUDADECODER_CUDA_DECODER_H_
+
+#if HAVE_CUDA
+
+#include <cuda_runtime_api.h>
+
+#include <cfloat>
+#include <mutex>
+#include <tuple>
+#include <vector>
 
 #include "cudadecoder/cuda-decodable-itf.h"
 #include "cudadecoder/cuda-decoder-common.h"
@@ -24,12 +33,6 @@
 #include "cudadecoder/thread-pool-light.h"
 #include "nnet3/decodable-online-looped.h"
 #include "online2/online-endpoint.h"
-
-#include <cuda_runtime_api.h>
-#include <cfloat>
-#include <mutex>
-#include <tuple>
-#include <vector>
 
 namespace kaldi {
 namespace cuda_decoder {
@@ -144,8 +147,8 @@ struct CudaDecoderConfig {
 // Forward declaration.
 // Those contains CUDA code. We don't want to include their definition
 // in this header
-class DeviceParams;
-class KernelParams;
+struct DeviceParams;
+struct KernelParams;
 
 class CudaDecoder {
  public:
@@ -933,4 +936,5 @@ class CudaDecoder {
 }  // end namespace cuda_decoder
 }  // namespace kaldi
 
-#endif  // KALDI_CUDA_DECODER_CUDA_DECODER_H_
+#endif  // HAVE_CUDA
+#endif  // KALDI_CUDADECODER_CUDA_DECODER_H_

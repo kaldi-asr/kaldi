@@ -15,9 +15,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifndef KALDI_CUDADECODERBIN_CUDA_BIN_TOOLS_H_
+#define KALDI_CUDADECODERBIN_CUDA_BIN_TOOLS_H_
+
 #include <iomanip>
 #include <iostream>
+#include <numeric>
 #include <vector>
+
 #include "cudadecoder/batched-threaded-nnet3-cuda-online-pipeline.h"
 #include "cudadecoder/batched-threaded-nnet3-cuda-pipeline2.h"
 #include "cudadecoder/cuda-pipeline-common.h"
@@ -25,16 +30,12 @@
 #include "nnet3/am-nnet-simple.h"
 #include "nnet3/nnet-utils.h"
 
-#ifndef KALDI_CUDA_DECODER_BIN_CUDA_BIN_TOOLS_H_
-#define KALDI_CUDA_DECODER_BIN_CUDA_BIN_TOOLS_H_
-
-#define KALDI_CUDA_DECODER_BIN_FLOAT_PRINT_PRECISION 2
-
 namespace kaldi {
 namespace cuda_decoder {
 
-// Prints some statistics based on latencies stored in latencies
-void PrintLatencyStats(std::vector<double> &latencies) {
+
+/// Print some statistics based on latencies stored in \p latencies.
+inline void PrintLatencyStats(std::vector<double> &latencies) {
   if (latencies.empty()) return;
   double total = std::accumulate(latencies.begin(), latencies.end(), 0.);
   double avg = total / latencies.size();
@@ -68,24 +69,15 @@ struct CudaOnlineBinaryOptions {
   BatchedThreadedNnet3CudaOnlinePipelineConfig batched_decoder_config;
 };
 
-int SetUpAndReadCmdLineOptions(int argc, char *argv[],
-                               CudaOnlineBinaryOptions *opts_ptr) {
+inline int SetUpAndReadCmdLineOptions(int argc, char *argv[],
+                                      CudaOnlineBinaryOptions *opts_ptr) {
   CudaOnlineBinaryOptions &opts = *opts_ptr;
   const char *usage =
-      "Reads in wav file(s) and simulates online "
-      "decoding with "
-      "neural nets\n"
-      "(nnet3 setup).  Note: some configuration values "
-      "and inputs "
-      "are\n"
-      "set via config files whose filenames are passed "
-      "as "
-      "options\n"
-      "\n"
-      "Usage: batched-wav-nnet3-cuda-online [options] "
-      "<nnet3-in> "
-      "<fst-in> "
-      "<wav-rspecifier> <lattice-wspecifier>\n";
+    "Reads in wav file(s) and simulates online decoding with neural nets\n"
+    "(nnet3 setup).  Note: some configuration values and inputs are\n"
+    "set via config files whose filenames are passed as options\n\n"
+    "Usage: batched-wav-nnet3-cuda-online [options] <nnet3-in> <fst-in>"
+    " <wav-rspecifier> <lattice-wspecifier>\n";
 
   ParseOptions po(usage);
   po.Register("print-hypotheses", &opts.print_hypotheses,
@@ -97,15 +89,12 @@ int SetUpAndReadCmdLineOptions(int argc, char *argv[],
   po.Register("word-symbol-table", &opts.word_syms_rxfilename,
               "Symbol table for words [for debug output]");
   po.Register("file-limit", &opts.num_todo,
-              "Limits the number of files that are processed by "
-              "this driver. "
-              "After N files are processed the remaining files "
-              "are ignored. "
-              "Useful for profiling");
+              "Limits the number of files that are processed by this driver."
+              " After N files are processed the remaining files are ignored."
+              " Useful for profiling");
   po.Register("iterations", &opts.niterations,
-              "Number of times to decode the corpus. Output will "
-              "be written "
-              "only once.");
+              "Number of times to decode the corpus. Output will be written"
+              " only once.");
   po.Register("num-parallel-streaming-channels", &opts.num_streaming_channels,
               "Number of channels streaming in parallel");
   po.Register("generate-lattice", &opts.generate_lattice,
@@ -115,7 +104,7 @@ int SetUpAndReadCmdLineOptions(int argc, char *argv[],
   CuDevice::RegisterDeviceOptions(&po);
   RegisterCuAllocatorOptions(&po);
   opts.batched_decoder_config.Register(&po);
- 
+
   po.Read(argc, argv);
 
   if (po.NumArgs() != 4) {
@@ -137,15 +126,16 @@ int SetUpAndReadCmdLineOptions(int argc, char *argv[],
   opts.clat_wspecifier = po.GetArg(4);
 
   if (opts.write_lattice) opts.generate_lattice = true;
-  
+
   return 0;
 }
 
-void ReadModels(const CudaOnlineBinaryOptions &opts,
-                TransitionModel *trans_model, nnet3::AmNnetSimple *am_nnet,
-                fst::Fst<fst::StdArc> **decode_fst,
-                fst::SymbolTable **word_syms) {
-  // read transition model and nnet
+inline void ReadModels(const CudaOnlineBinaryOptions &opts,
+                       TransitionModel *trans_model,
+                       nnet3::AmNnetSimple *am_nnet,
+                       fst::Fst<fst::StdArc> **decode_fst,
+                       fst::SymbolTable **word_syms) {
+  // Read acoustic and transition models.
   bool binary;
   Input ki(opts.nnet3_rxfilename, &binary);
   trans_model->Read(ki.Stream(), binary);
@@ -157,41 +147,40 @@ void ReadModels(const CudaOnlineBinaryOptions &opts,
   *decode_fst = fst::ReadFstKaldiGeneric(opts.fst_rxfilename);
 
   if (!opts.word_syms_rxfilename.empty()) {
-    if (!(*word_syms = fst::SymbolTable::ReadText(opts.word_syms_rxfilename)))
-      KALDI_ERR << "Could not read symbol "
-                   "table from file "
+    *word_syms = fst::SymbolTable::ReadText(opts.word_syms_rxfilename);
+    if (*word_syms == nullptr) {
+      KALDI_ERR << "Could not read symbol table from file "
                 << opts.word_syms_rxfilename;
+    }
   }
 }
 
-void ReadDataset(const CudaOnlineBinaryOptions &opts,
-                 std::vector<std::shared_ptr<WaveData>> *all_wav,
-                 std::vector<std::string> *all_wav_keys) {
-  // pre-loading data
-  // we don't want to measure I/O
+// Preload the whole test set to avoid mixing I/O into benchmark.
+inline void ReadDataset(const CudaOnlineBinaryOptions &opts,
+                        std::vector<std::shared_ptr<WaveData>> *all_wav,
+                        std::vector<std::string> *all_wav_keys) {
   SequentialTableReader<WaveHolder> wav_reader(opts.wav_rspecifier);
   size_t file_count = 0;
-  {
-    std::cout << "Loading eval dataset..." << std::flush;
-    for (; !wav_reader.Done(); wav_reader.Next()) {
-      if (file_count++ == opts.num_todo) break;
-      std::string utt = wav_reader.Key();
-      std::shared_ptr<WaveData> wave_data = std::make_shared<WaveData>();
-      wave_data->Swap(&wav_reader.Value());
-      all_wav->push_back(wave_data);
-      all_wav_keys->push_back(utt);
-      // total_audio += wave_data->Duration();
-    }
-    std::cout << "done" << std::endl;
+
+  std::cout << "Loading eval dataset..." << std::flush;
+  for (; !wav_reader.Done(); wav_reader.Next()) {
+    if (file_count++ == opts.num_todo) break;
+    std::string utt = wav_reader.Key();
+    std::shared_ptr<WaveData> wave_data = std::make_shared<WaveData>();
+    wave_data->Swap(&wav_reader.Value());
+    all_wav->push_back(wave_data);
+    all_wav_keys->push_back(utt);
+    // total_audio += wave_data->Duration();
   }
+  std::cout << "done" << std::endl;
 }
 
-// Reads all CTM outputs in results and merge them together
-// into a single output. That output is then written as a CTM text format to
-// ostream
-void MergeSegmentsToCTMOutput(std::vector<CudaPipelineResult> &results,
-                              const std::string &key, std::ostream &ostream,
-                              fst::SymbolTable *word_syms = NULL) {
+// Reads all CTM outputs in results and merge them together into a single
+// output. That output is then written as a CTM text format to ostream.
+inline void MergeSegmentsToCTMOutput(std::vector<CudaPipelineResult> &results,
+                                     const std::string &key,
+                                     std::ostream &ostream,
+                                     fst::SymbolTable *word_syms = NULL) {
   size_t nresults = results.size();
 
   if (nresults == 0) {
@@ -211,7 +200,7 @@ void MergeSegmentsToCTMOutput(std::vector<CudaPipelineResult> &results,
   }
 
   ostream << std::fixed;
-  ostream.precision(KALDI_CUDA_DECODER_BIN_FLOAT_PRINT_PRECISION);
+  ostream.precision(2);
 
   // opt: combine results into one here
   BaseFloat previous_segment_word_end = 0;
@@ -252,36 +241,36 @@ void MergeSegmentsToCTMOutput(std::vector<CudaPipelineResult> &results,
               << ' ';
 
       int32 word_id = ctm.words[iword];
-      if (word_syms)
+      if (word_syms) {
         ostream << word_syms->Find(word_id);
-      else
+      } else {
         ostream << word_id;
+      }
 
       ostream << ' ' << ctm.conf[iword] << '\n';
     }
   }
 }
 
-void OpenOutputHandles(const std::string &output_wspecifier,
-                       std::unique_ptr<CompactLatticeWriter> *clat_writer,
-                       std::unique_ptr<Output> *ctm_writer) {
-  WspecifierType ctm_wx_type;
-  ctm_wx_type = ClassifyWspecifier(output_wspecifier, NULL, NULL, NULL);
+inline void OpenOutputHandles(
+    const std::string &output_wspecifier,
+    std::unique_ptr<CompactLatticeWriter> *clat_writer,
+    std::unique_ptr<Output> *ctm_writer) {
+  WspecifierType ctm_wx_type =
+      ClassifyWspecifier(output_wspecifier, NULL, NULL, NULL);
 
   if (ctm_wx_type == kNoWspecifier) {
-    // No Wspecifier, assume this is a .ctm file
-    ctm_writer->reset(new Output(output_wspecifier,
-                                 false));  // false == non-binary writing mode.
+    // No wspecifier, assume this is a .ctm file.
+    ctm_writer->reset(new Output(output_wspecifier, /* binary= */ false));
   } else {
-    // Lattice output
+    // Lattice output.
     clat_writer->reset(new CompactLatticeWriter(output_wspecifier));
   }
 }
 
-// Write all lattices in results using clat_writer
-// If print_offsets is true, will write each lattice
-// under the key=[utterance_key]-[offset in seconds]
-// prints_offsets should be true if results.size() > 1
+// Write all lattices in results using clat_writer. If print_offsets is true,
+// write each lattice under the key="[utterance_key]-[offset in seconds]".
+// 'prints_offsets' should be true if results.size() > 1
 void WriteLattices(std::vector<CudaPipelineResult> &results,
                    const std::string &key, bool print_offsets,
                    CompactLatticeWriter &clat_writer) {
@@ -300,17 +289,16 @@ void WriteLattices(std::vector<CudaPipelineResult> &results,
     if (!print_offsets) {
       if (results.size() > 1) {
         KALDI_WARN << "Utterance " << key
-                   << " has multiple segments but only one is written to "
-                      "output. Use print_offsets=true";
+                   << (" has multiple segments but only one is written to"
+                       " output. Use print_offsets=true");
       }
-      break;  // printing only one result if offsets are not used
+      break;  // Print only one result if offsets are not used.
     }
   }
 }
 
-// Read lattice postprocessor config, apply it,
-// and assign it to the pipeline
-void LoadAndSetLatticePostprocessor(
+// Read lattice postprocessor config, apply it, and assign it to the pipeline.
+inline void LoadAndSetLatticePostprocessor(
     const std::string &config_filename,
     BatchedThreadedNnet3CudaPipeline2 *cuda_pipeline) {
   ParseOptions po("");  // No usage, reading from a file
@@ -325,4 +313,4 @@ void LoadAndSetLatticePostprocessor(
 }  // namespace cuda_decoder
 }  // namespace kaldi
 
-#endif
+#endif  // KALDI_CUDADECODERBIN_CUDA_BIN_TOOLS_H_

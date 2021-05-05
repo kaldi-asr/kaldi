@@ -16,19 +16,11 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifdef _WIN32_WINNT_WIN8
-#include <Synchapi.h>
-#elif defined(_WIN32) || defined(_MSC_VER) || defined(MINGW)
-#include <Windows.h>
-#if defined(_MSC_VER) && _MSC_VER < 1900
-#define snprintf _snprintf
-#endif /* _MSC_VER < 1900 */
-#else
-#include <unistd.h>
-#endif
+#include "base/kaldi-utils.h"
 
-#include <string>
-#include "base/kaldi-common.h"
+#include <chrono>
+#include <cstdio>
+#include <thread>
 
 
 namespace kaldi {
@@ -36,20 +28,18 @@ namespace kaldi {
 std::string CharToString(const char &c) {
   char buf[20];
   if (std::isprint(c))
-    snprintf(buf, sizeof(buf), "\'%c\'", c);
+    std::snprintf(buf, sizeof(buf), "\'%c\'", c);
   else
-    snprintf(buf, sizeof(buf), "[character %d]", static_cast<int>(c));
-  return (std::string) buf;
+    std::snprintf(buf, sizeof(buf), "[character %d]", static_cast<int>(c));
+  return buf;
 }
 
-void Sleep(float seconds) {
-#if defined(_MSC_VER) || defined(MINGW)
-  ::Sleep(static_cast<int>(seconds * 1000.0));
-#elif defined(__CYGWIN__)
-  sleep(static_cast<int>(seconds));
-#else
-  usleep(static_cast<int>(seconds * 1000000.0));
-#endif
+void Sleep(double sec) {
+  // duration_cast<> rounds down, add 0.5 to compensate.
+  auto dur_nanos = std::chrono::duration<double, std::nano>(sec * 1E9 + 0.5);
+  auto dur_syshires = std::chrono::duration_cast<
+    typename std::chrono::high_resolution_clock::duration>(dur_nanos);
+  std::this_thread::sleep_for(dur_syshires);
 }
 
 }  // end namespace kaldi

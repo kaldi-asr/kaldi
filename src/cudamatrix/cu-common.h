@@ -19,22 +19,22 @@
 // limitations under the License.
 
 
-
 #ifndef KALDI_CUDAMATRIX_CU_COMMON_H_
 #define KALDI_CUDAMATRIX_CU_COMMON_H_
-#include "cudamatrix/cu-matrixdim.h" // for CU1DBLOCK and CU2DBLOCK
 
 #include <iostream>
 #include <sstream>
+
 #include "base/kaldi-error.h"
+#include "cudamatrix/cu-matrixdim.h" // for CU1DBLOCK and CU2DBLOCK
 #include "matrix/matrix-common.h"
 
 #if HAVE_CUDA == 1
 #include <cublas_v2.h>
-#include <cusparse.h>
-#include <curand.h>
 #include <cuda_runtime_api.h>
-#include "nvToolsExt.h"
+#include <curand.h>
+#include <cusparse.h>
+#include <nvToolsExt.h>
 
 #define CU_SAFE_CALL(fun) \
 { \
@@ -142,7 +142,7 @@ const char* curandGetStatusString(curandStatus_t status);
 namespace kaldi {
 #define NVTX_RANGE(name)
 };
-#endif // HAVE_CUDA
+#endif  // HAVE_CUDA
 
 namespace kaldi {
 // Some forward declarations, needed for friend declarations.
@@ -161,7 +161,6 @@ template<typename Real> class CuSparseMatrix;
 template<typename Real> class CuBlockMatrix; // this has no non-CU counterpart.
 
 
-}
+}  // namespace kaldi
 
-
-#endif
+#endif  // KALDI_CUDAMATRIX_CU_COMMON_H_

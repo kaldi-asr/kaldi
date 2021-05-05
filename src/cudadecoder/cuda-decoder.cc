@@ -15,22 +15,28 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <sstream>
-#include "online2/online-endpoint.h"
-#if HAVE_CUDA == 1
+#if !HAVE_CUDA
+#error CUDA support must be configured to compile this library.
+#endif
 
-#include "cuda-decoder-kernels.h"
-#include "cuda-decoder.h"
+#include "cudadecoder/cuda-decoder.h"
+
+#include <algorithm>
+#include <map>
+#include <sstream>
+#include <tuple>
 
 #include <cuda_runtime_api.h>
 #include <nvToolsExt.h>
-#include <util/text-utils.h>
-#include <algorithm>
-#include <map>
-#include <tuple>
+
+#include "cudadecoder/cuda-decoder-kernels.h"
+#include "online2/online-endpoint.h"
+#include "util/text-utils.h"
+
 
 namespace kaldi {
 namespace cuda_decoder {
+
 CudaDecoder::CudaDecoder(const CudaFst &fst, const CudaDecoderConfig &config,
                          int32 nlanes, int32 nchannels)
     : word_syms_(NULL),
@@ -901,13 +907,13 @@ void CudaDecoder::WaitForPartialHypotheses() {
   if (!generate_partial_hypotheses_) return;
   while (n_partial_traceback_threads_not_done_.load(std::memory_order_acquire) >
          0)
-    usleep(200);
+    Sleep(200e-6);
 }
 
 void CudaDecoder::CheckOverflow() {
   for (LaneId ilane = 0; ilane < nlanes_used_; ++ilane) {
     LaneCounters *lane_counters = h_lanes_counters_.lane(ilane);
-    bool q_overflow = lane_counters->q_overflow;
+    int32_t q_overflow = lane_counters->q_overflow;
     if (q_overflow != OVERFLOW_NONE) {
       // An overflow was prevented in a kernel
       // The algorithm can still go on but quality of the
@@ -2072,5 +2078,3 @@ void CudaDecoder::SetThreadPoolAndStartCPUWorkers(ThreadPoolLight *thread_pool,
 
 }  // namespace cuda_decoder
 }  // namespace kaldi
-
-#endif  // HAVE_CUDA == 1
