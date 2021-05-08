@@ -238,6 +238,29 @@ class CuDevice {
   static void RegisterDeviceOptions(OptionsItf *po) {
     CuDevice::device_options_.Register(po);
   }
+
+  /// Enable the use of FP16 tensor math.
+  ///
+  /// Must be called before CuDevice::Initialize() to have effect.
+  ///
+  /// FP16 provides higher performance but less accuracy, and is only
+  /// recommended for inference.
+  static void EnableTensorCores(bool enable = true) {
+    device_options_.use_tensor_cores = enable;
+  }
+
+  /// Enable TF32 compute mode.
+  ///
+  /// Must be called before CuDevice::Initialize() to have effect.
+  ///
+  /// Tf32Compute is supported by Ampere (8.0) and above, and requires CUDA
+  /// version 11.0+. The setting will not be honored otherwise. The return
+  /// value will be \c false if CUDA version is too low to use this option.
+  static bool EnableTf32Compute(bool enable = true) {
+    return (device_options_.use_tf32_compute =
+            CUDA_VERSION >= 11000 && enable);
+  }
+
   ~CuDevice();
  private:
 
