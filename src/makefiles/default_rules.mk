@@ -148,10 +148,10 @@ endif
 depend:
 	rm -f .depend.mk
 ifneq ($(CC_DEP_COMMAND),)
-	$(CC_DEP_COMMAND) >> .depend.mk
+	-$(CC_DEP_COMMAND) >> .depend.mk
 endif
 ifneq ($(NVCC_DEP_COMMAND),)
-	$(NVCC_DEP_COMMAND) >> .depend.mk
+	-$(NVCC_DEP_COMMAND) >> .depend.mk
 endif
 
 # removing automatic making of "depend" as it's quite slow.
