@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.5)
 project(kaldi)
 
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
-  set(CMAKE_INSTALL_PREFIX ${CMAKE_SOURCE_DIR}/src CACHE PATH "Install path prefix." FORCE)
+  set(CMAKE_INSTALL_PREFIX ${CMAKE_CURRENT_SOURCE_DIR}/src CACHE PATH "Install path prefix." FORCE)
 endif(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake;${CMAKE_MODULE_PATH}")
 include(GNUInstallDirs)
@@ -156,7 +156,7 @@ if(CUDA_FOUND)
     link_libraries(${NvToolExt_LIBRARIES})
 
     get_third_party(cub)
-    set(CUB_ROOT_DIR "${CMAKE_BINARY_DIR}/cub")
+    set(CUB_ROOT_DIR "${CMAKE_CURRENT_BINARY_DIR}/cub")
     find_package(CUB REQUIRED)
     include_directories(${CUB_INCLUDE_DIR})
 endif()
@@ -170,15 +170,15 @@ if(${KALDI_USE_PATCH_NUMBER})
 endif()
 
 # get_third_party(openfst)
-# set(OPENFST_ROOT_DIR ${CMAKE_BINARY_DIR}/openfst)
+# set(OPENFST_ROOT_DIR ${CMAKE_CURRENT_BINARY_DIR}/openfst)
 # include(third_party/openfst_lib_target)
 find_library(OpenFST_LIBRARY
-            NAMES fst 
-            PATHS ${CMAKE_SOURCE_DIR}/tools/openfst/lib 
+            NAMES fst
+            PATHS ${CMAKE_CURRENT_SOURCE_DIR}/tools/openfst/lib
             REQUIRED)
 find_path(OpenFST_INCLUDE_DIR
-            NAMES "fst/fst.h" 
-            PATHS "${CMAKE_SOURCE_DIR}/tools/openfst/include"
+            NAMES "fst/fst.h"
+            PATHS "${CMAKE_CURRENT_SOURCE_DIR}/tools/openfst/include"
             REQUIRED)
 get_filename_component(OpenFST_LIBRARY_DIR ${OpenFST_LIBRARY} DIRECTORY CACHE)
 mark_as_advanced(FORCE OpenFST_INCLUDE_DIR OpenFST_LIBRARY OpenFST_LIBRARY_DIR)
@@ -253,15 +253,15 @@ include(CMakePackageConfigHelpers)
 # maybe we should put this into subfolder?
 configure_package_config_file(
     ${CMAKE_CURRENT_SOURCE_DIR}/cmake/kaldi-config.cmake.in
-    ${CMAKE_BINARY_DIR}/cmake/kaldi-config.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/cmake/kaldi-config.cmake
     INSTALL_DESTINATION lib/cmake/kaldi
 )
 write_basic_package_version_file(
-    ${CMAKE_BINARY_DIR}/cmake/kaldi-config-version.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/cmake/kaldi-config-version.cmake
     VERSION ${KALDI_VERSION}
     COMPATIBILITY AnyNewerVersion
 )
-install(FILES ${CMAKE_BINARY_DIR}/cmake/kaldi-config.cmake ${CMAKE_BINARY_DIR}/cmake/kaldi-config-version.cmake
+install(FILES ${CMAKE_CURRENT_BINARY_DIR}/cmake/kaldi-config.cmake ${CMAKE_CURRENT_BINARY_DIR}/cmake/kaldi-config-version.cmake
     DESTINATION lib/cmake/kaldi
 )
 install(EXPORT kaldi-targets DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/cmake/kaldi)
