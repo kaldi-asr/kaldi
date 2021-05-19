@@ -18,8 +18,6 @@ utils=`pwd`/utils
 
 . ./path.sh
 
-if false; then
-
 # Checks if python3 is available on the system and install python3 in userspace if not
 # This recipe currently relies on version 3 because python3 uses utf8 as internal 
 # string representation
@@ -58,7 +56,7 @@ if [ ! -d $dir/download/0468 ]; then
     tar -xzf $dir/download/sve.16khz.0467-1.tar.gz -C $dir/download/0467-1
     tar -xzf $dir/download/sve.16khz.0467-2.tar.gz -C $dir/download/0467-2
     tar -xzf $dir/download/sve.16khz.0467-3.tar.gz -C $dir/download/0467-3
-    make -p $dir/download/0468
+    mkdir -p $dir/download/0468
     tar -xzf $dir/download/sve.16khz.0468.tar.gz -C $dir/download/0468
 
     echo "Correcting file names."
@@ -69,8 +67,6 @@ if [ ! -d $dir/download/0468 ]; then
      
     echo "Corpus unpacked succesfully."
 fi
-
-fi # <- remove this
 
 sph2pipe=$(which sph2pipe) || sph2pipe=$KALDI_ROOT/tools/sph2pipe_v2.5/sph2pipe
 if [ ! -x $sph2pipe ]; then
