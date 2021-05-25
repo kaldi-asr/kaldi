@@ -15,18 +15,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_CUDA_DECODER_THREAD_POOL_LIGHT_H_
-#define KALDI_CUDA_DECODER_THREAD_POOL_LIGHT_H_
-
-#define KALDI_CUDA_DECODER_THREAD_POOL_QUEUE_FULL_WAIT_FOR_US 1000
+#ifndef KALDI_CUDADECODER_THREAD_POOL_LIGHT_H_
+#define KALDI_CUDADECODER_THREAD_POOL_LIGHT_H_
 
 #include <atomic>
 #include <thread>
 #include <vector>
+
 #include "util/stl-utils.h"
 
 namespace kaldi {
 namespace cuda_decoder {
+
+const double kSleepForWorkerAvailable = 1e-3;
 
 struct ThreadPoolLightTask {
   void (*func_ptr)(void *, uint64_t, void *);
@@ -99,7 +100,7 @@ class ThreadPoolLightWorker {
         (curr_task_.func_ptr)(curr_task_.obj_ptr, curr_task_.arg1,
                               curr_task_.arg2);
       } else {
-        usleep(1000);  // TODO
+        Sleep(1e-3f);  // TODO
       }
     }
   }
@@ -159,11 +160,11 @@ class ThreadPoolLight {
   void Push(const ThreadPoolLightTask &task) {
     // Could try another curr_iworker_
     while (!TryPush(task))
-      usleep(KALDI_CUDA_DECODER_THREAD_POOL_QUEUE_FULL_WAIT_FOR_US);
+      Sleep(kSleepForWorkerAvailable);
   }
 };
 
 }  // end namespace cuda_decoder
 }  // end namespace kaldi
 
-#endif  // KALDI_CUDA_DECODER_THREAD_POOL_H_
+#endif  // KALDI_CUDADECODER_THREAD_POOL_H_

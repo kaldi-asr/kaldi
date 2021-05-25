@@ -1065,7 +1065,7 @@ void UnitTestTableNumpyArray() {
   writer.Write(key1, NumpyArray<BaseFloat>(v));
   writer.Write(key2, NumpyArray<BaseFloat>(m));
   writer.Close();
-  usleep(200);
+  Sleep(200e-6);
 
   const char* rspecifier = "scp:numpy_array.scp";
   {
@@ -1124,8 +1124,7 @@ void UnitTestTableNumpyArray() {
 }
 
 
-
-}  // end namespace kaldi.
+}  // namespace kaldi
 
 int main() {
   using namespace kaldi;

@@ -9,13 +9,17 @@
 # vb_hmm_xvector.sh which can divide all labels into per recording
 # labels.
 
-import sys, argparse, struct
-import numpy as np
+import sys
+import argparse
+import struct
 import itertools
-import kaldi_io
 
+import numpy as np
+import kaldi_io
 from scipy.special import softmax
 
+sys.path.insert(0, 'steps')
+import libs.common as common_lib
 import VB_diarization
 
 ########### HELPER FUNCTIONS #####################################
@@ -36,8 +40,10 @@ def get_args():
                         help="scale sufficient statistics collected using UBM")
     parser.add_argument("--fb", type=float, default=11,
                         help="speaker regularization coefficient Fb (controls final # of speaker)")
-    parser.add_argument("xvector_ark_file", type=str,
-                        help="Ark file containing xvectors for all subsegments")
+    parser.add_argument("xvector_scp_file", type=str,
+                        help="Scp file containing xvectors for all subsegments")
+    parser.add_argument("reco2segs", type=str, help="Spk2utt style file "
+                        "containing recording to segment information")
     parser.add_argument("plda", type=str,
                         help="path to PLDA model")
     parser.add_argument("input_label_file", type=str,
@@ -48,30 +54,33 @@ def get_args():
     return args
 
 def read_labels_file(label_file):
-    segments = []
-    labels = []
-    with open(label_file, 'r') as f:
-        for line in f.readlines():
-            segment, label = line.strip().split()
-            segments.append(segment)
-            labels.append(int(label))
-    return segments, labels
+    seg2label = {}
+    with common_lib.smart_open(label_file, 'r') as f:
+        for line in f:
+            segment, label = line.strip().split(" ")
+            seg2label[segment]  = int(label)
+    return seg2label
+
+def read_reco2seg_file(reco2seg_file):
+    reco2segs = {}
+    with common_lib.smart_open(reco2seg_file, 'r') as f:
+        for line in f:
+            parts = line.strip().split(" ")
+            reco2segs[parts[0]] = parts[1:]
+    return reco2segs
 
 def write_labels_file(seg2label, out_file):
-    with open(out_file, 'w') as f:
+    with common_lib.smart_open(out_file, 'w') as f:
         for seg in sorted(seg2label.keys()):
             label = seg2label[seg]
-            f.write(f"{seg} {label}\n")
-    return
+            f.write("{0} {1}\n".format(seg, label))
 
 def read_args(args):
-    segments, labels = read_labels_file(args.input_label_file)
-    xvec_all = dict(kaldi_io.read_vec_flt_ark(args.xvector_ark_file))
-    xvectors = []
-    for segment in segments:
-        xvectors.append(xvec_all[segment])
+    seg2label = read_labels_file(args.input_label_file)
+    reco2segs = read_reco2seg_file(args.reco2segs)
+    xvectors = dict(kaldi_io.read_vec_flt_scp(args.xvector_scp_file))
     _, _, plda_psi = kaldi_io.read_plda(args.plda)
-    return xvectors, segments, labels, plda_psi
+    return xvectors, seg2label, reco2segs, plda_psi
 
 
 ###################################################################
@@ -104,12 +113,19 @@ def vb_hmm(segments, in_labels, xvectors, plda_psi, init_smoothing, loop_prob, f
 
 def main():
     args = get_args()
-    xvectors, segments, labels, plda_psi = read_args(args)
+    xvectors_all, seg2label, reco2segs, plda_psi = read_args(args)
 
-    seg2label_vb = vb_hmm(segments, labels, xvectors, plda_psi, args.init_smoothing, 
-        args.loop_prob, args.fa, args.fb)
+    seg2label_vb = {}
+    for reco_id in reco2segs:
+        segments = reco2segs[reco_id]
+        labels = [seg2label[seg] for seg in segments]
+        xvectors = [xvectors_all[k] for k in segments]
+        seg2label_vb.update(
+            vb_hmm(
+                segments, labels, xvectors, plda_psi, args.init_smoothing,
+                args.loop_prob, args.fa, args.fb
+        ))
     write_labels_file(seg2label_vb, args.output_label_file)
 
 if __name__=="__main__":
     main()
-

@@ -15,20 +15,29 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#if HAVE_CUDA == 1
-
-#define KALDI_CUDA_DECODER_WAIT_FOR_CALLBACKS_US 10000
-#define KALDI_CUDA_DECODER_WAIT_FOR_CPU_FEATURES_THREADS_US 1000
-#define KALDI_CUDA_DECODER_WAIT_FOR_AVAILABLE_CHANNEL_US 1000
+#if !HAVE_CUDA
+#error CUDA support must be configured to compile this library.
+#endif
 
 #include "cudadecoder/batched-threaded-nnet3-cuda-online-pipeline.h"
+
+#include <mutex>
+#include <numeric>
+#include <tuple>
+
 #include <nvToolsExt.h>
+
 #include "feat/feature-window.h"
 #include "lat/lattice-functions.h"
 #include "nnet3/nnet-utils.h"
 
 namespace kaldi {
 namespace cuda_decoder {
+
+const double kSleepForCallBack = 10e-3;
+const double kSleepForCpuFeatures = 1e-3;
+const double kSleepForChannelAvailable = 1e-3;
+
 void BatchedThreadedNnet3CudaOnlinePipeline::Initialize(
     const fst::Fst<fst::StdArc> &decode_fst) {
   ReadParametersFromModel();
@@ -57,6 +66,10 @@ void BatchedThreadedNnet3CudaOnlinePipeline::AllocateAndInitializeData(
     h_all_ivectors_.Resize(max_batch_size_, ivector_dim_, kSetZero,
                            kStrideEqualNumCols);
   }
+
+  // Set d_features_ptrs_, d_ivectors_ptrs_, features_frame_stride_
+  // to be used with DecodeBatch
+  SetFeaturesPtrs();
 
   d_all_log_posteriors_.Resize(max_batch_size_ * output_frames_per_chunk_,
                                trans_model_->NumPdfs(), kUndefined);
@@ -87,9 +100,9 @@ void BatchedThreadedNnet3CudaOnlinePipeline::AllocateAndInitializeData(
         thread_pool_.get(), config_.num_decoder_copy_threads);
   }
 
-  cuda_decoder_->SetOutputFrameShiftInSeconds(
-      feature_info_->FrameShiftInSeconds() *
-      config_.compute_opts.frame_subsampling_factor);
+  decoder_frame_shift_seconds_ = feature_info_->FrameShiftInSeconds() *
+                                 config_.compute_opts.frame_subsampling_factor;
+  cuda_decoder_->SetOutputFrameShiftInSeconds(decoder_frame_shift_seconds_);
 
   n_samples_valid_.resize(max_batch_size_);
   n_input_frames_valid_.resize(max_batch_size_);
@@ -109,7 +122,7 @@ void BatchedThreadedNnet3CudaOnlinePipeline::SetBestPathCallback(
 }
 
 bool BatchedThreadedNnet3CudaOnlinePipeline::TryInitCorrID(
-    CorrelationID corr_id, int wait_for) {
+    CorrelationID corr_id, int32 wait_for_us) {
   bool inserted;
   decltype(corr_id2channel_.end()) it;
   std::tie(it, inserted) = corr_id2channel_.insert({corr_id, -1});
@@ -121,10 +134,10 @@ bool BatchedThreadedNnet3CudaOnlinePipeline::TryInitCorrID(
     if (!channel_available) {
       // We cannot use that corr_id
       int waited_for = 0;
-      while (waited_for < wait_for) {
+      while (waited_for < wait_for_us) {
         lk.unlock();
-        usleep(KALDI_CUDA_DECODER_WAIT_FOR_AVAILABLE_CHANNEL_US);
-        waited_for += KALDI_CUDA_DECODER_WAIT_FOR_AVAILABLE_CHANNEL_US;
+        Sleep(kSleepForChannelAvailable);
+        waited_for += int32(kSleepForChannelAvailable * 1e6);
         lk.lock();
         channel_available = (available_channels_.size() > 0);
         if (channel_available) break;
@@ -156,13 +169,10 @@ bool BatchedThreadedNnet3CudaOnlinePipeline::TryInitCorrID(
 
   channel_frame_offset_[ichannel] = 0;
   return true;
-}  // namespace cuda_decoder
+}
 
-void BatchedThreadedNnet3CudaOnlinePipeline::ComputeGPUFeatureExtraction(
-    const std::vector<int> &channels,
-    const std::vector<SubVector<BaseFloat>> &wave_samples,
-    const std::vector<bool> &is_first_chunk,
-    const std::vector<bool> &is_last_chunk) {
+void BatchedThreadedNnet3CudaOnlinePipeline::CompactWavesToMatrix(
+    const std::vector<SubVector<BaseFloat>> &wave_samples) {
   for (int i = 0; i < wave_samples.size(); ++i) {
     const SubVector<BaseFloat> &src = wave_samples[i];
     int size = src.Dim();
@@ -171,10 +181,18 @@ void BatchedThreadedNnet3CudaOnlinePipeline::ComputeGPUFeatureExtraction(
     BaseFloat *wave_dst = h_all_waveform_.RowData(i);
     std::memcpy(wave_dst, wave_src, size * sizeof(BaseFloat));
   }
+}
+
+void BatchedThreadedNnet3CudaOnlinePipeline::ComputeGPUFeatureExtraction(
+    const std::vector<int> &channels, const Matrix<BaseFloat> &h_all_waveform,
+    const std::vector<int> &n_samples_valid,
+    const std::vector<bool> &is_first_chunk,
+    const std::vector<bool> &is_last_chunk) {
   // CopyFromMat syncs, avoiding it
-  KALDI_ASSERT(d_all_waveform_.SizeInBytes() == h_all_waveform_.SizeInBytes());
-  cudaMemcpyAsync(d_all_waveform_.Data(), h_all_waveform_.Data(),
-                  h_all_waveform_.SizeInBytes(), cudaMemcpyHostToDevice,
+  KALDI_ASSERT(d_all_waveform_.SizeInBytes() == h_all_waveform.SizeInBytes());
+  // Note : we could have smaller copies using the actual channels.size()
+  cudaMemcpyAsync(d_all_waveform_.Data(), h_all_waveform.Data(),
+                  h_all_waveform.SizeInBytes(), cudaMemcpyHostToDevice,
                   cudaStreamPerThread);
 
   KALDI_ASSERT(channels.size() == is_last_chunk.size());
@@ -182,18 +200,20 @@ void BatchedThreadedNnet3CudaOnlinePipeline::ComputeGPUFeatureExtraction(
 
   KALDI_ASSERT(gpu_feature_pipeline_);
   gpu_feature_pipeline_->ComputeFeaturesBatched(
-      channels.size(), channels, n_samples_valid_, is_first_chunk,
-      is_last_chunk, model_frequency_, d_all_waveform_, &d_all_features_,
-      &d_all_ivectors_, &n_input_frames_valid_);
+      channels.size(), channels, n_samples_valid, is_first_chunk, is_last_chunk,
+      model_frequency_, d_all_waveform_, &d_all_features_, &d_all_ivectors_,
+      &n_input_frames_valid_);
 }
 
 void BatchedThreadedNnet3CudaOnlinePipeline::ComputeCPUFeatureExtraction(
-    const std::vector<int> &channels,
-    const std::vector<SubVector<BaseFloat>> &wave_samples,
+    const std::vector<int> &channels, const Matrix<BaseFloat> &h_all_waveform,
+    const std::vector<int> &n_samples_valid,
     const std::vector<bool> &is_last_chunk) {
   // Will be used by worker threads to grab work
+
   fe_threads_channels_ = &channels;
-  fe_threads_wave_samples_ = &wave_samples;
+  fe_threads_h_all_waveform_ = &h_all_waveform;
+  fe_threads_n_samples_valid_ = &n_samples_valid;
 
   n_compute_features_not_done_.store(channels.size());
 
@@ -204,7 +224,7 @@ void BatchedThreadedNnet3CudaOnlinePipeline::ComputeCPUFeatureExtraction(
   }
 
   while (n_compute_features_not_done_.load(std::memory_order_acquire))
-    usleep(KALDI_CUDA_DECODER_WAIT_FOR_CPU_FEATURES_THREADS_US);
+    Sleep(kSleepForCpuFeatures);
 
   KALDI_ASSERT(d_all_features_.NumRows() == h_all_features_.NumRows() &&
                d_all_features_.NumCols() == h_all_features_.NumCols());
@@ -222,15 +242,79 @@ void BatchedThreadedNnet3CudaOnlinePipeline::ComputeCPUFeatureExtraction(
 
 void BatchedThreadedNnet3CudaOnlinePipeline::DecodeBatch(
     const std::vector<CorrelationID> &corr_ids,
+    const Matrix<BaseFloat> &h_all_waveform,
+    const std::vector<int> &n_samples_valid,
+    const std::vector<bool> &is_first_chunk,
+    const std::vector<bool> &is_last_chunk,
+    std::vector<const std::string *> *in_partial_hypotheses,
+    std::vector<bool> *in_end_points) {
+  KALDI_ASSERT(corr_ids.size() > 0);
+  KALDI_ASSERT(corr_ids.size() <= h_all_waveform.NumRows());
+  KALDI_ASSERT(corr_ids.size() == is_last_chunk.size());
+  ListIChannelsInBatch(corr_ids, &channels_);
+
+  // Feature extraction
+  if (config_.use_gpu_feature_extraction) {
+    ComputeGPUFeatureExtraction(channels_, h_all_waveform, n_samples_valid,
+                                is_first_chunk, is_last_chunk);
+  } else {
+    ComputeCPUFeatureExtraction(channels_, h_all_waveform, n_samples_valid,
+                                is_last_chunk);
+  }
+
+  // Calling DecodeBatch with computed features
+  DecodeBatch(corr_ids, d_features_ptrs_, features_frame_stride_,
+              n_input_frames_valid_, d_ivectors_ptrs_, is_first_chunk,
+              is_last_chunk, &channels_, in_partial_hypotheses, in_end_points);
+}
+
+void BatchedThreadedNnet3CudaOnlinePipeline::DecodeBatch(
+    const std::vector<CorrelationID> &corr_ids,
     const std::vector<SubVector<BaseFloat>> &wave_samples,
     const std::vector<bool> &is_first_chunk,
     const std::vector<bool> &is_last_chunk,
     std::vector<const std::string *> *in_partial_hypotheses,
     std::vector<bool> *in_end_points) {
-  nvtxRangePushA("DecodeBatch");
   KALDI_ASSERT(corr_ids.size() > 0);
   KALDI_ASSERT(corr_ids.size() == wave_samples.size());
   KALDI_ASSERT(corr_ids.size() == is_last_chunk.size());
+  ListIChannelsInBatch(corr_ids, &channels_);
+
+  // Compact in h_all_waveform_ to use the main DecodeBatch version
+  CompactWavesToMatrix(wave_samples);
+
+  DecodeBatch(corr_ids, h_all_waveform_, n_samples_valid_, is_first_chunk,
+              is_last_chunk, in_partial_hypotheses, in_end_points);
+}
+
+void BatchedThreadedNnet3CudaOnlinePipeline::SetFeaturesPtrs() {
+  d_features_ptrs_.clear();
+  d_ivectors_ptrs_.clear();
+  for (int i = 0; i < max_batch_size_; ++i) {
+    d_features_ptrs_.push_back(d_all_features_.Data() +
+                               i * input_frames_per_chunk_ *
+                                   d_all_features_.Stride());
+    if (use_ivectors_) {
+      d_ivectors_ptrs_.push_back(d_all_ivectors_.Data() + i * ivector_dim_);
+    }
+  }
+  features_frame_stride_ = d_all_features_.Stride();
+}
+
+void BatchedThreadedNnet3CudaOnlinePipeline::DecodeBatch(
+    const std::vector<CorrelationID> &corr_ids,
+    const std::vector<BaseFloat *> &d_features, const int features_frame_stride,
+    const std::vector<int> &n_input_frames_valid,
+    const std::vector<BaseFloat *> &d_ivectors,
+    const std::vector<bool> &is_first_chunk,
+    const std::vector<bool> &is_last_chunk, std::vector<int> *channels,
+    std::vector<const std::string *> *in_partial_hypotheses,
+    std::vector<bool> *in_end_points) {
+  nvtxRangePushA("DecodeBatch");
+  if (!channels) {
+    channels = &channels_;
+    ListIChannelsInBatch(corr_ids, channels);
+  }
 
   partial_hypotheses_ = in_partial_hypotheses;
   end_points_ = in_end_points;
@@ -241,43 +325,6 @@ void BatchedThreadedNnet3CudaOnlinePipeline::DecodeBatch(
       if (!partial_hypotheses_) partial_hypotheses_ = &partial_hypotheses_buf_;
       if (!end_points_) end_points_ = &end_points_buf_;
     }
-  }
-
-  ListIChannelsInBatch(corr_ids, &channels_);
-
-  if (config_.use_gpu_feature_extraction)
-    ComputeGPUFeatureExtraction(channels_, wave_samples, is_first_chunk,
-                                is_last_chunk);
-  else
-    ComputeCPUFeatureExtraction(channels_, wave_samples, is_last_chunk);
-
-  d_features_ptrs_.clear();
-  d_ivectors_ptrs_.clear();
-  for (int i = 0; i < channels_.size(); ++i) {
-    d_features_ptrs_.push_back(d_all_features_.Data() +
-                               i * input_frames_per_chunk_ *
-                                   d_all_features_.Stride());
-    if (use_ivectors_) {
-      d_ivectors_ptrs_.push_back(d_all_ivectors_.Data() + i * ivector_dim_);
-    }
-  }
-  int features_frame_stride = d_all_features_.Stride();
-  DecodeBatch(corr_ids, d_features_ptrs_, features_frame_stride,
-              n_input_frames_valid_, d_ivectors_ptrs_, is_first_chunk,
-              is_last_chunk, &channels_);
-}
-
-void BatchedThreadedNnet3CudaOnlinePipeline::DecodeBatch(
-    const std::vector<CorrelationID> &corr_ids,
-    const std::vector<BaseFloat *> &d_features, const int features_frame_stride,
-    const std::vector<int> &n_input_frames_valid,
-    const std::vector<BaseFloat *> &d_ivectors,
-    const std::vector<bool> &is_first_chunk,
-    const std::vector<bool> &is_last_chunk, std::vector<int> *channels) {
-  nvtxRangePushA("DecodeBatch");
-  if (!channels) {
-    channels = &channels_;
-    ListIChannelsInBatch(corr_ids, channels);
   }
 
   list_channels_first_chunk_.clear();
@@ -323,8 +370,10 @@ void BatchedThreadedNnet3CudaOnlinePipeline::DecodeBatch(
 }
 
 void BatchedThreadedNnet3CudaOnlinePipeline::ComputeOneFeature(int element) {
-  const SubVector<BaseFloat> &wave_samples =
-      (*fe_threads_wave_samples_)[element];
+  const int nsamples = (*fe_threads_n_samples_valid_)[element];
+  const SubVector<BaseFloat> wave_samples(
+      (*fe_threads_h_all_waveform_).RowData(element), nsamples);
+
   const int ichannel = (*fe_threads_channels_)[element];
   OnlineNnet2FeaturePipeline &feature_pipeline = *feature_pipelines_[ichannel];
   // KALDI_ASSERT("Mismatch sample frequency/model frequency" &&
@@ -335,6 +384,7 @@ void BatchedThreadedNnet3CudaOnlinePipeline::ComputeOneFeature(int element) {
       "this.GetNSampsPerChunk()" &&
       wave_samples.Dim() <= samples_per_chunk_);
   int32 start_iframe = feature_pipeline.NumFramesReady();
+
   feature_pipeline.AcceptWaveform(model_frequency_, wave_samples);
 
   // All frames should be ready here
@@ -443,7 +493,7 @@ void BatchedThreadedNnet3CudaOnlinePipeline::RunCallbacksAndFinalize(
         {&BatchedThreadedNnet3CudaOnlinePipeline::FinalizeDecodingWrapper, this,
          ichannel, static_cast<void *>(lattice_callback)});
   }
-}  // namespace cuda_decoder
+}
 
 void BatchedThreadedNnet3CudaOnlinePipeline::ListIChannelsInBatch(
     const std::vector<CorrelationID> &corr_ids, std::vector<int> *channels) {
@@ -563,9 +613,9 @@ void BatchedThreadedNnet3CudaOnlinePipeline::FinalizeDecoding(
 
 void BatchedThreadedNnet3CudaOnlinePipeline::WaitForLatticeCallbacks() {
   while (n_lattice_callbacks_not_done_.load() != 0)
-    usleep(KALDI_CUDA_DECODER_WAIT_FOR_CALLBACKS_US);
+    Sleep(kSleepForCallBack);
 }
+
+
 }  // namespace cuda_decoder
 }  // namespace kaldi
-
-#endif  // HAVE_CUDA

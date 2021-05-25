@@ -15,6 +15,12 @@ stage=0
 nj=10
 cleanup=true
 rttm_channel=0
+min_neighbors=3 # This is the min "p" value of number of neighbors to start
+                # thresholding the binary matrix. In the original paper, this
+                # is set to 2. Thanks to Hassan Taherian for pointing out that
+                # this value leads to instability since it often causes the
+                # affinity to not be fully connected. Hence we set it to 3 here
+                # by default.
 reco2num_spk=
 rttm_affix=
 
@@ -34,6 +40,7 @@ if [ $# != 2 ]; then
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
   echo "  --nj <n|10>                                      # Number of jobs (also see num-processes and num-threads)"
   echo "  --stage <stage|0>                                # To control partial reruns"
+  echo "  --min-neighbors <p|3>                            # Min value for affinity matrix thresholding"
   echo "  --rttm-channel <rttm-channel|0>                  # The value passed into the RTTM channel field. Only affects"
   echo "                                                   # the format of the RTTM file."
   echo "  --reco2num-spk <reco2num-spk-file>               # File containing mapping of recording ID"
@@ -48,7 +55,7 @@ dir=$2
 
 reco2num_spk_opts=
 if [ ! $reco2num_spk == "" ]; then
-  reco2num_spk_opts="--reco2num-spk $reco2num_spk"
+  reco2num_spk_opts="--reco2num_spk $reco2num_spk"
 fi
 
 mkdir -p $dir/tmp
@@ -79,7 +86,7 @@ if [ $stage -le 0 ]; then
     utils/filter_scp.pl $sdata/$j/spk2utt $srcdir/scores.scp > $dir/scores.$j.scp
   done
   $cmd JOB=1:$nj $dir/log/spectral_cluster.JOB.log \
-    python diarization/spec_clust.py $reco2num_spk_opts \
+    python3 diarization/spec_clust.py $reco2num_spk_opts --min_neighbors $min_neighbors \
       scp:$dir/scores.JOB.scp ark,t:$sdata/JOB/spk2utt ark,t:$dir/labels.JOB || exit 1;
 fi
 

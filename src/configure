@@ -39,7 +39,7 @@
 
 # This should be incremented after any significant change to the configure
 # script, i.e. any change affecting kaldi.mk or the build system as a whole.
-CONFIGURE_VERSION=11
+CONFIGURE_VERSION=13
 
 # We support bash version 3.2 (Macs still ship with this version as of 2019)
 # and above.
@@ -95,6 +95,8 @@ Configuration options:
   --host=HOST           Host triple in the format 'cpu-vendor-os'
                         If provided, it is prepended to all toolchain programs.
   --android-incdir=DIR  Android include directory
+  --enable-kenlm        enable kenlm runtime library installed in "../tools/kenlm"
+                        via extras/install_kenlm_query_only.sh, [default=no]
 
 Following environment variables can be used to override the default toolchain.
   CXX         C++ compiler [default=g++]
@@ -186,43 +188,43 @@ function check_library {
 function check_compiler {
 
   # Part of error message.
-  local supported_compiler="GNU g++ >= 4.7, Apple clang >= 5.0 or LLVM clang >= 3.3"
+  local supported_compiler="GNU g++ >= 5.0, Apple clang >= 6.0 or LLVM clang >= 3.5"
+  local compiler=$1
+  local compiler_ver_info compiler_ver compiler_ver_num
 
-  COMPILER=$1
-  if ! which $COMPILER >&/dev/null; then
-    failure "$COMPILER is not installed.
+  compiler_ver_info=$($compiler --version 2>/dev/null) ||
+    failure "$compiler is not installed.
 You need $supported_compiler."
-  else
-    COMPILER_VER_INFO=$($COMPILER --version 2>/dev/null)
-    if [[ $COMPILER_VER_INFO == *[gc]"++"* ]]; then
-      GCC_VER=$($COMPILER -dumpversion)
-      GCC_VER_NUM=$(echo $GCC_VER | sed 's/\./ /g' | xargs printf "%d%02d%02d")
-      if [ $GCC_VER_NUM -lt 40700 ]; then
-        failure "$COMPILER (g++-$GCC_VER) is not supported.
+
+  case $compiler_ver_info in
+    *[gc]++*)
+      compiler_ver=$($compiler -dumpversion)
+      compiler_ver_num=$(echo $compiler_ver | sed 's/\./ /g' | xargs printf "%d%02d%02d")
+      (( compiler_ver_num < 50000 )) &&
+        failure "$compiler (g++-$compiler_ver) is not supported.
 You need $supported_compiler."
-      elif [ $GCC_VER_NUM  == 40801 ] || [ $GCC_VER_NUM == 40802 ]; then
-        failure "$COMPILER (g++-$GCC_VER) is not supported.
-GCC 4.8.1 and 4.8.2 have a bug in the implementation of the nth_element
-algorithm provided by the standard library. This will cause Kaldi to crash
-(make test would fail). Please use another C++ compiler with C++11 support:
-$supported_compiler."
-      fi
-    elif [[ $COMPILER_VER_INFO == *"Apple"* ]]; then
-      CLANG_VER=$(echo $COMPILER_VER_INFO | grep version | sed "s/.*version \([0-9\.]*\).*/\1/")
-      CLANG_VER_NUM=$(echo $COMPILER_VER_INFO | grep version | sed "s/.*clang-\([0-9]*\).*/\1/")
-      if [ $CLANG_VER_NUM -lt 500 ]; then
-        failure "$COMPILER (Apple clang-$CLANG_VER) is not supported.
+      ;;
+
+    *Apple*)
+      compiler_ver=$(echo $compiler_ver_info | grep version | sed "s/.*version \([0-9\.]*\).*/\1/")
+      compiler_ver_num=$(echo $compiler_ver_info | grep version | sed "s/.*clang-\([0-9]*\).*/\1/")
+      (( compiler_ver_num < 600 )) &&
+        failure "$compiler (Apple clang-$compiler_ver) is not supported.
 You need $supported_compiler."
-      fi
-    elif [[ $COMPILER_VER_INFO == *"LLVM"* ]]; then
-      CLANG_VER=$(echo $COMPILER_VER_INFO | grep version | sed "s/.*version \([0-9\.]*\).*/\1/")
-      CLANG_VER_NUM=$(echo $CLANG_VER | sed 's/\./ /g' | xargs printf "%d%02d")
-      if [ $CLANG_VER_NUM -lt 303 ]; then
-        failure "$COMPILER (LLVM clang-$CLANG_VER) is not supported.
+      ;;
+
+    *LLVM*|*[Cc]lang)
+      compiler_ver=$(echo $compiler_ver_info | grep version | sed "s/.*version \([0-9\.]*\).*/\1/")
+      compiler_ver_num=$(echo $compiler_ver | sed 's/\./ /g' | xargs printf "%d%02d")
+      (( compiler_ver_num < 305 )) &&
+        failure "$compiler (LLVM clang-$compiler_ver) is not supported.
 You need $supported_compiler."
-      fi
-    fi
-  fi
+      ;;
+
+    *)
+      echo >&2 "WARNING: Unfamiliar compiler $compiler. Use at your risk and peril."
+  esac
+
 }
 
 function check_for_slow_expf {
@@ -276,7 +278,7 @@ Either your CUDA is too new or too old."
 
     COMPILER_VER_INFO=$($CXX --version 2>/dev/null)
     if [[ $COMPILER_VER_INFO == *[gc]"++"* ]]; then
-      GCC_VER=$($COMPILER -dumpversion)
+      GCC_VER=$($CXX -dumpversion)
       GCC_VER_NUM=$(echo $GCC_VER | sed 's/\./ /g' | xargs printf "%d%02d%02d")
       case $CUDA_VERSION in
         # Disabling CUDA 7 and CUDA 8 because we now use C++14 to compile CUDA code
@@ -338,7 +340,7 @@ Either your CUDA is too new or too old."
             9_*) CUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_70,code=sm_70" ;;
             10_*) CUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_70,code=sm_70 -gencode arch=compute_75,code=sm_75" ;;
             11_0) CUDA_ARCH="-gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_70,code=sm_70 -gencode arch=compute_75,code=sm_75 -gencode arch=compute_80,code=sm_80" ;;
-			11_1 | 11_*) CUDA_ARCH="-gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_70,code=sm_70 -gencode arch=compute_75,code=sm_75 -gencode arch=compute_80,code=sm_80 -gencode arch=compute_86,code=sm_86" ;;
+            11_1 | 11_*) CUDA_ARCH="-gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_70,code=sm_70 -gencode arch=compute_75,code=sm_75 -gencode arch=compute_80,code=sm_80 -gencode arch=compute_86,code=sm_86" ;;
             *) echo "Unsupported CUDA_VERSION (CUDA_VERSION=$CUDA_VERSION), please report it to Kaldi mailing list, together with 'nvcc -h' or 'ptxas -h' which lists allowed -gencode values..."; exit 1 ;;
           esac
         ;;
@@ -365,6 +367,7 @@ Either your CUDA is too new or too old."
     echo CUDA = true >> kaldi.mk
     echo CUDATKDIR = $CUDATKDIR >> kaldi.mk
     echo "CUDA_ARCH = $CUDA_ARCH" >> kaldi.mk
+    echo "HOST_ARCH = `uname -m`" >> kaldi.mk
     echo >> kaldi.mk
 
     # 64bit/32bit? We do not support cross compilation with CUDA so, use direct
@@ -607,6 +610,7 @@ with_cudadecoder=1
 static_fst=false
 static_math=false
 android=false
+enable_kenlm=false
 
 FSTROOT=`rel2abs ../tools/openfst`
 CUBROOT=`rel2abs ../tools/cub`
@@ -739,6 +743,9 @@ do
     MATHLIB='OPENBLAS'
     GetSwitchExistingPathOrDie ANDROIDINC "$1"
     shift ;;
+  --enable-kenlm)
+    enable_kenlm=true
+    shift ;;
   *)  echo "Unknown argument: $1, exiting"; usage; exit 1 ;;
   esac
 done
@@ -760,28 +767,35 @@ if $android && [[ "$CXX" != *clang++*  ]] ; then
 fi
 
 # If HOST is set
-# 1. We prepend it to CXX, AR, AS and RANLIB.
-# 2. We parse the target architecture from the HOST triple.
+# - If it is not equal to WASM
+#   1. We prepend it to CXX, AR, AS and RANLIB.
+#   2. We parse the target architecture from the HOST triple.
+# - Otherwise we take its value as the target architecture
 # Otherwise we set the target architecture to the output of `uname -m`.
 if is_set $HOST; then
-  CXX="$HOST-$CXX"
-  AR="$HOST-$AR"
-  AS="$HOST-$AS"
-  RANLIB="$HOST-$RANLIB"
-
   # The host triple will be something like "armv8-rpi3-linux-gnueabihf". We
   # need the first field which is the target architecture for this build. The
   # following command will take the host triple "armv8-rpi3-linux-gnueabihf"
   # and return ["armv8", "rpi3", "linux", "gnueabihf"] in PARTS.
   IFS='-' read -ra PARTS <<< "$HOST"
-  # The first field in the PARTS list is the target architecture.
-  TARGET_ARCH="$PARTS"
-  if [[ "$TARGET_ARCH" != aarch64* && "$TARGET_ARCH" != arm* && "$TARGET_ARCH" != ppc64le && \
-        "$TARGET_ARCH" != x86* && "$TARGET_ARCH" != i686* ]] ; then
-    # We currently only support building for x86[_64], arm*, aarch64* and ppc64le.
-    # If TARGET_ARCH was read from the HOST variable, it must be one of these.
-    failure "$TARGET_ARCH is not a supported architecture.
-             Supported architectures: x86[_64], arm*, aarch64*, ppc64le."
+
+  if [[ "$HOST" != WASM ]]; then
+    CXX="$HOST-$CXX"
+    AR="$HOST-$AR"
+    AS="$HOST-$AS"
+    RANLIB="$HOST-$RANLIB"
+
+    # The first field in the PARTS list is the target architecture.
+    TARGET_ARCH="$PARTS"
+    if [[ "$TARGET_ARCH" != aarch64* && "$TARGET_ARCH" != arm* && "$TARGET_ARCH" != ppc64le && \
+          "$TARGET_ARCH" != x86* && "$TARGET_ARCH" != i686* ]] ; then
+      # We currently only support building for x86[_64], arm*, aarch64* and ppc64le.
+      # If TARGET_ARCH was read from the HOST variable, it must be one of these.
+      failure "$TARGET_ARCH is not a supported architecture.
+      Supported architectures: x86[_64], arm*, aarch64*, ppc64le."
+    fi
+  else
+    TARGET_ARCH="$HOST"
   fi
 else
   TARGET_ARCH="`uname -m`"
@@ -871,6 +885,10 @@ echo >> kaldi.mk
 echo "Checking compiler $CXX ..."
 check_compiler $CXX
 
+echo "# Target achitecture" >> kaldi.mk
+echo "ARCH = $TARGET_ARCH" >> kaldi.mk
+echo >> kaldi.mk
+
 echo "# Base configuration" >> kaldi.mk
 echo >> kaldi.mk
 if $dynamic_kaldi ; then
@@ -927,6 +945,29 @@ fi
 
 echo "WITH_CUDADECODER = $with_cudadecoder" >> kaldi.mk
 echo >> kaldi.mk
+
+if $enable_kenlm ; then
+  if [ -d ../tools/kenlm ]; then
+    KENLM_ROOT=$(rel2abs ../tools/kenlm)
+    echo "Checking kenlm library in $KENLM_ROOT"
+    if [ -f $KENLM_ROOT/libkenlm.so ]; then
+      if [ "$(uname)" == "Linux" ]; then
+        echo "KENLM_ROOT = $KENLM_ROOT" >> kaldi.mk
+        echo "KENLM_CXXFLAGS = -DHAVE_KENLM  -DKENLM_MAX_ORDER=6  -I$KENLM_ROOT" >> kaldi.mk
+        echo "KENLM_LDFLAGS = -Wl,-rpath=$KENLM_ROOT  -L$KENLM_ROOT" >> kaldi.mk
+        echo "KENLM_LDLIBS = -lkenlm" >> kaldi.mk
+      else
+        failure "Sorry, for now --enable-kenlm option is only supported for Linux"
+      fi
+    else
+      failure "can't find libkenlm.so in ../tools/kenlm/,
+              refer to ../tools/extras/install_kenlm_query_only.sh for instruction."
+    fi
+  else
+    failure "--enable-kenlm switched on, but can't find kenlm repo in ../tools/kenlm,
+            refer to ../tools/extras/install_kenlm_query_only.sh for instruction."
+  fi
+fi
 
 # OS-specific steps given below append to kaldi.mk
 echo "Performing OS specific configuration ..."

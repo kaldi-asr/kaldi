@@ -15,9 +15,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#if !HAVE_CUDA
+#error CUDA support must be configured to compile this library.
+#endif
+
 #define SLEEP_BACKOFF_NS 500
 #define SLEEP_BACKOFF_S ((double)SLEEP_BACKOFF_NS / 1e9)
-#if HAVE_CUDA == 1
 
 #include "cudadecoder/batched-threaded-nnet3-cuda-pipeline.h"
 #include <nvToolsExt.h>
@@ -172,7 +175,7 @@ bool BatchedThreadedNnet3CudaPipeline::IsGroupCompleted(
 std::string BatchedThreadedNnet3CudaPipeline::WaitForAnyGroup() {
   std::unique_lock<std::mutex> lk(group_tasks_mutex_);
   // Waiting for any group to be done.
-  const string *group_done;
+  const std::string *group_done;
   auto predicate = [this, &group_done] {
     for (auto it : group_tasks_not_done_) {
       if (it.second == 0) {
@@ -785,8 +788,6 @@ void BatchedThreadedNnet3CudaPipeline::CompleteTask(CudaDecoder *cuda_decoder,
   if (task->callback)  // if callable
     task->callback(task->dlat);
 
-  task->finished = true;
-
   {
     std::lock_guard<std::mutex> lk(group_tasks_mutex_);
     --all_group_tasks_not_done_;
@@ -796,6 +797,8 @@ void BatchedThreadedNnet3CudaPipeline::CompleteTask(CudaDecoder *cuda_decoder,
     //    << std::endl;
     if (left_in_group == 0) group_done_cv_.notify_all();
   }
+
+  task->finished = true;
 }
 
 void BatchedThreadedNnet3CudaPipeline::DeterminizeOneLattice(TaskState *task) {
@@ -965,5 +968,3 @@ void BatchedThreadedNnet3CudaPipeline::ExecuteWorker(int threadId) {
 
 }  // end namespace cuda_decoder
 }  // end namespace kaldi
-
-#endif  // HAVE_CUDA == 1

@@ -147,6 +147,7 @@ do_combine() {
   # Assign all source gzipped archive names to an exported variable, one each
   # per source directory, so that we can copy archives in a job per source.
   src_id=0
+  new_id=0
   for src in $@; do
     src_id=$((src_id + 1))
     nj_src=$(cat $src/num_jobs) || exit 1
@@ -154,11 +155,14 @@ do_combine() {
     # Each numbered variable will contain the list of archives, e. g.:
     # src_arcs_1="exp/tri3_ali/ali.1.gz exp/tri3_ali/ali.1.gz ..."
     # ('printf' repeats its format as long as there are more arguments).
-    printf "$src/$ark.%d.gz " $(seq $nj_src) > $temp_dir/src_arks.${src_id}
+    for src_nj_id in $(seq $nj_src); do
+      new_id=$((new_id + 1))
+      printf "$src/$ark.%d.gz" $src_nj_id > $temp_dir/src_arks.${new_id}
+    done
   done
-  
+
   # Gather archives in parallel jobs.
-  $cmd JOB=1:$src_id $dest/log/gather_$entities.JOB.log \
+  $cmd JOB=1:$new_id $dest/log/gather_$entities.JOB.log \
     $copy_program \
       "ark:gunzip -c \$(cat $temp_dir/src_arks.JOB) |" \
       "ark,scp:$temp_dir/$ark.JOB.ark,$temp_dir/$ark.JOB.scp" || exit 1

@@ -239,7 +239,7 @@ if [ $stage -le 15 ]; then
   output-layer name=output-default-xent input=prefinal-xent dim=$num_targets learning-rate-factor=$learning_rate_factor $output_opts
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs/
-  if [ -f $dir/init/default_trans.mdl ]; then # checking this because it may have been copied in a previous run of the same script
+  if [ ! -f $dir/init/default_trans.mdl ]; then # checking this because it may have been copied in a previous run of the same script
       copy-transition-model $tree_dir/final.mdl $dir/init/default_trans.mdl  || exit 1 &
   else
       echo "Keeping the old $dir/init/default_trans.mdl as it already exists."

@@ -15,12 +15,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#if HAVE_CUDA == 1
-#include <nvToolsExt.h>
-#include <cub/cub.cuh>
-#endif
-
 #include "cudafeat/feature-online-batched-spectral-cuda-kernels.h"
+
+#include <cub/cub.cuh>
+#include <nvToolsExt.h>
+
 #include "cudafeat/lane-desc.h"
 #include "cudamatrix/cu-rand.h"
 

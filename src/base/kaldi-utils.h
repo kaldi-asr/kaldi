@@ -21,10 +21,14 @@
 #ifndef KALDI_BASE_KALDI_UTILS_H_
 #define KALDI_BASE_KALDI_UTILS_H_ 1
 
-#if defined(_MSC_VER)
-# define WIN32_LEAN_AND_MEAN
-# define NOMINMAX
-# include <windows.h>
+#if _MSC_VER
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN 1
+#endif
+#ifndef NOMINMAX
+#define NOMINMAX 1
+#endif
+#include <windows.h>
 #endif
 
 #ifdef _MSC_VER
@@ -88,7 +92,7 @@ inline int MachineIsLittleEndian() {
 // This function kaldi::Sleep() provides a portable way
 // to sleep for a possibly fractional
 // number of seconds.  On Windows it's only accurate to microseconds.
-void Sleep(float seconds);
+void Sleep(double seconds);
 }
 
 #define KALDI_SWAP8(a) do { \

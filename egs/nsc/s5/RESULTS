@@ -1,0 +1,21 @@
+# GMM tri6
+grep WER exp/tri6b/decode_tg_test/wer* | utils/best_wer.sh
+%WER 51.93 [ 63917 / 123092, 6155 ins, 17902 del, 39860 sub ] exp/tri6b/decode_tg_test/wer_12_0.0
+grep WER exp/tri6b/decode_tg_test.si/wer* | utils/best_wer.sh
+%WER 57.07 [ 70243 / 123092, 5894 ins, 19603 del, 44746 sub ] exp/tri6b/decode_tg_test.si/wer_12_0.0
+grep WER exp/tri6b/decode_fg_test/wer* | utils/best_wer.sh
+%WER 51.76 [ 63708 / 123092, 5617 ins, 19248 del, 38843 sub ] exp/tri6b/decode_fg_test/wer_13_0.0
+
+# TDNNF 1d
+
+# 3-gram LM
+grep WER exp/chain/tdnn_1d_sp/decode_test_tg/wer* | utils/best_wer.sh
+%WER 31.82 [ 39167 / 123092, 4207 ins, 11810 del, 23150 sub ] exp/chain/tdnn_1d_sp/decode_test_tg/wer_9_0.0
+
+# + 4-gram rescoring
+grep WER exp/chain/tdnn_1d_sp/decode_test_fg/wer* | utils/best_wer.sh
+%WER 31.82 [ 39172 / 123092, 4218 ins, 11810 del, 23144 sub ] exp/chain/tdnn_1d_sp/decode_test_fg/wer_9_0.0
+
+# 3-gram online decoding
+grep WER exp/chain/tdnn_1d_sp_online/decode_test_tg/wer* | utils/best_wer.sh
+%WER 31.81 [ 39157 / 123092, 4240 ins, 11722 del, 23195 sub ] exp/chain/tdnn_1d_sp_online/decode_test_tg/wer_9_0.0
