@@ -143,7 +143,7 @@ struct HostDeviceVector {
 
   virtual ~HostDeviceVector() {
     Deallocate();
-    cudaEventDestroy(evt);
+    CU_SAFE_CALL(cudaEventDestroy(evt));
   }
 
   void Reallocate(const size_t new_size) {
@@ -169,11 +169,11 @@ struct HostDeviceVector {
   }
   void Deallocate() {
     if (d_data) {
-      cudaFree(d_data);
+      CU_SAFE_CALL(cudaFree(d_data));
       d_data = NULL;
     }
     if (h_data) {
-      cudaFreeHost(h_data);
+      CU_SAFE_CALL(cudaFreeHost(h_data));
       h_data = NULL;
     }
   }
