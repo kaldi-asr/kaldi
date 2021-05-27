@@ -19,9 +19,7 @@
 // Can serve both as a benchmarking tool and an example on how to call
 // BatchedThreadedNnet3CudaOnlinePipeline.
 
-#if !HAVE_CUDA
-#error CUDA support must be configured to compile this binary.
-#endif
+#if HAVE_CUDA == 1
 
 #include <algorithm>
 #include <iomanip>
@@ -275,3 +273,5 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }  // main()
+
+#endif  // if HAVE_CUDA == 1
