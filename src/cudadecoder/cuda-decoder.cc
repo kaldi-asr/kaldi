@@ -15,9 +15,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#if !HAVE_CUDA
-#error CUDA support must be configured to compile this library.
-#endif
+#if HAVE_CUDA == 1
 
 #include "cudadecoder/cuda-decoder.h"
 
@@ -2078,3 +2076,5 @@ void CudaDecoder::SetThreadPoolAndStartCPUWorkers(ThreadPoolLight *thread_pool,
 
 }  // namespace cuda_decoder
 }  // namespace kaldi
+
+#endif  // if HAVE_CUDA == 1

@@ -15,8 +15,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <atomic>
 #if HAVE_CUDA == 1
+
+#include <atomic>
 
 #include <cuda.h>
 #include <cuda_profiler_api.h>

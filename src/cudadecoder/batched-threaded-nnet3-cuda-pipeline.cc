@@ -15,9 +15,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#if !HAVE_CUDA
-#error CUDA support must be configured to compile this library.
-#endif
+#if HAVE_CUDA == 1
 
 #define SLEEP_BACKOFF_NS 500
 #define SLEEP_BACKOFF_S ((double)SLEEP_BACKOFF_NS / 1e9)
@@ -968,3 +966,5 @@ void BatchedThreadedNnet3CudaPipeline::ExecuteWorker(int threadId) {
 
 }  // end namespace cuda_decoder
 }  // end namespace kaldi
+
+#endif  // if HAVE_CUDA == 1

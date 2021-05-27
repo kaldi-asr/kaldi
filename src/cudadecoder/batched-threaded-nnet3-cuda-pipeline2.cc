@@ -15,9 +15,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#if !HAVE_CUDA
-#error CUDA support is required to compile this library.
-#endif
+#if HAVE_CUDA == 1
 
 #include "cudadecoder/batched-threaded-nnet3-cuda-pipeline2.h"
 
@@ -479,3 +477,5 @@ void BatchedThreadedNnet3CudaPipeline2::SetLatticePostprocessor(
 
 }  // namespace cuda_decoder
 }  // namespace kaldi
+
+#endif  // if HAVE_CUDA == 1

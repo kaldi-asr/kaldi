@@ -15,9 +15,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#if !HAVE_CUDA
-#error CUDA support must be configured to compile this library.
-#endif
+#if HAVE_CUDA == 1
 
 #include "cudadecoder/cuda-online-pipeline-dynamic-batcher.h"
 
@@ -169,3 +167,5 @@ void CudaOnlinePipelineDynamicBatcher::WaitForCompletion() {
 
 }  // namespace cuda_decoder
 }  // namespace kaldi
+
+#endif /* HAVE_CUDA == 1 */
