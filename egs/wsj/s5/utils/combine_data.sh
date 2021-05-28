@@ -30,7 +30,7 @@ shift;
 
 first_src=$1;
 
-rm -r $dest 2>/dev/null
+rm -r $dest 2>/dev/null || true
 mkdir -p $dest;
 
 export LC_ALL=C
