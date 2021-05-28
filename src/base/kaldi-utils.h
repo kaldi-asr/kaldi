@@ -121,10 +121,15 @@ void Sleep(double seconds);
           (reinterpret_cast<char*>(&a))[1]=t;} while (0)
 
 
-// Makes copy constructor and operator= private.
+///\brief Declare deleted copy constructor and copy assignment operator=().
+///
+/// Use this macro in the \e public part of a class declaration in a header
+/// file, next to its constructors, so that uncopyability of the type is
+/// clearly readable. Place a semicolon after it.
+///\param type The exact enclosing class name.
 #define KALDI_DISALLOW_COPY_AND_ASSIGN(type)    \
-  type(const type&);                  \
-  void operator = (const type&)
+  type(const type&) = delete;                   \
+  type& operator=(const type&) = delete
 
 template<bool B> class KaldiCompileTimeAssert { };
 template<> class KaldiCompileTimeAssert<true> {
