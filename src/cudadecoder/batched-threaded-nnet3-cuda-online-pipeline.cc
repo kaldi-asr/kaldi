@@ -90,9 +90,8 @@ void BatchedThreadedNnet3CudaOnlinePipeline::AllocateAndInitializeData(
     feature_pipelines_.resize(config_.num_channels);
   }
 
-  // Decoder
-  cuda_fst_ = std::make_shared<CudaFst>();
-  cuda_fst_->Initialize(decode_fst, trans_model_);
+  // Decoder.
+  cuda_fst_ = std::make_unique<CudaFst>(decode_fst, trans_model_);
   cuda_decoder_.reset(new CudaDecoder(*cuda_fst_, config_.decoder_opts,
                                       max_batch_size_, config_.num_channels));
   if (config_.num_decoder_copy_threads > 0) {

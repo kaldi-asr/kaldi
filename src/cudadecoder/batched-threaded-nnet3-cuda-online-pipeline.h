@@ -413,7 +413,7 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
   // HCLG graph : CudaFst object is a host object, but contains
   // data stored in
   // GPU memory
-  std::shared_ptr<CudaFst> cuda_fst_;
+  std::unique_ptr<CudaFst> cuda_fst_;
   std::unique_ptr<CudaDecoder> cuda_decoder_;
 
   std::unique_ptr<ThreadPoolLight> thread_pool_;

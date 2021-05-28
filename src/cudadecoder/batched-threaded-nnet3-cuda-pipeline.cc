@@ -23,8 +23,13 @@
 #define SLEEP_BACKOFF_S ((double)SLEEP_BACKOFF_NS / 1e9)
 
 #include "cudadecoder/batched-threaded-nnet3-cuda-pipeline.h"
+
+#include <memory>
+
 #include <nvToolsExt.h>
+
 #include "base/kaldi-utils.h"
+#include "cudadecoder/cuda-fst.h"
 
 // This pipeline is deprecated and will be removed. Please switch to
 // batched-threaded-nnet3-cuda-pipeline2
@@ -45,7 +50,7 @@ void BatchedThreadedNnet3CudaPipeline::Initialize(
 
   am_nnet_ = &am_nnet;
   trans_model_ = &trans_model;
-  cuda_fst_.Initialize(decode_fst, trans_model_);
+  cuda_fst_ = std::make_unique<CudaFst>(decode_fst, trans_model_);
 
   feature_info_ = new OnlineNnet2FeaturePipelineInfo(config_.feature_opts);
   feature_info_->ivector_extractor_info.use_most_recent_ivector = true;
@@ -93,7 +98,7 @@ void BatchedThreadedNnet3CudaPipeline::Finalize() {
     thread_contexts_[i].join();
   }
 
-  cuda_fst_.Finalize();
+  cuda_fst_.reset();
 
   delete feature_info_;
   delete work_pool_;
@@ -819,7 +824,7 @@ void BatchedThreadedNnet3CudaPipeline::ExecuteWorker(int threadId) {
             << " num_channels=" << config_.num_channels;
   // Data structures that are reusable across decodes but unique to each
   // thread
-  CudaDecoder cuda_decoder(cuda_fst_, config_.decoder_opts,
+  CudaDecoder cuda_decoder(*cuda_fst_, config_.decoder_opts,
                            config_.max_batch_size, config_.num_channels);
   nnet3::NnetBatchComputer computer(config_.compute_opts, am_nnet_->GetNnet(),
                                     am_nnet_->Priors());
@@ -916,7 +921,7 @@ void BatchedThreadedNnet3CudaPipeline::ExecuteWorker(int threadId) {
         // outs, and cleans up data structures
         PostDecodeProcessing(cuda_decoder, channel_state, decodables, tasks);
 
-      } catch (CudaDecoderException e) {
+      } catch (CudaDecoderException &e) {
         // Code to catch errors.  Most errors are
         // unrecoverable but a user can mark them
         // recoverable which will cancel the entire
