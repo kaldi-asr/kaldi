@@ -1,9 +1,9 @@
-all:
-		
+all: ;
+
 include ../kaldi.mk
 
 ifeq ($(CUDA), true)
-ifneq ($(WITH_CUDADECODER), 0)
+ifeq ($(WITH_CUDADECODER), true)
 
 # Make sure we have CUDA_ARCH from kaldi.mk,
 ifndef CUDA_ARCH

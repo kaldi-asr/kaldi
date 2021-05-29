@@ -1,9 +1,9 @@
-all:
-		
+all: ;
+
 include ../kaldi.mk
 
 ifeq ($(CUDA), true)
-ifneq ($(WITH_CUDADECODER), 0)
+ifeq ($(WITH_CUDADECODER), true)
 
 # Make sure we have CUDA_ARCH from kaldi.mk,
 ifndef CUDA_ARCH
@@ -18,7 +18,7 @@ BINFILES = batched-wav-nnet3-cuda2 batched-wav-nnet3-cuda-online
 
 # The legacy batched-wav-nnet3-cuda contains some cuda calls not available on Jetson devices
 ifeq ($(HOST_ARCH), x86_64)
-  BINFILES += batched-wav-nnet3-cuda 
+  BINFILES += batched-wav-nnet3-cuda
 endif
 
 OBJFILES =
@@ -36,7 +36,7 @@ ADDLIBS = ../cudadecoder/kaldi-cudadecoder.a  ../cudafeat/kaldi-cudafeat.a \
 
 else
 all:
-		$(warning "Not building cudadecoder extension -- to build with it, configure with --with-cudadecoder[=true]")
+	$(warning "Not building cudadecoder extension -- to build with it, configure with --with-cudadecoder[=true]")
 endif
 
 endif

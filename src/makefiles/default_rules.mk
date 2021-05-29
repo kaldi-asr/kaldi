@@ -1,4 +1,3 @@
-
 SHELL := /bin/bash
 
 ifeq ($(KALDI_FLAVOR), dynamic)
@@ -129,22 +128,22 @@ valgrind: .valgrind
 	rm valgrind.out
 	touch .valgrind
 
-
-#buid up dependency commands
+# Build up dependency commands.
 CC_SRCS=$(wildcard *.cc)
-#check if files exist to run dependency commands on
+# Check if any .cc sources exist to run dependency commands on.
 ifneq ($(CC_SRCS),)
 CC_DEP_COMMAND=$(CXX) -M $(CXXFLAGS) $(CC_SRCS)
 endif
 
 ifeq ($(CUDA), true)
 CUDA_SRCS=$(wildcard *.cu)
-#check if files exist to run dependency commands on
+# Check if any CUDA .cu sources exist to run dependency commands on.
 ifneq ($(CUDA_SRCS),)
 NVCC_DEP_COMMAND = $(CUDATKDIR)/bin/nvcc -M $(CUDA_FLAGS) $(CUDA_INCLUDE) $(CUDA_SRCS)
 endif
 endif
 
+.PHONY: depend
 depend:
 	rm -f .depend.mk
 ifneq ($(CC_DEP_COMMAND),)
