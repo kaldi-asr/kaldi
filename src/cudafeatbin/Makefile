@@ -1,10 +1,10 @@
-all:
-		
+all: ;
+
 EXTRA_CXXFLAGS = -Wno-sign-compare
 include ../kaldi.mk
 
 ifeq ($(CUDA), true)
-ifneq ($(WITH_CUDADECODER), 0)
+ifeq ($(WITH_CUDADECODER), true)
 
 # Make sure we have CUDA_ARCH from kaldi.mk,
 ifndef CUDA_ARCH
@@ -15,13 +15,12 @@ LDFLAGS += $(CUDA_LDFLAGS)
 LDLIBS += $(CUDA_LDLIBS)
 
 BINFILES = compute-mfcc-feats-cuda \
-						apply-cmvn-online-cuda \
-						compute-online-feats-cuda \
-						compute-fbank-feats-cuda \
-						apply-batched-cmvn-online-cuda \
-						compute-mfcc-online-batched-cuda \
-            compute-fbank-online-batched-cuda \
-						compute-online-feats-batched-cuda
+           compute-online-feats-cuda \
+           compute-fbank-feats-cuda \
+           apply-batched-cmvn-online-cuda \
+           compute-mfcc-online-batched-cuda \
+           compute-fbank-online-batched-cuda \
+           compute-online-feats-batched-cuda
 
 OBJFILES =
 
@@ -37,7 +36,7 @@ ADDLIBS = ../cudafeat/kaldi-cudafeat.a ../online2/kaldi-online2.a  \
 
 else
 all:
-		$(warning "Not building cudadecoder extension -- to build with it, configure with --with-cudadecoder[=true]")
+	$(warning "Not building cudadecoder extension -- to build with it, configure with --with-cudadecoder[=true]")
 endif
 
 endif

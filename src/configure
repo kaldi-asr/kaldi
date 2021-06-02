@@ -39,7 +39,7 @@
 
 # This should be incremented after any significant change to the configure
 # script, i.e. any change affecting kaldi.mk or the build system as a whole.
-CONFIGURE_VERSION=13
+CONFIGURE_VERSION=14
 
 # We support bash version 3.2 (Macs still ship with this version as of 2019)
 # and above.
@@ -606,7 +606,7 @@ debug_level=1
 double_precision=false
 dynamic_kaldi=false
 use_cuda=true
-with_cudadecoder=1
+with_cudadecoder=true
 static_fst=false
 static_math=false
 android=false
@@ -660,13 +660,13 @@ do
     use_cuda=false;
     shift ;;
   --with-cudadecoder)
-    with_cudadecoder=1;
+    with_cudadecoder=true;
     shift ;;
   --with-cudadecoder=yes)
-    with_cudadecoder=1;
+    with_cudadecoder=true;
     shift ;;
   --with-cudadecoder=no)
-    with_cudadecoder=0;
+    with_cudadecoder=false;
     shift ;;
   --static-math)
     static_math=true;
@@ -934,16 +934,19 @@ echo "OPENFSTLIBS = $OPENFSTLIBS" >> kaldi.mk
 echo "OPENFSTLDFLAGS = $OPENFSTLDFLAGS" >> kaldi.mk
 echo >> kaldi.mk
 
-$use_cuda && echo "Checking cub library in $CUBROOT ..."
-if [[ "$use_cuda" = true  && ! -f $CUBROOT/cub/cub.cuh ]]; then
-  failure "Could not find file $CUBROOT/cub/cub.cuh:
+if $use_cuda; then
+   echo "Checking cub library in $CUBROOT ..."
+   if [[ ! -f $CUBROOT/cub/cub.cuh ]]; then
+     failure "Could not find file $CUBROOT/cub/cub.cuh:
   you may not have installed cub.  Go to ../tools/ and type
-  e.g. 'make cub'; cub is a new requirement."
+  'make cub' to download and unpack it. We'll detect it then."
+   else
+     echo "CUBROOT = $CUBROOT" >> kaldi.mk
+   fi
+   echo "WITH_CUDADECODER = $with_cudadecoder" >> kaldi.mk
 else
-  echo "CUBROOT = $CUBROOT" >> kaldi.mk
+   echo "WITH_CUDADECODER = false" >> kaldi.mk
 fi
-
-echo "WITH_CUDADECODER = $with_cudadecoder" >> kaldi.mk
 echo >> kaldi.mk
 
 if $enable_kenlm ; then
