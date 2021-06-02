@@ -197,12 +197,15 @@ class CudaDecoder {
   // Using nlanes=2500 in that configuration would first not be possible
   // (out of memory), but also not necessary. Increasing the number of
   // lanes is only useful if it increases performance. If the GPU is
-  // saturated at nlanes=200, you should not increase that number
+  // saturated at nlanes=200, you should not increase that number.
+  //
+  ///\param[in] fst A CudaFst instance. Not owned, must survive this object.
+  ///\param[in] config
+  ///\param[in] nlanes
+  ///\param[in] nchannels
   CudaDecoder(const CudaFst &fst, const CudaDecoderConfig &config, int32 nlanes,
               int32 nchannels);
 
-  // Reads the config from config
-  void ReadConfig(const CudaDecoderConfig &config);
   // Special constructor for nlanes = nchannels. Here for the non-advanced
   // user Here we can consider nchannels = batch size. If we want to
   // decode 10 utterances at a time, we can use nchannels = 10
@@ -211,6 +214,10 @@ class CudaDecoder {
       : CudaDecoder(fst, config, nchannels, nchannels) {}
   virtual ~CudaDecoder() noexcept(false);
 
+  KALDI_DISALLOW_COPY_AND_ASSIGN(CudaDecoder);
+
+  // Reads the config from config
+  void ReadConfig(const CudaDecoderConfig &config);
   // InitDecoding initializes the decoding, and should only be used if you
   // intend to call AdvanceDecoding() on the channels listed in channels
   void InitDecoding(const std::vector<ChannelId> &channels);
@@ -511,7 +518,7 @@ class CudaDecoder {
 
   // The CudaFst data structure contains the FST graph
   // in the CSR format, on both the GPU and CPU memory
-  const CudaFst fst_;
+  const CudaFst& fst_;
 
   // Counters used by a decoder lane
   // Contains all the single values generated during computation,
@@ -698,8 +705,8 @@ class CudaDecoder {
   // i.e. memory address of the main_q for instance
   // KernelParams contains information that can change.
   // For instance which channel is executing on which lane
-  DeviceParams *h_device_params_;
-  KernelParams *h_kernel_params_;
+  std::unique_ptr<DeviceParams> h_device_params_;
+  std::unique_ptr<KernelParams> h_kernel_params_;
   std::vector<ChannelId> channel_to_compute_;
   int32 nlanes_used_;  // number of lanes used in h_kernel_params_
   // Initial lane
@@ -930,7 +937,6 @@ class CudaDecoder {
       std::unordered_map<LatticeStateInternalId, RawLatticeState>
           *prev_f_raw_lattice_state,
       std::unordered_set<int32> *f_arc_idx_added);
-  KALDI_DISALLOW_COPY_AND_ASSIGN(CudaDecoder);
 };
 
 }  // end namespace cuda_decoder

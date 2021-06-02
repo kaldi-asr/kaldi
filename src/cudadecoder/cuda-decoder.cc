@@ -39,7 +39,7 @@ namespace cuda_decoder {
 
 CudaDecoder::CudaDecoder(const CudaFst &fst, const CudaDecoderConfig &config,
                          int32 nlanes, int32 nchannels)
-    : word_syms_(NULL),
+    : word_syms_(nullptr),
       generate_partial_hypotheses_(false),
       endpointing_(false),
       partial_traceback_(false),
@@ -49,7 +49,7 @@ CudaDecoder::CudaDecoder(const CudaFst &fst, const CudaDecoderConfig &config,
       nchannels_(nchannels),
       channel_lock_(nchannels + 1),
       extra_cost_min_delta_(0.0f),
-      thread_pool_(NULL),
+      thread_pool_(nullptr),
       n_threads_used_(0),
       n_h2h_task_not_done_(0),
       n_init_decoding_h2h_task_not_done_(0),
@@ -58,8 +58,8 @@ CudaDecoder::CudaDecoder(const CudaFst &fst, const CudaDecoderConfig &config,
   // Static asserts on constants
   CheckStaticAsserts();
   // Runtime asserts
-  KALDI_ASSERT(nlanes > 0);
-  KALDI_ASSERT(nchannels > 0);
+  KALDI_ASSERT(nlanes_ > 0);
+  KALDI_ASSERT(nchannels_ > 0);
   KALDI_ASSERT(nlanes_ <= nchannels_);
   // All GPU work in decoder will be sent to compute_st_
   cudaStreamCreate(&compute_st_);
@@ -244,8 +244,8 @@ void CudaDecoder::InitDeviceData() {
 void CudaDecoder::InitHostData() {}
 
 void CudaDecoder::AllocateDeviceKernelParams() {
-  h_device_params_ = new DeviceParams();
-  h_kernel_params_ = new KernelParams();
+  h_device_params_ = std::make_unique<DeviceParams>();
+  h_kernel_params_ = std::make_unique<KernelParams>();
 }
 
 void CudaDecoder::InitDeviceParams() {
@@ -281,12 +281,12 @@ void CudaDecoder::InitDeviceParams() {
   h_device_params_->d_main_q_arc_offsets = d_main_q_arc_offsets_.GetView();
   h_device_params_->d_hashmap_values = d_hashmap_values_.GetView();
   h_device_params_->d_histograms = d_histograms_.GetView();
-  h_device_params_->d_arc_e_offsets = fst_.d_e_offsets_;
-  h_device_params_->d_arc_ne_offsets = fst_.d_ne_offsets_;
-  h_device_params_->d_arc_pdf_ilabels = fst_.d_arc_pdf_ilabels_;
-  h_device_params_->d_arc_weights = fst_.d_arc_weights_;
-  h_device_params_->d_arc_nextstates = fst_.d_arc_nextstates_;
-  h_device_params_->d_fst_final_costs = fst_.d_final_;
+  h_device_params_->d_arc_e_offsets = fst_.d_e_offsets_.get();
+  h_device_params_->d_arc_ne_offsets = fst_.d_ne_offsets_.get();
+  h_device_params_->d_arc_pdf_ilabels = fst_.d_arc_pdf_ilabels_.get();
+  h_device_params_->d_arc_weights = fst_.d_arc_weights_.get();
+  h_device_params_->d_arc_nextstates = fst_.d_arc_nextstates_.get();
+  h_device_params_->d_fst_final_costs = fst_.d_final_.get();
   h_device_params_->default_beam = default_beam_;
   h_device_params_->lattice_beam = lattice_beam_;
   h_device_params_->main_q_capacity = main_q_capacity_;
@@ -296,7 +296,7 @@ void CudaDecoder::InitDeviceParams() {
   h_device_params_->nstates = fst_.num_states_;
   h_device_params_->init_state = fst_.Start();
   KALDI_ASSERT(h_device_params_->init_state != fst::kNoStateId);
-  h_device_params_->init_cost = StdWeight::One().Value();
+  h_device_params_->init_cost = CudaFst::Weight::One().Value();
   h_device_params_->hashmap_capacity = hashmap_capacity_;
   h_device_params_->max_active = max_active_;
   // For the first static_beam_q_length elements of the queue, we will
@@ -318,7 +318,7 @@ void CudaDecoder::InitDeviceParams() {
   // Those cannot be used at the same time
   h_device_params_->h_list_final_tokens_in_main_q =
       h_list_final_tokens_in_main_q_.GetView();
-  h_device_params_->fst_zero = StdWeight::Zero().Value();
+  h_device_params_->fst_zero = CudaFst::Weight::Zero().Value();
 }
 
 CudaDecoder::~CudaDecoder() noexcept(false) {
@@ -350,9 +350,6 @@ CudaDecoder::~CudaDecoder() noexcept(false) {
   KALDI_DECODER_CUDA_API_CHECK_ERROR(
       cudaEventDestroy(concatenated_data_ready_evt_));
   KALDI_DECODER_CUDA_API_CHECK_ERROR(cudaEventDestroy(lane_offsets_ready_evt_));
-
-  delete h_kernel_params_;
-  delete h_device_params_;
 }
 
 void CudaDecoder::ComputeInitialChannel() {
@@ -1072,7 +1069,7 @@ void CudaDecoder::GetBestPredecessor(int32 ichannel, int32 curr_token_idx,
     int32 offset, size;
     std::tie(offset, size) = token.GetSameFSTStateTokensList();
     bool found_best = false;
-    for (auto i = 0; i < size; ++i) {
+    for (int32 i = 0; i < size; ++i) {
       KALDI_ASSERT(
           (offset + i) <
           h_all_tokens_extra_prev_tokens_extra_and_acoustic_cost_[ichannel]
@@ -1243,7 +1240,7 @@ void CudaDecoder::AddFinalTokensToLattice(
   const CostType best_cost = h_all_argmin_cost_[ichannel].second;
   // Iterating through tokens associated with a final state in the last
   // frame
-  for (auto &p : h_all_final_tokens_list_[ichannel]) {
+  for (const auto &p : h_all_final_tokens_list_[ichannel]) {
     // This final token has a final cost of final_token_cost
     CostType final_token_cost = p.second;
     // This token has possibly an extra cost compared to the best
