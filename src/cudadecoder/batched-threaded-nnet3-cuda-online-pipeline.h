@@ -41,22 +41,21 @@
 namespace kaldi {
 namespace cuda_decoder {
 
-//
-// Online Streaming Batched Pipeline calling feature extraction, CUDA light
-// Nnet3 driver and CUDA decoder. Can handle up to num_channels streaming audio
-// channels in parallel. Each channel is externally identified by a correlation
-// id (corr_id). Receives chunks of audio (up to max_batch_size per DecodeBatch
-// call). Will call a callback with the final lattice once the processing of the
-// final chunk is done.
-//
-// For an example on how to use that pipeline, see
-// cudadecoderbin/batched-threaded-wav-nnet3-online.cc
-//
-// Feature extraction can be CUDA or CPU
-// (multithreaded).
-// Internally reuses the concept of channels and lanes from the CUDA decoder
-//
-
+///\brief Online Streaming Batched Pipeline calling feature extraction, CUDA
+/// light Nnet3 driver and CUDA decoder.
+///
+/// Can handle up to num_channels streaming audio channels in parallel. Each
+/// channel is externally identified by an arbitrary 64-bit correlation ID
+/// (corr_id). Receives chunks of audio (up to max_batch_size per DecodeBatch()
+/// call). Will call a callback with the final lattice once the processing of
+/// the final chunk is done.
+///
+/// For an example on how to use that pipeline, see
+/// cudadecoderbin/batched-threaded-wav-nnet3-online.cc
+///
+/// Feature extraction can be done on GPU, or on a CPU's multithreaded pool.
+///
+/// Internally reuses the concept of channels and lanes from the CUDA decoder.
 struct BatchedThreadedNnet3CudaOnlinePipelineConfig {
   BatchedThreadedNnet3CudaOnlinePipelineConfig()
       : max_batch_size(400),
@@ -144,6 +143,8 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
 
     Initialize(decode_fst);
   }
+
+  ~BatchedThreadedNnet3CudaOnlinePipeline();
 
   const BatchedThreadedNnet3CudaOnlinePipelineConfig &GetConfig() {
     return config_;
@@ -243,12 +244,17 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
     cuda_decoder_->SetSymbolTable(word_syms);
   }
 
-  // Wait for all lattice callbacks to complete
-  // Can be called after DecodeBatch
-  void WaitForLatticeCallbacks();
+  ///\brief Wait for all lattice callbacks to complete.
+  ///
+  /// The method can be called after DecodeBatch(). The object's destructor
+  /// also calls this method to avoid a race condition between pool threads
+  /// running the callbacks and the instance's destruction. If you do not want
+  /// the destructor to hang for a long time, call this method first. It's safe
+  /// to call it multiple times.
+  void WaitForLatticeCallbacks() noexcept;
 
  private:
-  // Initiliaze this object
+  // Initialize this object.
   void Initialize(const fst::Fst<fst::StdArc> &decode_fst);
 
   // Allocate and initialize data that will be used for computation
@@ -274,9 +280,8 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
                                    const std::vector<int> &n_samples_valid,
                                    const std::vector<bool> &is_last_chunk);
 
-  // Compute features and ivectors for the chunk
-  // curr_batch[element]
-  // CPU function
+  // Compute features and ivectors for the chunk curr_batch[element].
+  // Used when features are computed on the host (CPU) on pool threads.
   void ComputeOneFeature(int element);
 
   static void ComputeOneFeatureWrapper(void *obj, uint64_t element,
