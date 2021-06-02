@@ -33,8 +33,7 @@
 namespace kaldi {
 namespace cuda_decoder {
 
-
-/// Print some statistics based on latencies stored in \p latencies.
+// Print some statistics based on latencies stored in \p latencies.
 inline void PrintLatencyStats(std::vector<double> &latencies) {
   if (latencies.empty()) return;
   double total = std::accumulate(latencies.begin(), latencies.end(), 0.);
@@ -66,6 +65,7 @@ struct CudaOnlineBinaryOptions {
   bool generate_lattice = false;
   std::string word_syms_rxfilename, nnet3_rxfilename, fst_rxfilename,
       wav_rspecifier, clat_wspecifier;
+  std::string lattice_postprocessor_config_rxfilename;
   BatchedThreadedNnet3CudaOnlinePipelineConfig batched_decoder_config;
 };
 
@@ -73,11 +73,11 @@ inline int SetUpAndReadCmdLineOptions(int argc, char *argv[],
                                       CudaOnlineBinaryOptions *opts_ptr) {
   CudaOnlineBinaryOptions &opts = *opts_ptr;
   const char *usage =
-    "Reads in wav file(s) and simulates online decoding with neural nets\n"
-    "(nnet3 setup).  Note: some configuration values and inputs are\n"
-    "set via config files whose filenames are passed as options\n\n"
-    "Usage: batched-wav-nnet3-cuda-online [options] <nnet3-in> <fst-in>"
-    " <wav-rspecifier> <lattice-wspecifier>\n";
+      "Reads in wav file(s) and simulates online decoding with neural nets\n"
+      "(nnet3 setup).  Note: some configuration values and inputs are\n"
+      "set via config files whose filenames are passed as options\n\n"
+      "Usage: batched-wav-nnet3-cuda-online [options] <nnet3-in> <fst-in>"
+      " <wav-rspecifier> <lattice-wspecifier>\n";
 
   ParseOptions po(usage);
   po.Register("print-hypotheses", &opts.print_hypotheses,
@@ -100,6 +100,9 @@ inline int SetUpAndReadCmdLineOptions(int argc, char *argv[],
   po.Register("generate-lattice", &opts.generate_lattice,
               "Generate full lattices");
   po.Register("write-lattice", &opts.write_lattice, "Output lattice to a file");
+  po.Register("lattice-postprocessor-rxfilename",
+              &opts.lattice_postprocessor_config_rxfilename,
+              "(optional) Config file for lattice postprocessor");
 
   CuDevice::RegisterDeviceOptions(&po);
   RegisterCuAllocatorOptions(&po);
@@ -175,83 +178,6 @@ inline void ReadDataset(const CudaOnlineBinaryOptions &opts,
   std::cout << "done" << std::endl;
 }
 
-// Reads all CTM outputs in results and merge them together into a single
-// output. That output is then written as a CTM text format to ostream.
-inline void MergeSegmentsToCTMOutput(std::vector<CudaPipelineResult> &results,
-                                     const std::string &key,
-                                     std::ostream &ostream,
-                                     fst::SymbolTable *word_syms = NULL) {
-  size_t nresults = results.size();
-
-  if (nresults == 0) {
-    KALDI_WARN << "Utterance " << key << " has no results. Skipping";
-    return;
-  }
-
-  bool all_results_valid = true;
-
-  for (size_t iresult = 0; iresult < nresults; ++iresult)
-    all_results_valid &= results[iresult].HasValidResult();
-
-  if (!all_results_valid) {
-    KALDI_WARN << "Utterance " << key
-               << " has at least one segment with an error. Skipping";
-    return;
-  }
-
-  ostream << std::fixed;
-  ostream.precision(2);
-
-  // opt: combine results into one here
-  BaseFloat previous_segment_word_end = 0;
-  for (size_t iresult = 0; iresult < nresults; ++iresult) {
-    bool this_segment_first_word = true;
-    bool is_last_segment = ((iresult + 1) == nresults);
-    BaseFloat next_offset_seconds = FLT_MAX;
-    if (!is_last_segment) {
-      next_offset_seconds = results[iresult + 1].GetTimeOffsetSeconds();
-    }
-
-    auto &result = results[iresult];
-    BaseFloat offset_seconds = result.GetTimeOffsetSeconds();
-    auto &ctm = result.GetCTMResult();
-    for (size_t iword = 0; iword < ctm.times_seconds.size(); ++iword) {
-      BaseFloat word_from = offset_seconds + ctm.times_seconds[iword].first;
-      BaseFloat word_to = offset_seconds + ctm.times_seconds[iword].second;
-
-      // If beginning of this segment, only keep "new" words
-      // i.e. the ones that were not already in previous segment
-      if (this_segment_first_word) {
-        if (word_from >= previous_segment_word_end) {
-          // Found the first "new" word for this segment
-          this_segment_first_word = false;
-        } else
-          continue;  // skipping this word
-      }
-
-      // If end of this segment, skip the words which are
-      // overlapping two segments
-      if (!is_last_segment) {
-        if (word_from >= next_offset_seconds) break;  // done with this segment
-      }
-
-      previous_segment_word_end = word_to;
-
-      ostream << key << " 1 " << word_from << ' ' << (word_to - word_from)
-              << ' ';
-
-      int32 word_id = ctm.words[iword];
-      if (word_syms) {
-        ostream << word_syms->Find(word_id);
-      } else {
-        ostream << word_id;
-      }
-
-      ostream << ' ' << ctm.conf[iword] << '\n';
-    }
-  }
-}
-
 inline void OpenOutputHandles(
     const std::string &output_wspecifier,
     std::unique_ptr<CompactLatticeWriter> *clat_writer,
@@ -266,48 +192,6 @@ inline void OpenOutputHandles(
     // Lattice output.
     clat_writer->reset(new CompactLatticeWriter(output_wspecifier));
   }
-}
-
-// Write all lattices in results using clat_writer. If print_offsets is true,
-// write each lattice under the key="[utterance_key]-[offset in seconds]".
-// 'prints_offsets' should be true if results.size() > 1
-void WriteLattices(std::vector<CudaPipelineResult> &results,
-                   const std::string &key, bool print_offsets,
-                   CompactLatticeWriter &clat_writer) {
-  for (const CudaPipelineResult &result : results) {
-    double offset = result.GetTimeOffsetSeconds();
-    if (!result.HasValidResult()) {
-      KALDI_WARN << "Utterance " << key << ": "
-                 << " Segment with offset " << offset
-                 << " is not valid. Skipping";
-    }
-
-    std::ostringstream key_with_offset;
-    key_with_offset << key;
-    if (print_offsets) key_with_offset << "-" << offset;
-    clat_writer.Write(key_with_offset.str(), result.GetLatticeResult());
-    if (!print_offsets) {
-      if (results.size() > 1) {
-        KALDI_WARN << "Utterance " << key
-                   << (" has multiple segments but only one is written to"
-                       " output. Use print_offsets=true");
-      }
-      break;  // Print only one result if offsets are not used.
-    }
-  }
-}
-
-// Read lattice postprocessor config, apply it, and assign it to the pipeline.
-inline void LoadAndSetLatticePostprocessor(
-    const std::string &config_filename,
-    BatchedThreadedNnet3CudaPipeline2 *cuda_pipeline) {
-  ParseOptions po("");  // No usage, reading from a file
-  LatticePostprocessorConfig pp_config;
-  pp_config.Register(&po);
-  po.ReadConfigFile(config_filename);
-  auto lattice_postprocessor =
-      std::make_shared<LatticePostprocessor>(pp_config);
-  cuda_pipeline->SetLatticePostprocessor(lattice_postprocessor);
 }
 
 }  // namespace cuda_decoder
