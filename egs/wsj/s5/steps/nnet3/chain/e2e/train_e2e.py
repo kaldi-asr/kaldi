@@ -4,7 +4,6 @@
 #           2016    Vimal Manohar
 #           2017    Hossein Hadian
 #           2021    Behavox Ltd. (author: Hossein Hadian)
-
 # Apache 2.0.
 
 """ This script does flat-start chain training and is based on
@@ -336,11 +335,11 @@ def train(args, run_opts):
                     {dir}/init.raw""".format(command=run_opts.command,
                                              dir=args.dir))
 
-    egs_left_context = left_context + args.frame_subsampling_factor / 2
-    egs_right_context = right_context + args.frame_subsampling_factor / 2
-    egs_left_context_initial = (left_context_initial + args.frame_subsampling_factor / 2 if
+    egs_left_context = left_context + args.frame_subsampling_factor // 2
+    egs_right_context = right_context + args.frame_subsampling_factor // 2
+    egs_left_context_initial = (left_context_initial + args.frame_subsampling_factor // 2 if
                                 left_context_initial >= 0 else -1)
-    egs_right_context_final = (right_context_final + args.frame_subsampling_factor / 2 if
+    egs_right_context_final = (right_context_final + args.frame_subsampling_factor // 2 if
                                right_context_final >= 0 else -1)
 
     default_egs_dir = '{0}/egs'.format(args.dir)
@@ -416,7 +415,7 @@ def train(args, run_opts):
     num_archives_to_process = int(args.num_epochs * num_archives_expanded)
     num_archives_processed = 0
     num_iters = ((num_archives_to_process * 2)
-                 / (args.num_jobs_initial + args.num_jobs_final))
+                 // (args.num_jobs_initial + args.num_jobs_final))
 
     models_to_combine = common_train_lib.get_model_combine_iters(
         num_iters, args.num_epochs,
