@@ -3,10 +3,8 @@ include(FetchContent)
 
 FetchContent_Declare(
         openfst
-        # GIT_REPOSITORY  https://github.com/kkm000/openfst
-        # GIT_TAG         0bca6e76d24647427356dc242b0adbf3b5f1a8d9 # tag win/1.7.2.1
-        GIT_REPOSITORY  https://github.com/vzxxbacq/openfst
-        GIT_TAG 1b5a9c4bbeb4bd09861f3d9c5cf4cc39e2f8b39c  # temp address, fixed cmake path error
+        GIT_REPOSITORY  https://github.com/kkm000/openfst
+        GIT_TAG         338225416178ac36b8002d70387f5556e44c8d05 # tag win/1.7.2.1
 )
 
 FetchContent_GetProperties(openfst)
