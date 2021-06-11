@@ -7,7 +7,10 @@ endif(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake;${CMAKE_MODULE_PATH}")
 include(GNUInstallDirs)
 include(Utils)
+
 include(third_party/get_third_party)
+
+include(cmake/third_party/openfst.cmake)
 
 find_package(PythonInterp)
 if(NOT PYTHON_EXECUTABLE)
@@ -172,18 +175,15 @@ endif()
 # get_third_party(openfst)
 # set(OPENFST_ROOT_DIR ${CMAKE_CURRENT_BINARY_DIR}/openfst)
 # include(third_party/openfst_lib_target)
-find_library(OpenFST_LIBRARY
-            NAMES fst
-            PATHS ${CMAKE_CURRENT_SOURCE_DIR}/tools/openfst/lib
-            REQUIRED)
-find_path(OpenFST_INCLUDE_DIR
-            NAMES "fst/fst.h"
-            PATHS "${CMAKE_CURRENT_SOURCE_DIR}/tools/openfst/include"
-            REQUIRED)
-get_filename_component(OpenFST_LIBRARY_DIR ${OpenFST_LIBRARY} DIRECTORY CACHE)
-mark_as_advanced(FORCE OpenFST_INCLUDE_DIR OpenFST_LIBRARY OpenFST_LIBRARY_DIR)
-include_directories(${OpenFST_INCLUDE_DIR})
-link_directories(${OpenFST_LIBRARY_DIR})
+#find_library(OpenFST_LIBRARY
+#            NAMES fst
+#            PATHS ${CMAKE_CURRENT_SOURCE_DIR}/tools/openfst/lib
+#            REQUIRED)
+#find_path(OpenFST_INCLUDE_DIR
+#            NAMES "fst/fst.h"
+#            PATHS "${CMAKE_CURRENT_SOURCE_DIR}/tools/openfst/include"
+#            REQUIRED)
+
 link_libraries(fst)
 
 # add all native libraries
