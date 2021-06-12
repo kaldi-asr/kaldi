@@ -19,6 +19,7 @@
 // limitations under the License.
 
 #include "nnet3/nnet-chain-diagnostics2.h"
+
 #include "nnet3/nnet-utils.h"
 
 namespace kaldi {
@@ -28,15 +29,16 @@ NnetChainComputeProb2::NnetChainComputeProb2(
     const NnetComputeProbOptions &nnet_config,
     const chain::ChainTrainingOptions &chain_config,
     NnetChainModel2 &model,
-    const Nnet &nnet):
-    nnet_config_(nnet_config),
-    chain_config_(chain_config),
-    nnet_(nnet),
-    compiler_(nnet, nnet_config_.optimize_config, nnet_config_.compiler_config),
-    deriv_nnet_owned_(true),
-    deriv_nnet_(NULL),
-    model_(model),
-    num_minibatches_processed_(0) {
+    const Nnet &nnet)
+    : nnet_config_(nnet_config),
+      chain_config_(chain_config),
+      nnet_(nnet),
+      compiler_(nnet, nnet_config_.optimize_config,
+                nnet_config_.compiler_config),
+      deriv_nnet_owned_(true),
+      deriv_nnet_(NULL),
+      model_(model),
+      num_minibatches_processed_(0) {
   if (nnet_config_.compute_deriv) {
     deriv_nnet_ = new Nnet(nnet_);
     ScaleNnet(0.0, deriv_nnet_);
@@ -51,15 +53,16 @@ NnetChainComputeProb2::NnetChainComputeProb2(
     const NnetComputeProbOptions &nnet_config,
     const chain::ChainTrainingOptions &chain_config,
     NnetChainModel2 &model,
-    Nnet *nnet): 
-    nnet_config_(nnet_config),
-    chain_config_(chain_config),
-    nnet_(*nnet),
-    compiler_(*nnet, nnet_config_.optimize_config, nnet_config_.compiler_config),
-    deriv_nnet_owned_(false),
-    deriv_nnet_(nnet),
-    model_(model),
-    num_minibatches_processed_(0) {
+    Nnet *nnet)
+    : nnet_config_(nnet_config),
+      chain_config_(chain_config),
+      nnet_(*nnet),
+      compiler_(*nnet, nnet_config_.optimize_config,
+                nnet_config_.compiler_config),
+      deriv_nnet_owned_(false),
+      deriv_nnet_(nnet),
+      model_(model),
+      num_minibatches_processed_(0) {
   KALDI_ASSERT(nnet_config.store_component_stats && !nnet_config.compute_deriv);
 }
 
@@ -84,11 +87,12 @@ void NnetChainComputeProb2::Reset() {
 }
 
 void NnetChainComputeProb2::Compute(NnetChainExample &chain_eg) {
-    std::string lang_name = "default";
-    Compute(lang_name, chain_eg);
+  std::string lang_name = "default";
+  Compute(lang_name, chain_eg);
 }
 
-void NnetChainComputeProb2::Compute(const std::string &lang_key, NnetChainExample &chain_eg) {
+void NnetChainComputeProb2::Compute(const std::string &lang_key,
+                                    NnetChainExample &chain_eg) {
   bool need_model_derivative = nnet_config_.compute_deriv,
       store_component_stats = nnet_config_.store_component_stats;
   ComputationRequest request;
@@ -101,18 +105,19 @@ void NnetChainComputeProb2::Compute(const std::string &lang_key, NnetChainExampl
   // regular objective.
   bool use_xent_regularization = (chain_config_.xent_regularize != 0.0),
       use_xent_derivative = false;
-  for (size_t i = 0; i < chain_eg.outputs.size(); i++) {
+  for (size_t i = 0; i < chain_eg.outputs.size(); ++i) {
     // there will normally be exactly one output , named "output"
-      if(chain_eg.outputs[i].name.compare("output")==0) {
-          chain_eg.outputs[i].name = "output-" + lang_key;
-          break;
-      }
+    if (chain_eg.outputs[i].name.compare("output") == 0) {
+      chain_eg.outputs[i].name = "output-" + lang_key;
+      break;
+    }
   }
 
   GetChainComputationRequest(nnet_, chain_eg, need_model_derivative,
                              store_component_stats, use_xent_regularization,
                              use_xent_derivative, &request);
-  std::shared_ptr<const NnetComputation> computation = compiler_.Compile(request);
+  std::shared_ptr<const NnetComputation> computation =
+      compiler_.Compile(request);
   NnetComputer computer(nnet_config_.compute_config, *computation,
                         nnet_, deriv_nnet_);
   // give the inputs to the computer object.
@@ -123,7 +128,7 @@ void NnetChainComputeProb2::Compute(const std::string &lang_key, NnetChainExampl
     computer.Run();
 }
 
-void NnetChainComputeProb2::ProcessOutputs(const std::string &lang_name, NnetChainExample &eg,                                         
+void NnetChainComputeProb2::ProcessOutputs(const std::string &lang_name, NnetChainExample &eg,
                                          NnetComputer *computer) {
   // There will normally be just one output here, named 'output',
   // but the code is more general than this.
@@ -248,7 +253,7 @@ static bool HasXentOutputs2(const Nnet &nnet) {
   for (std::vector<std::string>::const_iterator it = node_names.begin();
         it != node_names.end(); ++it) {
     int32 node_index = nnet.GetNodeIndex(*it);
-    if (nnet.IsOutputNode(node_index) && 
+    if (nnet.IsOutputNode(node_index) &&
         it->find("-xent") != std::string::npos) {
       return true;
     }
@@ -260,7 +265,7 @@ void RecomputeStats2(std::vector<NnetChainExample> &egs,
                     const chain::ChainTrainingOptions &chain_config_in,
                     NnetChainModel2 &model,
                     Nnet *nnet) {
-    RecomputeStats2("default", egs, chain_config_in, model, nnet);       
+    RecomputeStats2("default", egs, chain_config_in, model, nnet);
 }
 
 // TODO: Merge the next two functions. There is some duplication going on
@@ -297,7 +302,7 @@ void RecomputeStats2(const std::string &lang_name, std::vector<NnetChainExample>
   chain::ChainTrainingOptions chain_config(chain_config_in);
   if (HasXentOutputs2(*nnet) &&
       chain_config.xent_regularize == 0) {
-    // this forces it to compute the output for xent outputs, 
+    // this forces it to compute the output for xent outputs,
     // usually 'output-xent', which
     // means that we'll be computing batch-norm stats for any
     // components in that branch that have batch-norm.
@@ -314,4 +319,3 @@ void RecomputeStats2(const std::string &lang_name, std::vector<NnetChainExample>
 }
 } // namespace nnet3
 } // namespace kaldi
-

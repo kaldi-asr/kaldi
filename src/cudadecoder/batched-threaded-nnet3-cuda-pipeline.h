@@ -368,7 +368,6 @@ class [[deprecated]] BatchedThreadedNnet3CudaPipeline {
   std::unique_ptr<CudaFst> cuda_fst_;
   const TransitionModel *trans_model_;
   const nnet3::AmNnetSimple *am_nnet_;
-  nnet3::DecodableNnetSimpleLoopedInfo *decodable_info_;
   OnlineNnet2FeaturePipelineInfo *feature_info_;
 
   std::mutex tasks_mutex_;         // protects tasks_front_ and

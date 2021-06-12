@@ -34,7 +34,6 @@ RnnlmTrainer::RnnlmTrainer(bool train_embedding,
                            nnet3::Nnet *rnnlm):
     train_embedding_(train_embedding),
     core_config_(core_config),
-    embedding_config_(embedding_config),
     objective_config_(objective_config),
     rnnlm_(rnnlm),
     core_trainer_(NULL),

@@ -104,10 +104,6 @@ class ThreadSynchronizer {
                         // held); else undefined.  Used for validation of input.
   Semaphore producer_semaphore_;  // The producer thread waits on this semaphore
   Semaphore consumer_semaphore_;  // The consumer thread waits on this semaphore
-  int32 num_errors_;  // Rumber of times the threads alternated doing Lock() and
-                      // UnlockFailure().  This should not happen at all; but
-                      // it's more user-friendly to simply warn a few times; and then
-                      // only after a number of errors, to fail.
   KALDI_DISALLOW_COPY_AND_ASSIGN(ThreadSynchronizer);
 };
 
