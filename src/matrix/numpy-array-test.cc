@@ -19,6 +19,12 @@
 
 #include "matrix/numpy-array.h"
 
+#include <cstdio>
+#include <cstdlib>
+#include <fstream>
+#include <sstream>
+
+
 using namespace kaldi;
 
 namespace {
@@ -62,12 +68,24 @@ void test_numpy() {
   std::ifstream in("test_data/float_matrix.npy");
   a.Read(in, true);
 
-  std::ofstream os("t.bin", std::ios::binary);
+  std::ofstream os("numpy-array.tmp", std::ios::binary);
   a.Write(os, true);
   os.close();
-  // we can use
-  // python -c 'import numpy as np; print(np.load("t.bin"))'
-  // to see that numpy can load t.bin
+
+  // Make sure to use external double quotes for cmd.exe on Windows:
+  // `python -c "print('Hi')"` good, `python -c 'print("Hi")'` bad.
+  int rc = std::system("python3 -c \"import numpy\"");
+  if (rc != 0) {
+    rc = 0;
+    KALDI_LOG << "python3 or numpy unavailable, array file load test SKIPPED";
+  } else {
+    rc = std::system("python3 -c \"import numpy; "
+                     "numpy.load('numpy-array.tmp')\"");
+    KALDI_LOG << "python3 numpy array file load test "
+              << (rc == 0 ? "PASSED" : "FAILED");
+  }
+  std::remove("numpy-array.tmp");
+  KALDI_ASSERT(rc == 0);
 }
 
 template <typename Real>
