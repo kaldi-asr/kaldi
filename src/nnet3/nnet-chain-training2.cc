@@ -338,17 +338,6 @@ std::string GetPathname(const std::string &dir,
   return dir + '/' + name + '.' + suffix;
 }
 
-// TODO(kkm): Currently unused. Delete or use if intended.
-#if 0
-// If job_id is >= 0, return a pathname" as '<dir>/<name>.<job_id>.<suffix>',
-// otherwise (job_id < 0) as '<dir>/<name>.<suffix>'
-std::string GetPathname(const std::string &dir, const std::string &name,
-                        int32 job_id, const std::string &suffix) {
-  if (job_id < 0) return GetPathname(dir, name, suffix);
-  return dir + '/' + name + '.' + std::to_string(job_id) + '.' + suffix;
-}
-#endif
-
 }  // namespace
 
 const NnetChainModel2::LanguageInfo *NnetChainModel2::GetInfoForLang(
