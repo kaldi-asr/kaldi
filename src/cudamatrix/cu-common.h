@@ -22,14 +22,14 @@
 #ifndef KALDI_CUDAMATRIX_CU_COMMON_H_
 #define KALDI_CUDAMATRIX_CU_COMMON_H_
 
-#if HAVE_CUDA
-
 #include <iostream>
 #include <sstream>
 
 #include "base/kaldi-error.h"
 #include "cudamatrix/cu-matrixdim.h" // for CU1DBLOCK and CU2DBLOCK
 #include "matrix/matrix-common.h"
+
+#if HAVE_CUDA
 
 #include <cublas_v2.h>
 #include <cuda_runtime_api.h>
