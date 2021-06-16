@@ -68,7 +68,7 @@ struct BatchedThreadedNnet3CudaOnlinePipelineConfig {
     po->Register("max-batch-size", &max_batch_size,
                  "The maximum execution batch size."
                  " Larger = better throughput, but slower latency.");
-    po->Register("num-channqels", &num_channels,
+    po->Register("num-channels", &num_channels,
                  "The number of parallel audio channels. This is the maximum"
                  " number of parallel audio channels supported by the pipeline."
                  " This should be larger than max_batch_size.");
@@ -415,11 +415,11 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
   // Ordering of the cuda_fst_ w.r.t. thread_pool_ and the decoder is important:
   // order of destruction is bottom-up, opposite to the order of construction.
   // We want the FST object, which is entirely passive and only frees device
-  // FST representation when destroyed, to survove both the thread pool and the
+  // FST representation when destroyed, to survive both the thread pool and the
   // decoder, which both may perform pending work during destruction. Since no
   // new work may be fed into this object while it is being destroyed, the
   // relative order of the latter two is unimportant, but just in case, FST must
-  // stay around until the otther two are positively quiescent.
+  // stay around until the other two are positively quiescent.
 
   // HCLG graph. CudaFst is a host object, but owns pointers to the data stored
   // in GPU memory.
@@ -429,9 +429,8 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
   // destructor blocks until the thread pool is drained of work items.
   std::unique_ptr<ThreadPoolLight> thread_pool_;
 
-  // The decoder owns thread(s) which recostruct lattices, which are transferred
-  // from the device in a compacted form as arrays with offsets instead of
-  // pointers.
+  // The decoder owns thread(s) that reconstruct lattices transferred from the
+  // device in a compacted form as arrays with offsets instead of pointers.
   std::unique_ptr<CudaDecoder> cuda_decoder_;
 
   // Used for debugging
