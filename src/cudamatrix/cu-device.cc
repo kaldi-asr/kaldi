@@ -598,6 +598,7 @@ CuDevice::CuDevice():
     device_id_copy_(-1),
     cublas_handle_(NULL),
     cusparse_handle_(NULL),
+    curand_handle_(NULL),
     cusolverdn_handle_(NULL) {
 }
 

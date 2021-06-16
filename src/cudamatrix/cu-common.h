@@ -29,7 +29,8 @@
 #include "cudamatrix/cu-matrixdim.h" // for CU1DBLOCK and CU2DBLOCK
 #include "matrix/matrix-common.h"
 
-#if HAVE_CUDA == 1
+#if HAVE_CUDA
+
 #include <cublas_v2.h>
 #include <cuda_runtime_api.h>
 #include <curand.h>
@@ -136,12 +137,11 @@ const char* cusparseGetStatusString(cusparseStatus_t status);
 
 /** This is analogous to the CUDA function cudaGetErrorString(). **/
 const char* curandGetStatusString(curandStatus_t status);
-}
 
-#else
-namespace kaldi {
+}  // namespace kaldi
+
+#else  // HAVE CUDA
 #define NVTX_RANGE(name)
-};
 #endif  // HAVE_CUDA
 
 namespace kaldi {
@@ -159,7 +159,6 @@ template<typename Real> class CuTpMatrix;
 template<typename Real> class CuSparseMatrix;
 
 template<typename Real> class CuBlockMatrix; // this has no non-CU counterpart.
-
 
 }  // namespace kaldi
 
