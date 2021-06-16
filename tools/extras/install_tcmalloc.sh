@@ -13,7 +13,8 @@
 # So the libunwind is recommanded to be installed. When the deadlock problems
 # happen, the user can try to link with the library libunwind. But there may
 # still be some crash on x64 platform. You can skip the installation about
-# libunwind if you don't need it.
+# libunwind if you don't need it. (Link with "-lunwind" after your installation
+# if you want to include it.)
 #
 # Depending on different platforms which are used by different users, the users
 # also can try differnet malloc libraries such as tbbmalloc and so on. From our
@@ -21,11 +22,11 @@
 
 
 # Make sure we are in the tools/ directory.
-if [ `basename $PWD` == extras ]; then
+if [ $(basename $PWD) == extras ]; then
   cd ..
 fi
 
-! [ `basename $PWD` == tools ] && \
+! [ $(basename $PWD) == tools ] && \
   echo "You must call this script from the tools/ directory" && exit 1;
 
 # prepare libunwind
@@ -54,7 +55,7 @@ fi
 #`pwd` will cause recursive problem.
 tar vxzf libunwind-1.5-rc1.tar.gz
 cd libunwind-1.5-rc1
-./configure --prefix=`pwd`/install || exit 1;
+./configure --prefix=$PWD/install || exit 1;
 make || exit 1;
 make install || exit 1;
 cd ..
@@ -68,17 +69,17 @@ fi
 git clone https://github.com/gperftools/gperftools.git gperftools
 
 # install tcmalloc
-wd=`pwd`
+wd=$PWD
 cd gperftools
 bash autogen.sh
-./configure --prefix=`pwd` || exit 1;
+./configure --prefix=$PWD || exit 1;
 make || exit 1;
 make install || exit 1;
 cd ..
 
 # add path
 (
-  wd=`pwd`
+  wd=$PWD
   echo export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$wd/gperftools/lib
   echo export PATH=$PATH:$wd/gperftools/bin
 ) >> env.sh
