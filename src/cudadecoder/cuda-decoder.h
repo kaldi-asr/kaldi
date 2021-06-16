@@ -22,15 +22,28 @@
 
 #include <cuda_runtime_api.h>
 
+#include <atomic>
 #include <cfloat>
+#include <condition_variable>
+#include <functional>
+#include <list>
+#include <memory>
 #include <mutex>
+#include <set>
+#include <sstream>
+#include <stack>
+#include <thread>
 #include <tuple>
+#include <unordered_map>
+#include <unordered_set>
+#include <utility>
 #include <vector>
 
 #include "cudadecoder/cuda-decodable-itf.h"
 #include "cudadecoder/cuda-decoder-common.h"
 #include "cudadecoder/cuda-fst.h"
 #include "cudadecoder/thread-pool-light.h"
+#include "fst/symbol-table.h"
 #include "nnet3/decodable-online-looped.h"
 #include "online2/online-endpoint.h"
 
@@ -742,11 +755,11 @@ class CudaDecoder {
   std::vector<std::vector<InfoToken>> h_all_tokens_extra_prev_tokens_;
   std::vector<std::vector<float2>>
       h_all_tokens_extra_prev_tokens_extra_and_acoustic_cost_;
-  std::vector<std::mutex> channel_lock_;  // at some point we should switch to
-                                          // a shared_lock (to be able to
-                                          // compute partial lattices while
-                                          // still streaming new data for this
-                                          // channel)
+  //TODO(hugovbraun): At some point we should switch to a shared_lock to be
+  // able to compute partial lattices while still streaming new data for this
+  // channel.
+  std::vector<std::mutex> channel_lock_;
+
   bool worker_threads_running_;
   // For each channel, set by PrepareForGetRawLattice
   // argmin cost, list of the tokens within
@@ -755,8 +768,8 @@ class CudaDecoder {
   std::vector<std::pair<int32, CostType>> h_all_argmin_cost_;
   std::vector<std::vector<std::pair<int, float>>> h_all_final_tokens_list_;
   std::vector<bool> h_all_has_reached_final_;
-  std::vector<ChannelId>
-      nonempty_channels_;  // used as buffer to store channels with nframes>0
+  // Buffer to store channels with nframes > 0.
+  std::vector<ChannelId> nonempty_channels_;
 
   // Pinned memory arrays. Used for the DeviceToHost copies
   float2 *h_extra_and_acoustic_cost_concat_, *d_extra_and_acoustic_cost_concat_;
@@ -873,7 +886,9 @@ class CudaDecoder {
   std::atomic<std::int32_t> n_partial_traceback_threads_todo_;
   std::atomic<std::int32_t> n_partial_traceback_threads_not_done_;
 
-  bool h2h_threads_running_;
+  // Set to false in destructor to stop threads.
+  volatile bool h2h_threads_running_;
+
   // Using the output from GetBestPath, we add the best tokens (as
   // selected in GetBestCost) from the final frame to the output lattice.
   // We also fill the data structures (such as q_curr_frame_todo_, or
