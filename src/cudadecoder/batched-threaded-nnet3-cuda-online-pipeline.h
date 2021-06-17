@@ -15,8 +15,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_CUDADECODER_BATCHED_THREADED_CUDA_ONLINE_PIPELINE_H_
-#define KALDI_CUDADECODER_BATCHED_THREADED_CUDA_ONLINE_PIPELINE_H_
+#ifndef KALDI_CUDADECODER_BATCHED_THREADED_NNET3_CUDA_ONLINE_PIPELINE_H_
+#define KALDI_CUDADECODER_BATCHED_THREADED_NNET3_CUDA_ONLINE_PIPELINE_H_
 
 #if HAVE_CUDA
 
@@ -66,24 +66,22 @@ struct BatchedThreadedNnet3CudaOnlinePipelineConfig {
         use_gpu_feature_extraction(true) {}
   void Register(OptionsItf *po) {
     po->Register("max-batch-size", &max_batch_size,
-                 "The maximum execution batch size. "
-                 "Larger = Better throughput slower latency.");
+                 "The maximum execution batch size."
+                 " Larger = better throughput, but slower latency.");
     po->Register("num-channels", &num_channels,
-                 "The number of parallel audio channels. This is the maximum "
-                 "number of parallel audio channels supported by the pipeline"
-                 ". This should be larger "
-                 "than max_batch_size.");
+                 "The number of parallel audio channels. This is the maximum"
+                 " number of parallel audio channels supported by the pipeline."
+                 " This should be larger than max_batch_size.");
     po->Register("cuda-worker-threads", &num_worker_threads,
-                 "(optional) The total number of CPU threads launched to "
-                 "process CPU tasks. -1 = use std::hardware_concurrency()");
+                 "The total number of CPU threads launched to process CPU"
+                 " tasks. -1 = use std::hardware_concurrency().");
     po->Register("determinize-lattice", &determinize_lattice,
                  "Determinize the lattice before output.");
     po->Register("cuda-decoder-copy-threads", &num_decoder_copy_threads,
-                 "Advanced - Number of worker threads used in the "
-                 "decoder for "
-                 "the host to host copies.");
+                 "Advanced - Number of worker threads used in the"
+                 " decoder for the host to host copies.");
     po->Register("gpu-feature-extract", &use_gpu_feature_extraction,
-                 "Use GPU feature extraction");
+                 "Use GPU feature extraction.");
 
     feature_opts.Register(po);
     decoder_opts.Register(po);
@@ -138,10 +136,9 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
         word_syms_(NULL) {
     config_.compute_opts.CheckAndFixConfigs(am_nnet_->GetNnet().Modulus());
     config_.CheckAndFixConfigs();
-    int num_worker_threads = config_.num_worker_threads;
-    thread_pool_.reset(new ThreadPoolLight(num_worker_threads));
-
     Initialize(decode_fst);
+    int num_worker_threads = config.num_worker_threads;
+    thread_pool_ = std::make_unique<ThreadPoolLight>(num_worker_threads);
   }
 
   ~BatchedThreadedNnet3CudaOnlinePipeline();
@@ -415,13 +412,26 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
   // Only used if feature extraction is run on the CPU
   std::vector<std::unique_ptr<OnlineNnet2FeaturePipeline>> feature_pipelines_;
 
-  // HCLG graph : CudaFst object is a host object, but contains
-  // data stored in
-  // GPU memory
-  std::unique_ptr<CudaFst> cuda_fst_;
-  std::unique_ptr<CudaDecoder> cuda_decoder_;
+  // Ordering of the cuda_fst_ w.r.t. thread_pool_ and the decoder is important:
+  // order of destruction is bottom-up, opposite to the order of construction.
+  // We want the FST object, which is entirely passive and only frees device
+  // FST representation when destroyed, to survive both the thread pool and the
+  // decoder, which both may perform pending work during destruction. Since no
+  // new work may be fed into this object while it is being destroyed, the
+  // relative order of the latter two is unimportant, but just in case, FST must
+  // stay around until the other two are positively quiescent.
 
+  // HCLG graph. CudaFst is a host object, but owns pointers to the data stored
+  // in GPU memory.
+  std::unique_ptr<CudaFst> cuda_fst_;
+
+  // The thread pool receives data from device and post-processes it. This class
+  // destructor blocks until the thread pool is drained of work items.
   std::unique_ptr<ThreadPoolLight> thread_pool_;
+
+  // The decoder owns thread(s) that reconstruct lattices transferred from the
+  // device in a compacted form as arrays with offsets instead of pointers.
+  std::unique_ptr<CudaDecoder> cuda_decoder_;
 
   // Used for debugging
   const fst::SymbolTable *word_syms_;
@@ -429,8 +439,8 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
   std::mutex stdout_m_;
 };
 
-}  // end namespace cuda_decoder
-}  // end namespace kaldi.
+}  // namespace cuda_decoder
+}  // namespace kaldi
 
 #endif  // HAVE_CUDA
-#endif  // KALDI_CUDADECODER_BATCHED_THREADED_CUDA_ONLINE_PIPELINE_H_
+#endif  // KALDI_CUDADECODER_BATCHED_THREADED_NNET3_CUDA_ONLINE_PIPELINE_H_
