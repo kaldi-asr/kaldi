@@ -47,12 +47,14 @@ int main(int argc, char *argv[]) {
 
     bool write_compact = true;
     int32 num_states_cache = 50000;
-    int32 phi_label = fst::kNoLabel; // == -1
-    po.Register("write-compact", &write_compact, "If true, write in normal (compact) form.");
-    po.Register("phi-label", &phi_label, "If >0, the label on backoff arcs of the LM");
+    int32 phi_label = fst::kNoLabel;  // == -1
+    po.Register("write-compact", &write_compact,
+                "If true, write in normal (compact) form.");
+    po.Register("phi-label", &phi_label,
+                "If >0, the label on backoff arcs of the LM");
     po.Register("num-states-cache", &num_states_cache,
-                "Number of states we cache when mapping LM FST to lattice type. "
-                "More -> more memory but faster.");
+                "Number of states we cache when mapping LM FST to lattice type."
+                " More -> more memory but faster.");
     po.Read(argc, argv);
 
     if (po.NumArgs() != 3) {
@@ -72,10 +74,11 @@ int main(int argc, char *argv[]) {
     CompactLatticeWriter compact_lattice_writer;
     LatticeWriter lattice_writer;
 
-    if (write_compact)
+    if (write_compact) {
       compact_lattice_writer.Open(lats_wspecifier);
-    else
+    } else {
       lattice_writer.Open(lats_wspecifier);
+    }
 
     if (ClassifyRspecifier(arg2, NULL, NULL) == kNoRspecifier) {
       std::string fst_rxfilename = arg2;
@@ -105,8 +108,11 @@ int main(int argc, char *argv[]) {
         Lattice lat1 = lattice_reader1.Value();
         ArcSort(&lat1, fst::OLabelCompare<LatticeArc>());
         Lattice composed_lat;
-        if (phi_label > 0) PhiCompose(lat1, mapped_fst2, phi_label, &composed_lat);
-        else Compose(lat1, mapped_fst2, &composed_lat);
+        if (phi_label > 0) {
+          PhiCompose(lat1, mapped_fst2, phi_label, &composed_lat);
+        } else {
+          Compose(lat1, mapped_fst2, &composed_lat);
+        }
         if (composed_lat.Start() == fst::kNoStateId) {
           KALDI_WARN << "Empty lattice for utterance " << key << " (incompatible LM?)";
           n_fail++;
@@ -123,7 +129,7 @@ int main(int argc, char *argv[]) {
       }
       delete fst2;
     } else {
-      // composing with each utterance with different fst,
+      // Compose each utterance with its matching (by key) FST.
       std::string fst_rspecifier2 = arg2;
       RandomAccessTableReader<fst::VectorFstHolder> fst_reader2(fst_rspecifier2);
 
@@ -135,7 +141,7 @@ int main(int argc, char *argv[]) {
 
         if (!fst_reader2.HasKey(key)) {
           KALDI_WARN << "Not producing output for utterance " << key
-                     << " because not present in second table.";
+                     << " because it's not present in second table.";
           n_fail++;
           continue;
         }

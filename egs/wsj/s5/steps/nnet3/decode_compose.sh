@@ -48,7 +48,7 @@ echo "$0 $@"  # Print the command line for logging
 if [ $# -ne 3 ]; then
   echo "Usage: $0 [options] <graph-dir> <data-dir> <decode-dir>"
   echo "e.g.:   steps/nnet3/decode.sh --nj 8 \\"
-  echo "--online-ivector-dir exp/nnet2_online/ivectors_test_eval92 \\"
+  echo "      --online-ivector-dir exp/nnet2_online/ivectors_test_eval92 \\"
   echo "    exp/tri4b/graph_bg data/test_eval92_hires $dir/decode_bg_eval92"
   echo "main options (for others, see top of script file)"
   echo "  --config <config-file>                   # config containing options"
@@ -67,7 +67,7 @@ fi
 graphdir=$1
 data=$2
 dir=$3
-srcdir=`dirname $dir`; # Assume model directory one level up from decoding directory.
+srcdir=$(dirname $dir)  # Assume model directory one level up from decoding directory.
 model=$srcdir/$iter.mdl
 
 [ -z "$boosting_graphs" ] && echo "Error, \$boosting_graphs have to be set !" && exit 1

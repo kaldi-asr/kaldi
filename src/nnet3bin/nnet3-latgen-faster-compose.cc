@@ -20,19 +20,20 @@
 // limitations under the License.
 
 
-#include "base/kaldi-common.h"
-#include "util/common-utils.h"
-#include "tree/context-dep.h"
-#include "hmm/transition-model.h"
-#include "fstext/fstext-lib.h"
-#include "decoder/decoder-wrappers.h"
-#include "nnet3/nnet-am-decodable-simple.h"
-#include "nnet3/nnet-utils.h"
-#include "base/timer.h"
-
 #include <fst/compose.h>
 #include <fst/rmepsilon.h>
+
 #include <memory>
+
+#include "base/kaldi-common.h"
+#include "base/timer.h"
+#include "decoder/decoder-wrappers.h"
+#include "fstext/fstext-lib.h"
+#include "hmm/transition-model.h"
+#include "nnet3/nnet-am-decodable-simple.h"
+#include "nnet3/nnet-utils.h"
+#include "tree/context-dep.h"
+#include "util/common-utils.h"
 
 
 int main(int argc, char *argv[]) {
@@ -121,9 +122,10 @@ int main(int argc, char *argv[]) {
     CompactLatticeWriter compact_lattice_writer;
     LatticeWriter lattice_writer;
     if (! (determinize ? compact_lattice_writer.Open(lattice_wspecifier)
-           : lattice_writer.Open(lattice_wspecifier)))
+           : lattice_writer.Open(lattice_wspecifier))) {
       KALDI_ERR << "Could not open table for writing lattices: "
-                 << lattice_wspecifier;
+                << lattice_wspecifier;
+    }                 
 
     RandomAccessBaseFloatMatrixReader online_ivector_reader(
         online_ivector_rspecifier);
@@ -213,13 +215,13 @@ int main(int argc, char *argv[]) {
 
         timer_compose.Reset();
 
-        // RmEpsilon saved 30% of composition runtime...
+        // RmEpsilon saved 30% of composition runtime.
         // - Note: we are loading 2-state graphs with eps back-link to the initial state.
         if (boosting_fst.Properties(fst::kIEpsilons, true) != 0) {
           fst::RmEpsilon(&boosting_fst);
         }
 
-        // make sure boosting graph is sorted on ilabel,
+        // Make sure boosting graph is sorted on ilabel.
         if (boosting_fst.Properties(fst::kILabelSorted, true) == 0) {
           fst::ILabelCompare<StdArc> ilabel_comp;
           fst::ArcSort(&boosting_fst, ilabel_comp);
@@ -267,7 +269,9 @@ int main(int argc, char *argv[]) {
           tot_like += like;
           frame_count += nnet_decodable.NumFramesReady();
           num_success++;
-        } else num_fail++;
+        } else {
+          ++num_fail;
+        }
       }
     }
 
@@ -286,8 +290,7 @@ int main(int argc, char *argv[]) {
               << (tot_like / frame_count) << " over "
               << frame_count << " frames.";
 
-    if (num_success != 0) return 0;
-    else return 1;
+    return num_success != 0 ? 0 : 1;
   } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;
