@@ -6,7 +6,7 @@ SHELL := /bin/bash
 
 # Please keep sorted alphabetically, and start each with a letter which
 # is different from the first one in the last word one the row above it.
-SUBDIRS := base bin chain chainbin cudamatrix decoder		\
+SUBDIRS = base bin chain chainbin cudamatrix decoder		\
            feat featbin fgmmbin fstbin fstext			\
            gmm gmmbin hmm                               	\
            ivector ivectorbin kws kwsbin	        	\
