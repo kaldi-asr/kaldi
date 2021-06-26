@@ -57,7 +57,7 @@ if [ $stage -le 1 ]; then
   # the training scripts require that <s>, </s> and <brk> be present in a particular
   # order.
   cp $wordlist $dir/config/ 
-  n=`cat $dir/config/words.txt | wc -l` 
+  n=$(wc -l $dir/config/words.txt | cut -d " " -f 1)
   echo "<brk> $n" >> $dir/config/words.txt 
   echo "<unk>" >$dir/config/oov.txt
 
