@@ -33,8 +33,6 @@ decode_dir_suffix=lstm_rnnlm
 . ./utils/parse_options.sh
 [ -z "$cmd" ] && cmd=$train_cmd
 
-export PYTHONIOENCODING=UTF-8
-
 text=data/local/lm/train.gz
 wordlist=data/lang_csj_tg/words.txt
 text_dir=data/rnnlm/text_nosp
