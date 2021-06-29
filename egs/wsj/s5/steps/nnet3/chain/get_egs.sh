@@ -530,19 +530,18 @@ fi
 if [ $stage -le 6 ]; then
   echo "$0: Removing temporary archives, alignments and lattices"
   (
-    pushd $dir
+    cd $dir
     for f in $(ls -l . | grep 'cegs_orig' | awk '{ X=NF-1; Y=NF-2; if ($X == "->")  print $Y, $NF; }'); do rm $f; done
     # the next statement removes them if we weren't using the soft links to a
     # 'storage' directory.
     rm cegs_orig.*.ark 2>/dev/null
-    popd
-    rm $dir/ali.{ark,scp} 2>/dev/null
-    rm $dir/lat_special.*.{ark,scp} 2>/dev/null
-    if ! $generate_egs_scp && [ $archives_multiple -gt 1 ]; then
-      # there are some extra soft links that we should delete.
-      for f in $dir/cegs.*.*.ark; do rm $f; done
-    fi
-  ) &
+  )
+  if ! $generate_egs_scp && [ $archives_multiple -gt 1 ]; then
+    # there are some extra soft links that we should delete.
+    for f in $dir/cegs.*.*.ark; do rm $f; done
+  fi
+  rm $dir/ali.{ark,scp} 2>/dev/null
+  rm $dir/lat_special.*.{ark,scp} 2>/dev/null
 fi
 
 echo "$0: Finished preparing training examples"
