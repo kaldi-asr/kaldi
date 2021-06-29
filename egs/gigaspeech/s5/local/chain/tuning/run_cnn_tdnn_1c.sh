@@ -1,9 +1,12 @@
 #!/usr/bin/env bash
-# Copyright 2021 Xiaomi Corporation (Author: Yongqing Wang)
+# Copyright 2021  Xiaomi Corporation (Author: Yongqing Wang)
+#                 Seasalt AI, Inc (Author: Guoguo Chen)
 # Apache 2.0
 
-# This script is copied from egs/multi_cn/s5/local/chain/tuning/run_cnn_tdnn_1b.sh
+# This script is copied from mini_librispeech/s5
 
+# 1b is as 1a but adding SpecAugment and removing dropout (which, in
+# combination with SpecAugment, no longer seemed to give an improvement).
 
 # Set -e here so that we catch if any executable fails immediately
 set -euo pipefail
@@ -25,19 +28,23 @@ get_egs_stage=-10
 decode_iter=
 
 # training options
-# training chunk-options
 chunk_width=150,110,100
-common_egs_dir=
-xent_regularize=0.1
-
-# training options
 srand=0
 remove_egs=false
+common_egs_dir=
 reporting_email=
+num_epochs=6
+frames_per_iter=3000000
+initial_effective_lrate=0.00015
+final_effective_lrate=0.000015
+num_jobs_initial=16
+num_jobs_final=16
+xent_regularize=0.1
 
 # decode options
 test_sets=""
-test_online_decoding=true  # if true, it will run the last decoding stage.
+test_online_decoding=false  # if true, it will run the last decoding stage.
+run_backward_rnnlm=false # if true, it will run backward rnnlm.
 
 
 # End configuration section.
@@ -166,7 +173,7 @@ if [ $stage -le 15 ]; then
   fi
 
   steps/nnet3/chain/train.py --stage=$train_stage \
-    --cmd="$cuda_cmd" \
+    --cmd="$train_cmd" \
     --feat.online-ivector-dir=$train_ivector_dir \
     --feat.cmvn-opts="--norm-means=false --norm-vars=false" \
     --chain.xent-regularize $xent_regularize \
@@ -177,12 +184,12 @@ if [ $stage -le 15 ]; then
     --trainer.add-option="--optimization.memory-compression-level=2" \
     --trainer.srand=$srand \
     --trainer.max-param-change=2.0 \
-    --trainer.num-epochs=4 \
-    --trainer.frames-per-iter=3000000 \
-    --trainer.optimization.num-jobs-initial=16 \
-    --trainer.optimization.num-jobs-final=16 \
-    --trainer.optimization.initial-effective-lrate=0.00015 \
-    --trainer.optimization.final-effective-lrate=0.000015 \
+    --trainer.num-epochs=$num_epochs \
+    --trainer.frames-per-iter=$frames_per_iter \
+    --trainer.optimization.num-jobs-initial=$num_jobs_initial \
+    --trainer.optimization.num-jobs-final=$num_jobs_final \
+    --trainer.optimization.initial-effective-lrate=$initial_effective_lrate \
+    --trainer.optimization.final-effective-lrate=$final_effective_lrate \
     --trainer.num-chunk-per-minibatch=128,64 \
     --egs.chunk-width=$chunk_width \
     --egs.dir="$common_egs_dir" \
@@ -227,14 +234,55 @@ if [ $stage -le 17 ]; then
   fi
 fi
 
-if $test_online_decoding && [ $stage -le 18 ]; then
+if [ $stage -le 18 ]; then
+  # decode with rnnlm
+  rm $dir/.error 2>/dev/null || true
+  echo "$0:run rnnlm forward"
+  ./local/rnnlm/run_rnnlm.sh --stage 0 \
+    --ngram-order 5 \
+    --num-jobs-initial 1 \
+    --num-jobs_final 3 \
+    --words-per-split 300000 \
+    --text data/${train_set}/text \
+    --ac-model-dir $dir \
+    --test-sets "$test_sets" \
+    --decode-iter "$decode_iter" \
+    --test-sets "$test_sets" \
+    --lang data/lang_test \
+    --dir exp/rnnlm || touch $dir/.error
+
+  # running backward RNNLM, which further improves WERS by combining backward with
+  # the forward RNNLM trained in this script.
+  if $run_backward_rnnlm; then
+    echo "$0:run rnnlm backward"
+    ./local/rnnlm/run_rnnlm_back.sh --stage 0 \
+      --ngram-order 5 \
+      --num-jobs-initial 1 \
+      --num-jobs_final 3 \
+      --words-per-split 300000 \
+      --text data/${train_set}/text \
+      --ac-model-dir $dir \
+      --decode-iter "$decode_iter" \
+      --test-sets "$test_sets" \
+      --lang data/lang_test \
+      --dir exp/rnnlm_backward || touch $dir/.error
+  fi
+
+  if [ -f $dir/.error ]; then
+    echo "$0: something went wrong in decoding with rnnlm"
+    exit 1
+  fi
+
+fi
+
+if $test_online_decoding && [ $stage -le 19 ]; then
   # note: if the features change (e.g. you add pitch features), you will have to
   # change the options of the following command line.
   steps/online/nnet3/prepare_online_decoding.sh \
        --mfcc-config conf/mfcc_hires.conf \
        $lang exp/nnet3${nnet3_affix}/extractor $dir ${dir}_online
 
-  rm $dir/.error 2>/dev/null || true
+  rm ${dir}_online/.error 2>/dev/null || true
   for part_set in $test_sets; do
     (
       nspk=$(wc -l <data/${part_set}_hires/spk2utt)
@@ -245,10 +293,10 @@ if $test_online_decoding && [ $stage -le 18 ]; then
           --nj $nspk --cmd "$decode_cmd" \
           $graph_dir data/${part_set} ${dir}_online/decode_${part_set} || exit 1
 
-    ) || touch $dir/.error &
+    ) || touch ${dir}_online/.error &
   done
   wait
-  if [ -f $dir/.error ]; then
+  if [ -f ${dir}_online/.error ]; then
     echo "$0: something went wrong in decoding"
     exit 1
   fi

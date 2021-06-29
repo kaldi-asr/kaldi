@@ -1,52 +1,52 @@
 #!/usr/bin/env bash
+# Copyright 2021  Xiaomi Corporation (Author: Yongqing Wang)
+#                 Seasalt AI, Inc (Author: Guoguo Chen)
 
-# Copyright 2014 Vassil Panayotov
-#          2021 Xiaomi Corporation Yongqing Wang
-# Apache 2.0
+# Generates pronunciations for out-of-vocabulary words using the Sequitur G2P
+# toolkit.
 
-# Auto-generates pronunciations using Sequitur G2P
+set -e
+set -o pipefail
 
-. ./path.sh || exit 1
-
-[ -z "$PYTHON" ] && PYTHON=~/miniconda3/envs/py2/bin/python2.7 
+. ./path.sh || exit 1;
+. ./utils/parse_options.sh || exit 1;
 
 if [ $# -ne 3 ]; then
-  echo "Usage: $0 <vocab> <g2p-model> <out-lexicon>"
-  echo "e.g.: $0 data/local/dict/g2p/vocab_autogen.1 /export/a15/vpanayotov/data/g2p.model.4 data/local/dict/g2p/lexicon_autogen.1"
-  echo ", where:"
-  echo "    <vocab> - input vocabulary, that's words for which we want to generate pronunciations"
-  echo "    <g2p-model> - g2p model file"
-  echo "    <out-lexicon> - the output, i.e. the generated pronunciations"
-  exit 1
+  echo "Usage: $0 <g2p-model> <words> <lexicon>"
+  echo " e.g.: $0 g2p/g2p.model.4 words.list data/local/dict/g2p/lexicon.txt"
+  echo ""
+  echo "  <g2p-model>   G2P model file."
+  echo "  <words>       List of words to generate pronunciations for."
+  echo "  <lexicon>     Generated lexicon."
+  exit 1;
 fi
 
-vocab=$1
-g2p_model=$2
-out_lexicon=$3
+g2p_model=$1
+words=$2
+lexicon=$3
 
-[ ! -f $vocab ] && echo "Can't find the G2P input file: $vocab" && exit 1;
+[ ! -f $g2p_model ] && echo "$0: Can't G2P model: $g2p_model" && exit 1;
+[ ! -f $words ] && echo "$0: Can't find the G2P input: $words" && exit 1;
 
-sequitur_model=$g2p_model
-
-# Turns out, that Sequitur has some sort of bug so it doesn't output pronunciations
-# for some (admittedly peculiar) words. We manually specify these exceptions below
-g2p_exceptions="HH HH" # more such entries can be added, separated by "\n"
-
-[ ! -f  $sequitur ] && \
-  echo "Can't find the Sequitur G2P script. Please check $KALDI_ROOT/tools for installation script and instructions" && \
+sequitur=`which g2p.py`
+if [ -z $sequitur ] || [ ! -x $sequitur ]; then
+  echo "$0: Can't find the Sequitur G2P script. Please check $KALDI_ROOT/tools"
+  echo "$0: for installation script and instructions."
   exit 1;
+fi
 
-[ ! -d $sequitur_path ] && echo "Can't find '$sequitur_path' - please fix your Sequitur installation" && exit 1
-[ ! -f $sequitur_model ] && echo "Can't find the Sequitur model file: $sequitur_model" && exit 1
+# Applies Sequitur G2P
+echo "$0: Applying Sequitur G2P to $words"
+PYTHONPATH=$sequitur_path:$PYTHONPATH \
+           $sequitur --model=$g2p_model --apply $words > ${lexicon}.tmp || exit 1;
 
-PYTHONPATH=$sequitur_path:$PYTHONPATH $PYTHON $sequitur \
-  --model=$sequitur_model --apply $vocab \
-  >${out_lexicon}.tmp || exit 1
-
-
+# Turns out Sequitur has some sort of bug and it doesn't output pronunciations
+# for some (admittedly peculiar) words. We manually specify these exceptions
+# below. More such entries can be added, separated by "\n"
+g2p_exceptions="HH HH"
 awk 'NR==FNR{p[$1]=$0; next;} {if ($1 in p) print p[$1]; else print}' \
-  <(echo -e $g2p_exceptions) ${out_lexicon}.tmp >$out_lexicon || exit 1
+  <(echo -e $g2p_exceptions) ${lexicon}.tmp > $lexicon || exit 1;
 
-rm ${out_lexicon}.tmp
+rm ${lexicon}.tmp
 
-exit 0
+echo "$0: Done"

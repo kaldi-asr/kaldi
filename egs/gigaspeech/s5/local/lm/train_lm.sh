@@ -1,64 +1,74 @@
 #!/bin/bash
-# Copyright 2014 Vassil Panayotov
-#           2021 Xiaomi Corporation Yongqing Wang
-# Apache 2.0
+# Copyright 2021  Xiaomi Corporation (Author: Yongqing Wang)
+#                 Seasalt AI, Inc (Author: Guoguo Chen)
 
-. ./cmd.sh || exit 1
-. ./path.sh || exit 1
+# This script rains a typical ngram language model.
+
+set -e -o pipefail
+
+stage=0
+lm_order=4
+vocab_size=50000000      # Cap the vocabulary so that it won't blow up.
+cmd=run.pl
+mem=10G
+
+. ./cmd.sh || exit 1;
+. ./path.sh || exit 1;
+. ./utils/parse_options.sh || exit 1;
 
 
-# how many words we want in the LM's vocabulary
-vocab_size=50000000
-
-# LM pruning threshold for the 'small' trigram model
-prune_thresh_small=0.0000003
-
-# LM pruning threshold for the 'medium' trigram model
-prune_thresh_medium=0.0000001
-
-# how many text normalization jobs to run in parallel
 if [[ $# -ne 2 ]]; then
-  echo "Usage: $1 <corpus.txt> <out-lm-dir>"
-  echo "where,"
-  echo "  <corpus.txt>: normalized txt" 
-  echo "  <out-lm-dir>: the directory to store the trained ARPA model"
+  echo "Usage: $0: <lm-corpus> <output-lm-dir>"
+  echo " e.g.: $0: data/local/lm/corpus.txt data/local/lm/"
+  echo "Options:"
+  echo "  --lm-order <order>    # N-gram order for language model."
+  echo "  --vocab-size <size>   # Cap for vocabulary size."
   exit 1
 fi
 
-stage=0
-corpus=$1
+lm_corpus=$1
 lm_dir=$2
-order=$3
+
 word_counts=$lm_dir/word_counts.txt
 vocab=$lm_dir/vocab.txt
 full_corpus=$lm_dir/lm-norm.txt.gz
-gram_lm=$lm_dir/lm_${order}gram.arpa.gz
+lm=$lm_dir/lm_${lm_order}gram.arpa.gz
+
+mkdir -p $lm_dir
 if [ "$stage" -le 1 ]; then
-  echo "Selecting the vocabulary ($vocab_size words) ..."
-  mkdir -p $lm_dir
-  echo "Making the corpus and the vocabulary ..."
+  echo "$0: Creating the corpus and the vocabulary"
   # The following sequence of commands does the following:
   # 1) Eliminates duplicate sentences and saves the resulting corpus
   # 2) Splits the corpus into words
   # 3) Sorts the words in respect to their frequency
-  # 4) Saves the list of the first $vocab_size words sorted by their frequencies
-  # 5) Saves an alphabetically sorted vocabulary, that include the most frequent $vocab_size words
-  cat $corpus | sort -u | tee >(gzip >$full_corpus) | tr -s '[[:space:]]' '\n' | sort | uniq -c | sort -k1 -n -r |head -n $vocab_size | tee $word_counts | awk '{print $2}' | sort >$vocab || exit 1
-  echo "Word counts saved to '$word_counts'"
-  echo "Vocabulary saved as '$vocab'"
-  echo "All unique sentences (in sorted order) stored in '$full_corpus'"
-  echo "Counting the total number word tokens in the corpus ..."
-  echo "There are $(wc -w < <(zcat $full_corpus)) tokens in the corpus"
+  # 4) Caps the vocabulary to $vocab_size words, sorted by their frequencies
+  # 5) Saves an alphabetically sorted vocabulary, that include the most frequent
+  #    $vocab_size words
+  cat $lm_corpus |\
+    sort -u | tee >(gzip >$full_corpus) |\
+    tr -s '[[:space:]]' '\n' | sort | uniq -c | sort -k1 -n -r |\
+    head -n $vocab_size | tee $word_counts |\
+    awk '{print $2}' | sort >$vocab || exit 1;
+  echo "$0: Word counts saved to $word_counts"
+  echo "$0: Vocabulary saved as $vocab"
+  echo "$0: All unique sentences (in sorted order) stored in $full_corpus"
+  echo "$0: Counting the total number word tokens in the corpus ..."
+  echo "$0: There are $(wc -w < <(zcat $full_corpus)) tokens in the corpus"
 fi
 
 if [ "$stage" -le 2 ]; then
-  echo "Training a 4-gram LM ..."
-  command -v ngram-count 1>/dev/null 2>&1 || { echo "Please install SRILM and set path.sh accordingly"; exit 1; }
-  echo "This implementation assumes that you have a lot of free RAM(> 12GB) on your machine"
-  echo "If that's not the case, consider something like: http://joshua-decoder.org/4.0/large-lms.html"
-  ngram-count -order $order  -interpolate \
-    -unk -map-unk "<UNK>" -limit-vocab -vocab $vocab -text $full_corpus -lm $gram_lm || exit 1
-  du -h $gram_lm
+  echo "$0: Training a N-gram language model"
+  ngram=`which ngram-count`
+  if [ -z $ngram ] || [ ! -x $ngram ]; then
+    echo "$0: Please install SRILM and set path.sh accordingly."
+    exit 1;
+  fi
+
+  mkdir -p $lm_dir/log || exit 1;
+  $cmd --mem $mem JOB=1:1 $lm_dir/log/ngram.JOB.log \
+    $ngram -order $lm_order -interpolate -unk -map-unk \""<UNK>"\" \
+    -limit-vocab -vocab $vocab -text $full_corpus -lm $lm || exit 1;
+  du -h $lm
 fi
 
-exit 0
+echo "$0: Done"
