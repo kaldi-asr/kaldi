@@ -47,6 +47,9 @@ struct NnetComputeOptions {
 
 };
 
+struct NnetComputeStatus {
+  std::vector< CuMatrix<BaseFloat> > matrices;
+};
 
 /**
   class NnetComputer is responsible for executing the computation described in the
@@ -124,6 +127,26 @@ class NnetComputer {
   void GetOutputDestructive(const std::string &output_name,
                             CuMatrix<BaseFloat> *output);
 
+  // Get the matrices where store the status for next computation
+  inline const std::vector< CuMatrix<BaseFloat> > &GetMatrices() const { 
+    return matrices_; }
+
+  // Get every channel status, and batch_first will tell us 
+  // the matrix in NnetComputer is batch first or time first.
+  void GetStatuses(std::vector< NnetComputeStatus* > &statuses, 
+      const std::vector<bool> &batch_first,
+      const int32 batch_size);
+  
+  // Set channels status, and batch_first will tell us
+  // the matrix in NnetComputer is batch first or time first.
+  void SetStatuses(const std::vector< NnetComputeStatus* > &statuses,
+      const std::vector<bool> &batch_first,
+      const int32 batch_size);
+
+  // compare with other NnetComputer
+  bool Equal(const NnetComputer &other);
+
+  void Print(std::ostream &os);
 
   ~NnetComputer();
  private:
