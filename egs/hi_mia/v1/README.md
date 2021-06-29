@@ -1,6 +1,6 @@
 # HIMIA SPEAKER VERIFICATION
 
-This is repository for speaker verification experiments with [HIMIA (openslr-85)](http://www.openslr.org/85/) dataset.
+This is repository for speaker verification experiments with [HIMIA (openslr-85)](http://www.openslr.org/85/) dataset. It is primarily a text-dependent dataset (see `../w1` for keyword spotting system) but here for speaker verification, we also include text-independent scenario.
 
 ## Usage
 One can simply run `./run.sh` to download open-sourced part of data. While there are two special cases:
@@ -9,7 +9,7 @@ One can simply run `./run.sh` to download open-sourced part of data. While there
 * If one would like to apply for AISHELL2 data, please check `../../aishell2/README.md` on how to do it.
 
 ## RESULTS
-Please check `local/run_text_independent.sh` for results, which shall be able to be replicated with or without AISHELL2 data involved.
+Please check `local/run_text_independent.sh` for text-independent system results, which shall be able to be replicated with or without AISHELL2 data involved. Text-dependent settings are yet to be developed.
 
 ## References
 There is [a paper](https://arxiv.org/abs/1912.01231) on a more detailed description about HIMIA with some preliminary numbers (different from ones here since they were generated using different framework). If one would like to use HIMIA in experiments, please cite the paper as below:
@@ -19,8 +19,6 @@ There is [a paper](https://arxiv.org/abs/1912.01231) on a more detailed descript
   booktitle={Proc. ICASSP 2020}, 
   title={HI-MIA: A Far-Field Text-Dependent Speaker Verification Database and the Baselines}, 
   year={2020},
-  volume={},
-  number={},
   pages={7609-7613}
 }
 ```
@@ -29,4 +27,4 @@ There is [a paper](https://arxiv.org/abs/1912.01231) on a more detailed descript
 [ ] [Text-dependent setting]
 
 ## Contact
-If having any problem, please open pull request and cite @underdogliu
+If having any problem, please open pull request and @underdogliu

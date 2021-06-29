@@ -6,39 +6,29 @@
 #           2017  Xiaohui Zhang
 #           2020  Ke Li
 
-# This script trains LSTM based LMs on transcription.
-
+# This script trains LSTM based LMs on transcription and perform lattice rescoring
+# on 1st pass decoding results.
 # Begin configuration section.
-
-# 1b is emb-dim = 512 and lstm_rpd and lstm_nrpd = 128
-#rnnlm/train_rnnlm.sh: best iteration (out of 6) was 2, linking it to final iteration.
-#rnnlm/train_rnnlm.sh: train/dev perplexity was 63.1 / 147.1.
-#Train objf: -4.41 -4.14 -3.90 -3.68 -3.47
-#Dev objf:   -5.09 -4.99 -5.04 -5.21 -5.40
-# 1c emb-dim = 256 lstm_rpd = 64 lstm_nrpd = 64 all l2=0
-#rnnlm/train_rnnlm.sh: best iteration (out of 6) was 2, linking it to final iteration.
-#rnnlm/train_rnnlm.sh: train/dev perplexity was 75.0 / 153.5.
-#Train objf: -4.56 -4.31 -4.15 -4.01 -3.87
-#Dev objf:   -5.21 -5.03 -5.04 -5.11 -5.22
 dir=exp/rnnlm_lstm_1b
-embedding_dim=1024
-lstm_rpd=256
-lstm_nrpd=256
+embedding_dim=512
+lstm_rpd=128
+lstm_nrpd=128
 embedding_l2=0.003 # embedding layer l2 regularize
 comp_l2=0.003 # component-level l2 regularize
 output_l2=0.001 # output-layer l2 regularize
 stage=-10
 train_stage=-10
+score_stage=0
 
 # variables for lattice rescoring
 run_lat_rescore=true
 run_nbest_rescore=true
 run_backward_rnnlm=false
 
-# ac_model_dir=exp/chain_train_worn_simu_u400k_cleaned_rvb/tdnn1b_cnn_sp
-ac_model_dir=exp/chain_train_worn_simu_u400k_cleaned_rvb/tdnn1b_cnn_l2_03_4500_ep6_sp
+ac_model_dir=exp/chain_train_worn_simu_u400k_cleaned_rvb/tdnn1b_cnn_sp
 decode_dir_suffix=rnnlm_1b
 enhancement=gss_multiarray
+
 chime6_corpus=${PWD}/CHiME6
 json_dir=${chime6_corpus}/transcriptions
 ngram_order=4 # approximate the lattice-rescoring by limiting the max-ngram-order
@@ -56,9 +46,9 @@ text_dir=data/rnnlm/text
 mkdir -p $dir/config
 set -e
 
-for f in $train_text $dev_text; do
+for f in $text; do
   [ ! -f $f ] && \
-    echo "$0: expected file $f to exist" && exit 1
+    echo "$0: expected file $f to exist; search for local/wsj_extend_dict.sh in run.sh" && exit 1
 done
 
 if [ $stage -le 0 ]; then
@@ -124,47 +114,17 @@ if [ $stage -le 4 ] && $run_lat_rescore; then
   if $pruned_rescore; then
     pruned=_pruned
   fi
-  for decode_set in dev_gss_multiarray eval_gss_multiarray; do
+  for decode_set in dev_${enhancement} eval_${enhancement}; do
     decode_dir=${ac_model_dir}/decode_${decode_set}_2stage
 
     # Lattice rescoring
     rnnlm/lmrescore$pruned.sh \
       --cmd "$decode_cmd --mem 4G" \
-      --weight 0.45 --max-ngram-order $ngram_order \
+      --acwt 0.1 \
+      --weight 0.4 --max-ngram-order $ngram_order \
       data/lang $dir \
       data/${decode_set}_hires ${decode_dir} \
-      ${decode_dir}_${decode_dir_suffix}_0.45
+      ${decode_dir}_${decode_dir_suffix}_0.4
   done
 fi
-
-if [ $stage -le 5 ]; then
-  # final scoring to get the official challenge result
-  # please specify both dev and eval set directories so that the search parameters
-  # (insertion penalty and language model weight) will be tuned using the dev set
-  local/score_for_submit.sh --enhancement $enhancement --json $json_dir \
-      --dev ${ac_model_dir}/decode_dev_${enhancement}_2stage_${decode_dir_suffix}_0.45 \
-      --eval ${ac_model_dir}/decode_eval_${enhancement}_2stage_${decode_dir_suffix}_0.45
-fi
-exit
-
-if [ $stage -le 6 ] && $run_nbest_rescore; then
-  echo "$0: Perform nbest-rescoring on $ac_model_dir"
-  for decode_set in dev_gss_multiarray eval_gss_multiarray; do
-    decode_dir=${ac_model_dir}/decode_${decode_set}_2stage
-
-    # Nbest rescoring
-    rnnlm/lmrescore_nbest.sh \
-      --cmd "$decode_cmd --mem 4G" --N 20 \
-      0.5 data/lang $dir \
-      data/${decode_set}_hires ${decode_dir} \
-      ${decode_dir}_${decode_dir_suffix}_nbest
-  done
-fi
-
-# running backward RNNLM, which further improves WERS by combining backward with
-# the forward RNNLM trained in this script.
-if [ $stage -le 7 ] && $run_backward_rnnlm; then
-  local/rnnlm/run_tdnn_lstm_back.sh
-fi
-
 exit 0

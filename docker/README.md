@@ -28,3 +28,8 @@ and for GPU-based image:
 cd docker/ubuntu16.04-gpu
 docker build --tag kaldiasr/kaldi:gpu-latest .
 ```
+for GPU-based image on ubuntu 18.04:
+```bash
+cd docker/ubuntu18.04-cuda10.0
+docker build --tag kaldiasr/kaldi:gpu-latest .
+```

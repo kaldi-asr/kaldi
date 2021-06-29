@@ -20,22 +20,21 @@
 // limitations under the License.
 
 #include "nnet3/nnet-chain-training2.h"
+
 #include "nnet3/nnet-utils.h"
 
 namespace kaldi {
 namespace nnet3 {
 
 NnetChainTrainer2::NnetChainTrainer2(const NnetChainTraining2Options &opts,
-                                   const NnetChainModel2 &model, 
-                                   Nnet *nnet):
-    opts_(opts),
-    model_(model),
-    nnet_(nnet),
-    compiler_(*nnet, opts_.nnet_config.optimize_config,
-              opts_.nnet_config.compiler_config),
-    num_minibatches_processed_(0),
-    max_change_stats_(*nnet),
-    srand_seed_(RandInt(0, 100000)) {
+                                     const NnetChainModel2 &model,
+                                     Nnet *nnet)
+    : opts_(opts), model_(model), nnet_(nnet),
+      compiler_(*nnet, opts_.nnet_config.optimize_config,
+                opts_.nnet_config.compiler_config),
+      num_minibatches_processed_(0),
+      max_change_stats_(*nnet),
+      srand_seed_(RandInt(0, 100000)) {
 
   if (opts.nnet_config.zero_component_stats)
     ZeroComponentStats(nnet);
@@ -50,7 +49,8 @@ NnetChainTrainer2::NnetChainTrainer2(const NnetChainTraining2Options &opts,
     try {
       Input ki(opts.nnet_config.read_cache, &binary);
       compiler_.ReadCache(ki.Stream(), binary);
-      KALDI_LOG << "Read computation cache from " << opts.nnet_config.read_cache;
+      KALDI_LOG << "Read computation cache from "
+                << opts.nnet_config.read_cache;
     } catch (...) {
       KALDI_WARN << "Could not open cached computation. "
                     "Probably this is the first training iteration.";
@@ -59,23 +59,26 @@ NnetChainTrainer2::NnetChainTrainer2(const NnetChainTraining2Options &opts,
 }
 
 
-void NnetChainTrainer2::Train(const std::string &key, NnetChainExample &chain_eg) {
+void NnetChainTrainer2::Train(const std::string &key,
+                              NnetChainExample &chain_eg) {
   bool need_model_derivative = true;
   const NnetTrainerOptions &nnet_config = opts_.nnet_config;
   bool use_xent_regularization = (opts_.chain_config.xent_regularize != 0.0);
   ComputationRequest request;
   std::string lang_name = "default";
   ParseFromQueryString(key, "lang", &lang_name);
-  for (size_t i = 0; i < chain_eg.outputs.size(); i++) {
-    // there will normally be exactly one output , named "output"
-      if(chain_eg.outputs[i].name.compare("output")==0)
-          chain_eg.outputs[i].name = "output-" + lang_name;
+  for (size_t i = 0; i < chain_eg.outputs.size(); ++i) {
+    // there will normally be exactly one output, named "output"
+    if (chain_eg.outputs[i].name.compare("output") == 0) {
+      chain_eg.outputs[i].name = "output-" + lang_name;
+    }
   }
   GetChainComputationRequest(*nnet_, chain_eg, need_model_derivative,
                              nnet_config.store_component_stats,
                              use_xent_regularization, need_model_derivative,
                              &request);
-  std::shared_ptr<const NnetComputation> computation = compiler_.Compile(request);
+  std::shared_ptr<const NnetComputation> computation =
+      compiler_.Compile(request);
 
   if (nnet_config.backstitch_training_scale > 0.0 && num_minibatches_processed_
       % nnet_config.backstitch_training_interval ==
@@ -103,9 +106,9 @@ void NnetChainTrainer2::Train(const std::string &key, NnetChainExample &chain_eg
 }
 
 void NnetChainTrainer2::TrainInternal(const std::string &key,
-                                     const NnetChainExample &eg,
-                                     const NnetComputation &computation,
-                                     const std::string &lang_name) {
+                                      const NnetChainExample &eg,
+                                      const NnetComputation &computation,
+                                      const std::string &lang_name) {
   const NnetTrainerOptions &nnet_config = opts_.nnet_config;
   // note: because we give the 1st arg (nnet_) as a pointer to the
   // constructor of 'computer', it will use that copy of the nnet to
@@ -143,15 +146,16 @@ void NnetChainTrainer2::TrainInternal(const std::string &key,
   ConstrainOrthonormal(nnet_);
 
   // Scale delta_nnet
-  if (success)
+  if (success) {
     ScaleNnet(nnet_config.momentum, delta_nnet_);
-  else
+  } else {
     ScaleNnet(0.0, delta_nnet_);
+  }
 }
 
-void NnetChainTrainer2::TrainInternalBackstitch(const std::string key, const NnetChainExample &eg,
-                                               const NnetComputation &computation,
-                                               bool is_backstitch_step1) {
+void NnetChainTrainer2::TrainInternalBackstitch(
+    const std::string key, const NnetChainExample &eg,
+    const NnetComputation &computation, bool is_backstitch_step1) {
   const NnetTrainerOptions &nnet_config = opts_.nnet_config;
   // note: because we give the 1st arg (nnet_) as a pointer to the
   // constructor of 'computer', it will use that copy of the nnet to
@@ -241,7 +245,8 @@ void NnetChainTrainer2::ProcessOutputs(bool is_backstitch_step2,
 
     BaseFloat tot_objf, tot_l2_term, tot_weight;
 
-    ComputeChainObjfAndDeriv(opts_.chain_config, *(model_.GetDenGraphForLang(lang_name)),
+    ComputeChainObjfAndDeriv(opts_.chain_config,
+                             *(model_.GetDenGraphForLang(lang_name)),
                              sup.supervision, nnet_output,
                              &tot_objf, &tot_l2_term, &tot_weight,
                              &nnet_output_deriv,
@@ -263,8 +268,9 @@ void NnetChainTrainer2::ProcessOutputs(bool is_backstitch_step2,
     if (opts_.apply_deriv_weights && sup.deriv_weights.Dim() != 0) {
       CuVector<BaseFloat> cu_deriv_weights(sup.deriv_weights);
       nnet_output_deriv.MulRowsVec(cu_deriv_weights);
-      if (use_xent)
+      if (use_xent) {
         xent_deriv.MulRowsVec(cu_deriv_weights);
+      }
     }
 
     /* computer->AcceptInput(sup.name, &nnet_output_deriv); */
@@ -284,13 +290,10 @@ void NnetChainTrainer2::ProcessOutputs(bool is_backstitch_step2,
 }
 
 bool NnetChainTrainer2::PrintTotalStats() const {
-  unordered_map<std::string, ObjectiveFunctionInfo, StringHasher>::const_iterator
-      iter = objf_info_.begin(),
-      end = objf_info_.end();
   bool ans = false;
-  for (; iter != end; ++iter) {
-    const std::string &name = iter->first;
-    const ObjectiveFunctionInfo &info = iter->second;
+  for (const auto &name_info : objf_info_) {
+    const std::string &name = name_info.first;
+    const ObjectiveFunctionInfo &info = name_info.second;
     ans = info.PrintTotalStats(name) || ans;
   }
   max_change_stats_.Print(*nnet_);
@@ -298,78 +301,20 @@ bool NnetChainTrainer2::PrintTotalStats() const {
 }
 
 NnetChainTrainer2::~NnetChainTrainer2() {
-  if (opts_.nnet_config.write_cache != "") {
-    Output ko(opts_.nnet_config.write_cache, opts_.nnet_config.binary_write_cache);
+  if (!opts_.nnet_config.write_cache.empty()) {
+    Output ko(opts_.nnet_config.write_cache,
+              opts_.nnet_config.binary_write_cache);
     compiler_.WriteCache(ko.Stream(), opts_.nnet_config.binary_write_cache);
     KALDI_LOG << "Wrote computation cache to " << opts_.nnet_config.write_cache;
   }
   delete delta_nnet_;
 }
 
-NnetChainModel2::NnetChainModel2(
-    const NnetChainTraining2Options &opts,
-    Nnet *nnet,
-    const std::string &den_fst_dir
-    ):
-    opts_(opts),
-    nnet(nnet),
-    den_fst_dir_(den_fst_dir) {
-}
+NnetChainModel2::NnetChainModel2(const NnetChainTraining2Options& /* unused */,
+                                 Nnet *nnet, const std::string &den_fst_dir)
+    : nnet(nnet), den_fst_dir_(den_fst_dir) {}
 
-NnetChainModel2::~NnetChainModel2() {
-}
-
-NnetChainModel2::LanguageInfo::LanguageInfo(
-    const NnetChainModel2::LanguageInfo &other):
-    name(other.name),
-    den_graph(other.den_graph)
-     { }
-
-
-NnetChainModel2::LanguageInfo::LanguageInfo(
-    const std::string &name,
-    const fst::StdVectorFst &den_fst, 
-    int32 num_pdfs):
-    name(name),
-    den_graph(den_fst, num_pdfs){
-}
-
-void NnetChainModel2::GetPathname(const std::string &dir,
-                                   const std::string &name,
-                                   const std::string &suffix,
-                                   std::string *pathname) {
-  std::ostringstream str;
-  str << dir << '/' << name << '.' << suffix;
-  *pathname = str.str();
-}
-
-void NnetChainModel2::GetPathname(const std::string &dir,
-                                   const std::string &name,
-                                   int32 job_id,
-                                   const std::string &suffix,
-                                   std::string *pathname) {
-  std::ostringstream str;
-  str << dir << '/' << name << '.' << job_id << '.' << suffix;
-  *pathname = str.str();
-}
-
-NnetChainModel2::LanguageInfo *NnetChainModel2::GetInfoForLang(
-    const std::string &lang) {
-  auto iter = lang_info_.find(lang);
-  if (iter != lang_info_.end()) {
-    return iter->second;
-  } else {
-    std::string den_fst_filename;
-    GetPathname(den_fst_dir_, lang, "den.fst", &den_fst_filename);
-    fst::StdVectorFst den_fst;
-    ReadFstKaldi(den_fst_filename, &den_fst);
-    std::string outputname = "output-" + lang;
-
-    LanguageInfo *info = new LanguageInfo(lang, den_fst, nnet->OutputDim(outputname));
-    lang_info_[lang] = info;
-    return info;
-  }
-}
+NnetChainModel2::~NnetChainModel2() {}
 
 /* fst::StdVectorFst* NnetChainModel2::GetDenFstForLang( */
 /*        const std::string &language_name) { */
@@ -377,10 +322,41 @@ NnetChainModel2::LanguageInfo *NnetChainModel2::GetInfoForLang(
 /*   return &(info->den_fst); */
 /* } */
 
-chain::DenominatorGraph *NnetChainModel2::GetDenGraphForLang(const std::string &language_name){
-  LanguageInfo *info = GetInfoForLang(language_name);
+const chain::DenominatorGraph *NnetChainModel2::GetDenGraphForLang(
+    const std::string &lang) {
+  const LanguageInfo *info = GetInfoForLang(lang);
+  KALDI_ASSERT(info != nullptr);
   return &(info->den_graph);
 }
-} // namespace nnet3
-} // namespace kaldi
 
+namespace {
+
+// Get a pathname in the form '<dir>/<name>.<suffix>'.
+std::string GetPathname(const std::string &dir,
+                        const std::string &name,
+                        const std::string &suffix) {
+  return dir + '/' + name + '.' + suffix;
+}
+
+}  // namespace
+
+const NnetChainModel2::LanguageInfo *NnetChainModel2::GetInfoForLang(
+    const std::string &lang) {
+  // Using .count() as a Boolean "doesn't contain" is idiomatic. Fixed in C++20.
+  if (!lang_info_.count(lang)) {
+    std::string den_fst_filename = GetPathname(den_fst_dir_, lang, "den.fst");
+    fst::StdVectorFst den_fst;
+    ReadFstKaldi(den_fst_filename, &den_fst);
+    std::string output = "output-" + lang;
+    lang_info_.emplace(lang,
+                       LanguageInfo{lang, den_fst, nnet->OutputDim(output)});
+  }
+  // Use .at(), not operator[](), because the [] requires a default constructor.
+  // The .at() throws if the element isn't found, which works in lieu of an
+  // assertion here.
+  return &lang_info_.at(lang);
+}
+
+
+}  // namespace nnet3
+}  // namespace kaldi

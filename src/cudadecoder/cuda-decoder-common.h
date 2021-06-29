@@ -251,12 +251,12 @@ class HostMatrix {
     KALDI_ASSERT(nrows_ > 0);
     KALDI_ASSERT(ncols_ > 0);
     KALDI_ASSERT(!data_);
-    cudaMallocHost((void **)&data_, (size_t)nrows_ * ncols_ * sizeof(*data_));
+    CU_SAFE_CALL(cudaMallocHost((void **)&data_, (size_t)nrows_ * ncols_ * sizeof(*data_)));
     KALDI_ASSERT(data_);
   }
   void Free() {
     KALDI_ASSERT(data_);
-    cudaFreeHost(data_);
+    CU_SAFE_CALL(cudaFreeHost(data_));
   }
 
  protected:

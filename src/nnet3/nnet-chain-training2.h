@@ -21,16 +21,16 @@
 #ifndef KALDI_NNET3_NNET_CHAIN_TRAINING2_H_
 #define KALDI_NNET3_NNET_CHAIN_TRAINING2_H_
 
-#include "nnet3/nnet-example.h"
+#include "chain/chain-den-graph.h"
+#include "chain/chain-training.h"
+#include "nnet3/nnet-chain-example.h"
+#include "nnet3/nnet-chain-example.h"
+#include "nnet3/nnet-chain-training.h"
 #include "nnet3/nnet-computation.h"
 #include "nnet3/nnet-compute.h"
+#include "nnet3/nnet-example.h"
 #include "nnet3/nnet-optimize.h"
-#include "nnet3/nnet-chain-example.h"
 #include "nnet3/nnet-training.h"
-#include "nnet3/nnet-chain-training.h"
-#include "chain/chain-training.h"
-#include "chain/chain-den-graph.h"
-#include "nnet3/nnet-chain-example.h"
 
 namespace kaldi {
 namespace nnet3 {
@@ -45,8 +45,8 @@ struct NnetChainTraining2Options {
     nnet_config.Register(opts);
     chain_config.Register(opts);
     opts->Register("apply-deriv-weights", &apply_deriv_weights,
-                   "If true, apply the per-frame derivative weights stored with "
-                   "the example");
+                   "If true, apply the per-frame derivative weights stored "
+                   "with the example");
   }
 };
 
@@ -55,9 +55,9 @@ class NnetChainModel2 {
   /**
      Constructor to which you pass the model directory and the den-fst
      directory.  There is no requirement that all these directories be distinct.
-     
+
      For each language called "lang" the following files should exist:
-       <den_fst_dir>/lang.den.fst <den_fst_dir>/lang.normalization.fst 
+       <den_fst_dir>/lang.den.fst <den_fst_dir>/lang.normalization.fst
 
      In practice, the language name will be either "default", in the
      typical (monolingual) setup, or it might be arbitrary strings
@@ -72,60 +72,41 @@ class NnetChainModel2 {
       **/
 
   NnetChainModel2(const NnetChainTraining2Options &opts,
-                   Nnet *nnet,
-                   const std::string &den_fst_dir);
-  
-  /* fst::StdVectorFst *GetDenFstForLang(const std::string &language_name); */
-  chain::DenominatorGraph *GetDenGraphForLang(const std::string &language_name);
+                  Nnet *nnet,
+                  const std::string &den_fst_dir);
 
   ~NnetChainModel2();
 
+  /* fst::StdVectorFst *GetDenFstForLang(const std::string &language_name); */
+  const chain::DenominatorGraph *GetDenGraphForLang(const std::string &lang);
+
  private:
-  // This function sets "pathname" to the string:
-  // <dir>/<name>.<suffix>
-  void GetPathname(const std::string &dir,
-                   const std::string &name,
-                   const std::string &suffix,
-                   std::string *pathname);
-
-  // If job_id is >= 0, then this version of GetPathname() sets "pathname" to
-  // the string:
-  // <dir>/<name>.<job_id>.<suffix>
-  // otherwise (job_id < 0) it sets it to
-  // <dir>/<name>.<suffix>
-  void GetPathname(const std::string &dir,
-                   const std::string &name,
-                   int32 job_id,
-                   const std::string &suffix,
-                   std::string *pathname);
-  
   // struct LanguageInfo contains the data that is stored per language.
+  // transform comes from <transform_dir>/<language_name>.ada
   struct LanguageInfo {
-    // name of the language
+    LanguageInfo() = delete;
+    LanguageInfo(const LanguageInfo&) = default;
+    LanguageInfo(const std::string &name,
+                 const fst::StdVectorFst &den_fst,
+                 int32 num_pdfs)
+        : name(name), den_graph(den_fst, num_pdfs) {}
+
+    /// Language name.
     std::string name;
-    // den_fst comes from <den_fst_dir>/<language_name>.den.fst
-   // fst::StdVectorFst den_fst;
+    /// Denominator loaded from '<language_name>.den.fst'.
     chain::DenominatorGraph den_graph;
-
-    // transform comes from <transform_dir>/<language_name>.ada
-    LanguageInfo() { }
-
-    LanguageInfo(const std::string &name, const fst::StdVectorFst &den_fst, int32 num_pdfs);
-    // Copy constructor
-    LanguageInfo(const LanguageInfo &other);
   };
 
-  // get the LanguageInfo* for this language, creating it (and reading its
+  // Get the LanguageInfo* for this language, creating it (and reading its
   // contents from disk) if it does not already exist.
-  LanguageInfo *GetInfoForLang(const std::string &lang);
+  const LanguageInfo *GetInfoForLang(const std::string &lang);
 
-  const NnetChainTraining2Options &opts_;
   Nnet *nnet;
   // Directory where denominator FSTs are located.
   std::string den_fst_dir_;
 
-  std::unordered_map<std::string, LanguageInfo*, StringHasher> lang_info_;
-}; // class  NnetChainModel2
+  std::unordered_map<std::string, LanguageInfo, StringHasher> lang_info_;
+};
 
 
 /**
@@ -138,27 +119,30 @@ class NnetChainTrainer2 {
                     const NnetChainModel2 &model,
                     Nnet *nnet);
 
+  ~NnetChainTrainer2();
+
   // train on one minibatch.
   void Train(const std::string &key, NnetChainExample &eg);
 
   // Prints out the final stats, and return true if there was a nonzero count.
   bool PrintTotalStats() const;
 
-  ~NnetChainTrainer2();
  private:
   // The internal function for doing one step of conventional SGD training.
   void TrainInternal(const std::string &key, const NnetChainExample &eg,
-                     const NnetComputation &computation, const std::string &lang_name);
+                     const NnetComputation &computation,
+                     const std::string &lang_name);
 
   // The internal function for doing one step of backstitch training. Depending
   // on whether is_backstitch_step1 is true, It could be either the first
   // (backward) step, or the second (forward) step of backstitch.
-  void TrainInternalBackstitch(const std::string key, const NnetChainExample &eg,
+  void TrainInternalBackstitch(const std::string key,
+                               const NnetChainExample &eg,
                                const NnetComputation &computation,
                                bool is_backstitch_step1);
 
-  void ProcessOutputs(bool is_backstitch_step2, const std::string &key, const NnetChainExample &eg,
-                      NnetComputer *computer);
+  void ProcessOutputs(bool is_backstitch_step2, const std::string &key,
+                      const NnetChainExample &eg, NnetComputer *computer);
 
   const NnetChainTraining2Options opts_;
 
@@ -185,8 +169,7 @@ class NnetChainTrainer2 {
 };
 
 
-}// namespace nnet3
-} // namespace kaldi
+}  // namespace nnet3
+}  // namespace kaldi
 
 #endif // KALDI_NNET3_NNET_CHAIN_TRAINING2_H_
-

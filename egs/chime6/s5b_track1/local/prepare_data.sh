@@ -6,6 +6,7 @@
 # Begin configuration section.
 mictype=worn # worn, ref or others
 cleanup=true
+enhanced=false
 # End configuration section
 . ./utils/parse_options.sh  # accept options.. you can run this run.sh with the
 
@@ -22,7 +23,7 @@ fi
 
 set -e -o pipefail
 
-adir=$(utils/make_absolute.sh $1)
+adir=$1
 jdir=$2
 dir=$3
 
@@ -86,8 +87,8 @@ elif [ $mictype == "ref" ]; then
   # following command provide the argument for grep to extract only reference arrays
   grep `cut -f 1 -d"-" $dir/text | awk -F"_" '{print $2 "_" $3}' | sed -e "s/\.ENH//" | sort | uniq | sed -e "s/^/ -e /" | tr "\n" " "` $dir/wav.flist > $dir/wav.flist2
   paste -d" " \
-	<(awk -F "/" '{print $NF}' $dir/wav.flist2 | sed -e "s/\.wav/.ENH/") \
-	$dir/wav.flist2 | sort > $dir/wav.scp
+  <(awk -F "/" '{print $NF}' $dir/wav.flist2 | sed -e "s/\.wav/.ENH/") \
+  $dir/wav.flist2 | sort > $dir/wav.scp
 elif [ $mictype == "gss" ]; then
   find -L $adir -name  "P[0-9]*_S[0-9]*.wav" | \
     perl -ne '{
@@ -108,18 +109,23 @@ else
     perl -ne '$p=$_;chomp $_;@F=split "/";$F[$#F]=~s/\.wav//;print "$F[$#F] $p";' |\
     sort -u > $dir/wav.scp
 
-  # convert the transcripts from
-  # P09_S03-0006072-0006147 gimme the baker
-  # to the per-channel transcripts
-  # P09_S03_U01_NOLOCATION.CH1-0006072-0006147 gimme the baker
-  # P09_S03_U01_NOLOCATION.CH2-0006072-0006147 gimme the baker
-  # P09_S03_U01_NOLOCATION.CH3-0006072-0006147 gimme the baker
-  # P09_S03_U01_NOLOCATION.CH4-0006072-0006147 gimme the baker
-  perl -ne '$l=$_;
-    for($i=1; $i<=4; $i++) {
-      ($x=$l)=~ s/-/.CH\Q$i\E-/;
-      print $x;}' $dir/text.orig | sort > $dir/text
-
+  if [ $enhanced ]; then
+    # we use the enhanced data; instead of 4 channels, there is only one
+    # leave text as it is
+    cp $dir/text.orig $dir/text
+  else
+    # convert the transcripts from
+    # P09_S03-0006072-0006147 gimme the baker
+    # to the per-channel transcripts
+    # P09_S03_U01_NOLOCATION.CH1-0006072-0006147 gimme the baker
+    # P09_S03_U01_NOLOCATION.CH2-0006072-0006147 gimme the baker
+    # P09_S03_U01_NOLOCATION.CH3-0006072-0006147 gimme the baker
+    # P09_S03_U01_NOLOCATION.CH4-0006072-0006147 gimme the baker
+    perl -ne '$l=$_;
+      for($i=1; $i<=4; $i++) {
+        ($x=$l)=~ s/-/.CH\Q$i\E-/;
+        print $x;}' $dir/text.orig | sort > $dir/text
+  fi
 fi
 $cleanup && rm -f $dir/text.* $dir/wav.scp.* $dir/wav.flist
 
@@ -134,17 +140,17 @@ elif [ $mictype == "ref" ]; then
     awk -F"-" '{printf("%s %s %08.2f %08.2f\n", $0, $1, $2/100.0, $3/100.0)}' |\
     sed -e "s/_[A-Z]*\././2" |\
     sed -e "s/ P.._/ /" > $dir/segments
-elif [ $mictype != "gss" ]; then
+else
   cut -d" " -f 1 $dir/text | \
     awk -F"-" '{printf("%s %s %08.2f %08.2f\n", $0, $1, $2/100.0, $3/100.0)}' |\
     sed -e "s/_[A-Z]*\././2" |\
     sed -e 's/ P.._/ /' > $dir/segments
+  if [ $enhanced ]; then
+    sed -i  's/ \(S.._U..\)[^ ]\+/ \1/g' $dir/segments
+  fi
 fi
 
 cut -f 1 -d ' ' $dir/text | \
   perl -ne 'chomp;$utt=$_;s/_.*//;print "$utt $_\n";' > $dir/utt2spk
 
 utils/utt2spk_to_spk2utt.pl $dir/utt2spk > $dir/spk2utt
-
-# Check that data dirs are okay!
-utils/validate_data_dir.sh --no-feats $dir || exit 1

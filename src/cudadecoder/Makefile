@@ -1,10 +1,10 @@
-all:
-		
+all: ;
+
 EXTRA_CXXFLAGS = -Wno-sign-compare
 include ../kaldi.mk
 
 ifeq ($(CUDA), true)
-ifneq ($(WITH_CUDADECODER), 0)
+ifeq ($(WITH_CUDADECODER), true)
 
 # Make sure we have CUDA_ARCH from kaldi.mk,
 ifndef CUDA_ARCH
@@ -18,7 +18,8 @@ OBJFILES = cuda-decoder.o cuda-decoder-kernels.o cuda-fst.o \
 	   batched-threaded-nnet3-cuda-pipeline.o \
 	   batched-threaded-nnet3-cuda-pipeline2.o \
 	   batched-static-nnet3.o batched-static-nnet3-kernels.o \
-	   cuda-online-pipeline-dynamic-batcher.o decodable-cumatrix.o
+	   cuda-online-pipeline-dynamic-batcher.o decodable-cumatrix.o \
+	   lattice-postprocessor.o
 
 LIBNAME = kaldi-cudadecoder
 

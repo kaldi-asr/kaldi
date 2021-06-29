@@ -47,13 +47,13 @@ namespace kaldi {
 namespace cuda_decoder {
 
 // C++ indexes enum 0,1,2...
-enum ThreadPoolPriority {
+enum [[deprecated]] ThreadPoolPriority {
   THREAD_POOL_LOW_PRIORITY,
   THREAD_POOL_NORMAL_PRIORITY,
   THREAD_POOL_HIGH_PRIORITY
 };
 
-class ThreadPool {
+class [[deprecated]] ThreadPool {
  public:
   ThreadPool(size_t);
   template <class F, class... Args>

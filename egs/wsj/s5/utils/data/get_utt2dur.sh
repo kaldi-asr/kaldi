@@ -13,6 +13,7 @@
 frame_shift=0.01
 cmd=run.pl
 nj=4
+read_entire_file=false
 
 . utils/parse_options.sh
 . ./path.sh
@@ -80,7 +81,6 @@ elif [ -f $data/wav.scp ]; then
       exit 1;
     fi
 
-    read_entire_file=false
     if grep -q 'sox.*speed' $data/wav.scp; then
       read_entire_file=true
       echo "$0: reading from the entire wav file to fix the problem caused by sox commands with speed perturbation. It is going to be slow."
