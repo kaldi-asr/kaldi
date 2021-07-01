@@ -40,7 +40,7 @@ int main(int argc, char *argv[]) {
         "The posteriors will still be in terms of whatever integer index\n"
         "the input contained, which will be transition-ids if they came\n"
         "directly from decoding, or pdf-ids if they were processed by\n"
-        "ali-to-post.\n"
+        "ali-to-pdf.\n"
         "Usage:  ali-to-post [options] <alignments-rspecifier> <posteriors-wspecifier>\n"
         "e.g.:\n"
         " ali-to-post ark:1.ali ark:1.post\n"
