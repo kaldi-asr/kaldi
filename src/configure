@@ -97,6 +97,8 @@ Configuration options:
   --android-incdir=DIR  Android include directory
   --enable-kenlm        enable kenlm runtime library installed in "../tools/kenlm"
                         via extras/install_kenlm_query_only.sh, [default=no]
+  --enable-tcmalloc     enable tcmalloc library installed in "../tools/gperftools"
+                        via extras/install_tcmalloc.sh, [default=no]
 
 Following environment variables can be used to override the default toolchain.
   CXX         C++ compiler [default=g++]
@@ -611,6 +613,7 @@ static_fst=false
 static_math=false
 android=false
 enable_kenlm=false
+enable_tcmalloc=false
 
 FSTROOT=`rel2abs ../tools/openfst`
 CUBROOT=`rel2abs ../tools/cub`
@@ -745,6 +748,9 @@ do
     shift ;;
   --enable-kenlm)
     enable_kenlm=true
+    shift ;;
+  --enable-tcmalloc)
+    enable_tcmalloc=true
     shift ;;
   *)  echo "Unknown argument: $1, exiting"; usage; exit 1 ;;
   esac
@@ -1285,6 +1291,28 @@ or try another math library, e.g. --mathlib=OPENBLAS (Kaldi may be slower)."
 else
   failure "Could not detect the platform or we have not yet worked out the
   appropriate configuration for this platform. Please contact the developers."
+fi
+
+if $enable_tcmalloc ; then
+  if [ -d ../tools/gperftools ]; then
+    TCMALLOC_ROOT=$(rel2abs ../tools/gperftools)
+    echo "Checking tcmalloc library in $TCMALLOC_ROOT"
+    if [ -f $TCMALLOC_ROOT/lib/libtcmalloc.so ]; then
+      if [ "$(uname)" == "Linux" ]; then
+        #If profiler is needed, use -ltcmalloc_and_profiler
+        echo "LDLIBS += -Wl,-rpath=$TCMALLOC_ROOT/lib -ltcmalloc" >> kaldi.mk
+      else
+        failure "Now, --enable-tcmalloc option is only supported for Linux"
+      fi
+    else
+      failure "Can't find libtcmalloc.so in ../tools/gperftools,
+               refer to ../tools/extras/install_tcmalloc.sh for instruction."
+    fi
+  else
+    failure "--enable-tcmalloc switched on, but can't find tcmalloc in 
+             ../tools/gperftools, refer to ../tools/extras/install_tcmalloc.sh 
+             for instruction."
+  fi
 fi
 
 # Append the flags set by environment variables last so they can be used
