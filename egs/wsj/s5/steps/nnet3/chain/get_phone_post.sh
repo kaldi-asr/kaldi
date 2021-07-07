@@ -95,7 +95,7 @@ else
 fi
 
 if $use_gpu; then
-  gpu_queue_opt="--gpu 1"
+  gpu_queue_opts="--gpu 1"
   gpu_opt="--use-gpu=yes"
   if ! cuda-compiled; then
     echo "$0: WARNING: you are running with one thread but you have not compiled"
