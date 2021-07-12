@@ -14,7 +14,6 @@ class BCECriterion(FairseqCriterion):
         super().__init__(task)
         self.sentence_avg = sentence_avg
         self.criterion = torch.nn.BCEWithLogitsLoss(reduction='none') #'sum')
-        self.calc_metics = not task.args.skip_metrics
 
     def forward(self, model, sample, reduce=True):
         assert reduce, RuntimeError(f"BCECriterion: reduce must be True")
@@ -35,7 +34,7 @@ class BCECriterion(FairseqCriterion):
         return loss, sample_size, logging_output
 
     def compute_loss(self, logits, targets):
-        targets = targets.view(-1) * (self.ls_one - self.ls_zero) + self.ls_zero
+        targets = targets.view(-1) 
         loss = self.criterion(logits.view(-1), targets)
         return loss
 

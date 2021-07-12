@@ -1,1 +1,1 @@
-from .LatticeTransformer import LatticeTransformerModel
+from .LTLM import LTLM

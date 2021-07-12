@@ -8,16 +8,16 @@ from tqdm import tqdm
 import os
 
 from fairseq import checkpoint_utils, data, options, tasks
-import lattice_transformer.eval
-from lattice_transformer.datasets import LatsOracleAlignDataSet, LatsWERAlignDataSet, LatsDataSet
+import ltlm.eval
+from ltlm.datasets import LatsOracleAlignDataSet, LatsDataSet
 
-from lattice_transformer.pyutils.logging_utils import setup_logger
-from lattice_transformer.models import LatticeTransformer
-from lattice_transformer.datasets import LatsDataSet
-from lattice_transformer.pyutils.lattice_utils import graphviz_lattice, norm_lt, ones_nochoices_arcs, arc_wer_map
-from lattice_transformer.pyutils.kaldi_utils import compute_wer
-from lattice_transformer.Tokenizer import WordTokenizer
-from lattice_transformer.tasks import rescoring_task
+from ltlm.pyutils.logging_utils import setup_logger
+from ltlm.models import LatticeTransformer
+from ltlm.datasets import LatsDataSet
+from ltlm.pyutils.lattice_utils import graphviz_lattice, norm_lt, ones_nochoices_arcs, arc_wer_map
+from ltlm.pyutils.kaldi_utils import compute_wer
+from ltlm.Tokenizer import WordTokenizer
+from ltlm.tasks import rescoring_task
 logger = logging.getLogger(__name__)
 
 

@@ -6,7 +6,7 @@ import sys
 import logging
 import numpy as np
 
-from lattice_transformer.pyutils.logging_utils import setup_logger
+from ltlm.pyutils.logging_utils import setup_logger
 
 logger = logging.getLogger(__name__)
 

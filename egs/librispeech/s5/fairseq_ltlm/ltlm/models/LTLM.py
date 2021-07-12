@@ -19,9 +19,9 @@ from fairseq.modules.quant_noise import quant_noise as apply_quant_noise_
 logger = logging.getLogger(__name__)
 
 
-@register_model('lattice_transformer')
+@register_model('ltlm')
 class LTLM(BaseFairseqModel):
-    """LatticeTransformer."""
+    """Lattice Transformer Language Model."""
     
     @staticmethod
     def add_args(parser):
@@ -81,10 +81,11 @@ class LTLM(BaseFairseqModel):
         if args.encoder_layers_to_keep:
             args.encoder_layers = len(args.encoder_layers_to_keep.split(","))
 
-        self.sentence_encoder = TransformerSentenceEncoder(
+        self.sentence_encoder = LatticeTransformerSentenceEncoder(
             padding_idx=tokenizer.pad(),
             vocab_size=len(tokenizer),
             num_encoder_layers=args.encoder_layers,
+            arc_embedding_dim=args.arc_embedding_dim,
             embedding_dim=args.encoder_embed_dim,
             ffn_embedding_dim=args.encoder_ffn_embed_dim,
             num_attention_heads=args.encoder_attention_heads,
@@ -94,13 +95,10 @@ class LTLM(BaseFairseqModel):
             layerdrop=args.encoder_layerdrop,
             max_seq_len=args.max_positions,
             num_segments=0,
-            use_position_embeddings = True,
             offset_positions_by_padding = True,
             encoder_normalize_before=True,
             apply_bert_init=True,
             activation_fn=args.activation_fn,
-            learned_pos_embedding=True,
-            pos_embedding_type='lats',
             embed_scale=None,
             freeze_embeddings=False,
             n_trans_layers_to_freeze=0,
@@ -157,9 +155,10 @@ class LTLM(BaseFairseqModel):
         return sample['target']
 
 
-@register_model_architecture('lattice_transformer', 'lattice_transformer')
+@register_model_architecture('ltlm', 'ltlm_base')
 def base_architecture(args):
     args.max_positions = getattr(args, 'max_positions', 600)
+    args.arc_embedding_dim = getattr(args, 'arc_embedding_dim', 300)
     args.encoder_layers = getattr(args, 'encoder_layers', 12)
     args.encoder_embed_dim = getattr(args, 'encoder_embed_dim', 768)
     args.encoder_ffn_embed_dim = getattr(args, 'encoder_ffn_embed_dim', 3072)
@@ -176,13 +175,9 @@ def base_architecture(args):
     args.encoder_layerdrop = getattr(args, 'encoder_layerdrop', 0.0)
 
 
-@register_model_architecture('lattice_transformer', 'lt_base')
-def roberta_base_architecture(args):
-    base_architecture(args)
 
-
-@register_model_architecture('lattice_transformer', 'lt_small')
-def roberta_base_architecture(args):
+@register_model_architecture('ltlm', 'lt_small')
+def ltlm_small_architecture(args):
     args.encoder_layers = getattr(args, 'encoder_layers', 8)
     args.encoder_embed_dim = getattr(args, 'encoder_embed_dim', 816)
     args.encoder_ffn_embed_dim = getattr(args, 'encoder_ffn_embed_dim', 2048)
@@ -190,8 +185,8 @@ def roberta_base_architecture(args):
     base_architecture(args)
 
 
-@register_model_architecture('lattice_transformer', 'lt_ultra_small')
-def roberta_base_architecture_ultra_small(args):
+@register_model_architecture('ltlm', 'lt_ultra_small')
+def ltlm_ultrasmall_architecture_ultra_small(args):
     args.encoder_layers = getattr(args, 'encoder_layers', 2)
     args.encoder_embed_dim = getattr(args, 'encoder_embed_dim', 40)
     args.encoder_ffn_embed_dim = getattr(args, 'encoder_ffn_embed_dim', 200)
@@ -199,8 +194,8 @@ def roberta_base_architecture_ultra_small(args):
     base_architecture(args)
 
 
-@register_model_architecture('lattice_transformer', 'lt_small6')
-def roberta_small6_architecture(args):
+@register_model_architecture('ltlm', 'lt_small6')
+def ltlm_small6_architecture(args):
     args.encoder_layers = getattr(args, 'encoder_layers', 6)
     args.encoder_embed_dim = getattr(args, 'encoder_embed_dim', 300)
     args.encoder_ffn_embed_dim = getattr(args, 'encoder_ffn_embed_dim', 1024)
@@ -209,12 +204,11 @@ def roberta_small6_architecture(args):
 
 
 
-@register_model_architecture('lattice_transformer', 'lt_small3')
+@register_model_architecture('ltlm', 'lt_small3')
 def roberta_small3_architecture(args):
     args.encoder_layers = getattr(args, 'encoder_layers', 3)
     args.encoder_embed_dim = getattr(args, 'encoder_embed_dim', 40)
     args.encoder_ffn_embed_dim = getattr(args, 'encoder_ffn_embed_dim', 128)
     args.encoder_attention_heads = getattr(args, 'encoder_attention_heads', 4)
     base_architecture(args)
-
 

@@ -114,7 +114,7 @@ class LatticeTransformerSentenceEncoder(nn.Module):
         self.grad_checkpointing = grad_checkpointing
 
         self.embed_tokens = self.build_embedding(
-            self.vocab_size, self.embedding_dim, self.padding_idx
+            self.vocab_size, self.arc_embedding_dim, self.padding_idx
         )
         self.embed_scale = embed_scale
 
@@ -128,13 +128,13 @@ class LatticeTransformerSentenceEncoder(nn.Module):
             self.quant_noise = None
 
         self.segment_embeddings = (
-            nn.Embedding(self.num_segments, self.embedding_dim, padding_idx=None)
+            nn.Embedding(self.num_segments, self.arc_embedding_dim, padding_idx=None)
             if self.num_segments > 0
             else None
         )
 
         self.embed_positions = LatticePositionalEmbedding(self.max_seq_len, 
-                                                          self.embedding_dim, 
+                                                          self.arc_embedding_dim, 
                                                           self.padding_idx if offset_positions_by_padding else None) 
         if self.arc_embedding_dim != self.embedding_dim:
             self.arc_emb2emb = nn.Sequential(nn.Linear(self.arc_embedding_dim, self.embedding_dim), nn.GELU())
@@ -264,9 +264,10 @@ class LatticeTransformerSentenceEncoder(nn.Module):
 
         for layer in self.layers:
             if self.grad_checkpointing and self.training:
-                x = torch.utils.checkpoint.checkpoint(layer, x, None, padding_mask)
+                f=lambda kwargs: layer(**kwargs) 
+                x, _ = torch.utils.checkpoint.checkpoint(f, {'x':x, 'self_attn_padding_mask': padding_mask})
             else:
-                x = layer(x, self_attn_padding_mask=padding_mask)
+                x, _ = layer(x, self_attn_padding_mask=padding_mask)
 
             if not last_state_only:
                 inner_states.append(x)

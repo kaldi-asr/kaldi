@@ -2,7 +2,7 @@ import argparse
 import logging
 
 from fairseq.data import FairseqDataset
-from lattice_transformer.datasets import LatsOracleAlignDataSet
+from ltlm.datasets import LatsOracleAlignDataSet
 logger = logging.getLogger(__name__)
 
 
@@ -33,7 +33,6 @@ class PerEpochWrapper(FairseqDataset):
         ds = self.dataset_cls(self.tokenizer)
         ds.get_data_from_disc(data_conf)
         ds.cliped_data(self.args.max_len, clip_one_path=self.clip_one_path)
-        ds.augment_pos = self.pos_aug
         return ds
 
     def set_epoch(self, epoch):

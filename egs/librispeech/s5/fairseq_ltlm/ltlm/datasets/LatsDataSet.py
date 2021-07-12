@@ -13,14 +13,12 @@ import time
 import logging
 
 
-from lattice_transformer.pyutils.data_utils import parse_lats_data_str
-from lattice_transformer.pyutils.lattice_utils import (topsort_lat,
-                                                       oracle_path,
-                                                       collate_lats_sep,
-                                                       parse_lats,
-                                                       WORD_ID,
-                                                       STATE_FROM_ID,
-                                                       STATE_TO_ID)
+from ltlm.pyutils.data_utils import parse_lats_data_str
+from ltlm.pyutils.lattice_utils import (topsort_lat,
+                                        oracle_path,
+                                        padding,
+                                        parse_lats,
+                                        WORD_ID)
 logger = logging.getLogger(__name__)
 
 
@@ -35,7 +33,7 @@ class LatsDataSet(FairseqDataset):
                             help=f"lat_t - kaldi ark,t format. Dump - pickle data dump(s).")
         if not add_scale_opts:
             return
-        parser.add_argument(f'--{prefix}max_len', type=int, default=None,
+        parser.add_argument(f'--{prefix}max_len', type=int, default=600,
                             help=f"{prefix} Max len for lattice. If len greater than max_len lat will be removed."
                             f"Default: Same as --max_len")
         return parser
@@ -88,7 +86,6 @@ class LatsDataSet(FairseqDataset):
         self.tokenizer = tokenizer
         self.clipid2len_id = []
         self.too_big_lats = []
-        self.augment_pos = False
         self.max_len = float('inf')
 
     def get_data_from_disc(self, data_dict_list, data_type='dump'):
@@ -185,6 +182,7 @@ class LatsDataSet(FairseqDataset):
             utt2ref = {utt_id: self.tokenizer.encode([line], bos=True, eos=True)[0] for utt_id, line in
                        map(lambda x: x.split(' ', 1) if x.find(' ') != -1 else [x.strip(), ''], f) if utt_id in utts}
         logger.info(f"LatsDataSet: loaded {len(utt2ref)} ref.")
+        assert len(utt2ref) == len(self.id2utt), f'Utterance name {set(self.id2utt) - set(utt2ref.keys())} not found in file {ref_text_fname}'
         return utt2ref
 
     def cliped_data(self, max_len):
@@ -203,21 +201,18 @@ class LatsDataSet(FairseqDataset):
         return lats, weights, utts
 
     def __getitem__(self, item):
-        if type(item) == int:
-            i = self.clipid2len_id[item][1]
-            utt_id = self.id2utt[i]
-        elif type(item) == str:
+        #if type(item) == int:
+        if type(item) == str:
             i = self.utt2id[item]
             utt_id = item
         else:
-            raise RuntimeError(f'LatsDataSet:__getitem__ Bad item {item}')
-        weights = self.id2weights[i]
-        if self.augment_pos:
-            lat = topsort_lat(self.id2lat[i], random_shift=True, max_state=self.max_len - 1)
-            #logger.info(f"Lats is {lat}")
-        else:
-            lat = topsort_lat(self.id2lat[i])
-        return {'net_input': {'src_tokens': lat, },
+            i = self.clipid2len_id[item][1]
+            utt_id = self.id2utt[i]
+
+            #raise RuntimeError(f'LatsDataSet:__getitem__ Bad item {item}')
+        weights = torch.Tensor(self.id2weights[i])
+        lat = topsort_lat(self.id2lat[i])
+        return {'net_input': {'src_tokens': torch.LongTensor(lat), },
                 'weights': [weights[:, 0], weights[:, 1]],
                 'utt_id': utt_id,
                 'ntokens': weights.shape[0]}
@@ -234,7 +229,7 @@ class LatsDataSet(FairseqDataset):
         source = [d['net_input']['src_tokens'] for d in samples]
         weights = [[d['weights'][i] for d in samples] for i in range(len(samples[0]['weights']))]
         utt_ids = [d['utt_id'] for d in samples]
-        batch_x, batched_ws = collate_lats_sep(source, weights)
+        batch_x, batched_ws = padding(source, weights)
         ntokens = sum([d['ntokens'] for d in samples])
         return {'net_input': {'src_tokens': batch_x},
                 'weights': batched_ws,

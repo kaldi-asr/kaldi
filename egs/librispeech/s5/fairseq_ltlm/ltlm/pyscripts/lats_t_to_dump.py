@@ -4,10 +4,10 @@ import argparse
 import logging
 import sys
 
-from lattice_transformer.datasets import LatsOracleAlignDataSet, LatsWERAlignDataSet
-from lattice_transformer.Tokenizer import WordTokenizer
-from lattice_transformer.pyutils.logging_utils import setup_logger
-from lattice_transformer.tasks.rescoring_task import add_training_type_args, get_data_cls
+from ltlm.datasets import LatsOracleAlignDataSet
+from ltlm.Tokenizer import WordTokenizer
+from ltlm.pyutils.logging_utils import setup_logger
+from ltlm.tasks.rescoring_task import add_training_type_args, get_data_cls
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +20,7 @@ def main():
     logger.info(f"Using  {vars(type_args)}")
     data_cls = get_data_cls(type_args)
     WordTokenizer.add_args(parser)
-    data_cls.add_args(parser, add_scale_opts=False)
+    data_cls.add_args(parser, add_scale_opts=True)
     parser.add_argument('dump', type=str, help="Path for saving lat-dict dump.")
     args = parser.parse_args()
 

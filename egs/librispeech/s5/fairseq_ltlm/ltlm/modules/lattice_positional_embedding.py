@@ -40,8 +40,8 @@ class LatticePositionalEmbedding(nn.Module):
         positions: Optional[Tensor] = None,):
     # incremental_state: Optional[Dict[str, Dict[str, Optional[Tensor]]]] = None,):
         # input - tensor btz X sl
-        # positions - tensor btz X sl X (2) . [[[word_id, state_from, state_to] , ... ], ...]
-        emb_from = self.topo_from(positions[:, :, 0])
+        # positions - tensor btz X sl X (2) . [[[, state_from, state_to] , ... ], ...]
+        emb_from = self.topo_from(positions[:, :, -2])
         emb_to = self.topo_to(positions[:, :, -1])
         return (emb_from + emb_to)/2
         #return emb_from + emb_to

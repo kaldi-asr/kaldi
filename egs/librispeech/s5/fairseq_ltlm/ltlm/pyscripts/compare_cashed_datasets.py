@@ -5,9 +5,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 
-from lattice_transformer.datasets import LatsDataSet
-from lattice_transformer.Tokenizer import WordTokenizer
-from lattice_transformer.pyutils.logging_utils import setup_logger
+from ltlm.datasets import LatsDataSet
+from ltlm.Tokenizer import WordTokenizer
+from ltlm.pyutils.logging_utils import setup_logger
 
 logger = logging.getLogger(__name__)
 

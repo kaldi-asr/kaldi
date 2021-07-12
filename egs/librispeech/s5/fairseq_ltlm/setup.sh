@@ -2,6 +2,7 @@
 [ "$(basename $PWD)" != "fairseq_ltlm" ] && echo "run fairseq_ltlm/setup.sh in fairseq_ltlm dir!" && exit 1
 set -e 
 
+false && {
 if [ ! -d anaconda ] ; then
 	echo "Install anaconda"
 	installer=Miniconda3-py38_4.8.3-Linux-x86_64.sh
@@ -23,7 +24,19 @@ pip install --editable ./
 #pip install -v --no-cache-dir --global-option="--cpp_ext" --global-option="--cuda_ext" \
 #		  --global-option="--deprecated_fused_adam" --global-option="--xentropy" \
 #		    --global-option="--fast_multihead_attn" ./
-#)
+)
+}
+echo "Install aditional packages"
+(
+pip install -r ltlm/requirements.txt
+)
 
-echo "Done. Don't foget to activate conda env ( source anaconda/bin/activate ) before running recipe"
+echo "Making extra kaldi tools"
+(
+cd kaldi_utils
+make 
+)
+
+
+echo "Done. Don't foget to activate conda env ( source fairseq_ltlm/anaconda/bin/activate ) before running recipe"
 exit 0

@@ -7,16 +7,16 @@ import numpy as np
 from datetime import datetime
 from fairseq import checkpoint_utils, data, options, tasks
 
-from lattice_transformer.pyutils.logging_utils import setup_logger
-from lattice_transformer.models import LatticeTransformer
-from lattice_transformer.datasets import LatsDataSet
-from lattice_transformer.pyutils.lattice_utils import collate_lats, best_path_loglike, norm_lt, ones_nochoices_arcs
-from lattice_transformer.pyutils.kaldi_utils import compute_wer
-from lattice_transformer.Tokenizer import WordTokenizer
-from lattice_transformer.tasks import rescoring_task
+from ltlm.pyutils.logging_utils import setup_logger
+from ltlm.models import LTLM
+from ltlm.datasets import LatsDataSet
+from ltlm.pyutils.lattice_utils import collate_lats, best_path_nloglike
+from ltlm.pyutils.kaldi_utils import compute_wer
+from ltlm.Tokenizer import WordTokenizer
+from ltlm.tasks import rescoring_task
 logger = logging.getLogger(__name__)
 
-RESCORE_STRATEGIES = frozenset(['base', 'norm', 'only_forks' 'bce'])
+RESCORE_STRATEGIES = frozenset(['base', 'bce'])
 
 
 def compute_model_wer(model, dataset, ref_fname,
@@ -35,7 +35,7 @@ def compute_model_wer(model, dataset, ref_fname,
         final_word_id = tokenizer.get_eos_id()
         for lat, weights, utt in zip(removed_lats, removed_lats_ws, removed_lats_utts):
             p = weights[0] * lmwt + weights[1] * acwt
-            _, hyp = best_path_loglike(lat, p, final_word_id=final_word_id)
+            _, hyp = best_path_nloglike(lat, p, final_word_id=final_word_id)
             hyp_line = tokenizer.decode([[arc[0] for arc in hyp]])[0]
             assert hyp_line[0] == '<s>' and hyp_line[-1] == '</s>', RuntimeError(f"{hyp_line}")
             utt2hyp[utt] = hyp_line[1:-1]
@@ -76,11 +76,7 @@ def apply_strategy(lat, lt_probs, strategy):
         lt_score = - np.log(lt_probs)
     elif strategy=='bce':
         lt_score = - np.log(lt_probs) + np.log(1 - lt_probs)
-        den_scores = - np.log(1 - lt_probs)
-    elif strategy == 'norm':
-        lt_score = - np.log(norm_lt(lat, lt_probs))
-    elif strategy == 'only_forks':
-        lt_score = - np.log(ones_nochoices_arcs(lat, lt_probs))
+        #den_scores = - np.log(1 - lt_probs)
     else:
         RuntimeError(f"Unknown strategy {strategy}")
 
@@ -112,7 +108,7 @@ def get_rescoring_hyps(model, dataset,  acwt=1, lmwt=1, model_weight=1.3, strate
         axl_weight = weights[0] * lmwt + weights[1] * acwt
         lt_nll = apply_strategy(lat, lt_probs, strategy)
         nll = axl_weight + lt_nll * model_weight
-        _, hyp = best_path_loglike(lat, nll,
+        _, hyp = best_path_nloglike(lat, nll,
                                    final_word_id=final_word_id)
         hyp_line = tokenizer.decode([[arc[0] for arc in hyp]])[0]
         assert hyp_line[0] == '<s>' and hyp_line[-1] == '</s>', RuntimeError(f"{i} {hyp_line}")

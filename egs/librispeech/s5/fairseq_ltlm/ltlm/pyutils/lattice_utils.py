@@ -28,7 +28,7 @@ def collate_lats(elements_list):
 
 
 def padding(*sequences):
-    return *(torch.nn.utils.rnn.pad_sequence(s, batch_first=True) for s in sequences)
+    return (torch.nn.utils.rnn.pad_sequence(s, batch_first=True) for s in sequences)
 
 
 def topsort_lat(lat, random_shift=False, max_state=None):
@@ -94,7 +94,7 @@ def forward(lat_tensor, nloglike):
     """
 
     graph = lat_tensor_to_graph(lat_tensor)
-    logalpha = [0 for i in range(len(graph)]
+    logalpha = [0 for i in range(len(graph))]
 
     for state_id, arcs in enumerate(graph[1:], 1):
         if len(arcs) == 0:
@@ -132,7 +132,7 @@ def best_path_nloglike(lat_tensor, nloglike, final_word_id):
             final_states.add(topo_to)
 
     assert len(graph[1]) > 0 and len(final_states) > 0, RuntimeError(f"Bad graph {graph}. Lattice {lat_tensor}")
-    best_hyps = [() for i in range(len(graph)]
+    best_hyps = [() for i in range(len(graph))]
     tropic_alpha = [float('inf') for i in range(len(graph))]
 
     tropic_alpha[1] = 0 

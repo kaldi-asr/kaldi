@@ -6,12 +6,12 @@ import os
 
 
 from fairseq.tasks import FairseqTask, register_task
-from lattice_transformer.datasets import LatsOracleAlignDataSet, PerEpochWrapper, LatsWERAlignDataSet
+from ltlm.datasets import LatsOracleAlignDataSet, PerEpochWrapper
 
-from lattice_transformer.pyutils.data_utils import parse_lats_json
-from lattice_transformer.Tokenizer import WordTokenizer
+from ltlm.pyutils.data_utils import parse_lats_json
+from ltlm.Tokenizer import WordTokenizer
 import logging
-from lattice_transformer.eval import compute_model_wer, RESCORE_STRATEGIES
+from ltlm.eval import compute_model_wer, RESCORE_STRATEGIES
 logger = logging.getLogger(__name__)
 
 #DATASETS = ['valid']
@@ -59,20 +59,20 @@ class RescoringTask(FairseqTask):
             parser.add_argument(f"--all_oracle_targets", action='store_true',
                                 help=f'All oracle paths contains in training target')
 
-    def __init__(self, args, **kwargs):
-        super().__init__(args)
-        self.tokenizer = WordTokenizer.build_from_args(self.args)
-        args.clip_one_path = not args.not_clip_one_path
+    def __init__(self, cfg, **kwargs):
+        super().__init__(cfg)
+        self.tokenizer = WordTokenizer.build_from_args(self.cfg)
+        cfg.clip_one_path = not cfg.not_clip_one_path
 
         self.data_config = None
         self.train_conf = None
         self.val_test_conf = None
         self.datasets_extras = None
         self.criterion = None
-        self.data_cls = get_data_cls(args)
+        self.data_cls = get_data_cls(cfg)
 
     def load_data_config(self):
-        self.data_config = parse_lats_json(self.args.data_json)
+        self.data_config = parse_lats_json(self.cfg.data_json)
         self.train_conf = self.data_config['train']
         self.val_test_conf = {"valid": self.data_config.get('valid', []),
                               "test": self.data_config.get('test', [])}
@@ -85,7 +85,7 @@ class RescoringTask(FairseqTask):
             logger.warning(f"load_dataset {split} already loaded")
             return
         if split == 'train':
-            self.datasets[split] = PerEpochWrapper(self.args, self.tokenizer, self.train_conf,
+            self.datasets[split] = PerEpochWrapper(self.cfg, self.tokenizer, self.train_conf,
                                                    dataset_cls=self.data_cls)
             return
 
@@ -94,7 +94,7 @@ class RescoringTask(FairseqTask):
             assert ref_text is not None, RuntimeError(f"ref_text for {split}:({lats_data}) required!")
             ds = self.data_cls.build_from_kwargs(lats_data=lats_data,
                                                  tokenizer=self.tokenizer,
-                                                 max_len=self.args.max_len,
+                                                 max_len=self.cfg.max_len,
                                                  ref_text_fname=ref_text,
                                                  data_type='dump',
                                                  clip=True)
@@ -102,12 +102,12 @@ class RescoringTask(FairseqTask):
             wer = compute_model_wer(None,
                                     ds,
                                     ref_text,
-                                    btz=self.args.infer_btz,
+                                    btz=self.cfg.infer_btz,
                                     model_weight=0,
-                                    lmwt=self.args.lmwt,
+                                    lmwt=self.cfg.lmwt,
                                     progress_bar=False,
-                                    dataloader_nj=self.args.dataloader_nj,
-                                    hyp_filter=self.args.hyp_filter)
+                                    dataloader_nj=self.cfg.dataloader_nj,
+                                    hyp_filter=self.cfg.hyp_filter)
             logger.info(f"For split {split}:({lats_data}) wer without rescoring is {wer}")
             if self.datasets.get(split, None):
                 self.datasets_extras[split].append(ds)
@@ -125,17 +125,17 @@ class RescoringTask(FairseqTask):
             valid_wer = compute_model_wer(model,
                                           ds,
                                           ds.ref_text_fname,
-                                          btz=self.args.infer_btz,
-                                          model_weight=self.args.model_weight,
-                                          lmwt=self.args.lmwt,
+                                          btz=self.cfg.infer_btz,
+                                          model_weight=self.cfg.model_weight,
+                                          lmwt=self.cfg.lmwt,
                                           progress_bar=False,
                                           device=model.device,
-                                          dataloader_nj=self.args.dataloader_nj,
-                                          hyp_filter=self.args.hyp_filter)
+                                          dataloader_nj=self.cfg.dataloader_nj,
+                                          hyp_filter=self.cfg.hyp_filter)
             logger.info(f"Epoch {epoch}. Valid wer is {valid_wer}")
 
     def max_positions(self):
-        return self.args.max_positions
+        return self.cfg.max_positions
 
     @property
     def source_dictionary(self):
@@ -146,6 +146,6 @@ class RescoringTask(FairseqTask):
         # kostil for fairseq
         return self.tokenizer
 
-    def build_criterion(self, args):
-        self.criterion = super().build_criterion(args)
+    def build_criterion(self, cfg):
+        self.criterion = super().build_criterion(cfg)
         return self.criterion

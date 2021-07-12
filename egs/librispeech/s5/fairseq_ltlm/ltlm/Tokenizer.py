@@ -10,21 +10,26 @@ class WordTokenizer:
     def add_args(parser: argparse.ArgumentParser):
         parser.add_argument('--tokenizer_fn', type=str, required=True,
                             help='Tokenizer fname( words.txt)')
-        parser.add_argument('--unk', default='<unk>', help="Unk word")
+        #parser.add_argument('--unk', default='<UNK>', help="Unk word") # fairseq bug
 
     @staticmethod
     def build_from_args(args):
-        kwargs = {"fname": args.tokenizer_fn,
-                  'unk': args.unk}
+        kwargs = {"fname": args.tokenizer_fn}
+                  #'unk': args.unk_word}
 
         return WordTokenizer(**kwargs)
 
-    def __init__(self, fname, unk='<unk>'):
+    def __init__(self, fname, unk_word='<UNK>'):
         logger.info(f'Loading WordTokenizer {fname}')
-        self.unk=unk
         with open(fname, 'r', encoding='utf-8') as f:
             self.word2id = {w: int(i) for w, i in map(str.split, f.readlines())}
         self.id2word = ['']*(max(self.word2id.values()) + 1)
+        self.unk=unk_word
+        if self.unk not in self.word2id:
+            if self.unk.lower() in self.word2id:
+                self.unk=self.unk.lower()
+            else:
+                raise f"unk word {unk_word} not in {fname}"
         for w, i in self.word2id.items():
             self.id2word[i] = w
         assert self.word2id['<eps>'] == 0 and \

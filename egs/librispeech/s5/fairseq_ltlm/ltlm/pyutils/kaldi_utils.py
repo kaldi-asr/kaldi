@@ -31,7 +31,7 @@ def compute_wer(orig_fname, utt2hyp, tmp_dir='tmp', keep_tmp=False, hyp_filter='
     else:
         hyp_pipe = f'ark:{tmp_fname}'
 
-    s = subprocess.Popen(f'kaldi/src/bin/compute-wer ark:{orig_fname} "{hyp_pipe}"',
+    s = subprocess.Popen(f'compute-wer ark:{orig_fname} "{hyp_pipe}"',
                          stdout=subprocess.PIPE, shell=True)
     s.wait()
     if not keep_tmp:

@@ -5,12 +5,12 @@ import argparse
 import logging
 import itertools
 
-from lattice_transformer.pyutils.lattice_utils import oracle_path, topsort_lat
-from lattice_transformer.Tokenizer import WordTokenizer
-from lattice_transformer.datasets import LatsDataSet
-from lattice_transformer.pyutils.logging_utils import setup_logger
-from lattice_transformer.pyutils.lattice_utils import collate_lats_sep
-from lattice_transformer.pyutils.data_utils import parse_lats_data_str
+from ltlm.pyutils.lattice_utils import oracle_path, topsort_lat
+from ltlm.Tokenizer import WordTokenizer
+from ltlm.datasets import LatsDataSet
+from ltlm.pyutils.logging_utils import setup_logger
+from ltlm.pyutils.lattice_utils import padding
+from ltlm.pyutils.data_utils import parse_lats_data_str
 logger = logging.getLogger(__name__)
 
 
@@ -119,7 +119,7 @@ class LatsOracleAlignDataSet(LatsDataSet):
         lat_item['ref'] = self.utt2ref[utt_id]
         lat_item['ali'] = self.utt2ali[utt_id]
 
-        y = np.zeros(shape=(lat.shape[0]))
+        y = torch.zeros(lat.shape[0])
         y[lat_item['ali']] = 1
         lat_item['target'] = y
         #logger.info(f"lat item {lat_item}")
@@ -150,7 +150,7 @@ class LatsOracleAlignDataSet(LatsDataSet):
         targets = [d['target'] for d in samples]
         utt_ids = [d['utt_id'] for d in samples]
 
-        batch_x, other = collate_lats_sep(source, [*weights, targets])
+        batch_x, *other = padding(source, *weights, targets)
 
         batch_w, batch_y = other[:-1], other[-1]
         ntokens = sum([d['ntokens'] for d in samples])
@@ -161,7 +161,7 @@ class LatsOracleAlignDataSet(LatsDataSet):
                 'ntokens': ntokens,
                 'utt_id': utt_ids}
     
-    def compute_oracle_ali(self, print_interval=2000):
+    def compute_oracle_ali(self, print_interval=100):
         logger.info("Getting oracle ali.")
         global_err = 0
         global_len = 0
@@ -172,14 +172,15 @@ class LatsOracleAlignDataSet(LatsDataSet):
         total_count = len(self.utt2ref)
         for i, (utt_id, ref) in enumerate(self.utt2ref.items()):
             lat = self.id2lat[self.utt2id[utt_id]]
-            logger.debug(f"Process {utt_id}")
+            if len(lat) > self.max_len:
+                logger.info(f"Skip {utt_id}. len ({len(lat)}) > max len ({self.max_len})")
+            #logger.debug(f"Process {utt_id}")
             err, oracle_arcs = oracle_path(lat, ref, final_word_id=self.tokenizer.get_eos_id(), skip_words=skip_words,
                                                 keep_all_oracle_paths=self.all_oracle_targets)
 
             global_err += err
             global_len += len(ref) - 2  # except eos and bos
             alis[utt_id] = np.array(oracle_arcs)
-            logger.debug(f"Oracle ali numpy shape is {alis[utt_id].shape}")
             if not self.all_oracle_targets:
                 hyp = [self.tokenizer.id2word[lat[i][0]] for i in oracle_arcs[1:-1]]
                 hyps[utt_id] = hyp
