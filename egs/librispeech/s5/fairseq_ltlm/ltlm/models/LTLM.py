@@ -1,4 +1,4 @@
-#from fairseq.modules.transformer_sentence_encoder import TransformerSentenceEncoder
+# Copyright 2021 STC-Innovation LTD (Author: Anton Mitrofanov)
 from ltlm.modules.transformer_sentence_encoder import LatticeTransformerSentenceEncoder
 import torch
 import torch.nn as nn

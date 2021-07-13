@@ -1,3 +1,4 @@
+# Copyright 2021 STC-Innovation LTD (Author: Anton Mitrofanov)
 import numpy as np
 import torch
 from queue import PriorityQueue

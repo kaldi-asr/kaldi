@@ -1,4 +1,5 @@
 
+// Copyright 2021 STC-Innovation LTD (Author: Anton Mitrofanov)
 
 #include <chrono>
 

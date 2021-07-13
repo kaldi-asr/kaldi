@@ -1,3 +1,4 @@
+# Copyright 2021 STC-Innovation LTD (Author: Anton Mitrofanov)
 import torch.utils.data
 import torch
 import numpy as np
