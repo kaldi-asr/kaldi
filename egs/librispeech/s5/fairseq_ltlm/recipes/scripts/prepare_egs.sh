@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Copyright 2021 STC-Innovation LTD (Author: Anton Mitrofanov)
 
 set -euo pipefail
 . ./path.sh

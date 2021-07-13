@@ -35,7 +35,7 @@ def compute_model_wer(model, dataset, ref_fname,
     if len(removed_lats) > 0:
         final_word_id = tokenizer.get_eos_id()
         for lat, weights, utt in zip(removed_lats, removed_lats_ws, removed_lats_utts):
-            p = weights[0] * lmwt + weights[1] * acwt
+            p = weights[:, 0] * lmwt + weights[:, 1] * acwt
             _, hyp = best_path_nloglike(lat, p, final_word_id=final_word_id)
             hyp_line = tokenizer.decode([[arc[0] for arc in hyp]])[0]
             assert hyp_line[0] == '<s>' and hyp_line[-1] == '</s>', RuntimeError(f"{hyp_line}")
@@ -101,12 +101,12 @@ def get_rescoring_hyps(model, dataset,  acwt=1, lmwt=1, model_weight=1.3, strate
     for utt, lt_probs in utt2score.items():
         item = dataset[utt]
         # 'net_input': {'src_tokens': lat, },
-        #                 'weights': [weights[:, 0], weights[:, 1]],
+        #                 'weights': weights, # L x 2
         #                 'utt_id': utt_id,
         #                 'ntokens': weights.shape[0]
         lat = item['net_input']['src_tokens']
-        weights = item['weights']
-        axl_weight = weights[0] * lmwt + weights[1] * acwt
+        weights = item['weights'] # L x 2 
+        axl_weight = weights[:, 0] * lmwt + weights[:, 1] * acwt
         lt_nll = apply_strategy(lat, lt_probs, strategy)
         nll = axl_weight + lt_nll * model_weight
         _, hyp = best_path_nloglike(lat, nll,

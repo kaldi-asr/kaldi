@@ -1,4 +1,5 @@
 #!/bin/bash
+# Copyright 2021 STC-Innovation LTD (Author: Anton Mitrofanov)
 [ "$(basename $PWD)" != "fairseq_ltlm" ] && echo "run fairseq_ltlm/setup.sh in fairseq_ltlm dir!" && exit 1
 set -e 
 

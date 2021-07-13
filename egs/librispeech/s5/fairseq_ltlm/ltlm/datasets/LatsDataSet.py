@@ -197,7 +197,7 @@ class LatsDataSet(FairseqDataset):
 
     def get_removed_utts(self):
         lats = [self.id2lat[i] for i in self.too_big_lats]
-        weights = [[self.id2weights[i][:, 0], self.id2weights[i][:, 1]] for i in self.too_big_lats]
+        weights = [self.id2weights[i] for i in self.too_big_lats]
         utts = [self.id2utt[i] for i in self.too_big_lats]
         return lats, weights, utts
 
@@ -211,10 +211,11 @@ class LatsDataSet(FairseqDataset):
             utt_id = self.id2utt[i]
 
             #raise RuntimeError(f'LatsDataSet:__getitem__ Bad item {item}')
-        weights = torch.Tensor(self.id2weights[i])
+        weights = torch.Tensor(self.id2weights[i]) # L X 2
+        #logger.info(f'W shape: {weights.shape}')
         lat = topsort_lat(self.id2lat[i])
         return {'net_input': {'src_tokens': torch.LongTensor(lat), },
-                'weights': [weights[:, 0], weights[:, 1]],
+                'weights': weights,
                 'utt_id': utt_id,
                 'ntokens': weights.shape[0]}
 
@@ -228,12 +229,14 @@ class LatsDataSet(FairseqDataset):
 
     def collater(self, samples):
         source = [d['net_input']['src_tokens'] for d in samples]
-        weights = [[d['weights'][i] for d in samples] for i in range(len(samples[0]['weights']))]
+        #weights = [[d['weights'][i] for d in samples] for i in range(len(samples[0]['weights']))]
+        weights = [d['weights'] for d in samples]
         utt_ids = [d['utt_id'] for d in samples]
         batch_x, batched_ws = padding(source, weights)
+        #logger.info(f"W_batch shape: {batched_ws.shape}")
         ntokens = sum([d['ntokens'] for d in samples])
         return {'net_input': {'src_tokens': batch_x},
-                'weights': batched_ws,
+                'weights': batched_ws, # B x L x  x 
                 'ntokens': ntokens,
                 'utt_id': utt_ids}
 

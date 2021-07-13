@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# Copyright 2021 STC-Innovation LTD (Author: Anton Mitrofanov)
    
 echo "hostname: $(hostname)"
  
@@ -11,14 +12,12 @@ echo "MASTER_PORT: $MASTER_PORT"
  
 # export NCCL_DEBUG=INFO
 # export NCCL_DEBUG_SUBSYS=ALL
-export NCCL_SOCKET_IFNAME=$(ip a | grep 'inet 10\.16\.1\..*/24' | awk '{print $7}')
-echo "NCCL_SOCKET_IFNAME: $NCCL_SOCKET_IFNAME"
+#export NCCL_SOCKET_IFNAME=$(ip a | grep 'inet 10\.16\.1\..*/24' | awk '{print $7}')
+#echo "NCCL_SOCKET_IFNAME: $NCCL_SOCKET_IFNAME"
  
-export WORLD_SIZE=$SLURM_NTASKS
+#export WORLD_SIZE=$SLURM_NTASKS
 echo "WORLD_SIZE: $WORLD_SIZE"
  
-#update_freq=$((64/$WORLD_SIZE))
-#echo "update_freq: $update_freq"
 
 . ./fairseq_ltlm/path.sh
  

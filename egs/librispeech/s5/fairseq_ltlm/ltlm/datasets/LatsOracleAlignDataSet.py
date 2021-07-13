@@ -146,17 +146,18 @@ class LatsOracleAlignDataSet(LatsDataSet):
             samples = [self[0]]
             source = [d['net_input']['src_tokens'] for d in samples]
  
-        weights = [[d['weights'][i] for d in samples] for i in range(len(samples[0]['weights']))]
+        #weights = [[d['weights'][i] for d in samples] for i in range(len(samples[0]['weights']))]
+        weights = [d['weights'] for d in samples] # B x L x 2
         alis = [d['ali'] for d in samples]
         targets = [d['target'] for d in samples]
         utt_ids = [d['utt_id'] for d in samples]
 
-        batch_x, *other = padding(source, *weights, targets)
+        batch_x, *other = padding(source, weights, targets)
 
-        batch_w, batch_y = other[:-1], other[-1]
+        batch_w, batch_y = other[0], other[-1]
         ntokens = sum([d['ntokens'] for d in samples])
         return {'net_input': {'src_tokens': batch_x},
-                'weights': batch_w,
+                'weights': batch_w, # B x L x 2
                 'target': batch_y,
                 'ali': alis,
                 'ntokens': ntokens,

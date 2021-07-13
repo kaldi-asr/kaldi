@@ -1,3 +1,4 @@
+# Copyright 2021 STC-Innovation LTD (Author: Anton Mitrofanov)
 import kaldi_io
 import argparse
 import numpy as np

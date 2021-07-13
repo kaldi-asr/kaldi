@@ -1,7 +1,15 @@
 #!/bin/bash
+# Copyright 2021 STC-Innovation LTD (Author: Anton Mitrofanov)
 
-#results 
-### ltlm.tasks.rescoring_task | Epoch 103. Valid wer is %WER 2.55 [ 1387 / 54402, 193 ins, 109 del, 1085 sub ]
+
+########### Results #############
+
+######### eval best. < 170 epoch ####################
+#####################################################
+### dev_clean # dev_other # test_clean # test_other #
+###   2.49    #   7.37    #   3.01     #   7.67     #
+#####################################################
+
 
 set -e
 . ./path.sh
@@ -36,7 +44,7 @@ split_per_epoch=8
 
 
 # out dir
-base_exp_dir=$exp_dir/lt_small_ddp_new_dc/2nodes
+base_exp_dir=$exp_dir/lt_small/
 ltlm_dir=$base_exp_dir/lr${lr}_wd${wd}_cl${c}_btz${btz}_uf${uf}_spe${split_per_epoch}
 
 # Data
@@ -99,24 +107,7 @@ if [ $stage -le 1 ] ; then
 				--update-freq $uf \
 				--save-dir $ltlm_dir \
 				#--validate-interval 10 \
-
 				#--grad-checkpointing \
-fi
-
-exit 
-
-if [ $stage -le 2 ] ; then 
-	echo "Evaluating model. Logging in $ltlm_dir/eval.log"
-	$cmd_gpu --num_threads 12 --gpu 1 $exp_dir/eval.bce.log python fairseq_ltlm/ltlm/eval.py \
-			--device cuda \
-			--strategy base \
-			--max_len 600 \
-			--lmwt $lmwt \
-			--tokenizer_fn $graph/words.txt \
-			--model_weight $transformer_weight \
-			--data "$valid_egs_dir" \
-			$ltlm_dir/checkpoint_best.pt \
-			$valid_data_dir/text
 fi
 
 echo "Done"

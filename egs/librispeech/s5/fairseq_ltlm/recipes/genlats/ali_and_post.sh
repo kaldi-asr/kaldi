@@ -1,4 +1,5 @@
 #!/bin/bash
+# Copyright 2021 STC-Innovation LTD (Author: Anton Mitrofanov)
 set -e
 
 echo "$0 $@"  # Print the command line for logging
