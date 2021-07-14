@@ -293,7 +293,8 @@ void BatchedThreadedNnet3CudaPipeline2::SegmentedDecodeWithCallback(
     } else {
       std::unique_ptr<SubVector<BaseFloat>> h_wave_segment(
           new SubVector<BaseFloat>(h_wave.Data() + offset, nsamples));
-      BaseFloat offset_seconds = offset / model_freq_;
+      BaseFloat offset_seconds =
+          std::floor(static_cast<BaseFloat>(offset) / model_freq_);
 
       // Saving this segment offset in result for later use
       (*segmented_results)[isegment].SetTimeOffsetSeconds(offset_seconds);
@@ -304,25 +305,9 @@ void BatchedThreadedNnet3CudaPipeline2::SegmentedDecodeWithCallback(
       // call the segmented callback with the vector of results
       LatticeCallback callback = [=](CompactLattice &clat) {
         CudaPipelineResult &result = (*segmented_results)[isegment];
-        if (result_type & CudaPipelineResult::RESULT_TYPE_LATTICE) {
-          if (lattice_postprocessor_) {
-            CompactLattice postprocessed_clat;
-            bool ok = lattice_postprocessor_->GetPostprocessedLattice(
-                clat, &postprocessed_clat);
-            if (ok) result.SetLatticeResult(std::move(postprocessed_clat));
-          } else {
-            result.SetLatticeResult(std::move(clat));
-          }
-        }
 
-        if (result_type & CudaPipelineResult::RESULT_TYPE_CTM) {
-          CTMResult ctm_result;
-          KALDI_ASSERT(lattice_postprocessor_ &&
-                       "A lattice postprocessor must be set with "
-                       "SetLatticePostprocessor() to use RESULT_TYPE_CTM");
-          bool ok = lattice_postprocessor_->GetCTM(clat, &ctm_result);
-          if (ok) result.SetCTMResult(std::move(ctm_result));
-        }
+        SetResultUsingLattice(clat, result_type, lattice_postprocessor_,
+                              &result);
 
         int n_not_done = n_segments_callbacks_not_done_->fetch_sub(1);
         if (n_not_done == 1 && segmented_callback) {
