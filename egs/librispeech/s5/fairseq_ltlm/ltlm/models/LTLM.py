@@ -211,4 +211,3 @@ def roberta_small3_architecture(args):
     args.encoder_ffn_embed_dim = getattr(args, 'encoder_ffn_embed_dim', 128)
     args.encoder_attention_heads = getattr(args, 'encoder_attention_heads', 4)
     base_architecture(args)
-

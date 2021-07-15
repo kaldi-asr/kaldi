@@ -26,8 +26,7 @@ def add_training_type_args(parser):
 def get_data_cls(args):
     if args.training_type == 'oracle_path':
         return LatsOracleAlignDataSet
-    else:
-        RuntimeError(f'Bad training_type {args.training_type}')
+    RuntimeError(f'Bad training_type {args.training_type}')
 
 
 @register_task('rescoring_task')

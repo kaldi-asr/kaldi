@@ -154,4 +154,3 @@ if __name__ == "__main__":
 
     print(f"Lattices {dataset.get_name()}, model {args.model}, model_weight {args.model_weight}.")
     print(wer)
-

@@ -361,7 +361,7 @@ def parse_lats(lines):
                 assert self.is_line_utt_id(splited_line), RuntimeError("parse_lats init error.")
                 self.new_utt(splited_line)
                 return
-            elif self.state == 'get_arc':
+            if self.state == 'get_arc':
                 # if self.is_line_utt_id(splited_line):
                 #     self.new_utt(splited_line)
                 # else:
@@ -399,5 +399,3 @@ def parse_lats(lines):
         parser.add(line)
     utt2lat = parser.get_out()
     return utt2lat
-
-

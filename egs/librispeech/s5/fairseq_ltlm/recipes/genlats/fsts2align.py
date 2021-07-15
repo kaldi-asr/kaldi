@@ -93,7 +93,6 @@ class FstParser:
         last_answ = self.get_lats_out()
         if last_answ is not None:
             yield last_answ
-        return
 
     def compile_out(self):
         # convert to classic fst representation
@@ -167,6 +166,3 @@ if __name__ == "__main__":
             logger.debug(f'Generated {random_ali.shape} utt ali')
             kaldi_io.write_vec_int(f_out, random_ali, key=utt)
         logger.info(f"Done. Processed {i} utterance")
-
-
-

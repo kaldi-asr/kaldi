@@ -39,5 +39,3 @@ def compute_wer(orig_fname, utt2hyp, tmp_dir='tmp', keep_tmp=False, hyp_filter='
         os.remove(tmp_fname)
     out_s = s.stdout.read().decode('utf-8').strip()
     return out_s.split('\n')
-
-

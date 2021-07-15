@@ -14,7 +14,6 @@ from ltlm.datasets import LatsOracleAlignDataSet, LatsDataSet
 
 from ltlm.pyutils.logging_utils import setup_logger
 from ltlm.models import LatticeTransformer
-from ltlm.datasets import LatsDataSet
 from ltlm.pyutils.lattice_utils import graphviz_lattice, norm_lt, ones_nochoices_arcs, arc_wer_map
 from ltlm.pyutils.kaldi_utils import compute_wer
 from ltlm.Tokenizer import WordTokenizer

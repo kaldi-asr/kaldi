@@ -52,4 +52,3 @@ if __name__ == "__main__":
         min_i = np.argmin(v_np)
         max_i = np.argmax(v_np)
         print(f"{k} = {round(sum(v)/len(v), args.round)}. abs min = {v[min_i]} ({report['utts'][min_i]}). abs max = {v[max_i]} ({report['utts'][max_i]}).")
-

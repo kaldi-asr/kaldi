@@ -98,11 +98,11 @@ class AliStretchModel:
 
     def forward(self, ids):
         # ids - [0, 1, 0,...]
-        dup_ids = np.concatenate([np.array([id] * self.sample_seq_len(id), dtype=np.int32) for id in ids])
+        dup_ids = np.concatenate([np.array([index] * self.sample_seq_len(index), dtype=np.int32) for index in ids])
         return dup_ids
 
-    def sample_seq_len(self, id):
-        distr = self.id2seq_count[id]
+    def sample_seq_len(self, index):
+        distr = self.id2seq_count[index]
         if len(distr) == 0:
             return 1
         population, weights = np.asarray(list(distr.keys())), np.asarray(list(distr.values()))
@@ -187,9 +187,9 @@ class Id2LoglikeAMModel:
 
         self.id2priors = np.zeros_like(self.id2count)
 
-    def add_prob(self, id, prob):
-        self.id2sum[id] += softmax(prob, axis=-1)
-        self.id2count[id] += 1
+    def add_prob(self, index, prob):
+        self.id2sum[index] += softmax(prob, axis=-1)
+        self.id2count[index] += 1
 
     def add_utts(self, ids, probs):
         assert len(ids.shape) == 1 and len(probs.shape) == 2, RuntimeError(f"Wrong shape in add_probs")
@@ -220,8 +220,8 @@ class Id2LoglikeAMModel:
             id2smooth /= self.id2priors.reshape(1, -1)
         return id2smooth
 
-    def get_prob(self, id):
-        return self.id2sum[id]
+    def get_prob(self, index):
+        return self.id2sum[index]
 
     def forward(self, ids):
         # ids - [0, 1, 0,...]
