@@ -8,15 +8,21 @@
 # one by copying and pasting into the shell.
 
 
+progress=0
+
 # Download the corpus and prepare parallel lists of sound files and text files
 # Divide the corpus into train, dev and test sets
-local/sprak_data_prep.sh  || exit 1;
-utils/fix_data_dir.sh data/train || exit 1;
+if [ $progress -le 0 ]; then
+    local/sprak_data_prep.sh  || exit 1;
+    utils/fix_data_dir.sh data/train || exit 1;
+fi
 
 # Perform text normalisation, prepare dict folder and LM data transcriptions
-local/copy_dict || exit 1;
+if [ $progress -le 1 ]; then
+    local/copy_dict.sh || exit 1;
 
-utils/prepare_lang.sh data/local/dict "<UNK>" data/local/lang_tmp data/lang || exit 1;
+    utils/prepare_lang.sh data/local/dict "<UNK>" data/local/lang_tmp data/lang || exit 1;
+fi
 
 # Now make MFCC features.
 # mfccdir should be some place with a largish disk where you
@@ -29,101 +35,111 @@ mfccdir=mfcctest
 # wave files are corrupt
 # Will return a warning message because of the corrupt audio files, but compute them anyway
 # If this step fails and prints a partial diff, rerun from sprak_data_prep.sh
-
-steps/make_mfcc.sh --nj 10 --cmd $train_cmd data/test exp/make_mfcc/test test mfcc || exit 1;
-steps/make_mfcc.sh --nj 10 --cmd $train_cmd data/train exp/make_mfcc/train mfcc || exit 1;
-
+if [ $progress -le 2 ]; then
+    steps/make_mfcc.sh --nj 10 --cmd $train_cmd data/test exp/make_mfcc/test mfcc || exit 1;
+    steps/make_mfcc.sh --nj 10 --cmd $train_cmd data/train exp/make_mfcc/train mfcc || exit 1;
+fi
 
 # Compute cepstral mean and variance normalisation
-steps/compute_cmvn_stats.sh data/test exp/make_mfcc/test mfcc || exit 1;
-steps/compute_cmvn_stats.sh data/train exp/make_mfcc/train mfcc || exit 1;
-
-
+if [ $progress -le 3 ]; then
+    steps/compute_cmvn_stats.sh data/test exp/make_mfcc/test mfcc || exit 1;
+    steps/compute_cmvn_stats.sh data/train exp/make_mfcc/train mfcc || exit 1;
+fi
 
 # Repair data set (remove corrupt data points with corrupt audio)
 
-utils/fix_data_dir.sh data/test || exit 1;
-utils/fix_data_dir.sh data/train || exit 1;
-
-
-# Train LM with irstlm
+if [ $progress -le 4 ]; then
+    utils/fix_data_dir.sh data/test || exit 1;
+    utils/fix_data_dir.sh data/train || exit 1;
+fi
+    
+echo "Train LM with irstlm..."
 #creates 3g or 4g dictionary and importantly G.fst
 #local/train_irstlm.sh data/local/transcript_lm/transcripts.uniq 3 "3g" data/lang data/local/train3_lm &> data/local/3g.log &
 local/train_irstlm.sh data/local/transcript_lm/transcripts.uniq 4 "4g" data/lang data/local/train4_lm &> data/local/4g.log || exit 1;
 
+echo "Speed test with 120 utterances per speaker..."
 #speed test only 120 utterances per speaker
 utils/subset_data_dir.sh --per-spk data/test 120 data/test120_p_spk || exit 1;
 
-
+echo "Train monophone model on shory utterances..."
 # Train monophone model on short utterances  AFTER THIS ONE CAN SEE THE ALIGNMNT BETWEEN FRAMES AND PHONES USING COMMAND SHOW_ALIGNMENTS
 steps/train_mono.sh --nj 10 --cmd "$train_cmd" data/train data/lang exp/mono || exit 1;
 
 # Ensure that LMs are created
-
+echo "Making recognition graph for mono"
 utils/mkgraph.sh data/lang_test_4g exp/mono exp/mono/graph_4g || exit 1;
 
 # Ensure that all graphs are constructed
 
-
+echo "Decode with mono..."
 steps/decode.sh --config conf/decode.config --nj 10 --cmd "$decode_cmd" \
-  exp/mono/graph_4g data/test120_p_spk exp/mono/decode || exit 1;
+  exp/mono/graph_4g data/test120_p_spk exp/mono/decode_test120_p_spk || exit 1;
 
-# Get alignments from monophone system.
+echo "Re-aligning using mono..."
 steps/align_si.sh --nj 10 --cmd "$train_cmd" \
   data/train data/lang exp/mono exp/mono_ali || exit 1;
 
-# train tri1 [first triphone pass]
+echo "Train tri1 [first triphone pass]..."
 # steps/train_deltas.sh --boost-silence 1.25 --cmd "$train_cmd" \
 steps/train_deltas.sh --cmd "$train_cmd" \
   5800 96000 data/train data/lang exp/mono_ali exp/tri1|| exit 1;
 
 
-
+echo "Making recognition graph for tri1..."
 #make graph
 utils/mkgraph.sh data/lang_test_4g exp/tri1 exp/tri1/graph_4g || exit 1;
 
+echo "Decoding with tri1..."
 steps/decode.sh --config conf/decode.config --nj 10 --cmd "$decode_cmd" \
   exp/tri1/graph_4g data/test120_p_spk exp/tri1/decode_test120_p_spk || exit 1;
 
 
 
-
+echo "Re-aligning using tri1..."
 steps/align_si.sh --nj 10 --cmd "$train_cmd" \
   data/train data/lang exp/tri1 exp/tri1_ali || exit 1;
 
 
-# Train tri2a, which is deltas + delta-deltas.
+echo "Train tri2a: deltas + delta-deltas..."
 steps/train_deltas.sh --cmd "$train_cmd" \
   7500 125000 data/train data/lang exp/tri1_ali exp/tri2a || exit 1;
 
+echo "Making recognition graph for tri2a..."
 utils/mkgraph.sh data/lang_test_4g exp/tri2a exp/tri2a/graph_4g || exit 1;
 
+echo "Decoding with tri2a..."
 steps/decode.sh --nj 10 --cmd "$decode_cmd" \
   exp/tri2a/graph_4g data/test120_p_spk exp/tri2a/decode_test120_p_spk|| exit 1;
 
 
+echo "Train tri2b: LDA + MLLT..."
 steps/train_lda_mllt.sh --cmd "$train_cmd" \
    --splice-opts "--left-context=5 --right-context=5" \
    7500 125000 data/train data/lang exp/tri1_ali exp/tri2b || exit 1;
 
+echo "Making recognition graph for tri2b..."
 utils/mkgraph.sh data/lang_test_4g exp/tri2b exp/tri2b/graph_4g || exit 1;
+
+echo "Decoding with tri2b..."
 steps/decode.sh --nj 10 --cmd "$decode_cmd" \
   exp/tri2b/graph_4g data/test120_p_spk exp/tri2b/decode_test120_p_spk || exit 1;
 
-
+echo "Re-aligning using tri2b..."
 steps/align_si.sh  --nj 10 --cmd "$train_cmd" \
   --use-graphs true data/train data/lang exp/tri2b exp/tri2b_ali  || exit 1;
 
 
 
 
-# From 2b system, train 3b which is LDA + MLLT + SAT.
+echo "Train tri3b: LDA + MLLT + SAT."
 steps/train_sat.sh --cmd "$train_cmd" \
   7500 125000 data/train data/lang exp/tri2b_ali exp/tri3b || exit 1;
 
-# Trying 4-gram language model
+echo "Making recognition graph for tri3b..."
 utils/mkgraph.sh data/lang_test_4g exp/tri3b exp/tri3b/graph_4g || exit 1;
 
+echo "Decoding with tri3b..."
 steps/decode_fmllr.sh --cmd "$decode_cmd" --nj 10 \
   exp/tri3b/graph_4g data/test120_p_spk exp/tri3b/decode_test120_p_spk || exit 1;
 
@@ -134,29 +150,32 @@ steps/decode_fmllr.sh --cmd "$decode_cmd" --nj 10 \
 #local/sprak_run_rnnlms_tri3b.sh data/lang_test_3g data/local/rnnlms/g_c380_d1k_h100_v130k data/test1k exp/tri3b/decode_3g_test1k
 
 
-# From 3b system
+echo "Re-aligning using tri3b..."
 steps/align_fmllr.sh --nj 10 --cmd "$train_cmd" \
   data/train data/lang exp/tri3b exp/tri3b_ali || exit 1;
 
-# From 3b system, train another SAT system (tri4a) with all the si284 data.
-
+echo "Train tri4a: another SAT system with all the si284 data."
 steps/train_sat.sh  --cmd "$train_cmd" \
   13000 300000 data/train data/lang exp/tri3b_ali exp/tri4a || exit 1;
 
+echo "Making recognition graph for tri4a..."
 utils/mkgraph.sh data/lang_test_4g exp/tri4a exp/tri4a/graph_4g || exit 1;
+
+echo "Decoding with tri4a..."
 steps/decode_fmllr.sh --nj 10 --cmd "$decode_cmd" \
    exp/tri4a/graph_4g data/test120_p_spk exp/tri4a/decode_test120_p_spk || exit 1;
 
 
 
 # alignment used to train nnets
+echo "Re-aligning using tri4a..."
 steps/align_fmllr.sh --nj 10 --cmd "$train_cmd" \
   data/train data/lang exp/tri4a exp/tri4a_ali || exit 1;
 
-## Works
+echo "Training nnet using cpu..."
 local/sprak_run_nnet_cpu.sh 4g test120_p_spk || exit 1;
 
 
 
-# Getting results [see RESULTS file]
+echo "Getting results [see RESULTS file]"
 for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; done
