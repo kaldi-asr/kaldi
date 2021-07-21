@@ -15,19 +15,38 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_CUDA_DECODER_CUDA_DECODER_H_
-#define KALDI_CUDA_DECODER_CUDA_DECODER_H_
+#ifndef KALDI_CUDADECODER_CUDA_DECODER_H_
+#define KALDI_CUDADECODER_CUDA_DECODER_H_
+
+#if HAVE_CUDA
+
+#include <cuda_runtime_api.h>
+
+#include <atomic>
+#include <cfloat>
+#include <condition_variable>
+#include <functional>
+#include <list>
+#include <memory>
+#include <mutex>
+#include <set>
+#include <sstream>
+#include <stack>
+#include <thread>
+#include <tuple>
+#include <unordered_map>
+#include <unordered_set>
+#include <utility>
+#include <vector>
 
 #include "cudadecoder/cuda-decodable-itf.h"
 #include "cudadecoder/cuda-decoder-common.h"
 #include "cudadecoder/cuda-fst.h"
 #include "cudadecoder/thread-pool-light.h"
+#include "fst/symbol-table.h"
 #include "nnet3/decodable-online-looped.h"
+#include "online2/online-endpoint.h"
 
-#include <cuda_runtime_api.h>
-#include <mutex>
-#include <tuple>
-#include <vector>
 namespace kaldi {
 namespace cuda_decoder {
 
@@ -37,6 +56,7 @@ struct CudaDecoderConfig {
   int32 ntokens_pre_allocated;
   int32 main_q_capacity, aux_q_capacity;
   int32 max_active;
+  OnlineEndpointConfig endpointing_config;
 
   CudaDecoderConfig()
       : default_beam(15.0),
@@ -119,6 +139,7 @@ struct CudaDecoderConfig {
         << "*main-q-capacity).";
     opts->Register("aux-q-capacity", &aux_q_capacity,
                    aux_q_capacity_desc.str());
+    endpointing_config.Register(opts);
   }
 
   void Check() const {
@@ -139,8 +160,8 @@ struct CudaDecoderConfig {
 // Forward declaration.
 // Those contains CUDA code. We don't want to include their definition
 // in this header
-class DeviceParams;
-class KernelParams;
+struct DeviceParams;
+struct KernelParams;
 
 class CudaDecoder {
  public:
@@ -189,20 +210,27 @@ class CudaDecoder {
   // Using nlanes=2500 in that configuration would first not be possible
   // (out of memory), but also not necessary. Increasing the number of
   // lanes is only useful if it increases performance. If the GPU is
-  // saturated at nlanes=200, you should not increase that number
+  // saturated at nlanes=200, you should not increase that number.
+  //
+  ///\param[in] fst A CudaFst instance. Not owned, must survive this object.
+  ///\param[in] config
+  ///\param[in] nlanes
+  ///\param[in] nchannels
   CudaDecoder(const CudaFst &fst, const CudaDecoderConfig &config, int32 nlanes,
               int32 nchannels);
 
-  // Reads the config from config
-  void ReadConfig(const CudaDecoderConfig &config);
   // Special constructor for nlanes = nchannels. Here for the non-advanced
   // user Here we can consider nchannels = batch size. If we want to
   // decode 10 utterances at a time, we can use nchannels = 10
   CudaDecoder(const CudaFst &fst, const CudaDecoderConfig &config,
               int32 nchannels)
       : CudaDecoder(fst, config, nchannels, nchannels) {}
-  virtual ~CudaDecoder();
+  virtual ~CudaDecoder() noexcept(false);
 
+  KALDI_DISALLOW_COPY_AND_ASSIGN(CudaDecoder);
+
+  // Reads the config from config
+  void ReadConfig(const CudaDecoderConfig &config);
   // InitDecoding initializes the decoding, and should only be used if you
   // intend to call AdvanceDecoding() on the channels listed in channels
   void InitDecoding(const std::vector<ChannelId> &channels);
@@ -236,12 +264,40 @@ class CudaDecoder {
                        std::vector<CudaDecodableInterface *> &decodables,
                        int32 max_num_frames = -1);
 
+  void AllowPartialHypotheses() {
+    partial_traceback_ = generate_partial_hypotheses_ = true;
+  }
+
+  void AllowEndpointing() {
+    if (frame_shift_seconds_ == FLT_MAX) {
+      KALDI_ERR << "You must call SetOutputFrameShiftInSeconds() "
+                << "to use endpointing";
+    }
+    partial_traceback_ = endpointing_ = true;
+  }
+
+  void SetOutputFrameShiftInSeconds(BaseFloat f) { frame_shift_seconds_ = f; }
+
+  void GetPartialHypothesis(ChannelId ichannel, PartialHypothesis **out) {
+    KALDI_ASSERT(generate_partial_hypotheses_);
+    // No need to lock, all ops on h_all_channels_partial_hypotheses_out_ are
+    // done before returning InitDecoding or AdvanceDecoding
+    *out = &h_all_channels_partial_hypotheses_out_[ichannel];
+  }
+
+  bool EndpointDetected(ChannelId ichannel) {
+    return h_all_channels_endpoint_detected_[ichannel];
+  }
+
   // Returns the number of frames already decoded in a given channel
   int32 NumFramesDecoded(ChannelId ichannel) const;
+
   // GetBestPath gets the one-best decoding traceback. If
   // "use_final_probs" is true AND we reached a final state, it limits
   // itself to final states; otherwise it gets the most likely token not
   // taking into account final-probs.
+  // GetBestPath is deprecated and will be removed in a future release
+  // For best path, use partial hypotheses
   void GetBestPath(const std::vector<ChannelId> &channels,
                    std::vector<Lattice *> &fst_out_vec,
                    bool use_final_probs = true);
@@ -269,19 +325,6 @@ class CudaDecoder {
   // final-probs.
   void GetRawLattice(const std::vector<ChannelId> &channels,
                      std::vector<Lattice *> &fst_out_vec, bool use_final_probs);
-  // GetBestCost finds the best cost in the last tokens queue
-  // for each channel in channels. If isfinal is true,
-  // we also add the final cost to the token costs before
-  // finding the minimum cost
-  // We list all tokens that have a cost within [best; best+lattice_beam]
-  // in list_lattice_tokens.
-  // We alsos set has_reached_final[ichannel] to true if token associated
-  // to a final state exists in the last token queue of that channel
-  void GetBestCost(
-      const std::vector<ChannelId> &channels, bool isfinal,
-      std::vector<std::pair<int32, CostType>> *argmins,
-      std::vector<std::vector<std::pair<int, float>>> *list_lattice_tokens,
-      std::vector<bool> *has_reached_final);
 
   // (optional) Giving the decoder access to the cpu thread pool
   // We will use it to compute specific CPU work, such as
@@ -290,6 +333,11 @@ class CudaDecoder {
   // nworkers of those threads
   void SetThreadPoolAndStartCPUWorkers(ThreadPoolLight *thread_pool,
                                        int32 nworkers);
+
+  // Used to generate partial results
+  void SetSymbolTable(const fst::SymbolTable &word_syms) {
+    word_syms_ = &word_syms;
+  }
 
  private:
   // Data allocation. Called in constructor
@@ -314,6 +362,29 @@ class CudaDecoder {
   // software threads into the registers of a CPU)
   void LoadChannelsStateToLanes(const std::vector<ChannelId> &channels);
   void SaveChannelsStateFromLanes();
+  // GetBestCost finds the best cost in the last tokens queue
+  // for each channel in channels. If isfinal is true,
+  // we also add the final cost to the token costs before
+  // finding the minimum cost
+  // We list all tokens that have a cost within [best; best+lattice_beam]
+  // in list_lattice_tokens.
+  // We alsos set has_reached_final[ichannel] to true if token associated
+  // to a final state exists in the last token queue of that channel
+  void GetBestCost(
+      const std::vector<ChannelId> &channels, bool isfinal,
+      std::vector<std::pair<int32, CostType>> *argmins,
+      std::vector<std::vector<std::pair<int, float>>> *list_lattice_tokens,
+      std::vector<bool> *has_reached_final);
+
+  // Fills *out_nonempty_channels with channels with NumFramesDecoded(ichannel)
+  // > 0
+  void FillWithNonEmptyChannels(const std::vector<ChannelId> &channels,
+                                std::vector<ChannelId> *out_nonempty_channels);
+
+  // Given a token, get its best predecessor (lower cost predecessor)
+  // Used by GetBestPath or best path traceback
+  void GetBestPredecessor(int32 ichannel, int32 curr_token_idx,
+                          int32 *prev_token_idx_out, int32 *arc_idx_out);
   // Expand the arcs, emitting stage. Must be called after
   // a preprocess_in_place, which happens in PostProcessingMainQueue.
   // ExpandArcsEmitting is called first when decoding a frame,
@@ -409,6 +480,19 @@ class CudaDecoder {
   // We then have to unpack it and move it inside host memory
   // This is done by ComputeH2HCopies
   void ComputeH2HCopies();
+
+  // Used to generate the partial hypotheses
+  // Called by the worker threads async
+  void BuildPartialHypothesisOutput(
+      ChannelId ichannel,
+      std::stack<std::pair<int, PartialPathArc *>> *traceback_buffer_);
+  void GeneratePartialPath(LaneId ilane, ChannelId ichannel);
+
+  void EndpointDetected(LaneId ilane, ChannelId ichannel);
+  // Wait for the async partial hypotheses related tasks to be done
+  // before returning
+  void WaitForPartialHypotheses();
+
   // Takes care of preparing the data for ComputeH2HCopies
   // and check whether we can use the threadpool or we have to do the work
   // on the current thread
@@ -436,9 +520,19 @@ class CudaDecoder {
   // Data members
   //
 
+  CudaDecoderConfig config_;
+  const fst::SymbolTable *word_syms_;  // for partial hypotheses
+  bool generate_partial_hypotheses_;   // set by AllowPartialHypotheses
+  bool endpointing_;
+  bool partial_traceback_;
+  BaseFloat frame_shift_seconds_;
+
+  std::set<int32> silence_phones_;
+
   // The CudaFst data structure contains the FST graph
   // in the CSR format, on both the GPU and CPU memory
-  const CudaFst fst_;
+  const CudaFst& fst_;
+
   // Counters used by a decoder lane
   // Contains all the single values generated during computation,
   // such as the current size of the main_q, the number of arcs currently
@@ -624,8 +718,8 @@ class CudaDecoder {
   // i.e. memory address of the main_q for instance
   // KernelParams contains information that can change.
   // For instance which channel is executing on which lane
-  DeviceParams *h_device_params_;
-  KernelParams *h_kernel_params_;
+  std::unique_ptr<DeviceParams> h_device_params_;
+  std::unique_ptr<KernelParams> h_kernel_params_;
   std::vector<ChannelId> channel_to_compute_;
   int32 nlanes_used_;  // number of lanes used in h_kernel_params_
   // Initial lane
@@ -661,11 +755,11 @@ class CudaDecoder {
   std::vector<std::vector<InfoToken>> h_all_tokens_extra_prev_tokens_;
   std::vector<std::vector<float2>>
       h_all_tokens_extra_prev_tokens_extra_and_acoustic_cost_;
-  std::vector<std::mutex> channel_lock_;  // at some point we should switch to a
-                                          // shared_lock (to be able to compute
-                                          // partial lattices while still
-                                          // streaming new data for this
-                                          // channel)
+  //TODO(hugovbraun): At some point we should switch to a shared_lock to be
+  // able to compute partial lattices while still streaming new data for this
+  // channel.
+  std::vector<std::mutex> channel_lock_;
+
   bool worker_threads_running_;
   // For each channel, set by PrepareForGetRawLattice
   // argmin cost, list of the tokens within
@@ -674,6 +768,8 @@ class CudaDecoder {
   std::vector<std::pair<int32, CostType>> h_all_argmin_cost_;
   std::vector<std::vector<std::pair<int, float>>> h_all_final_tokens_list_;
   std::vector<bool> h_all_has_reached_final_;
+  // Buffer to store channels with nframes > 0.
+  std::vector<ChannelId> nonempty_channels_;
 
   // Pinned memory arrays. Used for the DeviceToHost copies
   float2 *h_extra_and_acoustic_cost_concat_, *d_extra_and_acoustic_cost_concat_;
@@ -689,6 +785,24 @@ class CudaDecoder {
   std::vector<int32> h_main_q_end_lane_offsets_;
   std::vector<int32> h_emitting_main_q_end_lane_offsets_;
   std::vector<int32> h_n_extra_prev_tokens_lane_offsets_;
+  // Index of the best index for the last frame. Used by endpointing/partial
+  // results
+
+  std::vector<BestPathTracebackHead> h_best_path_traceback_head_;
+  std::vector<BestPathTracebackHead>
+      h_all_channels_prev_best_path_traceback_head_;
+  // Partial path so far on a given channel
+
+  // Partial hypotheses to be used by user
+  // Only valid between API calls (InitDecoding, AdvanceDecoding)
+  std::vector<PartialHypothesis> h_all_channels_partial_hypotheses_out_;
+  std::vector<char>
+      h_all_channels_endpoint_detected_;  // not using a bool, we need it to be
+                                          // threadsafe
+
+  // Used internally to store the state of the current partial hypotheses
+  std::vector<std::list<PartialPathArc>> h_all_channels_partial_hypotheses_;
+
   // Used when calling GetBestCost
   std::vector<std::pair<int32, CostType>> argmins_;
   std::vector<bool> has_reached_final_;
@@ -767,7 +881,14 @@ class CudaDecoder {
   std::condition_variable h2h_done_;
   std::condition_variable init_decoding_h2h_done_;
   std::atomic<bool> active_wait_;
-  bool h2h_threads_running_;
+
+  // Used for sync on partial hypotheses tasks
+  std::atomic<std::int32_t> n_partial_traceback_threads_todo_;
+  std::atomic<std::int32_t> n_partial_traceback_threads_not_done_;
+
+  // Set to false in destructor to stop threads.
+  volatile bool h2h_threads_running_;
+
   // Using the output from GetBestPath, we add the best tokens (as
   // selected in GetBestCost) from the final frame to the output lattice.
   // We also fill the data structures (such as q_curr_frame_todo_, or
@@ -831,10 +952,10 @@ class CudaDecoder {
       std::unordered_map<LatticeStateInternalId, RawLatticeState>
           *prev_f_raw_lattice_state,
       std::unordered_set<int32> *f_arc_idx_added);
-  KALDI_DISALLOW_COPY_AND_ASSIGN(CudaDecoder);
 };
 
 }  // end namespace cuda_decoder
-}  // end namespace kaldi
+}  // namespace kaldi
 
-#endif  // KALDI_CUDA_DECODER_CUDA_DECODER_H_
+#endif  // HAVE_CUDA
+#endif  // KALDI_CUDADECODER_CUDA_DECODER_H_

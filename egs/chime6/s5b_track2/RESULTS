@@ -1,0 +1,20 @@
+# Results for Chime-6 track 2 for dev and eval, using pretrained models
+# available at http://kaldi-asr.org/models/m12.
+
+# Speech Activity Detection (SAD): Baseline + posterior combination of arrays
+                  Missed speech   False alarm   Total error
+Dev (old RTTM)        1.0             1.0           2.0                                                
+Dev (new RTTM)        0.1             2.8           2.9                                                
+Eval (old RTTM)       2.0             3.2           5.2           
+Eval (new RTTM)       0.4             7.0           7.4           
+
+# Diarization: VB-based overlap assignment
+                    DER      JER
+Dev (old RTTM)    51.03     58.86
+Dev (new RTTM)    57.70     60.63
+Eval (old RTTM)   59.96     65.76
+Eval (new RTTM)   71.67     67.46
+
+# ASR nnet3: model from s5b_track1 (with RNNLM rescoring)
+Dev:  %WER 70.27 [ 41375 / 58881, 2009 ins, 24361 del, 15005 sub ]
+Eval: %WER 69.02 [ 38052 / 55132, 1737 ins, 24531 del, 11784 sub ]

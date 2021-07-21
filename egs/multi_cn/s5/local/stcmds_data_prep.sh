@@ -21,36 +21,44 @@ fi
 
 echo "**** Creating ST-CMDS data folder ****"
 
-mkdir -p $data/train
+mkdir -p $data/{tmp,train}
 
 # find wav audio file for train
 
-find $corpus -iname "*.wav" > $data/wav.list
-n=`cat $data/wav.list | wc -l`
+find $corpus -iname "*.wav" > $data/tmp/wav.list
+n=`cat $data/tmp/wav.list | wc -l`
+
 [ $n -ne 102600 ] && \
   echo Warning: expected 102600 data files, found $n
 
-cat $data/wav.list | awk -F'20170001' '{print $NF}' | awk -F'.' '{print $1}' > $data/utt.list
-cat $data/utt.list | awk '{print substr($1,1,6)}' > $data/spk.list
-while read line; do
-  tn=`dirname $line`/`basename $line .wav`.txt;
-  cat $tn; echo;
-done < $data/wav.list > $data/text.list
+split -l 10260 $data/tmp/wav.list $data/tmp/wav.list.x
+for f in $data/tmp/wav.list.x*; do
+  xname=$(basename ${f##*.})
+  cat $f | awk -F'20170001' '{print $NF}' | awk -F'.' '{print $1}' > $data/tmp/utt.list.$xname
+  cat $data/tmp/utt.list.$xname | awk '{print substr($1,1,6)}' > $data/tmp/spk.list.$xname
+  paste -d' ' $data/tmp/utt.list.$xname $f > $data/tmp/wav.scp.$xname
+  paste -d' ' $data/tmp/utt.list.$xname $data/tmp/spk.list.$xname > $data/tmp/utt2spk.$xname
 
-paste -d' ' $data/utt.list $data/wav.list > $data/train/wav.scp
-paste -d' ' $data/utt.list $data/spk.list > $data/train/utt2spk
-paste -d' ' $data/utt.list $data/text.list |\
-  sed 's/，//g' |\
-  local/word_segment.py |\
-  tr '[a-z]' '[A-Z]' |\
-  awk '{if (NF > 1) print $0;}' > $data/train/text
-
-for file in wav.scp utt2spk text; do
-  sort $data/train/$file -o $data/train/$file
+  while read line; do
+    tn=`dirname $line`/`basename $line .wav`.txt;
+    cat $tn; echo;
+  done < $data/tmp/wav.list.$xname > $data/tmp/text.list.$xname &
 done
+wait
+for f in $data/tmp/text.list.*; do
+  xname=$(basename ${f##*.})
+  paste -d' ' $data/tmp/utt.list.$xname $f |\
+    sed 's/，//g' |\
+    python local/word_segment.py |\
+    tr '[a-z]' '[A-Z]' |\
+    awk '{if (NF > 1) print $0;}' > $data/tmp/text.split.$xname &
+done
+wait
 
+cat $data/tmp/text.split.* | sort > $data/train/text
+cat $data/tmp/utt2spk.* | sort > $data/train/utt2spk
+cat $data/tmp/wav.scp.* | sort > $data/train/wav.scp
 utils/utt2spk_to_spk2utt.pl $data/train/utt2spk > $data/train/spk2utt
+utils/data/validate_data_dir.sh --no-feats $data/train
 
-rm -r $data/{wav,utt,spk,text}.list
-
-utils/data/validate_data_dir.sh --no-feats $data/train || exit 1;
+exit 0

@@ -1328,6 +1328,9 @@ void MatrixBase<Real>::MulColsVec(const VectorBase<Real> &scale) {
 
 template<typename Real>
 void MatrixBase<Real>::SetZero() {
+  // Avoid calling memset on NULL, that's undefined behaviour.
+  if(data_ == NULL) return;
+
   if (num_cols_ == stride_)
     memset(data_, 0, sizeof(Real)*num_rows_*num_cols_);
   else
@@ -2756,6 +2759,13 @@ Real MatrixBase<Real>::ApplySoftMax() {
       sum += ((*this)(i, j) = kaldi::Exp((*this)(i, j) - max));
   this->Scale(1.0 / sum);
   return max + kaldi::Log(sum);
+}
+
+template<typename Real>
+void MatrixBase<Real>::ApplySoftMaxPerRow() {
+  for(MatrixIndexT r = 0; r < num_rows_; r++) {
+    (*this).Row(r).ApplySoftMax();
+  }
 }
 
 template<typename Real>

@@ -46,7 +46,7 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
     po.Register("max-length", &max_length, "Maximum length of example that we "
                 "will create when combining");
-    po.Register("batch-size", &batch_size, "Size of batch used when combinging "
+    po.Register("batch-size", &batch_size, "Size of batch used when combining "
                 "examples");
     po.Register("hard-max-length", &hard_max_length, "Length of example beyond "
                 "which we will discard (very long examples may cause out of "

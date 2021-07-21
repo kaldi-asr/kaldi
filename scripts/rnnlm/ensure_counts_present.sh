@@ -14,12 +14,24 @@ fi
 
 dir=$1
 
-all_ok=true
 for f in `ls $dir/*.txt`; do
   counts_file=$(echo $f | sed s/.txt$/.counts/)
   if [ ! -f $counts_file -o $counts_file -ot $f ]; then
     echo "$0: generating counts file for $f" 1>&2
-    cat $f | awk '{for(i = 1; i <= NF; i++) {print $i;} print "</s>"}' | \
-      sort | uniq -c | awk '{print $2,$1}' > $counts_file
+    cat $f | sed 's/ \+/ /g' | python -c '
+import sys
+counts = dict()
+eos = "</s>"
+counts[eos] = 0
+for line in sys.stdin:
+    tokens = line.strip("\n").strip(" ").split(" ")
+    for token in tokens:
+        if token not in counts:
+            counts[token] = 0
+        counts[token] += 1
+    counts[eos] += 1
+for word, count in counts.items():
+    print(f"{word} {count}")
+' | sort > $counts_file
   fi
 done

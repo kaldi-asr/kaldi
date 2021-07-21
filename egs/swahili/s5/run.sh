@@ -139,7 +139,7 @@ for iter in 1 2 3 4; do
 done
 
 # Training
-steps/train_mmi_sgmm2.sh --cmd "$train_cmd" --transform-dir exp/tri3b_ali --boost 0.1 --drop-frames true data/train data/lang exp/system1/sgmm2_5b2_ali exp/system1/sgmm2_5b2_denlats exp/system1/sgmm2_5b2_mmi_b0.1_z
+steps/train_mmi_sgmm2.sh --cmd "$train_cmd" --transform-dir exp/system1/tri3b_ali --boost 0.1 --drop-frames true data/train data/lang exp/system1/sgmm2_5b2_ali exp/system1/sgmm2_5b2_denlats exp/system1/sgmm2_5b2_mmi_b0.1_z
 # Decoding
 for iter in 1 2 3 4; do
         steps/decode_sgmm2_rescore.sh --cmd "$train_cmd" --iter $iter --transform-dir exp/system1/tri3b/decode_test data/lang data/test exp/system1/sgmm2_5b2/decode_test exp/system1/sgmm2_5b2_mmi_b0.1_z/decode_test_it$iter

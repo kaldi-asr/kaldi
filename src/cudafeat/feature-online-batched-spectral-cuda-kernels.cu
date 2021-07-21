@@ -15,12 +15,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#if HAVE_CUDA == 1
-#include <nvToolsExt.h>
-#include <cub/cub.cuh>
-#endif
-
 #include "cudafeat/feature-online-batched-spectral-cuda-kernels.h"
+
+#include <cub/cub.cuh>
+#include <nvToolsExt.h>
+
 #include "cudafeat/lane-desc.h"
 #include "cudamatrix/cu-rand.h"
 
@@ -98,7 +97,7 @@ __global__ void batched_apply_lifter_and_floor_energy_kernel(
   int lane = blockIdx.y;
 
   LaneDesc desc = lanes[lane];
-  if (frame > desc.num_chunk_frames) return;
+  if (frame >= desc.num_chunk_frames) return;
 
   float *feats = features + frame * ldf + lane * max_chunk_frames * ldf;
 
@@ -296,7 +295,7 @@ __global__ void batched_extract_window_kernel(
 
   int32_t num_chunk_samples = desc.num_chunk_samples;
 
-  if (fidx > desc.num_chunk_frames) return;
+  if (fidx >= desc.num_chunk_frames) return;
 
   // offset input/output by channels or lanes
   stash = stash + channel * lds;

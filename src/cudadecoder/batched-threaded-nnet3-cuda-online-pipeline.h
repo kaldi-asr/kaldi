@@ -15,10 +15,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#if HAVE_CUDA == 1
+#ifndef KALDI_CUDADECODER_BATCHED_THREADED_NNET3_CUDA_ONLINE_PIPELINE_H_
+#define KALDI_CUDADECODER_BATCHED_THREADED_NNET3_CUDA_ONLINE_PIPELINE_H_
 
-#ifndef KALDI_CUDA_DECODER_BATCHED_THREADED_CUDA_ONLINE_PIPELINE_H_
-#define KALDI_CUDA_DECODER_BATCHED_THREADED_CUDA_ONLINE_PIPELINE_H_
+#if HAVE_CUDA
 
 #define KALDI_CUDA_DECODER_MIN_NCHANNELS_FACTOR 2
 
@@ -41,22 +41,21 @@
 namespace kaldi {
 namespace cuda_decoder {
 
-//
-// Online Streaming Batched Pipeline calling feature extraction, CUDA light
-// Nnet3 driver and CUDA decoder. Can handle up to num_channels streaming audio
-// channels in parallel. Each channel is externally identified by a correlation
-// id (corr_id). Receives chunks of audio (up to max_batch_size per DecodeBatch
-// call). Will call a callback with the final lattice once the processing of the
-// final chunk is done.
-//
-// For an example on how to use that pipeline, see
-// cudadecoderbin/batched-threaded-wav-nnet3-online.cc
-//
-// Feature extraction can be CUDA or CPU
-// (multithreaded).
-// Internally reuses the concept of channels and lanes from the CUDA decoder
-//
-
+///\brief Online Streaming Batched Pipeline calling feature extraction, CUDA
+/// light Nnet3 driver and CUDA decoder.
+///
+/// Can handle up to num_channels streaming audio channels in parallel. Each
+/// channel is externally identified by an arbitrary 64-bit correlation ID
+/// (corr_id). Receives chunks of audio (up to max_batch_size per DecodeBatch()
+/// call). Will call a callback with the final lattice once the processing of
+/// the final chunk is done.
+///
+/// For an example on how to use that pipeline, see
+/// cudadecoderbin/batched-threaded-wav-nnet3-online.cc
+///
+/// Feature extraction can be done on GPU, or on a CPU's multithreaded pool.
+///
+/// Internally reuses the concept of channels and lanes from the CUDA decoder.
 struct BatchedThreadedNnet3CudaOnlinePipelineConfig {
   BatchedThreadedNnet3CudaOnlinePipelineConfig()
       : max_batch_size(400),
@@ -67,24 +66,22 @@ struct BatchedThreadedNnet3CudaOnlinePipelineConfig {
         use_gpu_feature_extraction(true) {}
   void Register(OptionsItf *po) {
     po->Register("max-batch-size", &max_batch_size,
-                 "The maximum execution batch size. "
-                 "Larger = Better throughput slower latency.");
+                 "The maximum execution batch size."
+                 " Larger = better throughput, but slower latency.");
     po->Register("num-channels", &num_channels,
-                 "The number of parallel audio channels. This is the maximum "
-                 "number of parallel audio channels supported by the pipeline"
-                 ". This should be larger "
-                 "than max_batch_size.");
+                 "The number of parallel audio channels. This is the maximum"
+                 " number of parallel audio channels supported by the pipeline."
+                 " This should be larger than max_batch_size.");
     po->Register("cuda-worker-threads", &num_worker_threads,
-                 "(optional) The total number of CPU threads launched to "
-                 "process CPU tasks. -1 = use std::hardware_concurrency()");
+                 "The total number of CPU threads launched to process CPU"
+                 " tasks. -1 = use std::hardware_concurrency().");
     po->Register("determinize-lattice", &determinize_lattice,
                  "Determinize the lattice before output.");
     po->Register("cuda-decoder-copy-threads", &num_decoder_copy_threads,
-                 "Advanced - Number of worker threads used in the "
-                 "decoder for "
-                 "the host to host copies.");
+                 "Advanced - Number of worker threads used in the"
+                 " decoder for the host to host copies.");
     po->Register("gpu-feature-extract", &use_gpu_feature_extraction,
-                 "Use GPU feature extraction");
+                 "Use GPU feature extraction.");
 
     feature_opts.Register(po);
     decoder_opts.Register(po);
@@ -123,6 +120,9 @@ struct BatchedThreadedNnet3CudaOnlinePipelineConfig {
 class BatchedThreadedNnet3CudaOnlinePipeline {
  public:
   using CorrelationID = uint64_t;
+  typedef std::function<void(const std::string &, bool, bool)> BestPathCallback;
+  typedef std::function<void(CompactLattice &)> LatticeCallback;
+
   BatchedThreadedNnet3CudaOnlinePipeline(
       const BatchedThreadedNnet3CudaOnlinePipelineConfig &config,
       const fst::Fst<fst::StdArc> &decode_fst,
@@ -131,13 +131,20 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
         max_batch_size_(config.max_batch_size),
         trans_model_(&trans_model),
         am_nnet_(&am_nnet),
+        partial_hypotheses_(NULL),
+        end_points_(NULL),
         word_syms_(NULL) {
     config_.compute_opts.CheckAndFixConfigs(am_nnet_->GetNnet().Modulus());
     config_.CheckAndFixConfigs();
-    int num_worker_threads = config_.num_worker_threads;
-    thread_pool_.reset(new ThreadPoolLight(num_worker_threads));
-
     Initialize(decode_fst);
+    int num_worker_threads = config.num_worker_threads;
+    thread_pool_ = std::make_unique<ThreadPoolLight>(num_worker_threads);
+  }
+
+  ~BatchedThreadedNnet3CudaOnlinePipeline();
+
+  const BatchedThreadedNnet3CudaOnlinePipelineConfig &GetConfig() {
+    return config_;
   }
 
   // Called when a new utterance will be decoded w/ correlation id corr_id
@@ -148,11 +155,13 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
   // up to wait_for seconds)
   bool TryInitCorrID(CorrelationID corr_id, int wait_for = 0);
 
+  void SetBestPathCallback(CorrelationID corr_id,
+                           const BestPathCallback &callback);
+
   // Set the callback function to call with the final lattice for a given
   // corr_id
-  void SetLatticeCallback(
-      CorrelationID corr_id,
-      const std::function<void(CompactLattice &)> &callback);
+  void SetLatticeCallback(CorrelationID corr_id,
+                          const LatticeCallback &callback);
 
   // Chunk of one utterance. We receive batches of those chunks through
   // DecodeBatch
@@ -169,53 +178,80 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
   // If it contains some last chunks for given utterances, it will call
   // FinalizeDecoding (building the final lattice, determinize it, etc.)
   // asynchronously. The callback for that utterance will then be called
-  void DecodeBatch(const std::vector<CorrelationID> &corr_ids,
-                   const std::vector<SubVector<BaseFloat>> &wave_samples,
-                   const std::vector<bool> &is_first_chunk,
-                   const std::vector<bool> &is_last_chunk);
+  //
+  // If partial_hypotheses is not null, generate and set the current partial
+  // hypotheses in partial_hypotheses The pointers in partial_hypotheses are
+  // only valid until the next DecodeBatch call - perform a deep copy if
+  // necessary
+  void DecodeBatch(
+      const std::vector<CorrelationID> &corr_ids,
+      const std::vector<SubVector<BaseFloat>> &wave_samples,
+      const std::vector<bool> &is_first_chunk,
+      const std::vector<bool> &is_last_chunk,
+      std::vector<const std::string *> *partial_hypotheses = nullptr,
+      std::vector<bool> *end_point = nullptr);
+
+  void CompactWavesToMatrix(
+      const std::vector<SubVector<BaseFloat>> &wave_samples);
 
   // Version providing directly the features. Only runs nnet3 & decoder
   // Used when we want to provide the final ivectors (offline case)
   // channels can be provided if they are known (internal use)
-  void DecodeBatch(const std::vector<CorrelationID> &corr_ids,
-                   const std::vector<BaseFloat *> &d_features,
-                   const int features_frame_stride,
-                   const std::vector<int> &n_input_frames_valid,
-                   const std::vector<BaseFloat *> &d_ivectors,
-                   const std::vector<bool> &is_first_chunk,
-                   const std::vector<bool> &is_last_chunk,
-                   std::vector<int> *channels = NULL);
-
-  void ComputeGPUFeatureExtraction(
-      const std::vector<int> &channels,
-      const std::vector<SubVector<BaseFloat>> &wave_samples,
+  void DecodeBatch(
+      const std::vector<CorrelationID> &corr_ids,
+      const std::vector<BaseFloat *> &d_features,
+      const int features_frame_stride,
+      const std::vector<int> &n_input_frames_valid,
+      const std::vector<BaseFloat *> &d_ivectors,
       const std::vector<bool> &is_first_chunk,
-      const std::vector<bool> &is_last_chunk);
+      const std::vector<bool> &is_last_chunk, std::vector<int> *channels = NULL,
+      std::vector<const std::string *> *partial_hypotheses = nullptr,
+      std::vector<bool> *end_point = nullptr);
 
-  void ComputeCPUFeatureExtraction(
-      const std::vector<int> &channels,
-      const std::vector<SubVector<BaseFloat>> &wave_samples,
-      const std::vector<bool> &is_last_chunk);
+  // "Advanced user" version of DecodeBatch
+  // Can be changed without notice and break backward compatibility
+  // Accepts a compact Matrix of wave samples
+  void DecodeBatch(
+      const std::vector<CorrelationID> &corr_ids,
+      const Matrix<BaseFloat> &h_all_waveform,
+      const std::vector<int> &n_samples_valid,
+      const std::vector<bool> &is_first_chunk,
+      const std::vector<bool> &is_last_chunk,
+      std::vector<const std::string *> *in_partial_hypotheses = nullptr,
+      std::vector<bool> *in_end_points = nullptr);
 
   // Maximum number of samples per chunk
-  int32 GetNSampsPerChunk() { return samples_per_chunk_; }
-  int32 GetNInputFramesPerChunk() { return input_frames_per_chunk_; }
-  float GetModelFrequency() { return model_frequency_; }
-  int GetTotalNnet3RightContext() {
+  int32 GetNSampsPerChunk() const { return samples_per_chunk_; }
+  int32 GetNInputFramesPerChunk() const { return input_frames_per_chunk_; }
+  BaseFloat GetDecoderFrameShiftSeconds() const {
+    return decoder_frame_shift_seconds_;
+  }
+  BaseFloat GetModelFrequency() const { return model_frequency_; }
+  TransitionModel const &GetTransitionModel() const { return *trans_model_; }
+  int GetTotalNnet3RightContext() const {
     return cuda_nnet3_->GetTotalNnet3RightContext();
   }
   // Maximum number of seconds per chunk
-  BaseFloat GetSecondsPerChunk() { return seconds_per_chunk_; }
+  BaseFloat GetSecondsPerChunk() const { return seconds_per_chunk_; }
 
-  // Used when debugging. Used to Print the text when a decoding is done
-  void SetSymbolTable(fst::SymbolTable *word_syms) { word_syms_ = word_syms; }
+  // Used for partial hypotheses
+  void SetSymbolTable(const fst::SymbolTable &word_syms) {
+    word_syms_ = &word_syms;
+    KALDI_ASSERT(cuda_decoder_);
+    cuda_decoder_->SetSymbolTable(word_syms);
+  }
 
-  // Wait for all lattice callbacks to complete
-  // Can be called after DecodeBatch
-  void WaitForLatticeCallbacks();
+  ///\brief Wait for all lattice callbacks to complete.
+  ///
+  /// The method can be called after DecodeBatch(). The object's destructor
+  /// also calls this method to avoid a race condition between pool threads
+  /// running the callbacks and the instance's destruction. If you do not want
+  /// the destructor to hang for a long time, call this method first. It's safe
+  /// to call it multiple times.
+  void WaitForLatticeCallbacks() noexcept;
 
  private:
-  // Initiliaze this object
+  // Initialize this object.
   void Initialize(const fst::Fst<fst::StdArc> &decode_fst);
 
   // Allocate and initialize data that will be used for computation
@@ -229,19 +265,28 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
   // Filling  curr_batch_ichannels_
   void ListIChannelsInBatch(const std::vector<CorrelationID> &corr_ids,
                             std::vector<int> *channels);
-  void CPUFeatureExtraction(
-      const std::vector<int> &channels,
-      const std::vector<SubVector<BaseFloat>> &wave_samples);
 
-  // Compute features and ivectors for the chunk
-  // curr_batch[element]
-  // CPU function
+  void ComputeGPUFeatureExtraction(const std::vector<int> &channels,
+                                   const Matrix<BaseFloat> &h_all_waveform,
+                                   const std::vector<int> &n_samples_valid,
+                                   const std::vector<bool> &is_first_chunk,
+                                   const std::vector<bool> &is_last_chunk);
+
+  void ComputeCPUFeatureExtraction(const std::vector<int> &channels,
+                                   const Matrix<BaseFloat> &h_all_waveform,
+                                   const std::vector<int> &n_samples_valid,
+                                   const std::vector<bool> &is_last_chunk);
+
+  // Compute features and ivectors for the chunk curr_batch[element].
+  // Used when features are computed on the host (CPU) on pool threads.
   void ComputeOneFeature(int element);
+
   static void ComputeOneFeatureWrapper(void *obj, uint64_t element,
-                                       uint64_t ignored) {
+                                       void *ignored) {
     static_cast<BatchedThreadedNnet3CudaOnlinePipeline *>(obj)
         ->ComputeOneFeature(element);
   }
+
   void RunNnet3(const std::vector<int> &channels,
                 const std::vector<BaseFloat *> &d_features,
                 const int feature_stride,
@@ -252,20 +297,25 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
 
   void RunDecoder(const std::vector<int> &channels);
 
-  void BuildLatticesAndRunCallbacks(const std::vector<CorrelationID> &corr_ids,
-                                    const std::vector<int> &channels,
-                                    const std::vector<bool> &is_last_chunk);
+  void RunCallbacksAndFinalize(const std::vector<CorrelationID> &corr_ids,
+                               const std::vector<int> &channels,
+                               const std::vector<bool> &is_last_chunk);
+
+  // Set d_features_ptrs_ and d_ivectors_ptrs_ using channels_
+  void SetFeaturesPtrs();
 
   // If an utterance is done, we call FinalizeDecoding async on
   // the threadpool
   // it will call the utterance's callback when done
-  void FinalizeDecoding(int32 ichannel, CorrelationID corr_id);
+  void FinalizeDecoding(int32 ichannel, const LatticeCallback *callback);
   // static wrapper for thread pool
   static void FinalizeDecodingWrapper(void *obj, uint64_t ichannel64,
-                                      uint64_t corr_id) {
+                                      void *callback_ptr) {
     int32 ichannel = static_cast<int32>(ichannel64);
+    const LatticeCallback *callback =
+        static_cast<const LatticeCallback *>(callback_ptr);
     static_cast<BatchedThreadedNnet3CudaOnlinePipeline *>(obj)
-        ->FinalizeDecoding(ichannel, corr_id);
+        ->FinalizeDecoding(ichannel, callback);
   }
   // Data members
 
@@ -283,10 +333,22 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
   // corr_id -> decoder channel map
   std::unordered_map<CorrelationID, int32> corr_id2channel_;
 
-  // channels -> callbacks
-  // the callback is called once the final lattice is ready
-  std::vector<std::unique_ptr<std::function<void(CompactLattice &)>>>
-      channels_callbacks_;
+  // Where to store partial_hypotheses_ and end_points_ if available
+  std::vector<const std::string *> *partial_hypotheses_;
+  std::vector<bool> *end_points_;
+
+  // Used when none were provided by the API but we still need to generate
+  // partial hyp and endp
+  std::vector<const std::string *> partial_hypotheses_buf_;
+  std::vector<bool> end_points_buf_;
+
+  // The callback is called once the final lattice is ready
+  std::unordered_map<CorrelationID, const LatticeCallback> lattice_callbacks_;
+  // Used for both final and partial best paths
+  std::unordered_map<CorrelationID, const BestPathCallback>
+      best_path_callbacks_;
+  // Lock for callbacks
+  std::mutex map_callbacks_m_;
 
   // New channels in the current batch. We've just received
   // their first batch
@@ -301,6 +363,7 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
   // their last chunk
   std::vector<int> list_channels_last_chunk_;
   std::vector<CorrelationID> list_corr_id_last_chunk_;
+  std::vector<LatticeCallback *> list_lattice_callbacks_last_chunk_;
 
   // Number of frames already computed in channel (before
   // curr_batch_)
@@ -310,6 +373,7 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
   int input_frames_per_chunk_;
   int output_frames_per_chunk_;
   BaseFloat seconds_per_chunk_;
+  BaseFloat decoder_frame_shift_seconds_;
   BaseFloat samples_per_chunk_;
   BaseFloat model_frequency_;
   int32 ivector_dim_, input_dim_;
@@ -333,11 +397,13 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
   // Current assignement buffers, when DecodeBatch is running
   std::vector<int> channels_;
   std::vector<BaseFloat *> d_features_ptrs_;
+  int features_frame_stride_;  // stride of d_features_ptrs_
   std::vector<BaseFloat *> d_ivectors_ptrs_;
 
   // Used by CPU FE threads. Could be merged with channels_
   const std::vector<int> *fe_threads_channels_;
-  const std::vector<SubVector<BaseFloat>> *fe_threads_wave_samples_;
+  const Matrix<BaseFloat> *fe_threads_h_all_waveform_;
+  const std::vector<int> *fe_threads_n_samples_valid_;
 
   std::unique_ptr<OnlineBatchedFeaturePipelineCuda> gpu_feature_pipeline_;
   std::unique_ptr<BatchedStaticNnet3> cuda_nnet3_;
@@ -346,22 +412,35 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
   // Only used if feature extraction is run on the CPU
   std::vector<std::unique_ptr<OnlineNnet2FeaturePipeline>> feature_pipelines_;
 
-  // HCLG graph : CudaFst object is a host object, but contains
-  // data stored in
-  // GPU memory
-  std::shared_ptr<CudaFst> cuda_fst_;
-  std::unique_ptr<CudaDecoder> cuda_decoder_;
+  // Ordering of the cuda_fst_ w.r.t. thread_pool_ and the decoder is important:
+  // order of destruction is bottom-up, opposite to the order of construction.
+  // We want the FST object, which is entirely passive and only frees device
+  // FST representation when destroyed, to survive both the thread pool and the
+  // decoder, which both may perform pending work during destruction. Since no
+  // new work may be fed into this object while it is being destroyed, the
+  // relative order of the latter two is unimportant, but just in case, FST must
+  // stay around until the other two are positively quiescent.
 
+  // HCLG graph. CudaFst is a host object, but owns pointers to the data stored
+  // in GPU memory.
+  std::unique_ptr<CudaFst> cuda_fst_;
+
+  // The thread pool receives data from device and post-processes it. This class
+  // destructor blocks until the thread pool is drained of work items.
   std::unique_ptr<ThreadPoolLight> thread_pool_;
 
+  // The decoder owns thread(s) that reconstruct lattices transferred from the
+  // device in a compacted form as arrays with offsets instead of pointers.
+  std::unique_ptr<CudaDecoder> cuda_decoder_;
+
   // Used for debugging
-  fst::SymbolTable *word_syms_;
+  const fst::SymbolTable *word_syms_;
   // Used when printing to stdout for debugging purposes
   std::mutex stdout_m_;
 };
 
-}  // end namespace cuda_decoder
-}  // end namespace kaldi.
+}  // namespace cuda_decoder
+}  // namespace kaldi
 
-#endif  // KALDI_CUDA_DECODER_BATCHED_THREADED_CUDA_ONLINE_PIPELINE_H_
 #endif  // HAVE_CUDA
+#endif  // KALDI_CUDADECODER_BATCHED_THREADED_NNET3_CUDA_ONLINE_PIPELINE_H_

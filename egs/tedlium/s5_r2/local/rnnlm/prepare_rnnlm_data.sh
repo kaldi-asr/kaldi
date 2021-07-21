@@ -17,7 +17,7 @@ mkdir -p $dir
 rnnlm/validate_data_dir.py $data_dir/data/
 
 # get unigram counts
-rnnlm/get_unigram_counts.sh $data_dir/data/
+rnnlm/ensure_counts_present.sh $data_dir/data/
 
 # get vocab
 mkdir -p $data_dir/vocab

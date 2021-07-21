@@ -2,7 +2,7 @@
 
 giga_dir=$1
 
-source_dir=/export/corpora/LDC/LDC2011T11/arb_gw_5
+source_dir=/export/corpora5/LDC/LDC2011T11/arb_gw_5
 num=2000000
 suffix="2000k"
 

@@ -144,7 +144,7 @@ struct WordAlignLatticeLexiconOpts {
                    "This should only happen with very pathological lexicons, "
                    "e.g. as encountered in testing code.");
     opts->Register("max-expand", &max_expand, "If >0.0, the maximum ratio "
-                   "by which we allow the lattice-alignment code to increase the #states"
+                   "by which we allow the lattice-alignment code to increase the #states "
                    "in a lattice (vs. the phone-aligned lattice) before we fail and "
                    "refuse to align the lattice.  This is helpful in order to "
                    "prevent 'pathological' lattices from causing the program to "

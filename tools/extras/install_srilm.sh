@@ -14,11 +14,12 @@ if [ ! -d liblbfgs-1.10 ]; then
 fi
 
 # http://www.speech.sri.com/projects/srilm/download.html
-if [ ! -f srilm.tgz ]; then
+if [ ! -f srilm.tgz ] && [ ! -f srilm.tar.gz ]; then  # Changed format type from tgz to tar.gz as the srilm v1.7.3 downloads as tar.gz
   echo This script cannot install SRILM in a completely automatic
   echo way because you need to put your address in a download form.
   echo Please download SRILM from http://www.speech.sri.com/projects/srilm/download.html
-  echo put it in ./srilm.tgz, then run this script.
+  echo put it in ./srilm.tar.gz , then run this script.
+  echo Note: You may have to rename the downloaded file to remove version name from filename eg: mv srilm-1.7.3.tar.gz srilm.tar.gz
   exit 1
 fi
 
@@ -27,7 +28,13 @@ fi
 
 mkdir -p srilm
 cd srilm
-tar -xvzf ../srilm.tgz
+
+
+if [ -f ../srilm.tgz ]; then
+    tar -xvzf ../srilm.tgz # Old SRILM format
+elif [  -f ../srilm.tar.gz ]; then
+    tar -xvzf ../srilm.tar.gz # Changed format type from tgz to tar.gz
+fi
 
 major=`awk -F. '{ print $1 }' RELEASE`
 minor=`awk -F. '{ print $2 }' RELEASE`
@@ -42,7 +49,8 @@ fi
 cp Makefile tmpf
 
 cat tmpf | awk -v pwd=`pwd` '/SRILM =/{printf("SRILM = %s\n", pwd); next;} {print;}' \
-  > Makefile || exit 1;
+  > Makefile || exit 1
+rm tmpf
 
 mtype=`sbin/machine-type`
 
@@ -55,9 +63,7 @@ grep ADDITIONAL_LDFLAGS common/Makefile.machine.$mtype | \
     sed 's|$| -L$(SRILM)/../liblbfgs-1.10/lib/ -Wl,-rpath -Wl,$(SRILM)/../liblbfgs-1.10/lib/|' \
     >> common/Makefile.machine.$mtype
 
-
-
-make || exit 1
+make || exit
 
 cd ..
 (
@@ -83,4 +89,3 @@ cd ..
 
 echo >&2 "Installation of SRILM finished successfully"
 echo >&2 "Please source the tools/env.sh in your path.sh to enable it"
-

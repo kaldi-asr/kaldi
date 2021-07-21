@@ -1,0 +1,1 @@
+../../s5b/local/ami_download.sh

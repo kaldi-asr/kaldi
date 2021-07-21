@@ -23,12 +23,17 @@
 #include <nvToolsExt.h>
 #include <sstream>
 #include "cudadecoder/batched-threaded-nnet3-cuda-pipeline2.h"
+#include "cudadecoderbin/cuda-bin-tools.h"
 #include "cudamatrix/cu-allocator.h"
 #include "fstext/fstext-lib.h"
 #include "lat/lattice-functions.h"
 #include "nnet3/am-nnet-simple.h"
 #include "nnet3/nnet-utils.h"
 #include "util/kaldi-thread.h"
+
+// Used as a max segment length if segmentation is disabled
+// Not using FLT_MAX to avoid overflows
+#define KALDI_CUDA_DECODER_BIN_MAX_SEGMENT_LENGTH_S 3600
 
 using namespace kaldi;
 using namespace cuda_decoder;
@@ -49,16 +54,19 @@ int main(int argc, char *argv[]) {
         "are\n"
         "set via config files whose filenames are passed as "
         "options\n"
+        "Output can either be a lattice wspecifier or a ctm filename"
         "\n"
-        "Usage: batched-wav-nnet3-cuda [options] <nnet3-in> "
+        "Usage: batched-wav-nnet3-cuda2 [options] <nnet3-in> "
         "<fst-in> "
-        "<wav-rspecifier> <lattice-wspecifier>\n";
+        "<wav-rspecifier> <lattice-wspecifier|ctm-wxfilename>\n";
 
     std::string word_syms_rxfilename;
 
     bool write_lattice = true;
     int num_todo = -1;
     int iterations = 1;
+    bool segmentation = false;
+    std::string lattice_postprocessor_config_rxfilename;
     ParseOptions po(usage);
     po.Register("write-lattice", &write_lattice,
                 "Output lattice to a file. Setting to false is useful when "
@@ -75,6 +83,11 @@ int main(int argc, char *argv[]) {
                 "Number of times to decode the corpus. Output will "
                 "be written "
                 "only once.");
+    po.Register("segmentation", &segmentation,
+                "Split audio files into segments");
+    po.Register("lattice-postprocessor-rxfilename",
+                &lattice_postprocessor_config_rxfilename,
+                "(optional) Config file for lattice postprocessor");
 
     // Multi-threaded CPU and batched GPU decoder
     BatchedThreadedNnet3CudaPipeline2Config batched_decoder_config;
@@ -94,27 +107,35 @@ int main(int argc, char *argv[]) {
     CuDevice::Instantiate().AllowMultithreading();
 
     std::string nnet3_rxfilename = po.GetArg(1), fst_rxfilename = po.GetArg(2),
-                wav_rspecifier = po.GetArg(3), clat_wspecifier = po.GetArg(4);
-    TransitionModel trans_model;
+                wav_rspecifier = po.GetArg(3), output_wspecifier = po.GetArg(4);
+    std::shared_ptr<TransitionModel> trans_model(new TransitionModel());
+
     nnet3::AmNnetSimple am_nnet;
 
     // read transition model and nnet
     bool binary;
     Input ki(nnet3_rxfilename, &binary);
-    trans_model.Read(ki.Stream(), binary);
+    trans_model->Read(ki.Stream(), binary);
     am_nnet.Read(ki.Stream(), binary);
     SetBatchnormTestMode(true, &(am_nnet.GetNnet()));
     SetDropoutTestMode(true, &(am_nnet.GetNnet()));
     nnet3::CollapseModel(nnet3::CollapseModelConfig(), &(am_nnet.GetNnet()));
 
-    CompactLatticeWriter clat_writer(clat_wspecifier);
-    std::mutex clat_writer_m;
+    std::unique_ptr<CompactLatticeWriter> clat_writer;
+    std::unique_ptr<Output> ctm_writer;
+    OpenOutputHandles(output_wspecifier, &clat_writer, &ctm_writer);
+    if (!write_lattice) clat_writer.reset();
+    std::mutex output_writer_m_;
 
     fst::Fst<fst::StdArc> *decode_fst =
         fst::ReadFstKaldiGeneric(fst_rxfilename);
 
+    if (!segmentation) {
+      batched_decoder_config.seg_opts.segment_length_s =
+          KALDI_CUDA_DECODER_BIN_MAX_SEGMENT_LENGTH_S;
+    }
     BatchedThreadedNnet3CudaPipeline2 cuda_pipeline(
-        batched_decoder_config, *decode_fst, am_nnet, trans_model);
+        batched_decoder_config, *decode_fst, am_nnet, *trans_model);
 
     delete decode_fst;
 
@@ -123,14 +144,21 @@ int main(int argc, char *argv[]) {
       if (!(word_syms = fst::SymbolTable::ReadText(word_syms_rxfilename)))
         KALDI_ERR << "Could not read symbol table from file "
                   << word_syms_rxfilename;
-      else {
-        //        cuda_pipeline.SetSymbolTable(word_syms);
+      cuda_pipeline.SetSymbolTable(*word_syms);
+    }
+
+    // Lattice postprocessor
+    if (lattice_postprocessor_config_rxfilename.empty()) {
+      if (ctm_writer) {
+        KALDI_ERR << "You must configure the lattice postprocessor with "
+                     "--lattice-postprocessor-rxfilename to use CTM output";
       }
+    } else {
+      LoadAndSetLatticePostprocessor(lattice_postprocessor_config_rxfilename,
+                                     &cuda_pipeline);
     }
 
     int32 num_task_submitted = 0, num_err = 0;
-    double tot_like = 0.0;
-    int64 num_frames = 0;
     double total_audio = 0;
 
     nvtxRangePush("Global Timer");
@@ -141,6 +169,7 @@ int main(int argc, char *argv[]) {
     // using kaldi timer, which starts counting in the constructor
     Timer timer;
     std::vector<double> iteration_timer;
+    KALDI_LOG << "Inferencing...";
     for (int iter = 0; iter < iterations; iter++) {
       num_task_submitted = 0;
       SequentialTableReader<WaveHolder> wav_reader(wav_rspecifier);
@@ -157,15 +186,39 @@ int main(int argc, char *argv[]) {
           total_audio += wave_data->Duration();
         }
 
-        cuda_pipeline.DecodeWithCallback(
-            wave_data, [&clat_writer, &clat_writer_m, key,
-                        write_lattice](CompactLattice &clat) {
-              if (write_lattice) {
-                std::lock_guard<std::mutex> lk(clat_writer_m);
-                clat_writer.Write(key, clat);
+        // Callback used when results are ready
+        //
+        // If lattice output, write all lattices to clat_writer
+        // If segmentation is true, then the keys are:
+        // [utt_key]-[segment_offset]
+        //
+        // If CTM output, merging segment results together
+        // and writing this single output to ctm_writer
+        SegmentedResultsCallback segmented_callback =
+            [&clat_writer, &ctm_writer, &output_writer_m_, key, segmentation,
+             word_syms](SegmentedLatticeCallbackParams &params) {
+              if (clat_writer) {
+                std::lock_guard<std::mutex> lk(output_writer_m_);
+                bool print_offsets = segmentation;
+                WriteLattices(params.results, key, print_offsets, *clat_writer);
               }
-            });
 
+              if (ctm_writer) {
+                std::lock_guard<std::mutex> lk(output_writer_m_);
+                MergeSegmentsToCTMOutput(params.results, key,
+                                         ctm_writer->Stream(), word_syms);
+              }
+            };
+
+        int result_type = 0;
+        if (ctm_writer) result_type |= CudaPipelineResult::RESULT_TYPE_CTM;
+        if (clat_writer) result_type |= CudaPipelineResult::RESULT_TYPE_LATTICE;
+
+        // Always calling SegmentedResultsCallback even if segmentation is false
+        // If segmentation is false, we just set segment_length to some high
+        // value. This is to avoid unnecessary code duplication
+        cuda_pipeline.SegmentedDecodeWithCallback(wave_data, segmented_callback,
+                                                  result_type);
         num_task_submitted++;
         if (num_todo != -1 && num_task_submitted >= num_todo) break;
       }  // end utterance loop
@@ -179,8 +232,6 @@ int main(int argc, char *argv[]) {
 
     KALDI_LOG << "Decoded " << num_task_submitted << " utterances, " << num_err
               << " with errors.";
-    KALDI_LOG << "Overall likelihood per frame was " << (tot_like / num_frames)
-              << " per frame over " << num_frames << " frames.";
 
     KALDI_LOG << "Overall: "
               << " Aggregate Total Time: " << total_time
@@ -188,8 +239,6 @@ int main(int argc, char *argv[]) {
               << " RealTimeX: " << total_audio * iterations / total_time;
 
     delete word_syms;  // will delete if non-NULL.
-
-    clat_writer.Close();
 
     cudaDeviceSynchronize();
 

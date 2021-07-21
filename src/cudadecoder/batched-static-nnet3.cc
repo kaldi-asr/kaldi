@@ -18,6 +18,7 @@
 #if HAVE_CUDA == 1
 
 #include "cudadecoder/batched-static-nnet3.h"
+
 #include "nnet3/nnet-utils.h"
 
 namespace kaldi {
@@ -91,9 +92,9 @@ void BatchedStaticNnet3::Allocate() {
 }
 
 void BatchedStaticNnet3::Deallocate() {
-  cudaFreeHost(h_batch_slot_assignement_);
-  cudaFreeHost(d_batch_slot_assignement_);
-  cudaEventDestroy(batch_slot_assignement_copy_evt_);
+  CU_SAFE_CALL(cudaFreeHost(h_batch_slot_assignement_));
+  CU_SAFE_CALL(cudaFree(d_batch_slot_assignement_));
+  CU_SAFE_CALL(cudaEventDestroy(batch_slot_assignement_copy_evt_));
 }
 
 void BatchedStaticNnet3::CompileNnet3() {
@@ -299,11 +300,14 @@ void BatchedStaticNnet3::RunBatch(
     CuMatrix<BaseFloat> *d_all_log_posteriors,
     std::vector<std::vector<std::pair<int, BaseFloat *>>>
         *all_frames_log_posteriors_ptrs) {
-  KALDI_ASSERT(d_features.size() == channels.size());
-  KALDI_ASSERT(is_last_chunk.size() == channels.size());
-  KALDI_ASSERT(is_first_chunk.size() == channels.size());
+  // Using >= to avoid having to recompute d_features
+  // In some cases the ptrs in d_features and d_ivectors are always the same,
+  // but the number of active channels vary
+  KALDI_ASSERT(d_features.size() >= channels.size());
+  KALDI_ASSERT(is_last_chunk.size() >= channels.size());
+  KALDI_ASSERT(is_first_chunk.size() >= channels.size());
   if (has_ivector_) {
-    KALDI_ASSERT(d_ivectors.size() == channels.size());
+    KALDI_ASSERT(d_ivectors.size() >= channels.size());
   }
   // Initializing the new channels
   for (size_t i = 0; i < is_first_chunk.size(); ++i) {

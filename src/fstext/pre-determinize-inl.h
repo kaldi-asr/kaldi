@@ -236,15 +236,15 @@ inline bool HasBannedPrefixPlusDigits(SymbolTable *symTable, std::string prefix,
   const char *prefix_ptr = prefix.c_str();
   size_t prefix_len = strlen(prefix_ptr);  // allowed to be zero but not encouraged.
   for (SymbolTableIterator siter(*symTable); !siter.Done(); siter.Next()) {
-    const char *sym = siter.Symbol().c_str();
-    if (!strncmp(prefix_ptr, sym, prefix_len)) {  // has prefix.
+    const std::string &sym = siter.Symbol();
+    if (!strncmp(prefix_ptr, sym.c_str(), prefix_len)) {  // has prefix.
       if (isdigit(sym[prefix_len])) {  // we don't allow prefix followed by a digit, as a symbol.
         // Has at least one digit.
         size_t pos;
         for (pos = prefix_len;sym[pos] != '\0'; pos++)
           if (!isdigit(sym[pos])) break;
         if (sym[pos] == '\0') {  // All remaining characters were digits.
-          if (bad_sym != NULL) *bad_sym = (std::string) sym;
+          if (bad_sym != NULL) *bad_sym = sym;
           return true;
         }
       } // else OK because prefix was followed by '\0' or a non-digit.

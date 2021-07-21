@@ -1,4 +1,5 @@
 [![Build Status](https://travis-ci.com/kaldi-asr/kaldi.svg?branch=master)](https://travis-ci.com/kaldi-asr/kaldi)
+[![Gitpod Ready-to-Code](https://img.shields.io/badge/Gitpod-Ready--to--Code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/kaldi-asr/kaldi) 
 Kaldi Speech Recognition Toolkit
 ================================
 
@@ -65,3 +66,10 @@ Platform specific notes
   OpenBLAS.
 - See [this blog post](http://jcsilva.github.io/2017/03/18/compile-kaldi-android/)
   for details.
+
+### Web Assembly
+
+- Kaldi supports cross compiling for Web Assembly for in-browser execution
+  using [emscripten](https://emscripten.org/) and CLAPACK.
+- See [this post](https://gitlab.inria.fr/kaldi.web/kaldi-wasm/-/wikis/build_details.md)
+  for a step-by-step description of the build process.

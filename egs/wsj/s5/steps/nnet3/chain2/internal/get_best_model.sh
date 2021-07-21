@@ -15,7 +15,7 @@ output=output
 if [ -f path.sh ]; then . ./path.sh; fi
 . parse_options.sh || exit 1;
 
-if [ $# -le 1 ]; then
+if [ $# -lt 1 ]; then
     echo "Usage: $0: [options] <model-1-log> <model-2-log> .... <model-N-log>"
     echo "where <model-n> is one of the n models to choose from."
     echo ""

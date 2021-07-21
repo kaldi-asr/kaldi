@@ -2,6 +2,7 @@
 
 // Copyright 2009-2011  Microsoft Corporation
 //                2018  Johns Hopkins University (author: Daniel Povey)
+//                2021  Xiaomi Corporation (Author: Junbo Zhang)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -45,6 +46,8 @@ TrainingGraphCompiler::TrainingGraphCompiler(const TransitionModel &trans_model,
   subsequential_symbol_ = 1 + phone_syms.back();
   if (!disambig_syms_.empty() && subsequential_symbol_ <= disambig_syms_.back())
     subsequential_symbol_ = 1 + disambig_syms_.back();
+  
+  if (lex_fst == NULL) return;
 
   {
     int32 N = ctx_dep.ContextWidth(),
@@ -70,15 +73,9 @@ bool TrainingGraphCompiler::CompileGraphFromText(
   return CompileGraph(word_fst, out_fst);
 }
 
-bool TrainingGraphCompiler::CompileGraph(const fst::VectorFst<fst::StdArc> &word_fst,
-                                         fst::VectorFst<fst::StdArc> *out_fst) {
+bool TrainingGraphCompiler::CompileGraphFromLG(const fst::VectorFst<fst::StdArc> &phone2word_fst,
+                                               fst::VectorFst<fst::StdArc> *out_fst) {
   using namespace fst;
-  KALDI_ASSERT(lex_fst_ !=NULL);
-  KALDI_ASSERT(out_fst != NULL);
-
-  VectorFst<StdArc> phone2word_fst;
-  // TableCompose more efficient than compose.
-  TableCompose(*lex_fst_, word_fst, &phone2word_fst, &lex_cache_);
 
   KALDI_ASSERT(phone2word_fst.Start() != kNoStateId);
 
@@ -141,6 +138,17 @@ bool TrainingGraphCompiler::CompileGraph(const fst::VectorFst<fst::StdArc> &word
   return true;
 }
 
+bool TrainingGraphCompiler::CompileGraph(const fst::VectorFst<fst::StdArc> &word_fst,
+                                         fst::VectorFst<fst::StdArc> *out_fst) {
+  using namespace fst;
+  KALDI_ASSERT(lex_fst_ !=NULL);
+  KALDI_ASSERT(out_fst != NULL);
+
+  VectorFst<StdArc> phone2word_fst;
+  // TableCompose more efficient than compose.
+  TableCompose(*lex_fst_, word_fst, &phone2word_fst, &lex_cache_);
+  return CompileGraphFromLG(phone2word_fst, out_fst);
+}
 
 bool TrainingGraphCompiler::CompileGraphsFromText(
     const std::vector<std::vector<int32> > &transcripts,
@@ -161,80 +169,12 @@ bool TrainingGraphCompiler::CompileGraphsFromText(
 bool TrainingGraphCompiler::CompileGraphs(
     const std::vector<const fst::VectorFst<fst::StdArc>* > &word_fsts,
     std::vector<fst::VectorFst<fst::StdArc>* > *out_fsts) {
-
-  using namespace fst;
-  KALDI_ASSERT(lex_fst_ !=NULL);
-  KALDI_ASSERT(out_fsts != NULL && out_fsts->empty());
   out_fsts->resize(word_fsts.size(), NULL);
-  if (word_fsts.empty()) return true;
-
-  const std::vector<int32> &phone_syms = trans_model_.GetPhones();  // needed to create context fst.
-
-  // inv_cfst will be expanded on the fly, as needed.
-  InverseContextFst inv_cfst(subsequential_symbol_,
-                             phone_syms,
-                             disambig_syms_,
-                             ctx_dep_.ContextWidth(),
-                             ctx_dep_.CentralPosition());
-
   for (size_t i = 0; i < word_fsts.size(); i++) {
-    VectorFst<StdArc> phone2word_fst;
-    // TableCompose more efficient than compose.
-    TableCompose(*lex_fst_, *(word_fsts[i]), &phone2word_fst, &lex_cache_);
-
-    KALDI_ASSERT(phone2word_fst.Start() != kNoStateId &&
-                 "Perhaps you have words missing in your lexicon?");
-
-    VectorFst<StdArc> ctx2word_fst;
-    ComposeDeterministicOnDemandInverse(phone2word_fst, &inv_cfst, &ctx2word_fst);
-    // now ctx2word_fst is C * LG, assuming phone2word_fst is written as LG.
-    KALDI_ASSERT(ctx2word_fst.Start() != kNoStateId);
-
-    (*out_fsts)[i] = ctx2word_fst.Copy();  // For now this contains the FST with symbols
-    // representing phones-in-context.
+    fst::VectorFst<fst::StdArc> trans2word_fst;
+    if (!CompileGraph(*(word_fsts[i]), &trans2word_fst)) return false;
+    (*out_fsts)[i] = trans2word_fst.Copy();
   }
-
-  HTransducerConfig h_cfg;
-  h_cfg.transition_scale = opts_.transition_scale;
-
-  std::vector<int32> disambig_syms_h;
-  VectorFst<StdArc> *H = GetHTransducer(inv_cfst.IlabelInfo(),
-                                        ctx_dep_,
-                                        trans_model_,
-                                        h_cfg,
-                                        &disambig_syms_h);
-
-  for (size_t i = 0; i < out_fsts->size(); i++) {
-    VectorFst<StdArc> &ctx2word_fst = *((*out_fsts)[i]);
-    VectorFst<StdArc> trans2word_fst;
-    TableCompose(*H, ctx2word_fst, &trans2word_fst);
-
-    DeterminizeStarInLog(&trans2word_fst);
-
-    if (!disambig_syms_h.empty()) {
-      RemoveSomeInputSymbols(disambig_syms_h, &trans2word_fst);
-      if (opts_.rm_eps)
-        RemoveEpsLocal(&trans2word_fst);
-    }
-
-    // Encoded minimization.
-    MinimizeEncoded(&trans2word_fst);
-
-    std::vector<int32> disambig;
-    bool check_no_self_loops = true;
-    AddSelfLoops(trans_model_,
-                 disambig,
-                 opts_.self_loop_scale,
-                 opts_.reorder,
-                 check_no_self_loops,
-                 &trans2word_fst);
-
-    KALDI_ASSERT(trans2word_fst.Start() != kNoStateId);
-
-    *((*out_fsts)[i]) = trans2word_fst;
-  }
-
-  delete H;
   return true;
 }
 

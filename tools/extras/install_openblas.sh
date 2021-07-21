@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-OPENBLAS_VERSION=0.3.7
+OPENBLAS_VERSION=0.3.13
 
 WGET=${WGET:-wget}
 
@@ -33,3 +33,7 @@ tar xzf $tarball
 mv xianyi-OpenBLAS-* OpenBLAS
 
 make PREFIX=$(pwd)/OpenBLAS/install USE_LOCKING=1 USE_THREAD=0 -C OpenBLAS all install
+if [ $? -eq 0 ]; then
+   echo "OpenBLAS is installed successfully."
+   rm $tarball
+fi

@@ -192,7 +192,7 @@ class GrammarFstTpl {
   // This is called in LatticeFasterDecoder.  As an implementation shortcut, if
   // the state is an expanded state, we return 1, meaning 'yes, there are input
   // epsilons'; the calling code doesn't actually care about the exact number.
-  inline size_t NumInputEpsilons(StateId s) const {
+  size_t NumInputEpsilons(StateId s) const {
     // Compare with the constructor of ArcIterator.
     int32 instance_id = s >> 32;
     BaseStateId base_state = static_cast<int32>(s);
@@ -205,7 +205,7 @@ class GrammarFstTpl {
     }
   }
 
-  inline std::string Type() const { return "grammar"; }
+  std::string Type() const { return "grammar"; }
 
   ~GrammarFstTpl();
 
@@ -215,7 +215,7 @@ class GrammarFstTpl {
      KALDI_GRAMMAR_FST_SPECIAL_WEIGHT (4096.0).  The function
      PrepareGrammarFst() makes sure to add this special final-cost on states
      that have special arcs leaving them. */
-  struct ExpandedState {
+  struct ExpandedState: public std::enable_shared_from_this<ExpandedState> {
     // The final-prob for expanded states is always zero; to avoid
     // corner cases, we ensure this via adding epsilon arcs where
     // needed.
@@ -251,19 +251,20 @@ class GrammarFstTpl {
     // FST that the final-prob's value equal to
     // KALDI_GRAMMAR_FST_SPECIAL_WEIGHT.  (That final-prob value is used as a
     // kind of signal to this code that the state needs expansion).
-    std::unordered_map<BaseStateId, ExpandedState*> expanded_states;
+    std::unordered_map<BaseStateId, std::shared_ptr<ExpandedState> > expanded_states;
 
     // 'child_instances', which is populated on demand as states in this FST
     // instance are accessed, is logically a map from pair (nonterminal_index,
     // return_state) to instance_id.  When we encounter an arc in our FST with a
     // user-defined nonterminal indexed 'nonterminal_index' on its ilabel, and
     // with 'return_state' as its nextstate, we look up that pair
-    // (nonterminal_index, return_state) in this map to see whether there already
-    // exists an FST instance for that.  If it exists then the transition goes to
-    // that FST instance; if not, then we create a new one.  The 'return_state'
-    // that's part of the key in this map would be the same as the 'parent_state'
-    // in that child FST instance, and of course the 'parent_instance' in
-    // that child FST instance would be the instance_id of this instance.
+    // (nonterminal_index, return_state) in this map to see whether there
+    // already exists an FST instance for that.  If it exists then the
+    // transition goes to that FST instance; if not, then we create a new one.
+    // The 'return_state' that's part of the key in this map would be the same
+    // as the 'parent_state' in that child FST instance, and of course the
+    // 'parent_instance' in that child FST instance would be the instance_id of
+    // this instance.
     //
     // In most cases each return_state would only have a single
     // nonterminal_index, making the 'nonterminal_index' in the key *usually*
@@ -298,21 +299,21 @@ class GrammarFstTpl {
   // demand.  An instance_id refers to an index into this vector.
   std::vector<FstInstance> instances_;
 
+  // The integer id of the symbol #nonterm_bos in phones.txt.
+  int32 nonterm_phones_offset_;
+
   // The top-level FST passed in by the user; contains the start state and
   // final-states, and may invoke FSTs in 'ifsts_' (which can also invoke
   // each other recursively).
   std::shared_ptr<FST > top_fst_;
-
-  // The integer id of the symbol #nonterm_bos in phones.txt.
-  int32 nonterm_phones_offset_;
 
   // A list of pairs (nonterm, fst), where 'nonterm' is a user-defined
   // nonterminal symbol as numbered in phones.txt (e.g. #nonterm:foo), and
   // 'fst' is the corresponding FST.
   std::vector<std::pair<int32, std::shared_ptr<FST > > > ifsts_;
 
-  // Maps from the user-defined nonterminals like #nonterm:foo as numbered
-  // in phones.txt, to the corresponding index into 'ifsts_', i.e. the ifst_index.
+  // Maps from the user-defined nonterminals like #nonterm:foo as numbered in
+  // phones.txt, to the corresponding index into 'ifsts_', i.e. the ifst_index.
   std::unordered_map<int32, int32> nonterminal_map_;
 
   // entry_arcs_ will have the same dimension as ifsts_.  Each entry_arcs_[i]
@@ -326,8 +327,6 @@ class GrammarFstTpl {
   std::vector<std::unordered_map<int32, int32> > entry_arcs_;
 
  private:
-
-
   friend class ArcIterator<GrammarFstTpl<FST> >;
 
   // sets up nonterminal_map_.
@@ -391,9 +390,10 @@ class GrammarFstTpl {
      if something went wrong or ilabel did not represent that (e.g. was less
      than kNontermBigNumber).
 
-       @param [in] the ilabel to be decoded.  Note: the type 'Label' will in practice be int.
+       @param [in]  The ilabel to be decoded.  Note: the type 'Label' will
+                    in practice be int.
        @param [out] The nonterminal part of the ilabel after decoding.
-                   Will be a value greater than nonterm_phones_offset_.
+                    Will be a value greater than nonterm_phones_offset_.
        @param [out] The left-context-phone part of the ilabel after decoding.
                     Will either be a phone index, or the symbol corresponding
                     to #nonterm_bos (meaning no left-context as we are at
@@ -409,15 +409,15 @@ class GrammarFstTpl {
   // when we have determined that an ExpandedState needs to be created and that
   // it is not currently present.  It creates and returns it; the calling code
   // needs to add it to the expanded_states map for its FST instance.
-  ExpandedState *ExpandState(int32 instance_id, BaseStateId state_id);
+  std::shared_ptr<ExpandedState> ExpandState(int32 instance_id, BaseStateId state_id);
 
   // Called from ExpandState() when the nonterminal type on the arcs is
   // #nonterm_end, this implements ExpandState() for that case.
-  ExpandedState *ExpandStateEnd(int32 instance_id, BaseStateId state_id);
+  std::shared_ptr<ExpandedState> ExpandStateEnd(int32 instance_id, BaseStateId state_id);
 
   // Called from ExpandState() when the nonterminal type on the arcs is a
   // user-defined nonterminal, this implements ExpandState() for that case.
-  ExpandedState *ExpandStateUserDefined(int32 instance_id, BaseStateId state_id);
+  std::shared_ptr<ExpandedState> ExpandStateUserDefined(int32 instance_id, BaseStateId state_id);
 
   // Called from ExpandStateUserDefined(), this function attempts to look up the
   // pair (nonterminal, state) in the map
@@ -470,17 +470,17 @@ class GrammarFstTpl {
       if already present; otherwise it populates the 'expanded_states' map with
       something for this state_id and returns the value.
   */
-  inline ExpandedState *GetExpandedState(int32 instance_id,
+  inline std::shared_ptr<ExpandedState> GetExpandedState(int32 instance_id,
                                          BaseStateId state_id) {
-    std::unordered_map<BaseStateId, ExpandedState*> &expanded_states =
+    std::unordered_map<BaseStateId, std::shared_ptr<ExpandedState> > &expanded_states =
         instances_[instance_id].expanded_states;
 
-    typename std::unordered_map<BaseStateId, ExpandedState*>::iterator iter =
+    typename std::unordered_map<BaseStateId, std::shared_ptr<ExpandedState> >::iterator iter =
         expanded_states.find(state_id);
     if (iter != expanded_states.end()) {
       return iter->second;
     } else {
-      ExpandedState *ans = ExpandState(instance_id, state_id);
+      std::shared_ptr<ExpandedState> ans = ExpandState(instance_id, state_id);
       // Don't use the reference 'expanded_states'; it could have been
       // invalidated.
       instances_[instance_id].expanded_states[state_id] = ans;
@@ -524,7 +524,7 @@ class ArcIterator<GrammarFstTpl<instance_FST > > {
       i_ = 0;
     } else {
       // A special state
-      ExpandedState *expanded_state = fst.GetExpandedState(instance_id,
+      std::shared_ptr<ExpandedState> expanded_state = fst.GetExpandedState(instance_id,
                                                            base_state);
       dest_instance_ = expanded_state->dest_fst_instance;
       // it's ok to leave the other members of data_ uninitialized, as they will

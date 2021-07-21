@@ -157,7 +157,7 @@ int main(int argc, char *argv[]) {
     po.Register("num-threads-startup", &g_num_threads,
                 "Number of threads used when initializing iVector extractor.");
     po.Register("read-timeout", &read_timeout,
-                "Number of seconds of timout for TCP audio data to appear on the stream. Use -1 for blocking.");
+                "Number of seconds of timeout for TCP audio data to appear on the stream. Use -1 for blocking.");
     po.Register("port-num", &port_num,
                 "Port number the server will listen on.");
     po.Register("produce-time", &produce_time,

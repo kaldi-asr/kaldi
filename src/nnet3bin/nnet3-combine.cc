@@ -82,7 +82,7 @@ int main(int argc, char *argv[]) {
 
     const char *usage =
         "Using a subset of training or held-out examples, compute the average\n"
-        "over the first n nnet3 models where we maxize the objective function\n"
+        "over the first n nnet3 models where we maximize the objective function\n"
         "for n. Note that the order of models has been reversed before\n"
         "being fed into this binary. So we are actually combining last n models.\n"
         "Inputs and outputs are 'raw' nnets.\n"

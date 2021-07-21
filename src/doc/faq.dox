@@ -246,7 +246,7 @@ namespace kaldi {
 	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/iBgeXN4diSY> the difference between posteriors calculated by forward-backward and lattice-to-post </a>
 	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/RlH_noG1FRw> Help: split phone-level force alignments to word-level alignments </a>
 	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/KNCJ6zbuA3U> phone alignment </a>
-	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/8IFJBI3bJjM> how to get word aligment per-frame using prons-to-wordali </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/8IFJBI3bJjM> how to get word alignment per-frame using prons-to-wordali </a>
 	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/QCxBC818UCA> Forced alignment </a>
 	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/Ie40bOzpU6E> alignment to word_level/phone_level with ctm </a>
 	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/-hWk12QfSBE> How to understand the results of lat1.gz? </a>
@@ -500,7 +500,7 @@ namespace kaldi {
 
 63. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/rAfu9TKJJYI> Robustness of ASR </a> </b>
 
-64. <b> <a href=https://groups.google.com/forum/#!forum/kaldi-help> Python3 vs. Python2.7 in Kaldi scripts </a> </b>
+64. <b> <a href=https://groups.google.com/g/kaldi-help/c/u41TT0uIVlc/m/t7bnhTYwBAAJ> Python3 vs. Python2.7 in Kaldi scripts </a> </b>
 
 67. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/s7zq30ckaEM> Adapt speaker recognition model </a> </b>
 

@@ -23,6 +23,8 @@
 // Do not include this file directly.  It is to be included
 // by .cc files in this directory.
 
+#include "cudamatrix/cu-device.h"
+
 namespace kaldi {
 #if HAVE_CUDA == 1
 
@@ -31,7 +33,13 @@ inline cublasStatus_t cublas_gemm(
     cublasOperation_t transb, int m, int n,int k, float alpha,
     const float *A, int lda, const float *B, int ldb, float beta,
     float *C, int ldc) {
+#if CUDA_VERSION >= 11000
+  return cublasGemmEx(handle,transa,transb,m,n,k,&alpha,A,CUDA_R_32F,lda,B,CUDA_R_32F,ldb,&beta,
+                      C,CUDA_R_32F,ldc,CuDevice::Instantiate().GetCublasComputeType(),
+                      CuDevice::Instantiate().GetCublasGemmAlgo());
+#else
   return cublasSgemm_v2(handle,transa,transb,m,n,k,&alpha,A,lda,B,ldb,&beta,C,ldc);
+#endif
 }
 inline cublasStatus_t cublas_gemm(
     cublasHandle_t handle, cublasOperation_t transa,
@@ -54,7 +62,13 @@ inline cublasStatus_t cublas_gemmBatched(
     cublasOperation_t transb, int m, int n, int k, float alpha,
     const float *A[], int lda, const float *B[], int ldb, float beta,
     float *C[], int ldc, int batchCount) {
+#if CUDA_VERSION >= 11000
+  return cublasGemmBatchedEx(handle, transa, transb, m, n, k, &alpha, (const void**)A, CUDA_R_32F,  lda,
+                             (const void**)B, CUDA_R_32F, ldb, &beta, (void**)C, CUDA_R_32F, ldc, batchCount,
+                             CuDevice::Instantiate().GetCublasComputeType(), CuDevice::Instantiate().GetCublasGemmAlgo());
+#else
   return cublasSgemmBatched(handle, transa, transb, m, n, k, &alpha, A, lda, B, ldb, &beta, C, ldc, batchCount);
+#endif
 }
 inline cublasStatus_t cublas_gemmBatched(
     cublasHandle_t handle, cublasOperation_t transa,
@@ -264,14 +278,25 @@ inline cusparseStatus_t cusparse_csrmm2(cusparseHandle_t handle,
   if (status != CUSPARSE_STATUS_SUCCESS) return status;
 
   size_t buffer_size;
+#if CUDA_VERSION >= 11000
+  status = cusparseSpMM_bufferSize(handle, transA, transB, alpha, matA, matB,
+                                   beta, matC, valType, CUSPARSE_SPMM_CSR_ALG2,
+                                   &buffer_size);
+#else
   status = cusparseSpMM_bufferSize(handle, transA, transB, alpha, matA, matB,
                                    beta, matC, valType, CUSPARSE_MM_ALG_DEFAULT,
                                    &buffer_size);
+#endif
   if (status != CUSPARSE_STATUS_SUCCESS) return status;
 
-  void *buffer = (buffer_size > 0) ? CuDevice::Instantiate().Malloc(buffer_size) : NULL; 
+  void *buffer = (buffer_size > 0) ? CuDevice::Instantiate().Malloc(buffer_size) : NULL;
+#if CUDA_VERSION >= 11000
+  status = cusparseSpMM(handle, transA, transB, alpha, matA, matB, beta, matC,
+                        valType, CUSPARSE_SPMM_CSR_ALG2, buffer);
+#else
   status = cusparseSpMM(handle, transA, transB, alpha, matA, matB, beta, matC,
                         valType, CUSPARSE_MM_ALG_DEFAULT, buffer);
+#endif
 
   if (status != CUSPARSE_STATUS_SUCCESS) return status;
   if(buffer)

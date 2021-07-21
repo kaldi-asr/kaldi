@@ -156,7 +156,7 @@ fi
 
 
 if ! which g2p.py >&/dev/null; then
-  if [ ! -d $KALDI_ROOT/tools/sequitur ]; then
+  if [ ! -d $KALDI_ROOT/tools/sequitur-g2p ]; then
     echo "Sequitur was not found !"
     echo "Go to $KALDI/tools and execute extras/install_sequitur.sh"
   else

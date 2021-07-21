@@ -28,7 +28,7 @@
 #include "lat/determinize-lattice-pruned.h"
 #include "lat/kaldi-lattice.h"
 #include "decoder/grammar-fst.h"
-#include "lattice-faster-decoder.h"
+#include "decoder/lattice-faster-decoder.h"
 
 namespace kaldi {
 /**
