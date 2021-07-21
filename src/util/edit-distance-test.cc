@@ -112,7 +112,7 @@ void TestEditDistanceString() {
 void TestEditDistance2() {
   std::vector<int32>  hyp;
   std::vector<int32>  ref;
-  int32 ins, del, sub, total_cost;
+  int32 ins, del, sub, total_cost, ins2, del2, sub2;
   // initialize hypothesis
   hyp.push_back(1);
   hyp.push_back(3);
@@ -144,9 +144,9 @@ void TestEditDistance2() {
   KALDI_ASSERT(total_cost == 1 && ins == 0 && del == 0 && sub == 1);
   // randomized test
   size_t num = 0;
-  for (; num < 1000; num ++) {
+  for (; num < 100000; num ++) {
     int32  hyp_len = Rand()%11;
-    int32  ref_len = Rand()%3;
+    int32  ref_len = Rand()%11;
     hyp.resize(hyp_len);
     ref.resize(ref_len);
 
@@ -163,6 +163,13 @@ void TestEditDistance2() {
     KALDI_ASSERT(total_cost == total_cost2);
     KALDI_ASSERT(ins+del+sub == total_cost);
     KALDI_ASSERT(del-ins == static_cast<int32>(ref.size() -hyp.size()));
+    // swapping arguments should swap del with ins only
+    total_cost2 = LevenshteinEditDistance(hyp, ref, &ins2, &del2, &sub2);
+    KALDI_ASSERT(total_cost == total_cost2);
+    KALDI_ASSERT(ins2+del2+sub2 == total_cost2);
+    KALDI_ASSERT(sub2 == sub);
+    KALDI_ASSERT(del2 == ins);
+    KALDI_ASSERT(ins2 == del);
   }
   return;
 }
