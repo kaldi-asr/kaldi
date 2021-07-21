@@ -19,13 +19,13 @@
 ################################################
 #                How to use:
 ################################################
-# python3 src/ngram_entropy_pruning.py -threshold 4.7e-5 -lm /Users/huangruizhe/Codes/entropy_pruning/data/sw1.o3g.kn.gz -write-lm /Users/huangruizhe/Codes/entropy_pruning/data/tmp.4.7e-5.gz
+# python3 ngram_entropy_pruning.py -threshold $threshold -lm $input_lm -write-lm $pruned_lm
 
 ################################################
 #             SRILM commands:
 ################################################
-# to_prune_lm=/export/fs04/a12/rhuang/hang/kaldi/egs/swbd/s5c/data/local/lm/sw1.o3g.kn.gz
-# vocab=/export/fs04/a12/rhuang/hang/kaldi/egs/swbd/s5c/data/local/lm/wordlist
+# to_prune_lm=egs/swbd/s5c/data/local/lm/sw1.o3g.kn.gz
+# vocab=egs/swbd/s5c/data/local/lm/wordlist
 # order=3
 # oov_symbol="<unk>"
 # threshold=4.7e-5
@@ -56,20 +56,41 @@ parser = argparse.ArgumentParser(description="""
     The command takes an arpa file and a pruning threshold as input, 
     and outputs a pruned arpa file.
     """)
-parser.add_argument("-threshold", type=float, default=1e-6, help="Order of n-gram")
-parser.add_argument("-lm", type=str, default=None, help="Path to the input arpa file")
-parser.add_argument("-write-lm", type=str, default=None, help="Path to output arpa file after pruning")
-parser.add_argument("-minorder", type=int, default=1, help="The minorder parameter limits pruning to "
-                                                           "ngrams of that length and above.")
-parser.add_argument("-encoding", type=str, default="utf-8", help="Encoding of the arpa file")
-parser.add_argument("-verbose", type=int, default=2, choices=[0, 1, 2, 3, 4, 5], help="Verbose level, where "
-                                                                                      "0 is most noisy; "
-                                                                                      "5 is most silent")
+parser.add_argument("-threshold",
+                    type=float,
+                    default=1e-6,
+                    help="Order of n-gram")
+parser.add_argument("-lm",
+                    type=str,
+                    default=None,
+                    help="Path to the input arpa file")
+parser.add_argument("-write-lm",
+                    type=str,
+                    default=None,
+                    help="Path to output arpa file after pruning")
+parser.add_argument("-minorder",
+                    type=int,
+                    default=1,
+                    help="The minorder parameter limits pruning to "
+                    "ngrams of that length and above.")
+parser.add_argument("-encoding",
+                    type=str,
+                    default="utf-8",
+                    help="Encoding of the arpa file")
+parser.add_argument("-verbose",
+                    type=int,
+                    default=2,
+                    choices=[0, 1, 2, 3, 4, 5],
+                    help="Verbose level, where "
+                    "0 is most noisy; "
+                    "5 is most silent")
 args = parser.parse_args()
 
 default_encoding = args.encoding
-logging.basicConfig(format="%(asctime)s — %(levelname)s — %(funcName)s:%(lineno)d — %(message)s",
-                    level=args.verbose * 10)
+logging.basicConfig(
+    format=
+    "%(asctime)s — %(levelname)s — %(funcName)s:%(lineno)d — %(message)s",
+    level=args.verbose * 10)
 
 
 class Context(dict):
@@ -122,7 +143,8 @@ class Arpa:
 
     def __init__(self, path=None, encoding=None, unk=None):
         self._counts = OrderedDict()
-        self._ngrams = OrderedDict()  # Use self._ngrams[len(h)][h][w] for saving the entry of (h,w)
+        self._ngrams = OrderedDict(
+        )  # Use self._ngrams[len(h)][h][w] for saving the entry of (h,w)
         self._vocabulary = set()
         if unk is None:
             self._unk = self.UNK
@@ -132,7 +154,7 @@ class Arpa:
 
     def __contains__(self, ngram):
         h = ngram[:-1]  # h is a tuple
-        w = ngram[-1]   # w is a string/word
+        w = ngram[-1]  # w is a string/word
         return h in self._ngrams[len(h)] and w in self._ngrams[len(h)][h]
 
     def contains_word(self, word):
@@ -145,14 +167,15 @@ class Arpa:
 
     def update_counts(self):
         for order in range(1, self.order() + 1):
-            count = sum([len(wlist) for _, wlist in self._ngrams[order - 1].items()])
+            count = sum(
+                [len(wlist) for _, wlist in self._ngrams[order - 1].items()])
             if count > 0:
                 self._counts[order] = count
 
     def add_entry(self, ngram, p, bo=None, order=None):
         # Note: ngram is a tuple of strings, e.g. ("w1", "w2", "w3")
         h = ngram[:-1]  # h is a tuple
-        w = ngram[-1]   # w is a string/word
+        w = ngram[-1]  # w is a string/word
 
         # Note that p and bo here are in fact in the log domain (self.base = 10)
         h_context = self._ngrams[len(h)][h]
@@ -176,15 +199,17 @@ class Arpa:
             return self._vocabulary
 
     def _entries(self, order):
-        return (self._entry(h, w) for h, wlist in self._ngrams[order - 1].items() for w in wlist)
+        return (self._entry(h, w)
+                for h, wlist in self._ngrams[order - 1].items() for w in wlist)
 
     def _entry(self, h, w):
         # return the entry for the ngram (h, w)
-        ngram = h + (w,)
+        ngram = h + (w, )
         log_p = self._ngrams[len(h)][h][w]
         log_bo = self._log_bo(ngram)
         if log_bo is not None:
-            return round(log_p, self.FLOAT_NDIGITS), ngram, round(log_bo, self.FLOAT_NDIGITS)
+            return round(log_p, self.FLOAT_NDIGITS), ngram, round(
+                log_bo, self.FLOAT_NDIGITS)
         else:
             return round(log_p, self.FLOAT_NDIGITS), ngram
 
@@ -196,7 +221,7 @@ class Arpa:
 
     def _log_p(self, ngram):
         h = ngram[:-1]  # h is a tuple
-        w = ngram[-1]   # w is a string/word
+        w = ngram[-1]  # w is a string/word
         if h in self._ngrams[len(h)] and w in self._ngrams[len(h)][h]:
             return self._ngrams[len(h)][h][w]
         else:
@@ -232,7 +257,7 @@ class Arpa:
             # <s> context we have to look up </s> instead since the former
             # has prob = 0.
             if len(seq) == 1 and seq[0] == self.SOS:
-                seq = (self.EOS,)
+                seq = (self.EOS, )
 
         return log_joint_p
 
@@ -255,7 +280,9 @@ class Arpa:
             words = (sos, ) + words
         if eos:
             words = words + (eos, )
-        result = sum(self.log_p_raw(words[:i]) for i in range(1, len(words) + 1))
+        result = sum(
+            self.log_p_raw(words[:i]) for i in range(1,
+                                                     len(words) + 1))
         if sos:
             result = result - self.log_p_raw(words[:1])
         return result
@@ -420,7 +447,7 @@ class ArpaParser:
 
 
 def add_log_p(prev_log_sum, log_p, base):
-    return math.log(base ** log_p + base ** prev_log_sum, base)
+    return math.log(base**log_p + base**prev_log_sum, base)
 
 
 def compute_numerator_denominator(lm, h):
@@ -430,12 +457,13 @@ def compute_numerator_denominator(lm, h):
     for w, log_p in lm._ngrams[len(h)][h].items():
         log_sum_seen_h = add_log_p(log_sum_seen_h, log_p, base)
 
-        ngram = h + (w,)
+        ngram = h + (w, )
         log_p_lower = lm.log_p_raw(ngram[1:])
-        log_sum_seen_h_lower = add_log_p(log_sum_seen_h_lower, log_p_lower, base)
+        log_sum_seen_h_lower = add_log_p(log_sum_seen_h_lower, log_p_lower,
+                                         base)
 
-    numerator = 1.0 - base ** log_sum_seen_h
-    denominator = 1.0 - base ** log_sum_seen_h_lower
+    numerator = 1.0 - base**log_sum_seen_h
+    denominator = 1.0 - base**log_sum_seen_h_lower
     return numerator, denominator
 
 
@@ -443,7 +471,8 @@ def prune(lm, threshold, minorder):
     # Reference:
     # https://github.com/BitSpeech/SRILM/blob/d571a4424fb0cf08b29fbfccfddd092ea969eae3/lm/src/NgramLM.cc#L2330
 
-    for i in range(lm.order(), max(minorder - 1, 1), -1):  # i is the order of the ngram (h, w)
+    for i in range(lm.order(), max(minorder - 1, 1),
+                   -1):  # i is the order of the ngram (h, w)
         logging.info("processing %d-grams ..." % i)
         count_pruned_ngrams = 0
 
@@ -468,7 +497,7 @@ def prune(lm, threshold, minorder):
             pruned_w_set = set()
 
             for w, log_p in h_dict[h].items():
-                ngram = h + (w,)
+                ngram = h + (w, )
 
                 # lower-order estimate for ngramProb, P(w|h')
                 backoff_prob = lm.log_p_raw(ngram[1:])
@@ -484,7 +513,7 @@ def prune(lm, threshold, minorder):
                                  numerator * (new_log_bow - log_bow))
 
                 # compute relative change in model (training set) perplexity
-                perp_change = lm.base ** delta_entropy - 1.0
+                perp_change = lm.base**delta_entropy - 1.0
 
                 pruned = threshold > 0 and perp_change < threshold
 
@@ -494,16 +523,14 @@ def prune(lm, threshold, minorder):
                         len(lm._ngrams[len(ngram)][ngram]) > 0:
                     pruned = False
 
-                logging.debug("CONTEXT " + str(h) +
-                              " WORD " + w +
+                logging.debug("CONTEXT " + str(h) + " WORD " + w +
                               " CONTEXTPROB %f " % h_log_p +
-                              " OLDPROB %f " % log_p +
-                              " NEWPROB %f " % (backoff_prob + new_log_bow) +
+                              " OLDPROB %f " % log_p + " NEWPROB %f " %
+                              (backoff_prob + new_log_bow) +
                               " DELTA-H %f " % delta_entropy +
                               " DELTA-LOGP %f " % delta_prob +
-                              " PPL-CHANGE %f " % perp_change +
-                              " PRUNED " + str(pruned)
-                              )
+                              " PPL-CHANGE %f " % perp_change + " PRUNED " +
+                              str(pruned))
 
                 if pruned:
                     pruned_w_set.add(w)
@@ -515,14 +542,17 @@ def prune(lm, threshold, minorder):
             # remove the context itself, but only if the present
             # context is not a prefix to a longer one.
             if all_pruned and len(pruned_w_set) == len(h_dict[h]):
-                del h_dict[h]  # this context h is no longer needed, as its ngram prob is stored at its own context h'
+                del h_dict[
+                    h]  # this context h is no longer needed, as its ngram prob is stored at its own context h'
             elif len(pruned_w_set) > 0:
                 # The pruning for this context h is actually done here
                 old_context = lm.set_new_context(h)
 
                 for w, p_w in old_context.items():
                     if w not in pruned_w_set:
-                        lm.add_entry(h + (w,), p_w)   # the entry hw is stored at the context h
+                        lm.add_entry(
+                            h + (w, ),
+                            p_w)  # the entry hw is stored at the context h
 
                 # We need to recompute the back-off weight, but
                 # this can only be done after completing the pruning
@@ -533,10 +563,13 @@ def prune(lm, threshold, minorder):
         logging.info("pruned %d %d-grams" % (count_pruned_ngrams, i))
 
     # recompute backoff weights
-    for i in range(max(minorder - 1, 1) + 1, lm.order() + 1):  # be careful of this order: from low- to high-order
+    for i in range(max(minorder - 1, 1) + 1,
+                   lm.order() +
+                   1):  # be careful of this order: from low- to high-order
         for h in lm._ngrams[i - 1]:
             numerator, denominator = compute_numerator_denominator(lm, h)
-            new_log_bow = math.log(numerator, lm.base) - math.log(denominator, lm.base)
+            new_log_bow = math.log(numerator, lm.base) - math.log(
+                denominator, lm.base)
             lm._ngrams[len(h)][h].log_bo = new_log_bow
 
     # update counts
@@ -546,7 +579,8 @@ def prune(lm, threshold, minorder):
 
 
 def check_h_is_valid(lm, h):
-    sum_under_h = sum([lm.base ** lm.log_p_raw(h + (w,)) for w in lm.vocabulary(sort=False)])
+    sum_under_h = sum(
+        [lm.base**lm.log_p_raw(h + (w, )) for w in lm.vocabulary(sort=False)])
     if abs(sum_under_h - 1.0) > 1e-6:
         logging.info("warning: %s %f" % (str(h), sum_under_h))
         return False
@@ -578,9 +612,10 @@ if __name__ == '__main__':
         logging.info("ngram %d=%d" % (i, cnt))
 
     # prune it, the language model will be modified in-place
-    logging.info("Start pruning the model with threshold=%.3E..." % args.threshold)
+    logging.info("Start pruning the model with threshold=%.3E..." %
+                 args.threshold)
     prune(lm, args.threshold, args.minorder)
-    
+
     # validate_lm(lm)
 
     # write the arpa language model to a file
