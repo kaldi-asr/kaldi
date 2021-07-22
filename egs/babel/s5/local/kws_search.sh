@@ -147,7 +147,7 @@ if [ $stage -le 2 ]; then
     gunzip -c ${kwsoutdir}_LMWT/result.* \| \
       utils/write_kwslist.pl  --Ntrue-scale=$ntrue_scale --flen=0.01 --duration=$duration \
         --segments=$datadir/segments --normalize=true --duptime=$duptime --remove-dup=true\
-        --map-utter=$kwsdatadir/utter_map --digits=3 \
+        --map-utter=$kwsdatadir/utter_id --digits=3 \
         - ${kwsoutdir}_LMWT/kwslist.xml || exit 1
 fi
 
@@ -158,7 +158,7 @@ if [ $stage -le 3 ]; then
     gunzip -c ${kwsoutdir}_LMWT/result.* \| \
         utils/write_kwslist.pl --Ntrue-scale=$ntrue_scale --flen=0.01 --duration=$duration \
           --segments=$datadir/segments --normalize=false --duptime=$duptime --remove-dup=true\
-          --map-utter=$kwsdatadir/utter_map \
+          --map-utter=$kwsdatadir/utter_id \
           - ${kwsoutdir}_LMWT/kwslist.unnormalized.xml || exit 1;
 fi
 

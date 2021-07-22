@@ -124,7 +124,7 @@ if ($map_utter) {
     chomp;
     my @col = split(" ", $_);
     @col == 2 || die "$0: Bad number of columns in $map_utter \"$_\"\n";
-    $utter_mapper{$col[0]} = $col[1];
+    $utter_mapper{$col[1]} = $col[0];
   }
 }
 
@@ -203,14 +203,15 @@ while (<$source>) {
   my $start = sprintf("%.2f", $col[1]*$flen);
   my $dur = sprintf("%.2f", $col[2]*$flen-$start);
   my $score = exp(-$col[3]);
-
-  if ($segment) {
-    $start = sprintf("%.2f", $start+$tbeg{$utter});
-  }
+	
   if ($map_utter) {
     my $utter_x = $utter_mapper{$utter};
     die "Unmapped utterance $utter\n" unless $utter_x;
     $utter = $utter_x;
+  }
+
+  if ($segment) {
+    $start = sprintf("%.2f", $start+$tbeg{$utter});
   }
 
   push(@KWS, [$kwid, $utter, 1, $start, $dur, $score, ""]);
