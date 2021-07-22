@@ -760,7 +760,6 @@ class CudaDecoder {
   // channel.
   std::vector<std::mutex> channel_lock_;
 
-  bool worker_threads_running_;
   // For each channel, set by PrepareForGetRawLattice
   // argmin cost, list of the tokens within
   // [best_cost;best_cost+lattice_beam] and if we've reached a final
@@ -869,7 +868,7 @@ class CudaDecoder {
   std::vector<ChannelId> lanes2channels_todo_;
   std::atomic<int> n_acoustic_h2h_copies_todo_;
   std::atomic<int> n_extra_prev_tokens_h2h_copies_todo_;
-  std::atomic<int> n_d2h_copies_ready_;
+  //TODO(hugovbraun): unused: std::atomic<int> n_d2h_copies_ready_;
   std::atomic<int> n_infotoken_h2h_copies_todo_;
   int32 n_h2h_task_not_done_;
   int32 n_init_decoding_h2h_task_not_done_;
@@ -880,7 +879,7 @@ class CudaDecoder {
   std::condition_variable n_h2h_main_task_todo_cv_;
   std::condition_variable h2h_done_;
   std::condition_variable init_decoding_h2h_done_;
-  std::atomic<bool> active_wait_;
+  //TODO(hugovbraun): unused: std::atomic<bool> active_wait_;
 
   // Used for sync on partial hypotheses tasks
   std::atomic<std::int32_t> n_partial_traceback_threads_todo_;

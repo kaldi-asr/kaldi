@@ -121,7 +121,6 @@ class OnlineBatchedFeaturePipelineCuda {
 
   // channel array for stashing sample count
   int32_t *current_samples_stash_;
-  ChannelId *channels_;
 
   // Host and Device array of lane descriptions
   LaneDesc *h_lanes_, *lanes_;

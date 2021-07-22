@@ -310,18 +310,6 @@ NnetChainTrainer2::~NnetChainTrainer2() {
   delete delta_nnet_;
 }
 
-NnetChainModel2::NnetChainModel2(const NnetChainTraining2Options& /* unused */,
-                                 Nnet *nnet, const std::string &den_fst_dir)
-    : nnet(nnet), den_fst_dir_(den_fst_dir) {}
-
-NnetChainModel2::~NnetChainModel2() {}
-
-/* fst::StdVectorFst* NnetChainModel2::GetDenFstForLang( */
-/*        const std::string &language_name) { */
-/*   LanguageInfo *info = GetInfoForLang(language_name); */
-/*   return &(info->den_fst); */
-/* } */
-
 const chain::DenominatorGraph *NnetChainModel2::GetDenGraphForLang(
     const std::string &lang) {
   const LanguageInfo *info = GetInfoForLang(lang);
@@ -349,7 +337,7 @@ const NnetChainModel2::LanguageInfo *NnetChainModel2::GetInfoForLang(
     ReadFstKaldi(den_fst_filename, &den_fst);
     std::string output = "output-" + lang;
     lang_info_.emplace(lang,
-                       LanguageInfo{lang, den_fst, nnet->OutputDim(output)});
+                       LanguageInfo{lang, den_fst, nnet_->OutputDim(output)});
   }
   // Use .at(), not operator[](), because the [] requires a default constructor.
   // The .at() throws if the element isn't found, which works in lieu of an

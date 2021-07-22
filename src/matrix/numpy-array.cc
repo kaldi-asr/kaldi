@@ -19,12 +19,11 @@
 
 #include "matrix/numpy-array.h"
 
-#include "base/kaldi-utils.h"
-
 #include <functional>  // for std::multiplies
 #include <numeric>     // for std::accumulate
 
 #include "base/kaldi-error.h"
+#include "base/kaldi-utils.h"
 
 namespace {
 
@@ -37,16 +36,9 @@ constexpr bool kIsLittleEndian = false;
 constexpr bool kIsLittleEndian = true;
 #endif
 
-template <bool is_little_endian>
+template <bool isLittleEndian>
 struct EndianString {
-  // for little endian
-  static constexpr const char* value = "<";
-};
-
-template <>
-struct EndianString<false> {
-  // for big endian
-  static constexpr const char* value = ">";
+  static constexpr const char* value = isLittleEndian ? "<" : ">";
 };
 
 template <typename>

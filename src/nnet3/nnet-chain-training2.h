@@ -1,7 +1,7 @@
 // nnet3/nnet-chain-training.h
 
 // Copyright    2015  Johns Hopkins University (author: Daniel Povey)
-//                2019    Idiap Research Institute (author: Srikanth Madikeri)
+//              2019  Idiap Research Institute (author: Srikanth Madikeri)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -23,7 +23,6 @@
 
 #include "chain/chain-den-graph.h"
 #include "chain/chain-training.h"
-#include "nnet3/nnet-chain-example.h"
 #include "nnet3/nnet-chain-example.h"
 #include "nnet3/nnet-chain-training.h"
 #include "nnet3/nnet-computation.h"
@@ -53,7 +52,7 @@ struct NnetChainTraining2Options {
 class NnetChainModel2 {
  public:
   /**
-     Constructor to which you pass the model directory and the den-fst
+     Constructor to which you pass the model and the den-fst
      directory.  There is no requirement that all these directories be distinct.
 
      For each language called "lang" the following files should exist:
@@ -71,13 +70,9 @@ class NnetChainModel2 {
 
       **/
 
-  NnetChainModel2(const NnetChainTraining2Options &opts,
-                  Nnet *nnet,
-                  const std::string &den_fst_dir);
+  NnetChainModel2(Nnet *nnet, const std::string &den_fst_dir)
+      : nnet_(nnet), den_fst_dir_(den_fst_dir) {}
 
-  ~NnetChainModel2();
-
-  /* fst::StdVectorFst *GetDenFstForLang(const std::string &language_name); */
   const chain::DenominatorGraph *GetDenGraphForLang(const std::string &lang);
 
  private:
@@ -101,7 +96,7 @@ class NnetChainModel2 {
   // contents from disk) if it does not already exist.
   const LanguageInfo *GetInfoForLang(const std::string &lang);
 
-  Nnet *nnet;
+  Nnet *nnet_;
   // Directory where denominator FSTs are located.
   std::string den_fst_dir_;
 

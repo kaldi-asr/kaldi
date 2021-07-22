@@ -76,9 +76,7 @@ class LatticePostprocessor {
   const TransitionModel *tmodel_;
   std::shared_ptr<const WordBoundaryInfo> word_info_;
   BaseFloat decoder_frame_shift_;
-  // Params for align words
-  int32 max_states_;
-  // Params for ScaleLattice
+  // Params for ScaleLattice.
   bool use_lattice_scale_;
   std::vector<std::vector<double> > lattice_scales_;
 
