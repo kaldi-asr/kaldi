@@ -137,7 +137,7 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
     config_.compute_opts.CheckAndFixConfigs(am_nnet_->GetNnet().Modulus());
     config_.CheckAndFixConfigs();
     Initialize(decode_fst);
-    int num_worker_threads = config.num_worker_threads;
+    int num_worker_threads = config_.num_worker_threads;
     thread_pool_ = std::make_unique<ThreadPoolLight>(num_worker_threads);
   }
 
