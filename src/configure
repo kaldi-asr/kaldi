@@ -92,6 +92,7 @@ Configuration options:
   --speex-root=DIR      SPEEX root directory
   --speex-libdir=DIR    SPEEX library directory
   --speex-incdir=DIR    SPEEX include directory
+  --static-speex        Build with static speex libraries [default=no]
   --host=HOST           Host triple in the format 'cpu-vendor-os'
                         If provided, it is prepended to all toolchain programs.
   --android-incdir=DIR  Android include directory
@@ -407,10 +408,6 @@ function linux_configure_speex {
   [ ! -z "$SPEEXROOT" ] || SPEEXROOT=`pwd`/../tools/speex
   [ ! -z "$SPEEXLIBDIR" ] || SPEEXLIBDIR="$SPEEXROOT"/lib
   [ ! -z "$SPEEXINCDIR" ] || SPEEXINCDIR="$SPEEXROOT"/include
-  static_speex=$1
-  if [ "foo"$static_speex == "foo" ]; then
-    static_speex=false
-  fi
 
   if $static_speex; then
     spx_type=a
@@ -609,6 +606,7 @@ use_cuda=true
 with_cudadecoder=true
 static_fst=false
 static_math=false
+static_speex=false
 android=false
 enable_kenlm=false
 
@@ -629,11 +627,13 @@ do
     dynamic_kaldi=false;
     static_math=true;
     static_fst=true;
+    static_speex=true;
     shift ;;
   --shared)
     dynamic_kaldi=true;
     static_math=false;
     static_fst=false;
+    static_speex=false;
     shift ;;
   --debug-level=*)
     GetSwitchValueOrDie debug_level "$1"
@@ -686,6 +686,15 @@ do
   --static-fst=no)
     static_fst=false;
     shift ;;
+  --static-speex)
+    static_speex=true;
+    shift ;;
+  --static-speex=yes)
+    static_speex=true;
+    shift ;;
+  --static-speex=no)
+    static_speex=false;
+    shift ;;    
   --fst-root=*)
     GetSwitchExistingPathOrDie FSTROOT "$1"
     shift ;;
