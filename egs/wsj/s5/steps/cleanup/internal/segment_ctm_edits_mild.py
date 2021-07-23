@@ -782,7 +782,6 @@ class Segment(object):
                     self.split_lines_of_utt, cur_start_index,
                     segment.end_index)
                 new_segments.append(new_segment)
-                break
         segments = new_segments
         return segments
 
