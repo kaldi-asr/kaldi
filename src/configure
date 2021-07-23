@@ -1287,7 +1287,7 @@ or try another math library, e.g. --mathlib=OPENBLAS (Kaldi may be slower)."
     failure "Unsupported linear algebra library '$MATHLIB'"
   fi
   $use_cuda && configure_cuda
-  linux_configure_speex $static_speex
+  linux_configure_speex
 else
   failure "Could not detect the platform or we have not yet worked out the
   appropriate configuration for this platform. Please contact the developers."
