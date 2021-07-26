@@ -203,7 +203,7 @@ class LatsDataSet(FairseqDataset):
 
     def __getitem__(self, item):
         #if type(item) == int:
-        if isinstance(item) == str:
+        if isinstance(item, str):
             i = self.utt2id[item]
             utt_id = item
         else:
@@ -223,8 +223,8 @@ class LatsDataSet(FairseqDataset):
         return len(self.clipid2len_id)
 
     def size(self, index: int):
-        assert isinstance(index) != str, NotImplementedError(f"size implemented only for int index, "
-                                                       f"got {index} type {type(index)}")
+        #assert isinstance(index, int), NotImplementedError(f"size implemented only for int index, "
+        #                                               f"got {index} type {type(index)}")
         return self.clipid2len_id[index][0]
 
     def collater(self, samples):
