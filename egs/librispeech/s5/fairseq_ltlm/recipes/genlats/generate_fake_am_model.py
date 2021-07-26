@@ -90,10 +90,10 @@ class AliStretchModel:
             logger.warning(f"Not all pdf ids found in train data. bad pdf_ids = {bad_ids}. shape={bad_ids.shape}"
                            f"({round(bad_ids.shape[-1]/self.max_pdf_id*100, 2)}%)")
             self.id2count[bad_ids] = 1
-        for id in range(self.id2count.shape[0]):
-            total_count = sum(self.id2seq_count[id].values())
-            for seqlen in self.id2seq_count[id]:
-                self.id2seq_count[id][seqlen] /= total_count
+        for i in range(self.id2count.shape[0]):
+            total_count = sum(self.id2seq_count[i].values())
+            for seqlen in self.id2seq_count[i]:
+                self.id2seq_count[i][seqlen] /= total_count
         self.id2count = np.zeros_like(self.id2count)
 
     def forward(self, ids):

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey);
 #                 Arnab Ghoshal, Karel Vesely
@@ -32,91 +32,60 @@
 
 # Now import all the configs specified by command-line, in left-to-right order
 for ((argpos=1; argpos<$#; argpos++)); do
-    config=
-    if [ "${!argpos}" == "--config" ]; then  # "--config CONFIG" case
-        argpos_plus1=$((argpos+1))
-        config=${!argpos_plus1}
-    elif [[ "${!argpos}" =~ "--config=" ]]; then  # "--config=CONFIG" case
-        config=$(cut -d= -f2- <<< ${!argpos})
-    fi
-
-    if [ ! -z "$config" ]; then  # found a config file
-        [ ! -r $config ] && echo "$0: missing config '$config'" && exit 1
-        . $config  # source the config file.
-    fi
+  if [ "${!argpos}" == "--config" ]; then
+    argpos_plus1=$((argpos+1))
+    config=${!argpos_plus1}
+    [ ! -r $config ] && echo "$0: missing config '$config'" && exit 1
+    . $config  # source the config file.
+  fi
 done
 
-function parse_option {
-    name=`echo "$1" | sed s/^--// | sed s/-/_/g`;
-    # Next we test whether the variable in question is undefned-- if so it's
-    # an invalid option and we die.  Note: $0 evaluates to the name of the
-    # enclosing script.
-    # The test [ -z ${foo_bar+xxx} ] will return true if the variable foo_bar
-    # is undefined.  We then have to wrap this test inside "eval" because
-    # foo_bar is itself inside a variable ($name).
-    if eval '[ -z "${'$name'+xxx}" ]'; then
-        echo "$0: invalid option $1" 1>&2
-        printf "\n$help_message\n" 1>&2
-        exit 1;
-    fi
-
-    oldval="`eval echo \\$$name`";
-    # Work out whether we seem to be expecting a Boolean argument.
-    if [ "$oldval" == "true" ] || [ "$oldval" == "false" ]; then
-        was_bool=true;
-    else
-        was_bool=false;
-    fi
-
-    # Set the variable to the right value-- the escaped quotes make it work if
-    # the option had spaces, like --cmd "queue.pl -sync y"
-    eval $name=\"$2\";
-    val=`eval echo \\$$name`
-
-    # Check that Boolean-valued arguments are really Boolean.
-    if $was_bool && [[ "$val" != "true" && "$val" != "false" ]]; then
-        echo "$0: expected \"true\" or \"false\": $1 $2" 1>&2
-        printf "\n$help_message\n" 1>&2
-        exit 1;
-    fi
-}
 
 ###
-### No we process the command line options
+### Now we process the command line options
 ###
 while true; do
-    [ -z "${1:-}" ] && break;  # break if there are no arguments
-    case "$1" in
-        # The argument ‘--’ terminates all options; any following arguments are 
-        # treated as non-option arguments, even if they begin with a hyphen.
-        --)
-            shift
-            break
-            ;;
-        # If the enclosing script is called with --help option, print the help
-        # message and exit.  Scripts should put help messages in $help_message
-        --help|-h)
-            if [ -z "$help_message" ]; then
-                echo "No help found." 1>&2
-            else
-                printf "\n$help_message\n" 1>&2
-            fi
-            exit 0
-            ;;
-        # If the first command-line argument begins with "--" (e.g. --foo-bar),
-        # then work out the variable name as $name, which will equal "foo_bar".
-        --*=*)
-            parse_option $(cut -d= -f1 <<< $1) "$(cut -d= -f2- <<< $1)"
-            shift
-            ;;
-        --*)
-            parse_option $1 "$2"
-            shift 2;
-            ;;
-        *)
-            break
-            ;;
-    esac
+  [ -z "${1:-}" ] && break;  # break if there are no arguments
+  case "$1" in
+    # If the enclosing script is called with --help option, print the help
+    # message and exit.  Scripts should put help messages in $help_message
+    --help|-h) if [ -z "$help_message" ]; then echo "No help found." 1>&2;
+      else printf "$help_message\n" 1>&2 ; fi;
+      exit 0 ;;
+    --*=*) echo "$0: options to scripts must be of the form --name value, got '$1'"
+      exit 1 ;;
+    # If the first command-line argument begins with "--" (e.g. --foo-bar),
+    # then work out the variable name as $name, which will equal "foo_bar".
+    --*) name=`echo "$1" | sed s/^--// | sed s/-/_/g`;
+      # Next we test whether the variable in question is undefned-- if so it's
+      # an invalid option and we die.  Note: $0 evaluates to the name of the
+      # enclosing script.
+      # The test [ -z ${foo_bar+xxx} ] will return true if the variable foo_bar
+      # is undefined.  We then have to wrap this test inside "eval" because
+      # foo_bar is itself inside a variable ($name).
+      eval '[ -z "${'$name'+xxx}" ]' && echo "$0: invalid option $1" 1>&2 && exit 1;
+
+      oldval="`eval echo \\$$name`";
+      # Work out whether we seem to be expecting a Boolean argument.
+      if [ "$oldval" == "true" ] || [ "$oldval" == "false" ]; then
+        was_bool=true;
+      else
+        was_bool=false;
+      fi
+
+      # Set the variable to the right value-- the escaped quotes make it work if
+      # the option had spaces, like --cmd "queue.pl -sync y"
+      eval $name=\"$2\";
+
+      # Check that Boolean-valued arguments are really Boolean.
+      if $was_bool && [[ "$2" != "true" && "$2" != "false" ]]; then
+        echo "$0: expected \"true\" or \"false\": $1 $2" 1>&2
+        exit 1;
+      fi
+      shift 2;
+      ;;
+  *) break;
+  esac
 done
 
 

@@ -30,4 +30,3 @@ def parse_lats_json(fname):
         data_json_str = f_in.read()
     out = json.loads(data_json_str)
     return out
-
