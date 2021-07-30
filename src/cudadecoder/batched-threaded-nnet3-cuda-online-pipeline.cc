@@ -147,6 +147,7 @@ void BatchedThreadedNnet3CudaOnlinePipeline::SetLatticeCallback(
 void BatchedThreadedNnet3CudaOnlinePipeline::SetBestPathCallback(
     CorrelationID corr_id, const BestPathCallback &callback) {
   std::lock_guard<std::mutex> lk(map_callbacks_m_);
+  best_path_callbacks_.erase(corr_id);
   best_path_callbacks_.insert({corr_id, callback});
 }
 
@@ -154,6 +155,7 @@ void BatchedThreadedNnet3CudaOnlinePipeline::SetLatticeCallback(
     CorrelationID corr_id, const SegmentedResultsCallback &callback,
     const int result_type) {
   std::lock_guard<std::mutex> lk(map_callbacks_m_);
+  lattice_callbacks_.erase(corr_id);
   lattice_callbacks_.insert({corr_id, {callback, result_type}});
 }
 
@@ -491,6 +493,9 @@ void BatchedThreadedNnet3CudaOnlinePipeline::RunLatticeCallbacks(
       // If we are end of stream (last segment)
       // we need to do some cleanup
       if (is_end_of_stream_[i]) {
+        // We will not use the corr_id anymore releasing it
+        int32 ndeleted = corr_id2channel_.erase(corr_id);
+        KALDI_ASSERT(ndeleted == 1);
         if (has_lattice_callback) {
           // We need to generate a lattice, so we cannot free the channel right
           // away indicating that this is the last segment so that we know that
@@ -500,9 +505,8 @@ void BatchedThreadedNnet3CudaOnlinePipeline::RunLatticeCallbacks(
           // We don't have any callback to run.
           // So freeing up the channel now
           // All done with this corr_ids. Cleaning up
+          // We already own the available_channels_m_ lock
           available_channels_.push_back(ichannel);
-          int32 ndeleted = corr_id2channel_.erase(corr_id);
-          KALDI_ASSERT(ndeleted == 1);
         }
 
         if (!config_.use_gpu_feature_extraction) {
