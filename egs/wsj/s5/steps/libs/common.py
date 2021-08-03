@@ -376,7 +376,7 @@ def read_matrix_ascii(file_or_fd):
         fname = file_or_fd.name
 
     first = fd.read(2)
-    if first != ' [':
+    if first != ' [' and first != b' [':
         logger.error(
             "Kaldi matrix file %s has incorrect format, "
             "only text format matrix files can be read by this script",
@@ -391,7 +391,7 @@ def read_matrix_ascii(file_or_fd):
                          "got EOF before end of matrix", fname)
         if len(line.strip()) == 0 : continue # skip empty line
         arr = line.strip().split()
-        if arr[-1] != ']':
+        if arr[-1] != b']' and array[-1] != ']':
             rows.append([float(x) for x in arr])  # not last line
         else:
             rows.append([float(x) for x in arr[:-1]])  # lastline
