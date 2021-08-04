@@ -428,7 +428,7 @@ void LatticeActivePhones(const Lattice &lat, const TransitionInformation &trans,
 
 #ifndef KALDI_MINIMAL_LATTICE_FUNCTIONS
 
-void ConvertLatticeToPhones(const TransitionModel &trans,
+void ConvertLatticeToPhones(const TransitionInformation &trans,
                             Lattice *lat) {
   typedef LatticeArc Arc;
   int32 num_states = lat->NumStates();

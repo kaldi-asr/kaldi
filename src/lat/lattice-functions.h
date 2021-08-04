@@ -31,7 +31,10 @@
 #include "fstext/fstext-lib.h"
 #include "lat/kaldi-lattice.h"
 #include "itf/decodable-itf.h"
+#include "itf/transition-information.h"
+#ifndef KALDI_MINIMAL_LATTICE_FUNCTIONS
 #include "lat/lattice-functions-transition-model.h"
+#endif // KALDI_MINIMAL_LATTICE_FUNCTIONS
 
 namespace kaldi {
 
@@ -158,7 +161,7 @@ void LatticeActivePhones(const Lattice &lat, const TransitionInformation &trans,
 /// transition-id in the phone if reordering is not done (but typically
 /// we do reorder).
 /// Also see PhoneAlignLattice, in phone-align-lattice.h.
-void ConvertLatticeToPhones(const TransitionModel &trans_model,
+void ConvertLatticeToPhones(const TransitionInformation &trans_model,
                             Lattice *lat);
 
 /// Prunes a lattice or compact lattice.  Returns true on success, false if
