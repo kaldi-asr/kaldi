@@ -907,8 +907,8 @@ void MatrixBase<float>::CopyFromSp(const SpMatrix<float> & M) {
   const float *Mdata = M.Data();
   float *row_data = data_, *col_data = data_;
   for (MatrixIndexT i = 0; i < num_rows; i++) {
-    cblas_scopy(i+1, Mdata, 1, row_data, 1); // copy to the row.
-    cblas_scopy(i, Mdata, 1, col_data, stride); // copy to the column.
+    cblas_Xcopy(i+1, Mdata, 1, row_data, 1); // copy to the row.
+    cblas_Xcopy(i, Mdata, 1, col_data, stride); // copy to the column.
     Mdata += i+1;
     row_data += stride;
     col_data += 1;
@@ -924,8 +924,8 @@ void MatrixBase<double>::CopyFromSp(const SpMatrix<double> & M) {
   const double *Mdata = M.Data();
   double *row_data = data_, *col_data = data_;
   for (MatrixIndexT i = 0; i < num_rows; i++) {
-    cblas_dcopy(i+1, Mdata, 1, row_data, 1); // copy to the row.
-    cblas_dcopy(i, Mdata, 1, col_data, stride); // copy to the column.
+    cblas_Xcopy(i+1, Mdata, 1, row_data, 1); // copy to the row.
+    cblas_Xcopy(i, Mdata, 1, col_data, stride); // copy to the column.
     Mdata += i+1;
     row_data += stride;
     col_data += 1;
