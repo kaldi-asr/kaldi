@@ -42,8 +42,8 @@
 
 #include "base/kaldi-utils.h"
 #include "cudadecoder/cuda-decoder-kernels.h"
+#include "cudadecoder/online-endpoint.h"
 #include "cudamatrix/cu-common.h"
-#include "online2/online-endpoint.h"
 #include "util/text-utils.h"
 
 
