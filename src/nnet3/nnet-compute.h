@@ -143,7 +143,8 @@ class NnetComputer {
       const std::vector<bool> &batch_first,
       const int32 batch_size);
 
-  // compare with other NnetComputer
+  // compare with other NnetComputer, return true if the data is
+  // equal to other's data.
   bool Equal(const NnetComputer &other);
 
   void Print(std::ostream &os);

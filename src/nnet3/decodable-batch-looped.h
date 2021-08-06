@@ -167,7 +167,6 @@ class DecodableNnetBatchLoopedInfo  {
   std::vector<NnetComputation> computation;
 };
 
-
 class NotifiableNnetBatchLooped {
 public:
   virtual void Receive(const CuMatrixBase<BaseFloat> &output) = 0;
@@ -185,11 +184,13 @@ struct NnetComputeRequest {
 
 
 /*
-  This class handles the batch neural net computation; it's accepts
-  inputs from some threads, and then handles computation in one
-  thread. After finish computation, it will wake up some threads
-  to process the results.
-
+  This class handles the batch neural net computation.
+  It will bind with an GPU device and start one thread for computation.
+  It accepts requests of computation from decoding threads and put them
+  in FIFO queue. The thread for computation takes out multiple requests 
+  from the queue and runs AM inference in batch. After that, the thread 
+  for computation wakes up the decoding threads to continue, with AM 
+  inference results.
 */
 class NnetBatchLoopedComputer {
 public:
@@ -197,7 +198,7 @@ public:
 
   inline const DecodableNnetBatchLoopedInfo &GetInfo() { return info_; }
   
-  // Enqueue computation request of one channel
+  // Enqueue request of computation from decoding thread
   void Enqueue(NnetComputeRequest *request);
 
   ~NnetBatchLoopedComputer();
@@ -216,16 +217,23 @@ private:
   // and handle the remain requests.
   void Stop();
 
-  // Advance fake chunks until the NnetComputer becomes stable
+  // Advance fake chunks until the NnetComputer becomes stable.
+  // The NnetComputer is unstable for the first few chunks, which 
+  // means the status of NnetComputer will be changed chunk by chunk,
+  // e.g. the matrix represents cell of LSTM, the matrix represents
+  // buffers for TDNN.
+  // When the NnetComputer becomes stable, we can get and set the status
+  // for any sequence in batch correctly.
   void AdvanceChunkUntilStable(int32 batch_size, std::vector<bool> &batch_first); 
   
-  // Advance for one chunk
+  // Advance one chunk in bacth
+  // The sequence represented by any request in batch may be different with last 
+  // chunk, so we should set status for requests before AM inferene, and get 
+  // status for requests after AM inference.
   void AdvanceChunk(const std::vector<NnetComputeRequest*> &requests);
 
-  // Compute batched requests.
   void Compute();
 
-  // Return true if is_working_ is true or some requests exist in queue
   bool Continue();
   
 private:
