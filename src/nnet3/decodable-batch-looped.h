@@ -188,8 +188,8 @@ struct NnetComputeRequest {
   It will bind with an GPU device and start one thread for computation.
   It accepts requests of computation from decoding threads and put them
   in FIFO queue. The thread for computation takes out multiple requests 
-  from the queue and runs AM inference in batch. After that, the thread 
-  for computation wakes up the decoding threads to continue, with AM 
+  from the queue and runs inference in batch. After that, the thread 
+  for computation wakes up the decoding threads to continue, with 
   inference results.
 */
 class NnetBatchLoopedComputer {
@@ -228,8 +228,8 @@ private:
   
   // Advance one chunk in bacth
   // The sequence represented by any request in batch may be different with last 
-  // chunk, so we should set status for requests before AM inferene, and get 
-  // status for requests after AM inference.
+  // chunk, so we should set status for requests before inferene, and get 
+  // status for requests after inference.
   void AdvanceChunk(const std::vector<NnetComputeRequest*> &requests);
 
   void Compute();
