@@ -191,6 +191,10 @@ struct NnetComputeRequest {
   from the queue and runs inference in batch. After that, the thread 
   for computation wakes up the decoding threads to continue, with 
   inference results.
+  The input will be handled sequently chunk by chunk for any stream.
+  It batches multiple chunks which are from different streams every
+  time, and the streams in batch may change every time. So it doesn't 
+  matter if some streams have more input than other.
 */
 class NnetBatchLoopedComputer {
 public:
@@ -222,8 +226,9 @@ private:
   // means the status of NnetComputer will be changed chunk by chunk,
   // e.g. the matrix represents cell of LSTM, the matrix represents
   // buffers for TDNN.
-  // When the NnetComputer becomes stable, we can get and set the status
-  // for any sequence in batch correctly.
+  // When the NnetComputer becomes stable, which means all of the members
+  // of NnetComputer become constant, we can get and set the status for 
+  // any sequence in batch correctly.
   void AdvanceChunkUntilStable(int32 batch_size, std::vector<bool> &batch_first); 
   
   // Advance one chunk in bacth
