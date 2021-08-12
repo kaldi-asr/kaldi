@@ -713,10 +713,10 @@ bool NnetComputer::Equal(const NnetComputer &other) {
   return true;
 }
 
-void NnetComputer::GetStatuses(std::vector< NnetComputeStatus* > &statuses, 
-    const std::vector<bool> &batch_first,
-    const int32 batch_size) {
-  KALDI_ASSERT(statuses.size() <= batch_size);
+void NnetComputer::GetState(const std::vector<bool> &batch_first,
+                            const int32 batch_size,
+                            std::vector< NnetComputeState* > *state) {
+  KALDI_ASSERT(state->size() <= batch_size);
   std::vector< const CuMatrix<BaseFloat>* > valid_matrices;
 
   for (std::size_t i = 0; i < matrices_.size(); i++) {
@@ -730,20 +730,20 @@ void NnetComputer::GetStatuses(std::vector< NnetComputeStatus* > &statuses,
               << " , and it is't compatible with NnetComputer's matrices,"
               << " which expect " << valid_matrices.size();
 
-  for (std::size_t channel = 0; channel < statuses.size(); channel++) {
-    NnetComputeStatus *channel_status = statuses[channel];
-    KALDI_ASSERT(channel_status != NULL);
+  for (std::size_t stream = 0; stream < state->size(); stream++) {
+    NnetComputeState *stream_state = (*state)[stream];
+    KALDI_ASSERT(stream_state != NULL);
 
-    if (channel_status->matrices.size() == 0)
-      channel_status->matrices.resize(valid_matrices.size());
+    if (stream_state->matrices.size() == 0)
+      stream_state->matrices.resize(valid_matrices.size());
     
-    if (channel_status->matrices.size() != valid_matrices.size())
-      KALDI_ERR << "Some channel status is't compatible with "
+    if (stream_state->matrices.size() != valid_matrices.size())
+      KALDI_ERR << "Some stream's state is't compatible with "
                 << "NnetComputer's matrices!";
     
     for (std::size_t i = 0; i < valid_matrices.size(); i++) {
       const CuMatrix<BaseFloat> &matrix = *valid_matrices[i];
-      CuMatrix<BaseFloat> &dst = channel_status->matrices[i];
+      CuMatrix<BaseFloat> &dst = stream_state->matrices[i];
       KALDI_ASSERT(matrix.NumRows() % batch_size == 0);
       int32 src_num_rows = matrix.NumRows() / batch_size;
       int32 src_num_cols = matrix.NumCols();
@@ -754,30 +754,27 @@ void NnetComputer::GetStatuses(std::vector< NnetComputeStatus* > &statuses,
         dst.Resize(src_num_rows, src_num_cols, kUndefined);
 
       if (batch_first[i]) {
-        CuSubMatrix<BaseFloat> src = matrix.RowRange(
-            channel * src_num_rows, src_num_rows);
+        CuSubMatrix<BaseFloat> src = matrix.RowRange(stream * src_num_rows, 
+                                                     src_num_rows);
         dst.CopyFromMat(src);
       }
       else {
-        std::vector<MatrixIndexT> indexes;
-        for (MatrixIndexT index = channel; 
-            index < matrix.NumRows(); 
-            index += batch_size)
-          indexes.push_back(index);
-
-        CuArray<MatrixIndexT> cu_indexes(indexes);
-        dst.CopyRows(matrix, cu_indexes);
+        CuSubMatrix<BaseFloat> src(matrix.RowData(stream),
+                                   dst_num_rows, 
+                                   dst_num_cols, 
+                                   matrix.Stride() * batch_size);
+        dst.CopyFromMat(src);
       }
     }
   }
 
-  return ;
+  return;
 }
 
-void NnetComputer::SetStatuses(const std::vector< NnetComputeStatus* > &statuses,
-    const std::vector<bool> &batch_first,
-    const int32 batch_size) {
-  KALDI_ASSERT(statuses.size() <= batch_size);
+void NnetComputer::SetState(const std::vector<bool> &batch_first,
+                            const int32 batch_size,
+                            const std::vector< NnetComputeState* > &state) {
+  KALDI_ASSERT(state.size() <= batch_size);
   std::vector< CuMatrix<BaseFloat>* > valid_matrices;
 
   for (std::size_t i = 0; i < matrices_.size(); i++) {
@@ -791,16 +788,16 @@ void NnetComputer::SetStatuses(const std::vector< NnetComputeStatus* > &statuses
               << " , and it is't compatible with NnetComputer's matrices,"
               << " which expect " << valid_matrices.size();
   
-  for (std::size_t channel = 0; channel < statuses.size(); channel++) {
-    NnetComputeStatus *channel_status = statuses[channel];
-    KALDI_ASSERT(channel_status != NULL);
+  for (std::size_t stream = 0; stream < state.size(); stream++) {
+    NnetComputeState *stream_state = state[stream];
+    KALDI_ASSERT(stream_state != NULL);
     
-    if (channel_status->matrices.size() != valid_matrices.size())
-      KALDI_ERR << "Some channel status is't compatible with "
+    if (stream_state->matrices.size() != valid_matrices.size())
+      KALDI_ERR << "Some stream's state is't compatible with "
                 << "NnetComputer's matrices!";
 
     for (std::size_t i = 0; i < valid_matrices.size(); i++) {
-      const CuMatrix<BaseFloat> &src = channel_status->matrices[i];
+      const CuMatrix<BaseFloat> &src = stream_state->matrices[i];
       CuMatrix<BaseFloat> &matrix = *valid_matrices[i];
 
       KALDI_ASSERT(matrix.NumRows() % batch_size == 0);
@@ -810,16 +807,16 @@ void NnetComputer::SetStatuses(const std::vector< NnetComputeStatus* > &statuses
       int32 dst_num_cols = matrix.NumCols();
 
       if (batch_first[i]) {
-        CuSubMatrix<BaseFloat> dst = matrix.RowRange(
-            channel * dst_num_rows, dst_num_rows);
+        CuSubMatrix<BaseFloat> dst = matrix.RowRange(stream * dst_num_rows, 
+                                                     dst_num_rows);
         if (dst_num_rows == src_num_rows && dst_num_cols == src_num_cols) { 
           // For normal case
           dst.CopyFromMat(src);
         }
         else if (dst_num_rows < src_num_rows && dst_num_cols == src_num_cols) { 
           // For copy inputs from first chunk to second chunk
-          CuSubMatrix<BaseFloat> sub_src = src.RowRange(
-              src_num_rows - dst_num_rows, dst_num_rows);
+          CuSubMatrix<BaseFloat> sub_src = src.RowRange(src_num_rows - dst_num_rows, 
+                                                        dst_num_rows);
           dst.CopyFromMat(sub_src);
         }
         else if (dst_num_rows < src_num_rows && dst_num_cols % src_num_cols == 0) {
@@ -827,19 +824,19 @@ void NnetComputer::SetStatuses(const std::vector< NnetComputeStatus* > &statuses
           int32 multiple = dst_num_cols / src_num_cols;
           int32 offset = src_num_rows - dst_num_rows - (multiple - 1);
           if (offset < 0)
-            KALDI_ERR << "Some channel status is't compatible with "
+            KALDI_ERR << "Some stream's state is't compatible with "
                       << "NnetComputer's matrices!";
           
           for (int32 j = 0; j < multiple; j++) {
-            CuSubMatrix<BaseFloat> sub_dst = dst.ColRange(
-                j * src_num_cols, src_num_cols);
-            CuSubMatrix<BaseFloat> sub_src = src.RowRange(
-                offset+j, dst_num_rows);
+            CuSubMatrix<BaseFloat> sub_dst = dst.ColRange(j * src_num_cols, 
+                                                          src_num_cols);
+            CuSubMatrix<BaseFloat> sub_src = src.RowRange(offset + j, 
+                                                          dst_num_rows);
             sub_dst.CopyFromMat(sub_src); 
           }
         }
         else {
-          KALDI_ERR << "Some channel status is't compatible with "
+          KALDI_ERR << "Some stream's state is't compatible with "
                     << "NnetComputer's matrices!";
         }
       }
@@ -847,7 +844,7 @@ void NnetComputer::SetStatuses(const std::vector< NnetComputeStatus* > &statuses
         if (dst_num_rows == src_num_rows && dst_num_cols == src_num_cols) {
           // For normal case
           for (int32 j = 0; j < dst_num_rows; j++) {
-            CuSubVector<BaseFloat> dst_row = matrix.Row(j * batch_size + channel);
+            CuSubVector<BaseFloat> dst_row = matrix.Row(j * batch_size + stream);
             CuSubVector<BaseFloat> src_row = src.Row(j);
             dst_row.CopyFromVec(src_row);
           }
@@ -855,9 +852,8 @@ void NnetComputer::SetStatuses(const std::vector< NnetComputeStatus* > &statuses
         else if (dst_num_rows < src_num_rows && dst_num_cols == src_num_cols) {
           // For copy inputs from first chunk to second chunk
           for (int32 j = 0; j < dst_num_rows; j++) {
-            CuSubVector<BaseFloat> dst_row = matrix.Row(j * batch_size + channel);
-            CuSubVector<BaseFloat> src_row = src.Row(
-                src_num_rows - dst_num_rows + j);
+            CuSubVector<BaseFloat> dst_row = matrix.Row(j * batch_size + stream);
+            CuSubVector<BaseFloat> src_row = src.Row(src_num_rows - dst_num_rows + j);
             dst_row.CopyFromVec(src_row);
           }
         }
@@ -866,24 +862,24 @@ void NnetComputer::SetStatuses(const std::vector< NnetComputeStatus* > &statuses
           int32 multiple = dst_num_cols / src_num_cols;
           int32 offset = src_num_rows - dst_num_rows - (multiple - 1);
           if (offset < 0)
-            KALDI_ERR << "Some channel status is't compatible with "
+            KALDI_ERR << "Some stream's state is't compatible with "
                       << "NnetComputer's matrices!";
 
           for (int32 j = 0; j < dst_num_rows; j++) {
-            CuSubVector<BaseFloat> dst_row = matrix.Row(j * batch_size + channel);
+            CuSubVector<BaseFloat> dst_row = matrix.Row(j * batch_size + stream);
             CuSubMatrix<BaseFloat> sub_src = src.RowRange(offset + j, multiple);
             dst_row.CopyRowsFromMat(sub_src);
           }
         }
         else {
-          KALDI_ERR << "Some channel status is't compatible with "
+          KALDI_ERR << "Some stream's state is't compatible with "
                     << "NnetComputer's matrices!";
         }
       }
     }
   }
 
-  return ;
+  return;
 }
 
 
@@ -897,7 +893,7 @@ void NnetComputer::Print(std::ostream &os) {
   }
   os << "\n";
 
-  return ;
+  return;
 }
 
 } // namespace nnet3

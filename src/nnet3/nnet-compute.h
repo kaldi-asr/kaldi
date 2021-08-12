@@ -47,7 +47,7 @@ struct NnetComputeOptions {
 
 };
 
-struct NnetComputeStatus {
+struct NnetComputeState {
   std::vector< CuMatrix<BaseFloat> > matrices;
 };
 
@@ -127,24 +127,23 @@ class NnetComputer {
   void GetOutputDestructive(const std::string &output_name,
                             CuMatrix<BaseFloat> *output);
 
-  // Get the matrices where store the status for next computation
+  // Get the matrices where store the state for next computation
   inline const std::vector< CuMatrix<BaseFloat> > &GetMatrices() const { 
     return matrices_; }
 
-  // Get every channel status, and batch_first will tell us 
-  // the matrix in NnetComputer is batch first or time first.
-  void GetStatuses(std::vector< NnetComputeStatus* > &statuses, 
-      const std::vector<bool> &batch_first,
-      const int32 batch_size);
+  // Get state of streams. The parameter named "batch_first" indicates whether 
+  // the matrices saved state is batch first or not.
+  void GetState(const std::vector<bool> &batch_first,
+                const int32 batch_size,
+                std::vector< NnetComputeState* > *statuses);
   
-  // Set channels status, and batch_first will tell us
-  // the matrix in NnetComputer is batch first or time first.
-  void SetStatuses(const std::vector< NnetComputeStatus* > &statuses,
-      const std::vector<bool> &batch_first,
-      const int32 batch_size);
+  // Set state of streams, The parameter named "batch_first" indicates whether 
+  // the matrices saved state is batch first or not.
+  void SetState(const std::vector<bool> &batch_first,
+                const int32 batch_size,
+                const std::vector< NnetComputeState* > &state);
 
-  // compare with other NnetComputer, return true if the data is
-  // equal to other's data.
+  // Return true if all the members are equal to other's.
   bool Equal(const NnetComputer &other);
 
   void Print(std::ostream &os);

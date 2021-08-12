@@ -79,8 +79,8 @@ void DecodableNnetBatchLoopedInfo::Init(
   num_ivector_frames = 0;
   computation.resize(opts.max_batch_size+1);
   for (int32 num_sequences = 1; 
-      num_sequences <= opts.max_batch_size; 
-      num_sequences++) {
+       num_sequences <= opts.max_batch_size; 
+       num_sequences++) {
     CreateLoopedComputationRequest(*nnet, frames_per_chunk,
                                    opts.frame_subsampling_factor,
                                    ivector_period,
@@ -109,20 +109,19 @@ NnetBatchLoopedComputer::NnetBatchLoopedComputer(
     const DecodableNnetBatchLoopedInfo &info):
     info_(info), is_working_(false) {
   computer_.resize(info_.opts.max_batch_size+1, NULL);
-  for (int32 batch_size = 1; batch_size <= info_.opts.max_batch_size; batch_size++) {
-    computer_[batch_size] = new NnetComputer(
-        info_.opts.compute_config, info_.computation[batch_size], info_.nnet, NULL);
-    KALDI_ASSERT(computer_[batch_size] != NULL 
-        && "Create object of NnetComputer failed!");
+  int32 batch_size;
+  for (batch_size = 1; batch_size <= info_.opts.max_batch_size; batch_size++) {
+    computer_[batch_size] = new NnetComputer(info_.opts.compute_config, 
+                                             info_.computation[batch_size], 
+                                             info_.nnet, 
+                                             NULL);
+    KALDI_ASSERT(computer_[batch_size] != NULL && 
+                 "Create object of NnetComputer failed!");
 
     std::vector<bool> batch_first;
-    AdvanceChunkUntilStable(batch_size, batch_first);
-    if (batch_first_.size() == 0) {
-      batch_first_ = batch_first;
-    }
-    else {
-      KALDI_ASSERT(batch_first_ == batch_first);
-    }
+    AdvanceChunkUntilStable(batch_size, &batch_first);
+    if (batch_first_.size() == 0) batch_first_ = batch_first;
+    else KALDI_ASSERT(batch_first_ == batch_first);
   }
 
   KALDI_ASSERT(batch_first_.size() > 0);
@@ -143,19 +142,20 @@ NnetBatchLoopedComputer::~NnetBatchLoopedComputer() {
   }
 }
 
-void NnetBatchLoopedComputer::AdvanceChunkUntilStable(int32 batch_size, 
-                                                      std::vector<bool> &batch_first) {
+void NnetBatchLoopedComputer::AdvanceChunkUntilStable(
+    int32 batch_size, 
+    std::vector<bool> *batch_first) {
   KALDI_ASSERT(batch_size > 0 && batch_size < computer_.size());
   int32 input_dim = info_.nnet.InputDim("input");
   int32 ivector_dim = info_.has_ivectors ? info_.nnet.InputDim("ivector") : 0;
   NnetComputer &computer = *(computer_[batch_size]);
-  batch_first.clear();
+  batch_first->clear();
 
   Timer timer;
   for(int32 num_chunks = 0; ; num_chunks++) {
     if (num_chunks > 8)
-      KALDI_ERR << "Has try too many chunks for batch-size=" << batch_size 
-        << ", maybe there is something wrong!";
+      KALDI_ERR << "Try too many chunks for batch-size=" << batch_size 
+                << ", maybe there is something wrong!";
 
     NnetComputer temp(computer);
 
@@ -170,29 +170,32 @@ void NnetBatchLoopedComputer::AdvanceChunkUntilStable(int32 batch_size,
     CuMatrix<BaseFloat> feats_base(num_input_frames, input_dim, kUndefined);
     feats_base.SetRandn();
 
-    CuMatrix<BaseFloat> feats_chunk(batch_size * num_input_frames, input_dim, kUndefined);
+    CuMatrix<BaseFloat> feats_chunk(batch_size * num_input_frames, 
+                                    input_dim, 
+                                    kUndefined);
     for (int32 i = 0; i < batch_size; i++) {
-      CuSubMatrix<BaseFloat> sub = feats_chunk.RowRange(
-          i * num_input_frames, num_input_frames);
+      CuSubMatrix<BaseFloat> sub = feats_chunk.RowRange(i * num_input_frames, 
+                                                        num_input_frames);
       sub.CopyFromMat(feats_base);
     }
 
     computer.AcceptInput("input", &feats_chunk);
 
     if (info_.has_ivectors) {
-      int32 num_ivectors = (num_chunks == 0 ?
-          info_.num_chunk1_ivector_frames :
-          info_.num_ivector_frames);
+      int32 num_ivectors = num_chunks == 0 ?
+                           info_.num_chunk1_ivector_frames :
+                           info_.num_ivector_frames;
       KALDI_ASSERT(num_ivectors > 0);
 
       CuMatrix<BaseFloat> ivectors_base(num_ivectors, ivector_dim, kUndefined);
       ivectors_base.SetRandn();
 
-      CuMatrix<BaseFloat> ivectors_chunk(
-          batch_size * num_ivectors, ivector_dim, kUndefined);
+      CuMatrix<BaseFloat> ivectors_chunk(batch_size * num_ivectors, 
+                                         ivector_dim, 
+                                         kUndefined);
       for (int32 i = 0; i < batch_size; i++) {
-        CuSubMatrix<BaseFloat> sub = ivectors_chunk.RowRange(
-            i * num_ivectors, num_ivectors);
+        CuSubMatrix<BaseFloat> sub = ivectors_chunk.RowRange(i * num_ivectors, 
+                                                             num_ivectors);
         sub.CopyFromMat(ivectors_base);
       }
       computer.AcceptInput("ivector", &ivectors_chunk);
@@ -212,21 +215,22 @@ void NnetBatchLoopedComputer::AdvanceChunkUntilStable(int32 batch_size,
           if (matrix.NumRows() > 0 && matrix.NumCols() > 0) {
             CuSubMatrix<BaseFloat> channel1 = matrix.RowRange(0, channel_num_rows);
             CuSubMatrix<BaseFloat> channel2 = matrix.RowRange(
-                channel_num_rows * (batch_size - 1), channel_num_rows);
-            batch_first.push_back(channel1.ApproxEqual(channel2) ? true : false);
+                channel_num_rows * (batch_size - 1), 
+                channel_num_rows);
+            batch_first->push_back(channel1.ApproxEqual(channel2) ? true : false);
           }
         }
       }
 
       double elapsed = timer.Elapsed();
       KALDI_WARN << "After try " << (num_chunks+1) 
-        << " chunks, the NnetComputer for batch-size=" << batch_size
-        << " becomes stable, it taken " << elapsed << "s.";
+                 << " chunks, the NnetComputer for batch-size=" << batch_size
+                 << " becomes stable, it taken " << elapsed << "s.";
       break;
     }
   }
 
-  return ;
+  return;
 }
 
 void NnetBatchLoopedComputer::Enqueue(NnetComputeRequest *request) {
@@ -239,7 +243,7 @@ void NnetBatchLoopedComputer::Enqueue(NnetComputeRequest *request) {
   if (queue.size() >= info_.opts.max_batch_size)
     condition_variable_.notify_one();
 
-  return ;
+  return;
 }
 
 bool NnetBatchLoopedComputer::Continue() {
@@ -261,16 +265,8 @@ void NnetBatchLoopedComputer::Compute() {
     if (queue_.size() < max_batch_size && chunk1_queue_.size() < max_batch_size) {
       TimePoint now = std::chrono::system_clock::now();
       TimePoint target = now;
-      /*
-      if (!chunk1_queue_.empty() && chunk1_queue_.front().second < target)
-        target = chunk1_queue_.front().second;
-      if (!queue_.empty() && queue_.front().second < target)
-        target = queue_.front().second;
-      */
       target += std::chrono::microseconds(info_.opts.compute_interval);
-      if (target > now) {
-        condition_variable_.wait_until(lck, target);
-      }
+      if (target > now) condition_variable_.wait_until(lck, target);
     }
 
     while (!queue_.empty()) {
@@ -289,7 +285,7 @@ void NnetBatchLoopedComputer::Compute() {
   if (batch_requests.size() > 0) AdvanceChunk(batch_requests);
   if (chunk1_batch_requests.size() > 0) AdvanceChunk(chunk1_batch_requests);
     
-  return ;
+  return;
 }
 
 void *NnetBatchLoopedComputer::ThreadFunction(void *para) {
@@ -306,24 +302,22 @@ void *NnetBatchLoopedComputer::ThreadFunction(void *para) {
 void NnetBatchLoopedComputer::Start() {
   is_working_ = true;
   work_thread_ = std::thread(ThreadFunction, this);
-  return ;
+  return;
 }
 
 void NnetBatchLoopedComputer::Stop() {
   is_working_ = false;
-  
-  if (work_thread_.joinable()) 
-    work_thread_.join();
-  
-  return ;
+  if (work_thread_.joinable()) work_thread_.join();
+  return;
 }
 
 void NnetBatchLoopedComputer::AdvanceChunk(
     const std::vector<NnetComputeRequest*> &requests) {
-  KALDI_ASSERT(requests.size() > 0 && requests.size() <= info_.opts.max_batch_size);
+  KALDI_ASSERT(requests.size() > 0 && 
+               requests.size() <= info_.opts.max_batch_size);
   int32 batch_size = requests.size();
 
-  std::vector<NnetComputeStatus *> statuses;
+  std::vector<NnetComputeState *> state;
   int32 num_inputs = requests[0]->inputs.NumRows();
   int32 num_ivectors = requests[0]->ivectors.NumRows();
   int32 dim_inputs = requests[0]->inputs.NumCols();
@@ -331,23 +325,28 @@ void NnetBatchLoopedComputer::AdvanceChunk(
   bool  first_chunk = requests[0]->first_chunk;
   
   NnetComputer chunk1_computer(info_.opts.compute_config, 
-      info_.computation[batch_size], info_.nnet, NULL);
-  NnetComputer &computer = first_chunk ? chunk1_computer : *(computer_[batch_size]);
+                               info_.computation[batch_size], 
+                               info_.nnet, 
+                               NULL);
+  NnetComputer &computer = first_chunk ? 
+                           chunk1_computer : 
+                           *(computer_[batch_size]);
   
   for (std::size_t i = 0; i < requests.size(); i++) {
-    if (!requests[i]->first_chunk)
-      statuses.push_back(&(requests[i]->status));
-
+    if (!requests[i]->first_chunk) state.push_back(&(requests[i]->state));
     KALDI_ASSERT(requests[i]->first_chunk == first_chunk);
     KALDI_ASSERT(requests[i]->inputs.NumRows() == num_inputs);
     KALDI_ASSERT(requests[i]->ivectors.NumRows() == num_ivectors);
   }
 
-  if (!first_chunk) computer.SetStatuses(statuses, batch_first_, batch_size);
+  if (!first_chunk) computer.SetState(batch_first_, batch_size, state);
 
-  CuMatrix<BaseFloat> feats_chunk(batch_size * num_inputs, dim_inputs, kUndefined);
+  CuMatrix<BaseFloat> feats_chunk(batch_size * num_inputs, 
+                                  dim_inputs, 
+                                  kUndefined);
   for (std::size_t i = 0; i < requests.size(); i++) {
-    CuSubMatrix<BaseFloat> feats = feats_chunk.RowRange(i * num_inputs, num_inputs);
+    CuSubMatrix<BaseFloat> feats = feats_chunk.RowRange(i * num_inputs, 
+                                                        num_inputs);
     feats.CopyFromMat(requests[i]->inputs);
   }
   
@@ -355,15 +354,15 @@ void NnetBatchLoopedComputer::AdvanceChunk(
 
   if (info_.has_ivectors) {
     int32 num_ivectors_request = first_chunk ? 
-      info_.num_chunk1_ivector_frames : 
-      info_.num_ivector_frames;
+                                 info_.num_chunk1_ivector_frames : 
+                                 info_.num_ivector_frames;
     KALDI_ASSERT(num_ivectors == num_ivectors_request);
     CuMatrix<BaseFloat> ivectors_chunk(batch_size * num_ivectors, 
                                        dim_ivectors, 
                                        kUndefined);
     for (std::size_t i = 0; i < requests.size(); i++) {
-      CuSubMatrix<BaseFloat> ivectors = ivectors_chunk.RowRange(
-          i * num_ivectors, num_ivectors);
+      CuSubMatrix<BaseFloat> ivectors = ivectors_chunk.RowRange(i * num_ivectors, 
+                                                                num_ivectors);
       ivectors.CopyFromMat(requests[i]->ivectors);
     }
 
@@ -383,23 +382,23 @@ void NnetBatchLoopedComputer::AdvanceChunk(
 
     outputs_chunk.Scale(info_.opts.acoustic_scale);
 
-    // Get statuses, it must be execute after GetOutputDestructive,
+    // Get state from computer, it must be execute after GetOutputDestructive,
     // and before notify the notifiable.
-    std::vector<NnetComputeStatus *> out_statuses;
+    std::vector<NnetComputeState *> out_state;
     for (std::size_t i = 0; i < requests.size(); i++) {
-      out_statuses.push_back(&(requests[i]->status));
+      out_state.push_back(&(requests[i]->state));
     }
-    computer.GetStatuses(out_statuses, batch_first_, batch_size);
+    computer.GetState(batch_first_, batch_size, &out_state);
 
     int32 num_outputs = outputs_chunk.NumRows() / batch_size;
     for (std::size_t i = 0; i < requests.size(); i++) {
-      CuSubMatrix<BaseFloat> outputs = outputs_chunk.RowRange(
-          i * num_outputs, num_outputs);
+      CuSubMatrix<BaseFloat> outputs = outputs_chunk.RowRange(i * num_outputs, 
+                                                              num_outputs);
       requests[i]->notifiable->Receive(outputs);
     }
   }
    
-  return ;
+  return;
 }
 
 
@@ -422,8 +421,9 @@ DecodableNnetBatchLoopedOnline::DecodableNnetBatchLoopedOnline(
   int32 nnet_input_dim = info_.nnet.InputDim("input"),
       nnet_ivector_dim = info_.nnet.InputDim("ivector"),
         feat_input_dim = input_features_->Dim(),
-      feat_ivector_dim = (ivector_features_ != NULL ?
-                          ivector_features_->Dim() : -1);
+      feat_ivector_dim = ivector_features_ != NULL ?
+                         ivector_features_->Dim() : 
+                         -1;
 
   if (nnet_input_dim != feat_input_dim) {
     KALDI_ERR << "Input feature dimension mismatch: got " << feat_input_dim
@@ -503,7 +503,7 @@ void DecodableNnetBatchLoopedOnline::AdvanceChunk() {
     // you can verify this directly if num_chunks_computed_ == 0, and then by
     // induction.
     begin_input_frame = num_chunks_computed_ * info_.frames_per_chunk +
-        info_.frames_right_context;
+                        info_.frames_right_context;
     end_input_frame = begin_input_frame + info_.frames_per_chunk;
   }
 
@@ -543,9 +543,9 @@ void DecodableNnetBatchLoopedOnline::AdvanceChunk() {
     KALDI_ASSERT(ivector_features_ != NULL);
     // all but the 1st chunk should have 1 iVector, but there is no need to
     // assume this.
-    int32 num_ivectors = (num_chunks_computed_ == 0 ?
-			  info_.num_chunk1_ivector_frames :
-			  info_.num_ivector_frames);
+    int32 num_ivectors = num_chunks_computed_ == 0 ?
+			                   info_.num_chunk1_ivector_frames :
+			                   info_.num_ivector_frames;
     KALDI_ASSERT(num_ivectors > 0);
 
     Vector<BaseFloat> ivector(ivector_features_->Dim());
@@ -555,8 +555,8 @@ void DecodableNnetBatchLoopedOnline::AdvanceChunk() {
     // for their 'correct' frames, because in general using the
     // iVector from as large 't' as possible will be better.
 
-    int32 most_recent_input_frame = num_feature_frames_ready - 1,
-      num_ivector_frames_ready = ivector_features_->NumFramesReady();
+    int32 most_recent_input_frame = num_feature_frames_ready - 1;
+    int32 num_ivector_frames_ready = ivector_features_->NumFramesReady();
 
     if (num_ivector_frames_ready > 0) {
       int32 ivector_frame_to_use = std::min<int32>(
@@ -577,7 +577,7 @@ void DecodableNnetBatchLoopedOnline::AdvanceChunk() {
   request_.notifiable = this;
   if (num_chunks_computed_ == 0) {
     request_.first_chunk = true;
-    request_.status.matrices.clear();
+    request_.state.matrices.clear();
   }
   else {
     request_.first_chunk = false;
@@ -606,7 +606,8 @@ BaseFloat DecodableNnetBatchLoopedOnline::LogLikelihood(int32 subsampled_frame,
 }
 
 void DecodableNnetBatchLoopedOnline::GetOutputForFrame(
-    int32 subsampled_frame, VectorBase<BaseFloat> *output) {
+    int32 subsampled_frame, 
+    VectorBase<BaseFloat> *output) {
   EnsureFrameIsComputed(subsampled_frame);
   output->CopyFromVec(current_log_post_.Row(
         subsampled_frame - current_log_post_subsampled_offset_));

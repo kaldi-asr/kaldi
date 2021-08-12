@@ -116,17 +116,17 @@ class DecodableNnetBatchLoopedInfo  {
   // The constructor takes a non-const pointer to 'nnet' because it may have to
   // modify it to be able to take multiple iVectors.
   DecodableNnetBatchLoopedInfo(const NnetBatchLoopedComputationOptions &opts,
-                                Nnet *nnet);
+                               Nnet *nnet);
 
   // This constructor takes the priors from class AmNnetSimple (so it can divide by
   // them).
   DecodableNnetBatchLoopedInfo(const NnetBatchLoopedComputationOptions &opts,
-                                AmNnetSimple *nnet);
+                               AmNnetSimple *nnet);
 
   // this constructor is for use in testing.
   DecodableNnetBatchLoopedInfo(const NnetBatchLoopedComputationOptions &opts,
-                                const Vector<BaseFloat> &priors,
-                                Nnet *nnet);
+                               const Vector<BaseFloat> &priors,
+                               Nnet *nnet);
 
   void Init(const NnetBatchLoopedComputationOptions &opts,
             Nnet *nnet);
@@ -177,7 +177,7 @@ public:
 struct NnetComputeRequest {
   Matrix<BaseFloat> inputs;                    // features
   Matrix<BaseFloat> ivectors;                  // ivectors if has ivector
-  NnetComputeStatus status;                    // status of computation
+  NnetComputeState state;                      // state of stream for computation
   NotifiableNnetBatchLooped *notifiable;       // notifiable which to push output
   bool first_chunk;                            // first chunk or not
 };
@@ -191,7 +191,7 @@ struct NnetComputeRequest {
   from the queue and runs inference in batch. After that, the thread 
   for computation wakes up the decoding threads to continue, with 
   inference results.
-  The input will be handled sequently chunk by chunk for any stream.
+  The input is handled sequently chunk by chunk for any stream.
   It batches multiple chunks which are from different streams every
   time, and the streams in batch may change every time. So it doesn't 
   matter if some streams have more input than other.
@@ -223,18 +223,18 @@ private:
 
   // Advance fake chunks until the NnetComputer becomes stable.
   // The NnetComputer is unstable for the first few chunks, which 
-  // means the status of NnetComputer will be changed chunk by chunk,
+  // means the state of NnetComputer will be changed chunk by chunk,
   // e.g. the matrix represents cell of LSTM, the matrix represents
   // buffers for TDNN.
   // When the NnetComputer becomes stable, which means all of the members
-  // of NnetComputer become constant, we can get and set the status for 
+  // of NnetComputer become constant, we can get and set the state for 
   // any sequence in batch correctly.
-  void AdvanceChunkUntilStable(int32 batch_size, std::vector<bool> &batch_first); 
+  void AdvanceChunkUntilStable(int32 batch_size, std::vector<bool> *batch_first); 
   
   // Advance one chunk in bacth
   // The sequence represented by any request in batch may be different with last 
-  // chunk, so we should set status for requests before inferene, and get 
-  // status for requests after inference.
+  // chunk, so we should set state for requests before inferene, and get 
+  // state for requests after inference.
   void AdvanceChunk(const std::vector<NnetComputeRequest*> &requests);
 
   void Compute();
@@ -242,7 +242,7 @@ private:
   bool Continue();
   
 private:
-  const DecodableNnetBatchLoopedInfo  &info_;
+  const DecodableNnetBatchLoopedInfo &info_;
 
   std::vector<NnetComputer*> computer_;
 
@@ -262,10 +262,10 @@ private:
   std::mutex mtx_;
   std::condition_variable condition_variable_;
 
-  // Thread which achieves computation
+  // The thread for computation
   std::thread work_thread_;
 
-  // Vector contains batch first or not of matrices in computer_
+  // The vector indicates the matrices stored state are batch first or not.
   std::vector<bool> batch_first_;
 };
 
@@ -276,11 +276,10 @@ public:
   // Constructor.  'input_feature' is for the feature that will be given
   // as 'input' to the neural network; 'ivector_feature' is for the iVectors
   // OnlineFeatureInterface *ivector_features);
-  DecodableNnetBatchLoopedOnline(
-      NnetBatchLoopedComputer *computer,
-      const TransitionModel &trans_model,
-      OnlineFeatureInterface *input_features,
-      OnlineFeatureInterface *ivector_features);
+  DecodableNnetBatchLoopedOnline(NnetBatchLoopedComputer *computer,
+                                 const TransitionModel &trans_model,
+                                 OnlineFeatureInterface *input_features,
+                                 OnlineFeatureInterface *ivector_features);
 
   virtual BaseFloat LogLikelihood(int32 subsampled_frame, int32 index);
 
@@ -314,7 +313,7 @@ private:
 
   inline void EnsureFrameIsComputed(int32 subsampled_frame) {
     KALDI_ASSERT(subsampled_frame >= current_log_post_subsampled_offset_ &&
-        "Frames must be accessed in order.");
+                 "Frames must be accessed in order.");
     while (subsampled_frame >= current_log_post_subsampled_offset_ +
            current_log_post_.NumRows())
       AdvanceChunk();
