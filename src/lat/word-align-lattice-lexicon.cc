@@ -71,7 +71,7 @@ class LatticeLexiconWordAligner {
     /// previously did PhoneAlignLattice, we can assume this arc corresponds to
     /// exactly one or zero phones.
     void Advance(const CompactLatticeArc &arc,
-                 const TransitionModel &tmodel,
+                 const TransitionInformation &tmodel,
                  LatticeWeight *leftover_weight);
 
     /// Returns true if, assuming we were to add one or more phones by calling
@@ -283,7 +283,7 @@ class LatticeLexiconWordAligner {
   }
 
   LatticeLexiconWordAligner(const CompactLattice &lat,
-                            const TransitionModel &tmodel,
+                            const TransitionInformation &tmodel,
                             const WordAlignLatticeLexiconInfo &lexicon_info,
                             int32 max_states,
                             int32 partial_word_label,
@@ -343,7 +343,7 @@ class LatticeLexiconWordAligner {
   }
 
   CompactLattice lat_in_;
-  const TransitionModel &tmodel_;
+  const TransitionInformation &tmodel_;
   const WordAlignLatticeLexiconInfo &lexicon_info_;
   int32 max_states_;
   CompactLattice *lat_out_;
@@ -571,7 +571,7 @@ void LatticeLexiconWordAligner::ProcessFinalForceOut() {
 }
 
 void LatticeLexiconWordAligner::ComputationState::Advance(
-    const CompactLatticeArc &arc, const TransitionModel &tmodel, LatticeWeight *weight) {
+    const CompactLatticeArc &arc, const TransitionInformation &tmodel, LatticeWeight *weight) {
   const std::vector<int32> &tids = arc.weight.String();
   int32 phone;
   if (tids.empty()) phone = 0;
@@ -999,7 +999,7 @@ static bool TestWordAlignedLattice(const WordAlignLatticeLexiconInfo &lexicon_in
 
 // This is the wrapper function for users to call.
 bool WordAlignLatticeLexicon(const CompactLattice &lat,
-                             const TransitionModel &tmodel,
+                             const TransitionInformation &tmodel,
                              const WordAlignLatticeLexiconInfo &lexicon_info,
                              const WordAlignLatticeLexiconOpts &opts,
                              CompactLattice *lat_out) {
@@ -1038,8 +1038,18 @@ bool WordAlignLatticeLexicon(const CompactLattice &lat,
   // We'll let the calling code warn if this is false; it will know the utterance-id.
   ans = aligner.AlignLattice() && ans;
   if (ans && opts.test) { // We only test if it succeeded.
-    if (!TestWordAlignedLattice(lexicon_info, tmodel, lat, *lat_out,
-                                opts.allow_duplicate_paths)) {
+    const TransitionModel* transition_model;
+    if ((transition_model = dynamic_cast<const TransitionModel*>(&tmodel)) == nullptr) {
+        KALDI_WARN << "Lattice test via TestWordAlignedLattice does not support "
+                   << "non-TransitionModel TransitionInformation instances. No "
+                   << "testing will be done.";
+    }
+    // this function brings in Posterior and TransitionModel from
+    // "hmm/transition-model.h" and "hmm/hmm-utils.h". It would be
+    // nice to be able to fully remove those dependencies from this
+    // function, given that it is only for sanity checking.
+    else if (!TestWordAlignedLattice(lexicon_info, *transition_model, lat, *lat_out,
+                                     opts.allow_duplicate_paths)) {
       KALDI_WARN << "Lattice failed test (activated because --test=true). "
                  << "Probable code error, please contact Kaldi maintainers.";
       ans = false;

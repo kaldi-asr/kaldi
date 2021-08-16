@@ -27,6 +27,7 @@
 #include "hmm/hmm-topology.h"
 #include "itf/options-itf.h"
 #include "itf/context-dep-itf.h"
+#include "itf/transition-information.h"
 #include "matrix/kaldi-vector.h"
 
 namespace kaldi {
@@ -120,7 +121,7 @@ struct MapTransitionUpdateConfig {
   }
 };
 
-class TransitionModel {
+class TransitionModel: public TransitionInformation {
 
  public:
   /// Initialize the object [e.g. at the start of training].

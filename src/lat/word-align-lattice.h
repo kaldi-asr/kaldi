@@ -25,7 +25,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "fstext/fstext-lib.h"
-#include "hmm/transition-model.h"
+#include "itf/transition-information.h"
 #include "lat/kaldi-lattice.h"
 
 namespace kaldi {
@@ -189,7 +189,7 @@ struct WordBoundaryInfo {
 /// abort the computation, return false and produce an empty
 /// lattice out.
 bool WordAlignLattice(const CompactLattice &lat,
-                      const TransitionModel &tmodel,
+                      const TransitionInformation &tmodel,
                       const WordBoundaryInfo &info,
                       int32 max_states,
                       CompactLattice *lat_out);
@@ -203,7 +203,7 @@ bool WordAlignLattice(const CompactLattice &lat,
 ///   partial-word arcs, with the partial-word label.
 ///   silence arcs, with the silence label.
 void TestWordAlignedLattice(const CompactLattice &lat,
-                            const TransitionModel &tmodel,
+                            const TransitionInformation &tmodel,
                             const WordBoundaryInfo &info,
                             const CompactLattice &aligned_lat);
 
