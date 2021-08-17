@@ -760,8 +760,8 @@ void NnetComputer::GetState(const std::vector<bool> &batch_first,
       }
       else {
         CuSubMatrix<BaseFloat> src(matrix.RowData(stream),
-                                   dst_num_rows, 
-                                   dst_num_cols, 
+                                   src_num_rows, 
+                                   src_num_cols, 
                                    matrix.Stride() * batch_size);
         dst.CopyFromMat(src);
       }
