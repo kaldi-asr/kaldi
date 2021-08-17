@@ -213,11 +213,26 @@ void NnetBatchLoopedComputer::AdvanceChunkUntilStable(
           KALDI_ASSERT(matrix.NumRows() % batch_size == 0);
           int32 channel_num_rows = matrix.NumRows() / batch_size;
           if (matrix.NumRows() > 0 && matrix.NumCols() > 0) {
-            CuSubMatrix<BaseFloat> channel1 = matrix.RowRange(0, channel_num_rows);
-            CuSubMatrix<BaseFloat> channel2 = matrix.RowRange(
-                channel_num_rows * (batch_size - 1), 
-                channel_num_rows);
-            batch_first->push_back(channel1.ApproxEqual(channel2) ? true : false);
+            CuSubMatrix<BaseFloat> submatrix1 = matrix.RowRange(0, stream_num_rows);
+            CuSubMatrix<BaseFloat> submatrix2 = matrix.RowRange(
+                stream_num_rows * (batch_size - 1), 
+                stream_num_rows);
+            CuSubMatrix<BaseFloat> submatrix3(matrix.RowData(0), 
+                                              stream_num_rows,
+                                              matrix.NumCols(),
+                                              matrix.Stride() * batch_size); 
+            CuSubMatrix<BaseFloat> submatrix4(matrix.RowData(batch_size - 1),
+                                              stream_num_rows,
+                                              matrix.NumCols(),
+                                              matrix.Stride() * batch_size);
+
+            if (submatrix1.ApproxEqual(submatrix2))
+              batch_first->push_back(true);
+            else if (submatrix3.ApproxEqual(submatrix4))
+              batch_first->push_back(false);
+            else
+              KALDI_ERR << "One of matrix which storing state for multiple "
+                        << "streams is neither batch first nor time first.";
           }
         }
       }
