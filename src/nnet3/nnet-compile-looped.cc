@@ -40,7 +40,7 @@ void ModifyNnetIvectorPeriod(int32 ivector_period,
       // What we're trying to do here is: find a line like:
       //  component-node name=foo component=foo input=Append(bar, ReplaceIndex(ivector, t, 0))
       // we want to replace it with something like:
-      // component-node name=foo component=foo input=Append(bar, ReplaceIndex(ivector, t, 0))
+      // component-node name=foo component=foo input=Append(bar, Round(ivector, ivector_period))
       // .. and we want this to also work if instead of 'ivector' it has something like
       // Scale(0.5, ivector).  We assume that ReplaceIndex() expressions only occur in this
       // type of context.
