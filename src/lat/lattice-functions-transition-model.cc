@@ -23,6 +23,7 @@
 // limitations under the License.
 
 #include "lat/lattice-functions-transition-model.h"
+#include "lat/lattice-functions.h"
 #include "hmm/transition-model.h"
 #include "hmm/hmm-utils.h"
 

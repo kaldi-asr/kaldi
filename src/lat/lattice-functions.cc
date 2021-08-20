@@ -25,8 +25,6 @@
 
 #include "base/kaldi-math.h"
 #include "lat/lattice-functions.h"
-// TODO: Can I remove this?
-// #include "util/stl-utils.h"
 
 namespace kaldi {
 using std::map;
@@ -1884,7 +1882,3 @@ void ReplaceAcousticScoresFromMap(
 }
 
 }  // namespace kaldi
-
-#ifndef KALDI_MINIMAL_LATTICE_FUNCTIONS
-#include "lattice-functions-transition-model.cc"
-#endif // KALDI_MINIMAL_LATTICE_FUNCTIONS
