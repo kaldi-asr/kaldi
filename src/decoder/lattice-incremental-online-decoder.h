@@ -62,7 +62,7 @@ class LatticeIncrementalOnlineDecoderTpl:
   // This version of the constructor does not take ownership of
   // 'fst'.
   LatticeIncrementalOnlineDecoderTpl(const FST &fst,
-    const TransitionModel &trans_model,
+    const TransitionInformation &trans_model,
                                 const LatticeIncrementalDecoderConfig &config):
       LatticeIncrementalDecoderTpl<FST, Token>(fst, trans_model, config) { }
 
@@ -70,7 +70,7 @@ class LatticeIncrementalOnlineDecoderTpl:
   // it when this object is destroyed.
   LatticeIncrementalOnlineDecoderTpl(const LatticeIncrementalDecoderConfig &config,
                                 FST *fst,
-    const TransitionModel &trans_model):
+    const TransitionInformation &trans_model):
       LatticeIncrementalDecoderTpl<FST, Token>(config, fst, trans_model) { }
 
 

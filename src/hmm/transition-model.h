@@ -161,6 +161,7 @@ class TransitionModel: public TransitionInformation {
   // TransitionIdToPdfFast is as TransitionIdToPdf but skips an assertion
   // (unless we're in paranoid mode).
   inline int32 TransitionIdToPdfFast(int32 trans_id) const;
+  const std::vector<int32>& TransitionIdToPdfArray() const override;
 
   int32 TransitionIdToPhone(int32 trans_id) const;
   int32 TransitionIdToPdfClass(int32 trans_id) const;

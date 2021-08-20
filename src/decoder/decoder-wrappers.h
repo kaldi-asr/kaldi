@@ -94,7 +94,7 @@ template <typename FST>
 bool DecodeUtteranceLatticeIncremental(
     LatticeIncrementalDecoderTpl<FST> &decoder, // not const but is really an input.
     DecodableInterface &decodable, // not const but is really an input.
-    const TransitionModel &trans_model,
+    const TransitionInformation &trans_model,
     const fst::SymbolTable *word_syms,
     std::string utt,
     double acoustic_scale,
@@ -121,7 +121,7 @@ template <typename FST>
 bool DecodeUtteranceLatticeFaster(
     LatticeFasterDecoderTpl<FST> &decoder, // not const but is really an input.
     DecodableInterface &decodable, // not const but is really an input.
-    const TransitionModel &trans_model,
+    const TransitionInformation &trans_model,
     const fst::SymbolTable *word_syms,
     std::string utt,
     double acoustic_scale,
@@ -147,7 +147,7 @@ class DecodeUtteranceLatticeFasterClass {
   DecodeUtteranceLatticeFasterClass(
       LatticeFasterDecoder *decoder,
       DecodableInterface *decodable,
-      const TransitionModel &trans_model,
+      const TransitionInformation &trans_model,
       const fst::SymbolTable *word_syms,
       const std::string &utt,
       BaseFloat acoustic_scale,
@@ -168,7 +168,7 @@ class DecodeUtteranceLatticeFasterClass {
   // The following variables correspond to inputs:
   LatticeFasterDecoder *decoder_;
   DecodableInterface *decodable_;
-  const TransitionModel *trans_model_;
+  const TransitionInformation *trans_model_;
   const fst::SymbolTable *word_syms_;
   std::string utt_;
   BaseFloat acoustic_scale_;
@@ -201,7 +201,7 @@ class DecodeUtteranceLatticeFasterClass {
 bool DecodeUtteranceLatticeSimple(
     LatticeSimpleDecoder &decoder, // not const but is really an input.
     DecodableInterface &decodable, // not const but is really an input.
-    const TransitionModel &trans_model,
+    const TransitionInformation &trans_model,
     const fst::SymbolTable *word_syms,
     std::string utt,
     double acoustic_scale,

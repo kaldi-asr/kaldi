@@ -46,7 +46,11 @@ class TransitionInformation {
   virtual bool IsFinal(int32_t trans_id) const = 0;
   virtual bool IsSelfLoop(int32_t trans_id) const = 0;
   virtual int32_t TransitionIdToPdf(int32_t trans_id) const = 0;
+  // Ideally, this would return a std::span, but it doesn't because
+  // kaldi doesn't support C++20. Sorry.
+  virtual const std::vector<int32_t>& TransitionIdToPdfArray() const = 0;
   virtual int32_t NumTransitionIds() const = 0;
+  virtual int32 NumPdfs() const = 0;
   virtual int32_t TransitionIdToHmmState(int32_t trans_id) const = 0;
 };
 
