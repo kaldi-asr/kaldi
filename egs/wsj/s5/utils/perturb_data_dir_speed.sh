@@ -145,5 +145,5 @@ cat $srcdir/reco2dur | utils/apply_map.pl -f 1 $destdir/reco_map  | \
 
 rm $destdir/spk_map $destdir/utt_map $destdir/reco_map 2>/dev/null
 echo "$0: generated speed-perturbed version of data in $srcdir, in $destdir"
-
+utils/fix_data_dir.sh $destdir
 utils/validate_data_dir.sh --no-feats --no-text $destdir
