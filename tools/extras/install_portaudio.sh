@@ -39,12 +39,15 @@ WGET=${WGET:-wget}
 
 echo "****() Installing portaudio"
 
-if [ ! -e pa_stable_$VERSION.tgz ]; then
-    echo "Could not find portaudio tarball pa_stable_$VERSION.tgz"
+portaudio_tarball="pa_stable_${VERSION}.tgz"
+portaudio_git_tarball="pa_stable_${VERSION}_r1788.tar.gz"
+
+if [ ! -e $portaudio_tarball ]; then
+    echo "Could not find portaudio tarball $portaudio_tarball"
     echo "Trying to download it via wget!"
 
     if [ -d "$DOWNLOAD_DIR" ]; then
-        cp -p "$DOWNLOAD_DIR/pa_stable_$VERSION.tgz" .
+        cp -p "$DOWNLOAD_DIR/$portaudio_tarball" .
     else
         if ! $WGET --version >&/dev/null; then
             echo "This script requires you to first install wget"
@@ -52,17 +55,23 @@ if [ ! -e pa_stable_$VERSION.tgz ]; then
             echo "http://www.portaudio.com/download.html)"
             exit 1;
         fi
-        $WGET -T 10 -t 3 http://www.portaudio.com/archives/pa_stable_$VERSION.tgz
+        $WGET -T 10 -t 3 http://www.portaudio.com/archives/$portaudio_tarball
     fi
 
-    if [ ! -e pa_stable_$VERSION.tgz ]; then
-        echo "Download of pa_stable_$VERSION.tgz - failed!"
-        echo "Aborting script. Please download and install port audio manually!"
-        exit 1;
+    if [ ! -e $portaudio_tarball ]; then
+        echo "Download of $portaudio_tarball - failed!"
+        echo "Downloading from portaudio github repository..."
+
+        $WGET -T 10 -t 3 -O $portaudio_tarball https://github.com/PortAudio/portaudio/archive/refs/tags/${portaudio_git_tarball}
+        if [ ! -e ${portaudio_tarball} ]; then
+            echo "Download of ${portaudio_git_tarball} from github repository - failed!"
+            echo "Aborting script. Please download and install port audio manually!"
+            exit 1;
+        fi
     fi
 fi
 
-tar -xovzf pa_stable_$VERSION.tgz || exit 1
+mkdir portaudio && tar -xovzf $portaudio_tarball -C portaudio --strip-components 1 || exit 1
 
 read -d '' pa_patch << "EOF"
 --- portaudio/Makefile.in	2012-08-05 10:42:05.000000000 +0300
