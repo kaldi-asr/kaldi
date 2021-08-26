@@ -157,11 +157,11 @@ class TransitionModel: public TransitionInformation {
   int32 SelfLoopOf(int32 trans_state) const;  // returns the self-loop transition-id, or zero if
   // this state doesn't have a self-loop.
 
-  inline int32 TransitionIdToPdf(int32 trans_id) const final override;
+  inline int32 TransitionIdToPdf(int32 trans_id) const final;
   // TransitionIdToPdfFast is as TransitionIdToPdf but skips an assertion
   // (unless we're in paranoid mode).
   inline int32 TransitionIdToPdfFast(int32 trans_id) const;
-  const std::vector<int32>& TransitionIdToPdfArray() const final override;
+  const std::vector<int32>& TransitionIdToPdfArray() const final;
 
   int32 TransitionIdToPhone(int32 trans_id) const;
   int32 TransitionIdToPdfClass(int32 trans_id) const;
