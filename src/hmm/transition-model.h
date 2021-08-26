@@ -157,11 +157,11 @@ class TransitionModel: public TransitionInformation {
   int32 SelfLoopOf(int32 trans_state) const;  // returns the self-loop transition-id, or zero if
   // this state doesn't have a self-loop.
 
-  inline int32 TransitionIdToPdf(int32 trans_id) const;
+  inline int32 TransitionIdToPdf(int32 trans_id) const final override;
   // TransitionIdToPdfFast is as TransitionIdToPdf but skips an assertion
   // (unless we're in paranoid mode).
   inline int32 TransitionIdToPdfFast(int32 trans_id) const;
-  const std::vector<int32>& TransitionIdToPdfArray() const override;
+  const std::vector<int32>& TransitionIdToPdfArray() const final override;
 
   int32 TransitionIdToPhone(int32 trans_id) const;
   int32 TransitionIdToPdfClass(int32 trans_id) const;
@@ -172,9 +172,6 @@ class TransitionModel: public TransitionInformation {
   bool IsFinal(int32 trans_id) const;  // returns true if this trans_id goes to the final state
   // (which is bound to be nonemitting).
   bool IsSelfLoop(int32 trans_id) const;  // return true if this trans_id corresponds to a self-loop.
-
-  /// Returns the total number of transition-ids (note, these are one-based).
-  inline int32 NumTransitionIds() const { return id2state_.size()-1; }
 
   /// Returns the number of transition-indices for a particular transition-state.
   /// Note: "Indices" is the plural of "index".   Index is not the same as "id",

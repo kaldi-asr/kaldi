@@ -571,7 +571,8 @@ void LatticeLexiconWordAligner::ProcessFinalForceOut() {
 }
 
 void LatticeLexiconWordAligner::ComputationState::Advance(
-    const CompactLatticeArc &arc, const TransitionInformation &tmodel, LatticeWeight *weight) {
+    const CompactLatticeArc &arc, const TransitionInformation &tmodel,
+    LatticeWeight *weight) {
   const std::vector<int32> &tids = arc.weight.String();
   int32 phone;
   if (tids.empty()) phone = 0;

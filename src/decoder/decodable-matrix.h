@@ -68,6 +68,7 @@ class DecodableMatrixScaledMapped: public DecodableInterface {
 
   // Note, frames are numbered from zero.
   virtual BaseFloat LogLikelihood(int32 frame, int32 tid) {
+    KALDI_PARANOID_ASSERT(tid >= 1 && tid < tid_to_pdf_.size());
     return scale_ * (*likes_)(frame, tid_to_pdf_[tid]);
   }
 
@@ -183,6 +184,7 @@ class DecodableMatrixMappedOffset: public DecodableInterface {
   }
 
   virtual BaseFloat LogLikelihood(int32 frame, int32 tid) {
+    KALDI_PARANOID_ASSERT(tid >= 1 && tid < tid_to_pdf_.size());
     int32 pdf_id = tid_to_pdf_[tid];
 #ifdef KALDI_PARANOID
     return loglikes_(frame - frame_offset_, pdf_id);

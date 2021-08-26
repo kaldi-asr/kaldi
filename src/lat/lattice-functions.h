@@ -32,18 +32,13 @@
 #include "lat/kaldi-lattice.h"
 #include "itf/decodable-itf.h"
 #include "itf/transition-information.h"
-#ifndef KALDI_MINIMAL_LATTICE_FUNCTIONS
 #include "lat/lattice-functions-transition-model.h"
-#endif // KALDI_MINIMAL_LATTICE_FUNCTIONS
 
 namespace kaldi {
 
-// Redundant with the typedef in hmm/posterior.h. Redeclaration of a
-// typedef is valid in C++, but not C. This is for the sake of users
-// who compile with the macro KALDI_MINIMAL_LATTICE_FUNCTIONS defined,
-// so that they compile the majority of the lattice functions (all but
-// those declared in lattice-functions-transition-model.h) without depending
-// upon the hmm/ or tree/ libraries.
+// Redundant with the typedef in hmm/posterior.h. We want functions
+// using the Posterior type to be usable without a dependency on the
+// hmm library.
 typedef std::vector<std::vector<std::pair<int32, BaseFloat> > > Posterior;
 
 /**

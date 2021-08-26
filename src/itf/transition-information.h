@@ -31,17 +31,20 @@ namespace kaldi {
  * without a dependency on the hmm/ and tree/ directories. For
  * example, you can consider creating a subclass that implements these
  * via extracting information from Eesen's CTC T.fst object.
+ *
+ * TransitionId values must be contiguous, and starting from 1, rather
+ * than 0, since 0 corresponds to epsilon in OpenFST.
  */
 class TransitionInformation {
  public:
   virtual ~TransitionInformation() {};
   virtual int32_t TransitionIdToTransitionState(int32_t trans_id) const = 0;
-    /**
-     * Phone should really be Token here, where Token could be a word
-     * piece, phone, or character. However, because the original
-     * class, TransitionModel, used Phone, we retain it for the sake
-     * of not changing all the callers of this method.
-     */
+  /**
+   * Phone should really be Token here, where Token could be a word
+   * piece, phone, or character. However, because the original
+   * class, TransitionModel, used Phone, we retain it for the sake
+   * of not changing all the callers of this method.
+   */
   virtual int32_t TransitionIdToPhone(int32_t trans_id) const = 0;
   virtual bool IsFinal(int32_t trans_id) const = 0;
   virtual bool IsSelfLoop(int32_t trans_id) const = 0;
@@ -49,11 +52,13 @@ class TransitionInformation {
   // Ideally, this would return a std::span, but it doesn't because
   // kaldi doesn't support C++20. Sorry.
   virtual const std::vector<int32_t>& TransitionIdToPdfArray() const = 0;
-  virtual int32_t NumTransitionIds() const = 0;
+  int32_t NumTransitionIds() const {
+      return TransitionIdToPdfArray().size() - 1;
+  }
   virtual int32 NumPdfs() const = 0;
   virtual int32_t TransitionIdToHmmState(int32_t trans_id) const = 0;
 };
 
-}
+} // namespace kaldi
 
 #endif // KALDI_HMM_TRANSITION_MODEL_H_

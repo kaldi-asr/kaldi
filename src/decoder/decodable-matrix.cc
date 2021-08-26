@@ -55,6 +55,7 @@ DecodableMatrixMapped::DecodableMatrixMapped(
 
 
 BaseFloat DecodableMatrixMapped::LogLikelihood(int32 frame, int32 tid) {
+  KALDI_PARANOID_ASSERT(tid >= 1 && tid < tid_to_pdf_.size());
   int32 pdf_id = tid_to_pdf_[tid];
 #ifdef KALDI_PARANOID
   return (*likes_)(frame - frame_offset_, pdf_id);

@@ -136,4 +136,4 @@ bool CompactLatticeToWordProns(
   }
 }
 
-} // end namespace kaldi
+} // namespace kaldi

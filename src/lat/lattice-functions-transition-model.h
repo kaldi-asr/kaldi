@@ -23,16 +23,16 @@
 #ifndef KALDI_LAT_LATTICE_FUNCTIONS_TRANSITION_MODEL_H_
 #define KALDI_LAT_LATTICE_FUNCTIONS_TRANSITION_MODEL_H_
 
-#include <vector>
 #include <map>
+#include <vector>
 
 #include "base/kaldi-common.h"
 #include "fstext/fstext-lib.h"
-#include "lat/kaldi-lattice.h"
-#include "itf/decodable-itf.h"
 #include "hmm/transition-model.h"
 #include "hmm/hmm-utils.h"
 #include "hmm/posterior.h"
+#include "itf/decodable-itf.h"
+#include "lat/kaldi-lattice.h"
 
 namespace kaldi {
 

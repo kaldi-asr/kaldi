@@ -424,8 +424,6 @@ void LatticeActivePhones(const Lattice &lat, const TransitionInformation &trans,
   }  // end looping over states
 }
 
-#ifndef KALDI_MINIMAL_LATTICE_FUNCTIONS
-
 void ConvertLatticeToPhones(const TransitionInformation &trans,
                             Lattice *lat) {
   typedef LatticeArc Arc;
@@ -445,8 +443,6 @@ void ConvertLatticeToPhones(const TransitionInformation &trans,
     }  // end looping over arcs
   }  // end looping over states
 }
-
-#endif // KALDI_MINIMAL_LATTICE_FUNCTIONS
 
 
 static inline double LogAddOrMax(bool viterbi, double a, double b) {
