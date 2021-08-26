@@ -195,7 +195,7 @@ bool BatchedThreadedNnet3CudaOnlinePipeline::TryInitCorrID(
     // This corr id was already in use but not closed
     // It can happen if for instance a channel lost connection and
     // did not send its last chunk Cleaning up
-    KALDI_WARN << "This corr_id was already in use";
+    KALDI_WARN << "This corr_id was already in use - resetting channel";
     ichannel = it->second;
   }
 
