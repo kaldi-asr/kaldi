@@ -157,8 +157,10 @@ class TransitionModel: public TransitionInformation {
   int32 SelfLoopOf(int32 trans_state) const;  // returns the self-loop transition-id, or zero if
   // this state doesn't have a self-loop.
 
-  inline int32 TransitionIdToPdf(int32 trans_id) const final;
-  // TransitionIdToPdfFast is as TransitionIdToPdf but skips an assertion
+  bool TransitionIdsEquivalent(int32_t trans_id1, int32_t trans_id2) const final;
+  bool TransitionIdIsStartOfToken(int32_t trans_id) const final;
+
+  // TransitionIdToPdfFast is as TransitionIdToPdfArray()[trans_id] but skips an assertion
   // (unless we're in paranoid mode).
   inline int32 TransitionIdToPdfFast(int32 trans_id) const;
   const std::vector<int32>& TransitionIdToPdfArray() const final;
@@ -322,13 +324,6 @@ class TransitionModel: public TransitionInformation {
 
   KALDI_DISALLOW_COPY_AND_ASSIGN(TransitionModel);
 };
-
-inline int32 TransitionModel::TransitionIdToPdf(int32 trans_id) const {
-  KALDI_ASSERT(
-      static_cast<size_t>(trans_id) < id2pdf_id_.size() &&
-      "Likely graph/model mismatch (graph built from wrong model?)");
-  return id2pdf_id_[trans_id];
-}
 
 inline int32 TransitionModel::TransitionIdToPdfFast(int32 trans_id) const {
   // Note: it's a little dangerous to assert this only in paranoid mode.

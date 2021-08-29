@@ -786,8 +786,7 @@ class WordAlignedLatticeTester {
           // rest of the transition ids are the self-loop of that same
           // transition-state.
           for (size_t j = i+1; j < tids.size(); j++) {
-            if (!(tmodel_.TransitionIdToTransitionState(tids[j])
-                  == tmodel_.TransitionIdToTransitionState(tids[i]))) return false;
+              if (!tmodel_.TransitionIdsEquivalent(tids[j], tids[i])) return false;
           }
           return true;
         }
@@ -814,8 +813,7 @@ class WordAlignedLatticeTester {
           // rest of the transition ids are the self-loop of that same
           // transition-state.
           for (size_t j = i+1; j < tids.size(); j++) {
-            if (tmodel_.TransitionIdToTransitionState(tids[j])
-                != tmodel_.TransitionIdToTransitionState(tids[i])) return false;
+            if (!tmodel_.TransitionIdsEquivalent(tids[j], tids[i])) return false;
           }
           return true;
         }
@@ -864,9 +862,8 @@ class WordAlignedLatticeTester {
           // Make sure the only thing that follows this is self-loops
           // of the final transition-state.
           for (size_t k = j + 1; k < tids.size(); k++)
-            if (tmodel_.TransitionIdToTransitionState(tids[k])
-                != tmodel_.TransitionIdToTransitionState(tids[j])
-                || !tmodel_.IsSelfLoop(tids[k]))
+              if (!tmodel_.TransitionIdsEquivalent(tids[k], tids[j])
+                  || !tmodel_.IsSelfLoop(tids[k]))
               return false;
           return true;
         }

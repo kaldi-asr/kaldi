@@ -1319,7 +1319,7 @@ typename ArcTpl<Weight>::Label DeterminizeLatticeInsertPhones(
       // Note: the words are on the input symbol side and transition-id's are on
       // the output symbol side.
       if ((arc.olabel != 0)
-          && (trans_model.TransitionIdToHmmState(arc.olabel) == 0)
+          && (trans_model.TransitionIdIsStartOfToken(arc.olabel))
           && (!trans_model.IsSelfLoop(arc.olabel))) {
         Label phone =
             static_cast<Label>(trans_model.TransitionIdToPhone(arc.olabel));

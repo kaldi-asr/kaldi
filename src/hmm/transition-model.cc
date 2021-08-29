@@ -781,6 +781,16 @@ void TransitionModel::MapUpdateShared(const Vector<double> &stats,
   ComputeDerivedOfProbs();
 }
 
+bool TransitionModel::TransitionIdsEquivalent(int32_t trans_id1,
+                                              int32_t trans_id2) const {
+  return TransitionIdToTransitionState(trans_id1) ==
+    TransitionIdToTransitionState(trans_id2);
+}
+
+bool TransitionModel::TransitionIdIsStartOfToken(int32_t trans_id) const {
+  return TransitionIdToHmmState(trans_id) == 0;
+}
+
 const std::vector<int32>& TransitionModel::TransitionIdToPdfArray() const {
   return id2pdf_id_;
 }

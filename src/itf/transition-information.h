@@ -38,27 +38,69 @@ namespace kaldi {
 class TransitionInformation {
  public:
   virtual ~TransitionInformation() {};
-  virtual int32_t TransitionIdToTransitionState(int32_t trans_id) const = 0;
   /**
-   * Phone should really be Token here, where Token could be a word
-   * piece, phone, or character. However, because the original
-   * class, TransitionModel, used Phone, we retain it for the sake
-   * of not changing all the callers of this method.
+   * Returns true if trans_id1 and trans_id2 can correspond to the
+   * same phone when trans_id1 immediately precedes trans_id2 (i.e.,
+   * trans_id1 occurss at timestep t, and trans_id2 ocurs at timestep
+   * 2) (possibly with epsilons between trans_id1 and trans_id2) OR
+   * trans_id1 ocurs before trans_id2, with some number of
+   * trans_id_{k} values, all of which fulfill
+   * TransitionIdsEquivalent(trans_id1, trans_id_{k})
+   *
+   * If trans_id1 == trans_id2, it must be the case that
+   * TransitionIdsEquivalent(trans_id1, trans_id2) == true
+   */
+  virtual bool TransitionIdsEquivalent(int32_t trans_id1, int32_t trans_id2) const = 0;
+  /**
+   * Returns true if this trans_id corresponds to the start of a
+   * phone.
+   */
+  virtual bool TransitionIdIsStartOfToken(int32_t trans_id) const = 0;
+  /**
+   * Phone is understood to correspond not only to linguistic phones,
+   * but also graphemes, word pieces, byte pieces, etc. A better word
+   * would be Token. We use the word Phone for backwards compatibility
+   * with TransitionModel, which was designed only with phones in
+   * mind. Since TransitionInformation was added to subsume
+   * TransitionModel, we did not want to change the call site of every
+   * TransitionModel::TransitionIdToPhone to
+   * TransitionInformation::TransitionIdToToken.
    */
   virtual int32_t TransitionIdToPhone(int32_t trans_id) const = 0;
+  /**
+   * Returns true if the destination of any edge with this trans_id
+   * as its ilabel is a final state (or if a final state is
+   * epsilon-reachable from its destination state).
+   */
   virtual bool IsFinal(int32_t trans_id) const = 0;
+  /**
+   * Returns true if *all* of the FST edge labeled by this trans_id
+   * have the same start and end states.
+   */
   virtual bool IsSelfLoop(int32_t trans_id) const = 0;
-  virtual int32_t TransitionIdToPdf(int32_t trans_id) const = 0;
-  // Ideally, this would return a std::span, but it doesn't because
-  // kaldi doesn't support C++20. Sorry.
+  int32_t TransitionIdToPdf(int32_t trans_id) const {
+    return TransitionIdToPdfArray()[trans_id];
+  }
+  /**
+   * Returns the contiguous array that backs calls to
+   * TransitionIdToPdf().
+   *
+   * Ideally, this would return a std::span, but it doesn't because
+   * kaldi doesn't support C++20 at the time this interface was
+   * written.
+   */
   virtual const std::vector<int32_t>& TransitionIdToPdfArray() const = 0;
   int32_t NumTransitionIds() const {
       return TransitionIdToPdfArray().size() - 1;
   }
+  /**
+   * Return the number of distinct outputs from
+   * TransitionIdToPdf(). Another way to look at this is as the number
+   * of outputs over which your acoustic model does a softmax.
+   */
   virtual int32 NumPdfs() const = 0;
-  virtual int32_t TransitionIdToHmmState(int32_t trans_id) const = 0;
 };
 
-} // namespace kaldi
+}  // namespace kaldi
 
 #endif // KALDI_HMM_TRANSITION_MODEL_H_
