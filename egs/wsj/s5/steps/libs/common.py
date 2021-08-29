@@ -381,23 +381,26 @@ def read_matrix_ascii(file_or_fd):
             "Kaldi matrix file %s has incorrect format, "
             "only text format matrix files can be read by this script",
             fname)
+        if fd is not file_or_fd: fd.close()
         raise RuntimeError
 
     rows = []
     while True:
         line = fd.readline()
-        if len(line) == 0:
+        if not line:
             logger.error("Kaldi matrix file %s has incorrect format; "
                          "got EOF before end of matrix", fname)
-        if len(line.strip()) == 0 : continue # skip empty line
-        arr = line.strip().split()
-        if arr[-1] != b']' and array[-1] != ']':
+            if fd is not file_or_fd: fd.close()
+            raise RuntimeError
+        line = line.strip()
+        if len(line) == 0 : continue # skip empty line
+        arr = line.split()
+        if arr[-1] != b']' and arr[-1] != ']':
             rows.append([float(x) for x in arr])  # not last line
         else:
             rows.append([float(x) for x in arr[:-1]])  # lastline
+            if fd is not file_or_fd: fd.close()
             return rows
-    if fd is not file_or_fd:
-        fd.close()
 
 
 def read_key(fd):
