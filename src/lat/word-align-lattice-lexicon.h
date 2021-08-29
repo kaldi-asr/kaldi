@@ -166,21 +166,5 @@ bool WordAlignLatticeLexicon(const CompactLattice &lat,
                              const WordAlignLatticeLexiconOpts &opts,
                              CompactLattice *lat_out);
 
-
-/// This function is designed to crash if something went wrong with the
-/// word-alignment of the lattice.  If was_ok==true (was_ok is the return status
-/// of WordAlignLattice), it tests that, after removing any silence and
-/// partial-word labels that may have been inserted by WordAlignLattice,
-/// the word-aligned lattice is equivalent to the input.  It also verifies
-/// that arcs are of 4 types:
-///   properly-aligned word arcs, with a word label.
-///   partial-word arcs, with the partial-word label.
-///   silence arcs, with the silence label.
-void TestWordAlignedLatticeLexicon(const CompactLattice &lat,
-                                   const TransitionInformation &tmodel,
-                                   const std::vector<std::vector<int32> > &lexicon,
-                                   const CompactLattice &aligned_lat,
-                                   bool allow_duplicate_paths);
-
-} // end namespace kaldi
+} // namespace kaldi
 #endif
