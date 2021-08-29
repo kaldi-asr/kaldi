@@ -33,6 +33,7 @@
 #include "hmm/posterior.h"
 #include "itf/decodable-itf.h"
 #include "lat/kaldi-lattice.h"
+#include "lat/word-align-lattice-lexicon.h"
 
 namespace kaldi {
 
@@ -90,6 +91,13 @@ bool CompactLatticeToWordProns(
     std::vector<int32> *lengths,
     std::vector<std::vector<int32> > *prons,
     std::vector<std::vector<int32> > *phone_lengths);
+
+
+bool TestWordAlignedLattice(const WordAlignLatticeLexiconInfo &lexicon_info,
+                            const TransitionModel &tmodel,
+                            CompactLattice clat,
+                            CompactLattice aligned_clat,
+                            bool allow_duplicate_paths);
 
 } // end namespace kaldi
 

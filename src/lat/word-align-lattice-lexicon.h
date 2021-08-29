@@ -120,12 +120,9 @@ class WordAlignLatticeLexiconInfo {
 struct WordAlignLatticeLexiconOpts {
   int32 partial_word_label;
   bool reorder;
-  bool test;
-  bool allow_duplicate_paths;
   BaseFloat max_expand;
 
   WordAlignLatticeLexiconOpts(): partial_word_label(0), reorder(true),
-                                 test(false), allow_duplicate_paths(false),
                                  max_expand(-1.0) { }
 
   void Register(OptionsItf *opts) {
@@ -136,13 +133,6 @@ struct WordAlignLatticeLexiconOpts {
     opts->Register("reorder", &reorder, "True if the lattices were generated "
                    "from graphs that had the --reorder option true, relating to "
                    "reordering self-loops (typically true)");
-    opts->Register("test", &test, "If true, testing code will be activated "
-                   "(the purpose of this is to validate the algorithm).");
-    opts->Register("allow-duplicate-paths", &allow_duplicate_paths, "Only "
-                   "has an effect if --test=true.  If true, does not die "
-                   "(only prints warnings) if duplicate paths are found. "
-                   "This should only happen with very pathological lexicons, "
-                   "e.g. as encountered in testing code.");
     opts->Register("max-expand", &max_expand, "If >0.0, the maximum ratio "
                    "by which we allow the lattice-alignment code to increase the #states "
                    "in a lattice (vs. the phone-aligned lattice) before we fail and "

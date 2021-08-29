@@ -22,6 +22,7 @@
 #include "fstext/fst-test-utils.h"
 #include "lat/kaldi-lattice.h"
 #include "lat/lattice-functions.h"
+#include "lat/lattice-functions-transition-model.h"
 #include "hmm/hmm-test-utils.h"
 #include "lat/word-align-lattice-lexicon.h"
 
@@ -203,13 +204,20 @@ void TestWordAlignLatticeLexicon() {
 
   WordAlignLatticeLexiconOpts opts;
   WordAlignLatticeLexiconInfo lexicon_info(lexicon);
-  opts.test = true;  // we rely on the self-test code that's activated when we
-                     // do this.
-  opts.allow_duplicate_paths = true;
   opts.reorder = reorder;
   CompactLattice aligned_clat;
+  bool allow_duplicate_paths = true;
   bool ans = WordAlignLatticeLexicon(clat, *trans_model, lexicon_info, opts,
                                      &aligned_clat);
+  if (ans) { // We only test if it succeeded.
+      if (!TestWordAlignedLattice(lexicon_info, *trans_model, clat, aligned_clat,
+                                  allow_duplicate_paths)) {
+          KALDI_WARN << "Lattice failed test (activated because --test=true). "
+                     << "Probable code error, please contact Kaldi maintainers.";
+          ans = false;
+      }
+  }
+
   KALDI_LOG << "Aligned clat is ";
   WriteCompactLattice(std::cerr, false, aligned_clat);
   KALDI_ASSERT(ans);
