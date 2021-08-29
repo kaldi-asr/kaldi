@@ -198,7 +198,7 @@ int main(int argc, char *argv[])
         words_writer.Write(key, words);
         if (alignment_writer.IsOpen())
           alignment_writer.Write(key, alignment);
-          
+
         if (lattice_wspecifier != "") {
           if (acoustic_scale != 0.0) // We'll write the lattice without acoustic scaling
             fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale), &decoded);
@@ -206,7 +206,7 @@ int main(int argc, char *argv[])
           ConvertLattice(decoded, &clat, true);
           clat_writer.Write(key, clat);
         }
-          
+
         if (word_syms != NULL) {
           std::cerr << key << ' ';
           for (size_t i = 0; i < words.size(); i++) {

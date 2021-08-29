@@ -541,6 +541,111 @@ bool DecodeUtteranceLatticeSimple(
 }
 
 
+bool DecodeUtteranceLatticeBiglm(
+    LatticeBiglmFasterDecoder &decoder, // not const but is really an input.
+    DecodableInterface &decodable, // not const but is really an input.
+    const TransitionModel &trans_model,
+    const fst::SymbolTable *word_syms,
+    std::string utt,
+    double acoustic_scale,
+    bool determinize,
+    bool allow_partial,
+    Int32VectorWriter *alignment_writer,
+    Int32VectorWriter *words_writer,
+    CompactLatticeWriter *compact_lattice_writer,
+    LatticeWriter *lattice_writer,
+    double *like_ptr) {  // puts utterance's like in like_ptr on success.
+  using fst::VectorFst;
+
+  if (!decoder.Decode(&decodable)) {
+    KALDI_WARN << "Failed to decode file " << utt;
+    return false;
+  }
+  if (!decoder.ReachedFinal()) {
+    if (allow_partial) {
+      KALDI_WARN << "Outputting partial output for utterance " << utt
+                 << " since no final-state reached\n";
+    } else {
+      KALDI_WARN << "Not producing output for utterance " << utt
+                 << " since no final-state reached and "
+                 << "--allow-partial=false.\n";
+      return false;
+    }
+  }
+
+  double likelihood;
+  LatticeWeight weight;
+  int32 num_frames;
+  { // First do some stuff with word-level traceback...
+    VectorFst<LatticeArc> decoded;
+    decoder.GetBestPath(&decoded);
+    if (decoded.NumStates() == 0)
+      // Shouldn't really reach this point as already checked success.
+      KALDI_ERR << "Failed to get traceback for utterance " << utt;
+
+    std::vector<int32> alignment;
+    std::vector<int32> words;
+    GetLinearSymbolSequence(decoded, &alignment, &words, &weight);
+    num_frames = alignment.size();
+    if (words_writer->IsOpen())
+      words_writer->Write(utt, words);
+    if (alignment_writer->IsOpen())
+      alignment_writer->Write(utt, alignment);
+    if (word_syms != NULL) {
+      std::cerr << utt << ' ';
+      for (size_t i = 0; i < words.size(); i++) {
+        std::string s = word_syms->Find(words[i]);
+        if (s == "")
+          KALDI_ERR << "Word-id " << words[i] <<" not in symbol table.";
+        std::cerr << s << ' ';
+      }
+      std::cerr << '\n';
+    }
+    likelihood = -(weight.Value1() + weight.Value2());
+  }
+
+  // Get lattice, and do determinization if requested.
+  Lattice lat;
+  decoder.GetRawLattice(&lat);
+  if (lat.NumStates() == 0)
+    KALDI_ERR << "Unexpected problem getting lattice for utterance " << utt;
+  fst::Connect(&lat);
+  if (determinize) {
+    CompactLattice clat;
+    if (!DeterminizeLatticePhonePrunedWrapper(
+            trans_model,
+            &lat,
+            decoder.GetOptions().lattice_beam,
+            &clat,
+            decoder.GetOptions().det_opts))
+      KALDI_WARN << "Determinization finished earlier than the beam for "
+                 << "utterance " << utt;
+    // We'll write the lattice without acoustic scaling.
+    if (acoustic_scale != 0.0)
+      fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale), &clat);
+    compact_lattice_writer->Write(utt, clat);
+  } else {
+    Lattice fst;
+    decoder.GetRawLattice(&fst);
+    if (fst.NumStates() == 0)
+      KALDI_ERR << "Unexpected problem getting lattice for utterance "
+                << utt;
+    fst::Connect(&fst); // Will get rid of this later... shouldn't have any
+    // disconnected states there, but we seem to.
+    if (acoustic_scale != 0.0) // We'll write the lattice without acoustic scaling
+      fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale), &fst);
+    lattice_writer->Write(utt, fst);
+  }
+  KALDI_LOG << "Log-like per frame for utterance " << utt << " is "
+            << (likelihood / num_frames) << " over "
+            << num_frames << " frames.";
+  KALDI_VLOG(2) << "Cost for utterance " << utt << " is "
+                << weight.Value1() << " + " << weight.Value2();
+  *like_ptr = likelihood;
+  return true;
+}
+
+
 // see comment in header.
 void ModifyGraphForCarefulAlignment(
     fst::VectorFst<fst::StdArc> *fst) {
