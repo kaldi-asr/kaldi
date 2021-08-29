@@ -20,6 +20,7 @@
 
 #include "nnet3/discriminative-training.h"
 #include "lat/lattice-functions.h"
+#include "lat/lattice-functions-transition-model.h"
 #include "cudamatrix/cu-matrix.h"
 
 namespace kaldi {

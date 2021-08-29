@@ -29,10 +29,9 @@
 
 #include "base/kaldi-common.h"
 #include "fstext/fstext-lib.h"
-#include "lat/kaldi-lattice.h"
 #include "itf/decodable-itf.h"
 #include "itf/transition-information.h"
-#include "lat/lattice-functions-transition-model.h"
+#include "lat/kaldi-lattice.h"
 
 namespace kaldi {
 

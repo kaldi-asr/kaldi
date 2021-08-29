@@ -103,4 +103,4 @@ class TransitionInformation {
 
 }  // namespace kaldi
 
-#endif // KALDI_HMM_TRANSITION_MODEL_H_
+#endif // KALDI_TRANSITION_INFORMATION_H_

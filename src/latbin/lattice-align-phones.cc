@@ -19,10 +19,11 @@
 
 
 #include "base/kaldi-common.h"
-#include "util/common-utils.h"
+#include "hmm/transition-model.h"
 #include "lat/kaldi-lattice.h"
 #include "lat/phone-align-lattice.h"
 #include "lat/lattice-functions.h"
+#include "util/common-utils.h"
 
 int main(int argc, char *argv[]) {
   try {

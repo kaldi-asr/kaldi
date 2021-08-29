@@ -99,6 +99,6 @@ bool TestWordAlignedLattice(const WordAlignLatticeLexiconInfo &lexicon_info,
                             CompactLattice aligned_clat,
                             bool allow_duplicate_paths);
 
-} // end namespace kaldi
+}  // namespace kaldi
 
 #endif // KALDI_LAT_LATTICE_FUNCTIONS_TRANSITION_MODEL_H_

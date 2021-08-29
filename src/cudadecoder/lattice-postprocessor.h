@@ -25,6 +25,7 @@
 #include "cudadecoder/cuda-pipeline-common.h"
 #include "cudamatrix/cu-device.h"
 #include "fstext/fstext-lib.h"
+#include "hmm/transition-model.h"
 #include "lat/kaldi-lattice.h"
 #include "lat/sausages.h"
 #include "lat/word-align-lattice.h"

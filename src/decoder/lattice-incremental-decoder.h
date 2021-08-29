@@ -27,7 +27,6 @@
 #include "fstext/fstext-lib.h"
 #include "lat/determinize-lattice-pruned.h"
 #include "lat/kaldi-lattice.h"
-#include "hmm/transition-model.h"
 #include "decoder/grammar-fst.h"
 #include "decoder/lattice-faster-decoder.h"
 

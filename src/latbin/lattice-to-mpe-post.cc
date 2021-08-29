@@ -24,6 +24,7 @@
 #include "lat/kaldi-lattice.h"
 #include "lat/lattice-functions.h"
 #include "gmm/am-diag-gmm.h"
+#include "hmm/posterior.h"
 #include "hmm/transition-model.h"
 
 int main(int argc, char *argv[]) {

@@ -25,8 +25,6 @@
 #include "lat/lattice-functions.h"
 #include "lat/lattice-functions-transition-model.h"
 
-using namespace kaldi;
-
 int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
