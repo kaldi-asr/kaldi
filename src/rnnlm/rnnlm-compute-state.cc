@@ -135,7 +135,7 @@ void RnnlmComputeState::GetLogProbOfWords(CuMatrixBase<BaseFloat> *output) const
   // Even without explicit normalization, the log-probs will be close to
   // correctly normalized due to the way the model was trained.
   if (info_.opts.normalize_probs) {
-    output->Add(normalization_factor_);
+    output->Add(-normalization_factor_);
   }
 
   // making sure <eps> has almost 0 prob

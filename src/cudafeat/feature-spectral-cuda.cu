@@ -15,12 +15,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#if HAVE_CUDA == 1
+#include "cudafeat/feature-spectral-cuda.h"
+
 #include <nvToolsExt.h>
 #include <cub/cub.cuh>
-#endif
 
-#include "cudafeat/feature-spectral-cuda.h"
 #include "cudamatrix/cu-rand.h"
 
 // Each thread block processes a unique frame
@@ -407,9 +406,9 @@ CudaSpectralFeatures::CudaSpectralFeatures(const CudaSpectralFeatureOptions &opt
   stride_ = cu_windows_.Stride();
   tmp_stride_ = tmp_window_.Stride();
 
-  cufftPlanMany(&plan_, 1, &padded_length_, NULL, 1, stride_, NULL, 1,
-                tmp_stride_ / 2, CUFFT_R2C, fft_size_);
-  cufftSetStream(plan_, cudaStreamPerThread);
+  CUFFT_SAFE_CALL(cufftPlanMany(&plan_, 1, &padded_length_, NULL, 1, stride_, NULL, 1,
+                                tmp_stride_ / 2, CUFFT_R2C, fft_size_));
+  CUFFT_SAFE_CALL(cufftSetStream(plan_, cudaStreamPerThread));
   cumfcc_opts_ = opts;
 }
 
@@ -563,6 +562,6 @@ CudaSpectralFeatures::~CudaSpectralFeatures() {
   CuDevice::Instantiate().Free(vecs_);
   CuDevice::Instantiate().Free(offsets_);
   CuDevice::Instantiate().Free(sizes_);
-  cufftDestroy(plan_);
+  CUFFT_SAFE_CALL(cufftDestroy(plan_));
 }
 }  // namespace kaldi

@@ -75,6 +75,10 @@ class TrainingGraphCompiler {
   bool CompileGraph(const fst::VectorFst<fst::StdArc> &word_grammar,
                     fst::VectorFst<fst::StdArc> *out_fst);
 
+  // Same as `CompileGraph`, but uses an external LG fst.
+  bool CompileGraphFromLG(const fst::VectorFst<fst::StdArc> &phone2word_fst,
+                                   fst::VectorFst<fst::StdArc> * out_fst);
+
   // CompileGraphs allows you to compile a number of graphs at the same
   // time.  This consumes more memory but is faster.
   bool CompileGraphs(

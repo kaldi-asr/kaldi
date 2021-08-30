@@ -19,9 +19,9 @@
 // limitations under the License.
 
 #include "base/kaldi-common.h"
-#include "util/common-utils.h"
-#include "nnet3/nnet-chain-training2.h"
 #include "cudamatrix/cu-allocator.h"
+#include "nnet3/nnet-chain-training2.h"
+#include "util/common-utils.h"
 
 
 int main(int argc, char *argv[]) {
@@ -65,7 +65,7 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
 
-#if HAVE_CUDA==1
+#if HAVE_CUDA
     CuDevice::Instantiate().SelectGpuId(use_gpu);
 #endif
 
@@ -80,7 +80,7 @@ int main(int argc, char *argv[]) {
     bool ok;
 
     {
-      NnetChainModel2 model(opts, &nnet, den_fst_dirname);
+      NnetChainModel2 model(&nnet, den_fst_dirname);
       NnetChainTrainer2 trainer(opts, model, &nnet);
 
       SequentialNnetChainExampleReader example_reader(examples_rspecifier);
@@ -97,9 +97,8 @@ int main(int argc, char *argv[]) {
     WriteKaldiObject(nnet, nnet_wxfilename, binary_write);
     KALDI_LOG << "Wrote raw model to " << nnet_wxfilename;
     return (ok ? 0 : 1);
-  } catch(const std::exception &e) {
+  } catch (const std::exception &e) {
     std::cerr << e.what() << '\n';
     return -1;
   }
 }
-

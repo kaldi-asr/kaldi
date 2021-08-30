@@ -4,30 +4,40 @@
 
 SHELL := /bin/bash
 
-SUBDIRS = base matrix util feat cudafeat tree gmm transform \
-          fstext hmm lm decoder lat kws cudamatrix nnet \
-          bin fstbin gmmbin fgmmbin featbin cudafeatbin \
-          nnetbin latbin sgmm2 sgmm2bin nnet2 nnet3 rnnlm chain nnet3bin nnet2bin kwsbin \
-          ivector ivectorbin online2 online2bin lmbin chainbin rnnlmbin \
-          cudadecoder cudadecoderbin
+# Please keep sorted alphabetically, and start each with a letter which
+# is different from the first one in the last word one the row above it.
+SUBDIRS := base bin chain chainbin cudamatrix decoder		\
+           feat featbin fgmmbin fstbin fstext			\
+           gmm gmmbin hmm                               	\
+           ivector ivectorbin kws kwsbin	        	\
+           lat latbin lm lmbin matrix				\
+           nnet nnetbin nnet2 nnet2bin nnet3 nnet3bin		\
+           online2 online2bin rnnlm rnnlmbin            	\
+           transform tree util
 
-MEMTESTDIRS = base matrix util feat cudafeat tree gmm transform \
-          fstext hmm lm decoder lat nnet kws chain \
-          bin fstbin gmmbin fgmmbin featbin cudafeatbin \
-          nnetbin latbin sgmm2 nnet2 nnet3 rnnlm nnet2bin nnet3bin sgmm2bin kwsbin \
-          ivector ivectorbin online2 online2bin lmbin
+# Will also build these if configured with --with-cudadecoder
+# (default 'true' if CUDA is used, else 'false')
+CUDADECODER = cudafeat cudafeatbin cudadecoder cudadecoderbin
 
+MEMTESTDIRS = $(filter-out chainbin cudamatrix rnnlmbin $(SUBDIRS))
 CUDAMEMTESTDIR = cudamatrix
 
-SUBDIRS_LIB = $(filter-out %bin, $(SUBDIRS))
-
-KALDI_SONAME ?= libkaldi.so
-
 # Optional subdirectories
-EXT_SUBDIRS = online onlinebin  # python-kaldi-decoding
+EXT_SUBDIRS := online onlinebin sgmm2 sgmm2bin  # python-kaldi-decoding
 EXT_SUBDIRS_LIB = $(filter-out %bin, $(EXT_SUBDIRS))
 
 include kaldi.mk
+
+ifeq ($(CUDA), true)
+ifeq ($(WITH_CUDADECODER), true)
+SUBDIRS += $(CUDADECODER)
+endif
+endif
+
+SUBDIRS_LIB = $(filter-out %bin, $(SUBDIRS))
+SUBDIRS_BIN = $(filter     %bin, $(SUBDIRS))
+
+KALDI_SONAME ?= libkaldi.so
 
 # Reset the default goal, so that the all target will become default
 .DEFAULT_GOAL :=
@@ -37,7 +47,7 @@ all: $(SUBDIRS) matrix/test
 mklibdir:
 	test -d $(KALDILIBDIR) || mkdir $(KALDILIBDIR)
 
-#I don't want to call rm -rf
+# Don't call rm -rf.
 rmlibdir:
 ifneq ($(KALDILIBDIR), )
 	-rm $(KALDILIBDIR)/*{.so,.a,.o}
@@ -64,7 +74,7 @@ ifeq ($(shell uname), Darwin)
 	$(CXX) -dynamiclib -o $(KALDILIBDIR)/libkaldi.dylib -install_name @rpath/libkaldi.dylib -framework Accelerate $(LDFLAGS) $(wildcard $(SUBDIRS_LIB:=/*.dylib))
 else
 ifeq ($(shell uname), Linux)
-	#$(warning the following command will probably fail, in that case add -fPIC to your CXXFLAGS and remake all)
+#	$(warning the following command will probably fail, in that case add -fPIC to your CXXFLAGS and remake all)
 	$(CXX) -shared -o $(KALDILIBDIR)/$(KALDI_SONAME) -Wl,-soname=$(KALDI_SONAME),--whole-archive  $(wildcard $(SUBDIRS_LIB:=/kaldi-*.a)) -Wl,--no-whole-archive  $(LDLIBS)
 else
 	$(error Dynamic libraries not supported on this platform. Run configure with --static flag. )
@@ -78,7 +88,7 @@ ifeq ($(shell uname), Darwin)
 	$(CXX) -dynamiclib -o $(KALDILIBDIR)/libkaldi_ext.dylib -install_name @rpath/libkaldi_ext.dylib -framework Accelerate $(LDFLAGS) $(EXT_SUBDIRS_LIB:=/*.dylib)
 else
 ifeq ($(shell uname), Linux)
-	#$(warning The following command will probably fail, in that case add -fPIC to your CXXFLAGS and remake all.)
+#	$(warning The following command will probably fail, in that case add -fPIC to your CXXFLAGS and remake all.)
 	$(CXX) -shared -o $(KALDILIBDIR)/libkaldi_ext.so -Wl,-soname=libkaldi_ext.so,--whole-archive  $(EXT_SUBDIRS_LIB:=/kaldi-*.a) -Wl,--no-whole-archive
 else
 	$(error Dynamic libraries not supported on this platform. Run configure with --static flag. )
@@ -130,52 +140,60 @@ depend: $(addsuffix /depend, $(SUBDIRS))
 ext_depend: check_portaudio
 	-for x in $(EXT_SUBDIRS); do $(MAKE) -C $$x depend; done
 
+# 'make libs' to skip binaries, and build only libraries.
+.PHONY: libs $(SUBDIRS_LIB)
+libs: $(SUBDIRS_LIB) ;
+$(SUBDIRS_LIB) : checkversion kaldi.mk mklibdir
+	$(MAKE) -C $@
 
-.PHONY: $(SUBDIRS)
-$(SUBDIRS) : checkversion kaldi.mk mklibdir
+.PHONY: bins $(SUBDIRS_BIN) libs
+$(SUBDIRS_BIN) : checkversion kaldi.mk mklibdir
 	$(MAKE) -C $@
 
 .PHONY: $(EXT_SUBDIRS)
 $(EXT_SUBDIRS) : checkversion kaldi.mk mklibdir ext_depend
 	$(MAKE) -C $@
 
-
 ### Dependency list ###
-# this is necessary for correct parallel compilation
-#1)The tools depend on all the libraries
-bin fstbin gmmbin fgmmbin sgmm2bin featbin cudafeatbin nnetbin nnet2bin nnet3bin chainbin latbin ivectorbin lmbin kwsbin online2bin rnnlmbin cudadecoderbin: \
- base matrix util feat cudafeat tree gmm transform sgmm2 fstext hmm \
- lm decoder lat cudamatrix nnet nnet2 nnet3 ivector chain kws online2 rnnlm \
- cudadecoder
+# Three base libraries that mostly everything depends on
+BMU = base matrix util
 
-#2)The libraries have inter-dependencies
-base: base/.depend.mk
+# this is necessary for correct parallel compilation
+#1) The tools depend on all the libraries (which is a nonsense)
+bin chainbin featbin fgmmbin fstbin gmmbin ivectorbin \
+    kwsbin latbin lmbin nnet2bin nnet3bin nnetbin online2bin rnnlmbin sgmm2bin: \
+ $(BMU) chain cudamatrix decoder feat fstext gmm hmm ivector \
+        kws lat lm nnet nnet2 nnet3 online2 rnnlm sgmm2 transform tree
+
+#2) The libraries have inter-dependencies
+base:   base/.depend.mk
 matrix: base
-util: base matrix
-feat: base matrix util gmm transform tree
-tree: base util matrix
-gmm: base util matrix tree
-transform: base util matrix gmm tree
-sgmm2: base util matrix gmm tree transform hmm
-fstext: base util matrix tree
-hmm: base tree matrix util
-lm: base util matrix fstext
-decoder: base util matrix gmm hmm tree transform lat fstext
-lat: base util hmm tree matrix
-cudamatrix: base util matrix
-nnet: base util hmm tree matrix cudamatrix
-nnet2: base util matrix lat gmm hmm tree transform cudamatrix
-nnet3: base util matrix decoder lat gmm hmm tree transform cudamatrix chain fstext
-rnnlm: base util matrix cudamatrix nnet3 lm hmm
-chain: lat hmm tree fstext matrix cudamatrix util base
-ivector: base util matrix transform tree gmm
-#3)Dependencies for optional parts of Kaldi
-onlinebin: base matrix util feat tree gmm transform sgmm2 fstext hmm lm decoder lat cudamatrix nnet nnet2 online
-# python-kaldi-decoding: base matrix util feat tree gmm transform sgmm2 fstext hmm decoder lat online
-cudafeat: base matrix util gmm transform tree feat cudamatrix online2
-cudafeatbin: base matrix util gmm transform tree feat cudamatrix cudafeat online2
-online: decoder gmm transform feat matrix util base lat hmm tree
-online2: decoder gmm transform feat matrix util base lat hmm tree ivector cudamatrix nnet2 nnet3 chain
-kws: base util hmm tree matrix lat
-cudadecoder:  cudamatrix cudafeat online2 nnet3 ivector feat fstext lat chain transform
-cudadecoderbin: cudadecoder cudafeat cudamatrix online2 nnet3 ivector feat fstext lat chain transform
+util:   base matrix
+feat:      $(BMU) gmm transform tree
+tree:      $(BMU)
+gmm:       $(BMU) tree
+transform: $(BMU) gmm tree
+sgmm2:     $(BMU) gmm hmm transform tree
+fstext:    $(BMU) tree
+hmm:       $(BMU) tree
+lm:        $(BMU) fstext
+decoder:   $(BMU) fstext gmm hmm lat transform tree
+lat:       $(BMU) hmm tree
+cudamatrix: $(BMU)
+nnet:      $(BMU) cudamatrix hmm tree
+nnet2:     $(BMU) cudamatrix gmm hmm lat transform tree
+nnet3:     $(BMU) chain cudamatrix decoder fstext gmm hmm lat transform tree
+rnnlm:     $(BMU) cudamatrix hmm lm nnet3
+chain:     $(BMU) cudamatrix fstext hmm lat tree
+ivector:   $(BMU) gmm transform tree
+#3) Dependencies for optional parts of Kaldi
+onlinebin: $(BMU) cudamatrix decoder feat fstext gmm hmm lat lm nnet nnet2 online sgmm2 transform tree
+# python-kaldi-decoding: $(BMU) decoder feat fstext gmm hmm lat online sgmm2 transform tree
+online:    $(BMU) decoder feat gmm hmm lat transform tree
+online2:   $(BMU) chain cudamatrix decoder feat gmm hmm ivector lat nnet2 nnet3 transform tree
+kws:       $(BMU) hmm lat tree
+#4) CUDA decoder library and binary dependencies.
+cudafeat:  $(BMU) cudamatrix feat gmm online2 transform tree
+cudafeatbin: cudafeat
+cudadecoder: chain cudafeat cudamatrix feat fstext ivector lat nnet3 online2 transform
+cudadecoderbin: cudadecoder cudafeat

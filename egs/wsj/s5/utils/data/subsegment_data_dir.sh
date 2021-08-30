@@ -109,8 +109,13 @@ if $add_subsegment_text; then
   cp $new_text $dir/text
 fi
 
-# copy the source wav.scp
-cp $srcdir/wav.scp $dir
+# copy the source wav.scp (if exists)
+if [ -f $srcdir/wav.scp ]; then
+  cp $srcdir/wav.scp $dir
+else
+  echo "$0: Not copying wav.scp since does not exist. This could be a bad warning."
+fi
+
 if [ -f $srcdir/reco2file_and_channel ]; then
   cp $srcdir/reco2file_and_channel $dir
 fi

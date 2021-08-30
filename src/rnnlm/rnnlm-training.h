@@ -31,10 +31,10 @@ namespace kaldi {
 namespace rnnlm {
 
 /*
-  The class RnnlmTrainer is for training an RNNLM (one individual training job, not
-  the top-level logic about learning rate schedules, parameter averaging, and the
-  like); it contains the most of the logic that the command-line program rnnlm-train
-  implements.
+  The class RnnlmTrainer is for training an RNNLM (one individual training job,
+  not the top-level logic about learning rate schedules, parameter averaging,
+  and the like); it contains the most of the logic that the command-line program
+  rnnlm-train implements.
 */
 
 class RnnlmTrainer {
@@ -61,7 +61,7 @@ class RnnlmTrainer {
                              If word_feature_mat is NULL, this
                              is the word-embedding matrix of dimension
                              vocab-size by embedding-dim; otherwise it is the
-                             feature-embedding matrix of dimension feature-dim by
+                             feature-embedding matrix of dimension feature-dim
                              by embedding-dim, and we have to multiply it by
                              word_feature_mat to get the word embedding matrix.
       @param [in,out] rnnlm  The RNNLM to be trained.  The class will retain
@@ -69,7 +69,7 @@ class RnnlmTrainer {
   */
   RnnlmTrainer(bool train_embedding,
                const RnnlmCoreTrainerOptions &core_config,
-               const RnnlmEmbeddingTrainerOptions &embedding_config,
+               const RnnlmEmbeddingTrainerOptions & embedding_config,
                const RnnlmObjectiveOptions &objective_config,
                const CuSparseMatrix<BaseFloat> *word_feature_mat,
                CuMatrix<BaseFloat> *embedding_mat,
@@ -113,7 +113,7 @@ class RnnlmTrainer {
   /// w.r.t. the word-embedding for this minibatch (of dimension
   /// previus_minibatch_.vocab_size by embedding_mat_.NumCols()).
   /// You can think of it as the backprop for the function 'GetWordEmbedding()'.
-  ///   @param [in] word_embedding_deriv   The derivative w.r.t. the embeddings of
+  ///  @param [in] word_embedding_deriv  The derivative w.r.t. the embeddings of
   ///                       just the words used in this minibatch
   ///                       (i.e. the minibatch-level word-embedding matrix,
   ///                       possibly using a subset of words).  This is an input
@@ -127,7 +127,6 @@ class RnnlmTrainer {
 
   bool train_embedding_;  // true if we are training the embedding.
   const RnnlmCoreTrainerOptions &core_config_;
-  const RnnlmEmbeddingTrainerOptions &embedding_config_;
   const RnnlmObjectiveOptions &objective_config_;
 
   // The neural net we are training (not owned here)

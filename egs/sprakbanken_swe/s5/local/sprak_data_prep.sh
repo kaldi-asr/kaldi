@@ -56,8 +56,14 @@ if [ ! -d $dir/download/0468 ]; then
     tar -xzf $dir/download/sve.16khz.0467-1.tar.gz -C $dir/download/0467-1
     tar -xzf $dir/download/sve.16khz.0467-2.tar.gz -C $dir/download/0467-2
     tar -xzf $dir/download/sve.16khz.0467-3.tar.gz -C $dir/download/0467-3
-    tar -xzf $dir/download/sve.16khz.0468.tar.gz -C $dir/download/0468    
+    mkdir -p $dir/download/0468
+    tar -xzf $dir/download/sve.16khz.0468.tar.gz -C $dir/download/0468
 
+    echo "Correcting file names."
+    mv $dir/download/0467-1/'0467 sv train 1' $dir/download/0467-1/0467_sv_train_1 
+    mv $dir/download/0467-2/'0467 sv train 2' $dir/download/0467-2/0467_sv_train_2 
+    mv $dir/download/0467-3/'0467 sv train 3' $dir/download/0467-3/0467_sv_train_3 
+    mv $dir/download/0468/'0468 sv test' $dir/download/0468/0468_sv_test 
      
     echo "Corpus unpacked succesfully."
 fi

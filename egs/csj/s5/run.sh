@@ -251,6 +251,9 @@ local/chain/run_tdnn.sh
 ##### Start RNN-LM training for rescoring #####
 # local/csj_run_rnnlm.sh
 
+##### Start LSTM RNN-LM training for lattice rescoring #####
+# local/rnnlm/run_rnnlm.sh
+
 # getting results (see RESULTS file)
 # for eval_num in eval1 eval2 eval3 $dev_set ; do
 #     echo "=== evaluation set $eval_num ===" ;

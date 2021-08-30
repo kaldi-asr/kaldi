@@ -209,6 +209,9 @@ class TaskSequencer {
   void Wait() { // You call this at the end if it's more convenient
     // than waiting for the destructor.  It waits for all tasks to finish.
     if (thread_list_ != NULL) {
+      while (!thread_list_->thread.joinable()) {
+        Sleep(1);
+      }
       thread_list_->thread.join();
       KALDI_ASSERT(thread_list_->tail == NULL); // thread would not
       // have exited without setting tail to NULL.
@@ -244,9 +247,11 @@ class TaskSequencer {
     //     we first wait till the previous thread, whose details will be in "tail",
     //     is finished.
     if (args->tail != NULL) {
-      args->tail->thread.join();
+      while (!args->tail->thread.joinable()){
+        Sleep(1);
+      }
+	    args->tail->thread.join();
     }
-
     delete args->c; // delete the object "c".  This may cause some output,
     // e.g. to a stream.  We don't need to worry about concurrent access to
     // the output stream, because each thread waits for the previous thread
