@@ -158,7 +158,7 @@ class TransitionModel: public TransitionInformation {
   // this state doesn't have a self-loop.
 
   bool TransitionIdsEquivalent(int32_t trans_id1, int32_t trans_id2) const final;
-  bool TransitionIdIsStartOfToken(int32_t trans_id) const final;
+  bool TransitionIdIsStartOfPhone(int32_t trans_id) const final;
 
   // TransitionIdToPdfFast is as TransitionIdToPdfArray()[trans_id] but skips an assertion
   // (unless we're in paranoid mode).

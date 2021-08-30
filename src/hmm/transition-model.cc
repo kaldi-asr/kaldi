@@ -787,7 +787,7 @@ bool TransitionModel::TransitionIdsEquivalent(int32_t trans_id1,
     TransitionIdToTransitionState(trans_id2);
 }
 
-bool TransitionModel::TransitionIdIsStartOfToken(int32_t trans_id) const {
+bool TransitionModel::TransitionIdIsStartOfPhone(int32_t trans_id) const {
   return TransitionIdToHmmState(trans_id) == 0;
 }
 

@@ -55,14 +55,15 @@ class TransitionInformation {
    * Returns true if this trans_id corresponds to the start of a
    * phone.
    */
-  virtual bool TransitionIdIsStartOfToken(int32_t trans_id) const = 0;
+  virtual bool TransitionIdIsStartOfPhone(int32_t trans_id) const = 0;
   /**
-   * Phone is understood to correspond not only to linguistic phones,
-   * but also graphemes, word pieces, byte pieces, etc. A better word
-   * would be Token. We use the word Phone for backwards compatibility
-   * with TransitionModel, which was designed only with phones in
-   * mind. Since TransitionInformation was added to subsume
-   * TransitionModel, we did not want to change the call site of every
+   * Phone is a historical term, and should be understood in a wider
+   * sense that also includes graphemes, word pieces, etc.: any
+   * minimal entity in your problem domain which is represented by a
+   * sequence of transitions with a PDF assigned to each of them by
+   * the model. In this sense, Token is a better word. Since
+   * TransitionInformation was added to subsume TransitionModel, we
+   * did not want to change the call site of every
    * TransitionModel::TransitionIdToPhone to
    * TransitionInformation::TransitionIdToToken.
    */
