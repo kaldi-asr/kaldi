@@ -239,7 +239,7 @@ bool GetLinearSymbolSequence(const Fst<Arc> &fst,
   while (1) {
     Weight w = fst.Final(cur_state);
     if (w != Weight::Zero()) {  // is final..
-      tot_weight = Times(w, tot_weight);
+      tot_weight = Times(tot_weight, w);
       if (fst.NumArcs(cur_state) != 0) return false;
       if (isymbols_out != NULL) *isymbols_out = ilabel_seq;
       if (osymbols_out != NULL) *osymbols_out = olabel_seq;
@@ -250,7 +250,7 @@ bool GetLinearSymbolSequence(const Fst<Arc> &fst,
 
       ArcIterator<Fst<Arc> > iter(fst, cur_state);  // get the only arc.
       const Arc &arc = iter.Value();
-      tot_weight = Times(arc.weight, tot_weight);
+      tot_weight = Times(tot_weight, arc.weight);
       if (arc.ilabel != 0) ilabel_seq.push_back(arc.ilabel);
       if (arc.olabel != 0) olabel_seq.push_back(arc.olabel);
       cur_state = arc.nextstate;
