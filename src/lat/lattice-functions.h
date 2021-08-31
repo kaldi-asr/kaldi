@@ -28,13 +28,17 @@
 #include <map>
 
 #include "base/kaldi-common.h"
-#include "hmm/posterior.h"
 #include "fstext/fstext-lib.h"
-#include "hmm/transition-model.h"
-#include "lat/kaldi-lattice.h"
 #include "itf/decodable-itf.h"
+#include "itf/transition-information.h"
+#include "lat/kaldi-lattice.h"
 
 namespace kaldi {
+
+// Redundant with the typedef in hmm/posterior.h. We want functions
+// using the Posterior type to be usable without a dependency on the
+// hmm library.
+typedef std::vector<std::vector<std::pair<int32, BaseFloat> > > Posterior;
 
 /**
    This function extracts the per-frame log likelihoods from a linear
@@ -96,7 +100,7 @@ bool ComputeCompactLatticeBetas(const CompactLattice &lat,
 // Computes (normal or Viterbi) alphas and betas; returns (total-prob, or
 // best-path negated cost) Note: in either case, the alphas and betas are
 // negated costs.  Requires that lat be topologically sorted.  This code
-// will work for either CompactLattice or Latice.
+// will work for either CompactLattice or Lattice.
 template<typename LatticeType>
 double ComputeLatticeAlphasAndBetas(const LatticeType &lat,
                                     bool viterbi,
@@ -137,7 +141,7 @@ void CompactLatticeLimitDepth(int32 max_arcs_per_frame,
 /// outputs for each frame the set of phones active on that frame.  If
 /// sil_phones (which must be sorted and uniq) is nonempty, it excludes
 /// phones in this list.
-void LatticeActivePhones(const Lattice &lat, const TransitionModel &trans,
+void LatticeActivePhones(const Lattice &lat, const TransitionInformation &trans,
                          const std::vector<int32> &sil_phones,
                          std::vector<std::set<int32> > *active_phones);
 
@@ -151,7 +155,7 @@ void LatticeActivePhones(const Lattice &lat, const TransitionModel &trans,
 /// transition-id in the phone if reordering is not done (but typically
 /// we do reorder).
 /// Also see PhoneAlignLattice, in phone-align-lattice.h.
-void ConvertLatticeToPhones(const TransitionModel &trans_model,
+void ConvertLatticeToPhones(const TransitionInformation &trans_model,
                             Lattice *lat);
 
 /// Prunes a lattice or compact lattice.  Returns true on success, false if
@@ -164,7 +168,7 @@ bool PruneLattice(BaseFloat beam, LatticeType *lat);
 /// replace the sequences of transition-ids with sequences of phones.
 /// Note that this is different from ConvertLatticeToPhones, in that
 /// we replace the transition-ids not the words.
-void ConvertCompactLatticeToPhones(const TransitionModel &trans_model,
+void ConvertCompactLatticeToPhones(const TransitionInformation &trans_model,
                                    CompactLattice *clat);
 
 /// Boosts LM probabilities by b * [number of frame errors]; equivalently, adds
@@ -172,14 +176,14 @@ void ConvertCompactLatticeToPhones(const TransitionModel &trans_model,
 /// There is a frame error if a particular transition-id on a particular frame
 /// corresponds to a phone not matching transcription's alignment for that frame.
 /// This is used in "margin-inspired" discriminative training, esp. Boosted MMI.
-/// The TransitionModel is used to map transition-ids in the lattice
+/// The TransitionInformation is used to map transition-ids in the lattice
 /// input-side to phones; the phones appearing in
 /// "silence_phones" are treated specially in that we replace the frame error f
 /// (either zero or 1) for a frame, with the minimum of f or max_silence_error.
 /// For the normal recipe, max_silence_error would be zero.
 /// Returns true on success, false if there was some kind of mismatch.
 /// At input, silence_phones must be sorted and unique.
-bool LatticeBoost(const TransitionModel &trans,
+bool LatticeBoost(const TransitionInformation &trans,
                   const std::vector<int32> &alignment,
                   const std::vector<int32> &silence_phones,
                   BaseFloat b,
@@ -226,49 +230,13 @@ bool LatticeBoost(const TransitionModel &trans,
                         pseudo log-likelihoods of states at each frame.
 */
 BaseFloat LatticeForwardBackwardMpeVariants(
-    const TransitionModel &trans,
+    const TransitionInformation &trans,
     const std::vector<int32> &silence_phones,
     const Lattice &lat,
     const std::vector<int32> &num_ali,
     std::string criterion,
     bool one_silence_class,
     Posterior *post);
-
-/**
-   This function can be used to compute posteriors for MMI, with a positive contribution
-   for the numerator and a negative one for the denominator.  This function is not actually
-   used in our normal MMI training recipes, where it's instead done using various command
-   line programs that each do a part of the job.  This function was written for use in
-   neural-net MMI training.
-
-   @param [in] trans    The transition model. Used to map the
-                        transition-ids to phones or pdfs.
-   @param [in] lat      The denominator lattice
-   @param [in] num_ali  The numerator alignment
-   @param [in] drop_frames   If "drop_frames" is true, it will not compute any
-                        posteriors on frames where the num and den have disjoint
-                        pdf-ids.
-   @param [in] convert_to_pdf_ids   If "convert_to_pdfs_ids" is true, it will
-                        convert the output to be at the level of pdf-ids, not
-                        transition-ids.
-   @param [in] cancel   If "cancel" is true, it will cancel out any positive and
-                        negative parts from the same transition-id (or pdf-id,
-                        if convert_to_pdf_ids == true).
-   @param [out] arc_post   The output MMI posteriors of transition-ids (or
-                        pdf-ids if convert_to_pdf_ids == true) at each frame
-                        i.e. the difference between the numerator
-                        and denominator posteriors.
-
-   It returns the forward-backward likelihood of the lattice. */
-BaseFloat LatticeForwardBackwardMmi(
-    const TransitionModel &trans,
-    const Lattice &lat,
-    const std::vector<int32> &num_ali,
-    bool drop_frames,
-    bool convert_to_pdf_ids,
-    bool cancel,
-    Posterior *arc_post);
-
 
 /// This function takes a CompactLattice that should only contain a single
 /// linear sequence (e.g. derived from lattice-1best), and that should have been
@@ -285,27 +253,6 @@ bool CompactLatticeToWordAlignment(const CompactLattice &clat,
                                    std::vector<int32> *words,
                                    std::vector<int32> *begin_times,
                                    std::vector<int32> *lengths);
-
-/// This function takes a CompactLattice that should only contain a single
-/// linear sequence (e.g. derived from lattice-1best), and that should have been
-/// processed so that the arcs in the CompactLattice align correctly with the
-/// word boundaries (e.g. by lattice-align-words).  It outputs 4 vectors of the
-/// same size, which give, for each word in the lattice (in sequence), the word
-/// label, the begin time and length in frames, and the pronunciation (sequence
-/// of phones).  This is done even for zero words, corresponding to optional
-/// silences -- if you don't want them, just ignore them in the output.
-/// This function will print a warning and return false, if the lattice
-/// did not have the correct format (e.g. if it is empty or it is not
-/// linear).
-bool CompactLatticeToWordProns(
-    const TransitionModel &tmodel,
-    const CompactLattice &clat,
-    std::vector<int32> *words,
-    std::vector<int32> *begin_times,
-    std::vector<int32> *lengths,
-    std::vector<std::vector<int32> > *prons,
-    std::vector<std::vector<int32> > *phone_lengths);
-
 
 /// A form of the shortest-path/best-path algorithm that's specially coded for
 /// CompactLattice.  Requires that clat be acyclic.
@@ -379,7 +326,7 @@ int32 LongestSentenceLength(const CompactLattice &lat);
 /// speedup_factor; otherwise we set them to zero.  This gives the right
 /// expected probability so our corpus-level diagnostics will be about right.
 bool RescoreCompactLatticeSpeedup(
-    const TransitionModel &tmodel,
+    const TransitionInformation &tmodel,
     BaseFloat speedup_factor,
     DecodableInterface *decodable,
     CompactLattice *clat);

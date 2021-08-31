@@ -28,7 +28,7 @@
 #include <set>
 #include <vector>
 #include "fstext/lattice-weight.h"
-#include "hmm/transition-model.h"
+#include "itf/transition-information.h"
 #include "itf/options-itf.h"
 #include "lat/kaldi-lattice.h"
 
@@ -222,7 +222,7 @@ bool DeterminizeLatticePruned(
 */
 template<class Weight>
 typename ArcTpl<Weight>::Label DeterminizeLatticeInsertPhones(
-    const kaldi::TransitionModel &trans_model,
+    const kaldi::TransitionInformation &trans_model,
     MutableFst<ArcTpl<Weight> > *fst);
 
 /** This function takes in lattices and deletes "phones" from them. The "phones"
@@ -253,7 +253,7 @@ void DeterminizeLatticeDeletePhones(
 */
 template<class Weight, class IntType>
 bool DeterminizeLatticePhonePruned(
-    const kaldi::TransitionModel &trans_model,
+    const kaldi::TransitionInformation &trans_model,
     const ExpandedFst<ArcTpl<Weight> > &ifst,
     double prune,
     MutableFst<ArcTpl<CompactLatticeWeightTpl<Weight, IntType> > > *ofst,
@@ -265,7 +265,7 @@ bool DeterminizeLatticePhonePruned(
 */
 template<class Weight, class IntType>
 bool DeterminizeLatticePhonePruned(
-    const kaldi::TransitionModel &trans_model,
+    const kaldi::TransitionInformation &trans_model,
     MutableFst<ArcTpl<Weight> > *ifst,
     double prune,
     MutableFst<ArcTpl<CompactLatticeWeightTpl<Weight, IntType> > > *ofst,
@@ -282,7 +282,7 @@ bool DeterminizeLatticePhonePruned(
     code.
 */
 bool DeterminizeLatticePhonePrunedWrapper(
-    const kaldi::TransitionModel &trans_model,
+    const kaldi::TransitionInformation &trans_model,
     MutableFst<kaldi::LatticeArc> *ifst,
     double prune,
     MutableFst<kaldi::CompactLatticeArc> *ofst,

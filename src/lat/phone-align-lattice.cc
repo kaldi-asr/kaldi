@@ -20,7 +20,6 @@
 
 
 #include "lat/phone-align-lattice.h"
-#include "hmm/transition-model.h"
 #include "util/stl-utils.h"
 
 namespace kaldi {
@@ -58,7 +57,7 @@ class LatticePhoneAligner {
     /// wrong so don't trust the output too fully.
     /// Note: the "next_state" of the arc will not be set, you have to do that
     /// yourself.
-    bool OutputPhoneArc(const TransitionModel &tmodel,
+    bool OutputPhoneArc(const TransitionInformation &tmodel,
                         const PhoneAlignLatticeOptions &opts,
                         CompactLatticeArc *arc_out,
                         bool *error);
@@ -67,7 +66,7 @@ class LatticePhoneAligner {
     /// the arc won't have any transition-ids on it.  This is intended to fix
     /// a particular pathology where too many words were pending and we had
     /// blowup.
-    bool OutputWordArc(const TransitionModel &tmodel,
+    bool OutputWordArc(const TransitionInformation &tmodel,
                        const PhoneAlignLatticeOptions &opts,
                        CompactLatticeArc *arc_out,
                        bool *error);
@@ -91,7 +90,7 @@ class LatticePhoneAligner {
     /// will consist of partial words, and this will only
     /// happen for lattices that were somehow broken, i.e.
     /// had not reached the final state.
-    void OutputArcForce(const TransitionModel &tmodel,
+    void OutputArcForce(const TransitionInformation &tmodel,
                         const PhoneAlignLatticeOptions &opts,
                         CompactLatticeArc *arc_out,
                         bool *error);
@@ -245,7 +244,7 @@ class LatticePhoneAligner {
   }
 
   LatticePhoneAligner(const CompactLattice &lat,
-                      const TransitionModel &tmodel,
+                      const TransitionInformation &tmodel,
                       const PhoneAlignLatticeOptions &opts,
                      CompactLattice *lat_out):
       lat_(lat), tmodel_(tmodel), opts_(opts), lat_out_(lat_out),
@@ -283,7 +282,7 @@ class LatticePhoneAligner {
   }
 
   CompactLattice lat_;
-  const TransitionModel &tmodel_;
+  const TransitionInformation &tmodel_;
   const PhoneAlignLatticeOptions &opts_;
   CompactLattice *lat_out_;
 
@@ -293,7 +292,7 @@ class LatticePhoneAligner {
 };
 
 bool LatticePhoneAligner::ComputationState::OutputPhoneArc(
-    const TransitionModel &tmodel,
+    const TransitionInformation &tmodel,
     const PhoneAlignLatticeOptions &opts,
     CompactLatticeArc *arc_out,
     bool *error) {
@@ -343,7 +342,7 @@ bool LatticePhoneAligner::ComputationState::OutputPhoneArc(
 }
 
 bool LatticePhoneAligner::ComputationState::OutputWordArc(
-    const TransitionModel &tmodel,
+    const TransitionInformation &tmodel,
     const PhoneAlignLatticeOptions &opts,
     CompactLatticeArc *arc_out,
     bool *error) {
@@ -362,7 +361,7 @@ bool LatticePhoneAligner::ComputationState::OutputWordArc(
 
 
 void LatticePhoneAligner::ComputationState::OutputArcForce(
-    const TransitionModel &tmodel,
+    const TransitionInformation &tmodel,
     const PhoneAlignLatticeOptions &opts,
     CompactLatticeArc *arc_out,
     bool *error) {
@@ -411,7 +410,7 @@ void LatticePhoneAligner::ComputationState::OutputArcForce(
 }
 
 bool PhoneAlignLattice(const CompactLattice &lat,
-                       const TransitionModel &tmodel,
+                       const TransitionInformation &tmodel,
                        const PhoneAlignLatticeOptions &opts,
                        CompactLattice *lat_out) {
   LatticePhoneAligner aligner(lat, tmodel, opts, lat_out);

@@ -71,7 +71,7 @@ class LatticeLexiconWordAligner {
     /// previously did PhoneAlignLattice, we can assume this arc corresponds to
     /// exactly one or zero phones.
     void Advance(const CompactLatticeArc &arc,
-                 const TransitionModel &tmodel,
+                 const TransitionInformation &tmodel,
                  LatticeWeight *leftover_weight);
 
     /// Returns true if, assuming we were to add one or more phones by calling
@@ -283,7 +283,7 @@ class LatticeLexiconWordAligner {
   }
 
   LatticeLexiconWordAligner(const CompactLattice &lat,
-                            const TransitionModel &tmodel,
+                            const TransitionInformation &tmodel,
                             const WordAlignLatticeLexiconInfo &lexicon_info,
                             int32 max_states,
                             int32 partial_word_label,
@@ -343,7 +343,7 @@ class LatticeLexiconWordAligner {
   }
 
   CompactLattice lat_in_;
-  const TransitionModel &tmodel_;
+  const TransitionInformation &tmodel_;
   const WordAlignLatticeLexiconInfo &lexicon_info_;
   int32 max_states_;
   CompactLattice *lat_out_;
@@ -571,7 +571,8 @@ void LatticeLexiconWordAligner::ProcessFinalForceOut() {
 }
 
 void LatticeLexiconWordAligner::ComputationState::Advance(
-    const CompactLatticeArc &arc, const TransitionModel &tmodel, LatticeWeight *weight) {
+    const CompactLatticeArc &arc, const TransitionInformation &tmodel,
+    LatticeWeight *weight) {
   const std::vector<int32> &tids = arc.weight.String();
   int32 phone;
   if (tids.empty()) phone = 0;
@@ -736,41 +737,6 @@ bool LatticeLexiconWordAligner::ComputationState::TakeTransition(
   }
 }
 
-
-
-// Returns true if this vector of transition-ids could be a valid
-// word.  Note: for testing, we assume that the lexicon always
-// has the same input-word and output-word.  The other case is complex
-// to test.
-static bool IsPlausibleWord(const WordAlignLatticeLexiconInfo &lexicon_info,
-                            const TransitionModel &tmodel,
-                            int32 word_id,
-                            const std::vector<int32> &transition_ids) {
-
-  std::vector<std::vector<int32> > split_alignment; // Split into phones.
-  if (!SplitToPhones(tmodel, transition_ids, &split_alignment)) {
-    KALDI_WARN << "Could not split word into phones correctly (forced-out?)";
-  }
-  std::vector<int32> phones(split_alignment.size());
-  for (size_t i = 0; i < split_alignment.size(); i++) {
-    KALDI_ASSERT(!split_alignment[i].empty());
-    phones[i] = tmodel.TransitionIdToPhone(split_alignment[i][0]);
-  }
-  std::vector<int32> lexicon_entry;
-  lexicon_entry.push_back(word_id);
-  lexicon_entry.insert(lexicon_entry.end(), phones.begin(), phones.end());
-
-  if (!lexicon_info.IsValidEntry(lexicon_entry)) {
-    std::ostringstream ostr;
-    for (size_t i = 0; i < lexicon_entry.size(); i++)
-      ostr << lexicon_entry[i] << ' ';
-    KALDI_WARN << "Invalid arc in aligned lattice (code error?) lexicon-entry is " << ostr.str();
-    return false;
-  } else {
-    return true;
-  }
-}
-
 void WordAlignLatticeLexiconInfo::UpdateViabilityMap(
     const std::vector<int32> &lexicon_entry) {
   int32 word = lexicon_entry[0];  // note: word may be zero.
@@ -906,100 +872,9 @@ WordAlignLatticeLexiconInfo::WordAlignLatticeLexiconInfo(
   UpdateEquivalenceMap(lexicon);
 }
 
-/// Testing code; map word symbols in the lattice "lat" using the equivalence-classes
-/// obtained from the lexicon, using the function EquivalenceClassOf in the lexicon_info
-/// object.
-static void MapSymbols(const WordAlignLatticeLexiconInfo &lexicon_info,
-                       CompactLattice *lat) {
-  typedef CompactLattice::StateId StateId;
-  for (StateId s = 0; s < lat->NumStates(); s++) {
-    for (fst::MutableArcIterator<CompactLattice> aiter(lat, s);
-         !aiter.Done(); aiter.Next()) {
-      CompactLatticeArc arc (aiter.Value());
-      KALDI_ASSERT(arc.ilabel == arc.olabel);
-      arc.ilabel = lexicon_info.EquivalenceClassOf(arc.ilabel);
-      arc.olabel = arc.ilabel;
-      aiter.SetValue(arc);
-    }
-  }
-}
-
-static bool TestWordAlignedLattice(const WordAlignLatticeLexiconInfo &lexicon_info,
-                                   const TransitionModel &tmodel,
-                                   CompactLattice clat,
-                                   CompactLattice aligned_clat,
-                                   bool allow_duplicate_paths) {
-  int32 max_err = 5, num_err = 0;
-  { // We test whether the forward-backward likelihoods differ; this is intended
-    // to detect when we have duplicate paths in the aligned lattice, for some path
-    // in the input lattice (e.g. due to epsilon-sequencing problems).
-    Posterior post;
-    Lattice lat, aligned_lat;
-    ConvertLattice(clat, &lat);
-    ConvertLattice(aligned_clat, &aligned_lat);
-    TopSort(&lat);
-    TopSort(&aligned_lat);
-    BaseFloat like_before = LatticeForwardBackward(lat, &post),
-        like_after = LatticeForwardBackward(aligned_lat, &post);
-    if (fabs(like_before - like_after) >
-        1.0e-04 * (fabs(like_before) + fabs(like_after))) {
-      KALDI_WARN << "Forward-backward likelihoods differ in word-aligned lattice "
-                 << "testing, " << like_before << " != " << like_after;
-      if (!allow_duplicate_paths)
-        num_err++;
-    }
-  }
-
-  // Do a check on the arcs of the aligned lattice, that each arc corresponds
-  // to an entry in the lexicon.
-  for (CompactLattice::StateId s = 0; s < aligned_clat.NumStates(); s++) {
-    for (fst::ArcIterator<CompactLattice> aiter(aligned_clat, s);
-         !aiter.Done(); aiter.Next()) {
-      const CompactLatticeArc &arc (aiter.Value());
-      KALDI_ASSERT(arc.ilabel == arc.olabel);
-      int32 word_id = arc.ilabel;
-      const std::vector<int32> &tids = arc.weight.String();
-      if (word_id == 0 && tids.empty()) continue; // We allow epsilon arcs.
-
-      if (num_err < max_err)
-        if (!IsPlausibleWord(lexicon_info, tmodel, word_id, tids))
-          num_err++;
-      // Note: IsPlausibleWord will warn if there is an error.
-    }
-    if (!aligned_clat.Final(s).String().empty()) {
-      KALDI_WARN << "Aligned lattice has nonempty string on its final-prob.";
-      return false;
-    }
-  }
-
-  // Next we'll do an equivalence test.
-  // First map symbols into equivalence classes, so that we don't wrongly fail
-  // due to the capability of the framework to map words to other words.
-  // (e.g. mapping <eps> on silence arcs to SIL).
-
-  MapSymbols(lexicon_info, &clat);
-  MapSymbols(lexicon_info, &aligned_clat);
-
-  /// Check equivalence.
-  int32 num_paths = 5, seed = Rand(), max_path_length = -1;
-  BaseFloat delta = 0.2; // some lattices have large costs -> use large delta.
-
-  FLAGS_v = GetVerboseLevel(); // set the OpenFst verbose level to the Kaldi
-                               // verbose level.
-  if (!RandEquivalent(clat, aligned_clat, num_paths, delta, seed, max_path_length)) {
-    KALDI_WARN << "Equivalence test failed during lattice alignment.";
-    return false;
-  }
-  FLAGS_v = 0;
-
-  return (num_err == 0);
-}
-
-
-
 // This is the wrapper function for users to call.
 bool WordAlignLatticeLexicon(const CompactLattice &lat,
-                             const TransitionModel &tmodel,
+                             const TransitionInformation &tmodel,
                              const WordAlignLatticeLexiconInfo &lexicon_info,
                              const WordAlignLatticeLexiconOpts &opts,
                              CompactLattice *lat_out) {
@@ -1037,14 +912,6 @@ bool WordAlignLatticeLexicon(const CompactLattice &lat,
                                     max_states, opts.partial_word_label, lat_out);
   // We'll let the calling code warn if this is false; it will know the utterance-id.
   ans = aligner.AlignLattice() && ans;
-  if (ans && opts.test) { // We only test if it succeeded.
-    if (!TestWordAlignedLattice(lexicon_info, tmodel, lat, *lat_out,
-                                opts.allow_duplicate_paths)) {
-      KALDI_WARN << "Lattice failed test (activated because --test=true). "
-                 << "Probable code error, please contact Kaldi maintainers.";
-      ans = false;
-    }
-  }
   return ans;
 }
 

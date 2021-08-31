@@ -201,7 +201,7 @@ class LatticeIncrementalDeterminizer {
                                                 specific type all the time but
                                                 just say 'Label' */
   LatticeIncrementalDeterminizer(
-      const TransitionModel &trans_model,
+      const TransitionInformation &trans_model,
       const LatticeIncrementalDecoderConfig &config):
       trans_model_(trans_model), config_(config) { }
 
@@ -389,7 +389,7 @@ class LatticeIncrementalDeterminizer {
 
   // trans_model_ is needed by DeterminizeLatticePhonePrunedWrapper() which this
   // class calls.
-  const TransitionModel &trans_model_;
+  const TransitionInformation &trans_model_;
   // config_ is needed by DeterminizeLatticePhonePrunedWrapper() which this
   // class calls.
   const LatticeIncrementalDecoderConfig &config_;
@@ -473,13 +473,13 @@ class LatticeIncrementalDecoderTpl {
   // Instantiate this class once for each thing you have to decode.
   // This version of the constructor does not take ownership of
   // 'fst'.
-  LatticeIncrementalDecoderTpl(const FST &fst, const TransitionModel &trans_model,
+  LatticeIncrementalDecoderTpl(const FST &fst, const TransitionInformation &trans_model,
                                const LatticeIncrementalDecoderConfig &config);
 
   // This version of the constructor takes ownership of the fst, and will delete
   // it when this object is destroyed.
   LatticeIncrementalDecoderTpl(const LatticeIncrementalDecoderConfig &config,
-                               FST *fst, const TransitionModel &trans_model);
+                               FST *fst, const TransitionInformation &trans_model);
 
   void SetOptions(const LatticeIncrementalDecoderConfig &config) { config_ = config; }
 

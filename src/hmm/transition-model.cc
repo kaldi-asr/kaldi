@@ -781,6 +781,19 @@ void TransitionModel::MapUpdateShared(const Vector<double> &stats,
   ComputeDerivedOfProbs();
 }
 
+bool TransitionModel::TransitionIdsEquivalent(int32_t trans_id1,
+                                              int32_t trans_id2) const {
+  return TransitionIdToTransitionState(trans_id1) ==
+    TransitionIdToTransitionState(trans_id2);
+}
+
+bool TransitionModel::TransitionIdIsStartOfPhone(int32_t trans_id) const {
+  return TransitionIdToHmmState(trans_id) == 0;
+}
+
+const std::vector<int32>& TransitionModel::TransitionIdToPdfArray() const {
+  return id2pdf_id_;
+}
 
 int32 TransitionModel::TransitionIdToPhone(int32 trans_id) const {
   KALDI_ASSERT(trans_id != 0 && static_cast<size_t>(trans_id) < id2state_.size());

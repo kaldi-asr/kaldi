@@ -26,7 +26,7 @@ namespace kaldi {
 // instantiate this class once for each thing you have to decode.
 template <typename FST, typename Token>
 LatticeIncrementalDecoderTpl<FST, Token>::LatticeIncrementalDecoderTpl(
-    const FST &fst, const TransitionModel &trans_model,
+    const FST &fst, const TransitionInformation &trans_model,
     const LatticeIncrementalDecoderConfig &config)
     : fst_(&fst),
       delete_fst_(false),
@@ -40,7 +40,7 @@ LatticeIncrementalDecoderTpl<FST, Token>::LatticeIncrementalDecoderTpl(
 template <typename FST, typename Token>
 LatticeIncrementalDecoderTpl<FST, Token>::LatticeIncrementalDecoderTpl(
     const LatticeIncrementalDecoderConfig &config, FST *fst,
-    const TransitionModel &trans_model)
+    const TransitionInformation &trans_model)
     : fst_(fst),
       delete_fst_(true),
       num_toks_(0),
