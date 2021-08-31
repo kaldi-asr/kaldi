@@ -21,6 +21,7 @@
 #define KALDI_ITF_TRANSITION_INFORMATION_H_
 
 #include <stdint.h>
+#include <vector>
 
 namespace kaldi {
 
@@ -99,7 +100,7 @@ class TransitionInformation {
    * TransitionIdToPdf(). Another way to look at this is as the number
    * of outputs over which your acoustic model does a softmax.
    */
-  virtual int32 NumPdfs() const = 0;
+  virtual int32_t NumPdfs() const = 0;
 };
 
 }  // namespace kaldi
