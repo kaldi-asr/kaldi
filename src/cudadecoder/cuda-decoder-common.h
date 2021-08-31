@@ -404,7 +404,7 @@ struct LaneCounters {
   // hannel that this lane will compute for the current frame
   ChannelId channel_to_compute;
   // Pointer to the loglikelihoods array for this channel and current frame
-  BaseFloat *loglikelihoods;
+  const BaseFloat *loglikelihoods;
   // Contains both main_q_end and narcs
   // End index of the main queue
   // only tokens at index i with i < main_q_end
