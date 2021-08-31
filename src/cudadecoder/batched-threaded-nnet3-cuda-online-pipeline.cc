@@ -471,13 +471,9 @@ void BatchedThreadedNnet3CudaOnlinePipeline::RunLatticeCallbacks(
       ++channel_info.segmentid;
 
       // Used by FinalizeDecoding to know if we should cleanup
-      bool has_lattice_callback = false;
-      decltype(lattice_callbacks_.end()) it_lattice_callback;
-      if (!lattice_callbacks_.empty()) {
-        it_lattice_callback = lattice_callbacks_.find(corr_id);
-        has_lattice_callback =
-            (it_lattice_callback != lattice_callbacks_.end());
-      }
+      auto it_lattice_callback = lattice_callbacks_.find(corr_id);
+      bool has_lattice_callback =
+          (it_lattice_callback != lattice_callbacks_.end());
       if (has_lattice_callback) {
         std::unique_ptr<CallbackWithOptions> lattice_callback(
             new CallbackWithOptions(it_lattice_callback->second));
