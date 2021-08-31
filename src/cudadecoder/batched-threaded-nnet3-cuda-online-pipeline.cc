@@ -551,7 +551,7 @@ void BatchedThreadedNnet3CudaOnlinePipeline::RunCallbacksAndFinalize(
   for (size_t i = 0; i < is_last_chunk.size(); ++i) {
     bool endpoint_detected = false;
     if (config_.reset_on_endpoint) {
-      KALDI_ASSERT(end_points_);
+      KALDI_ASSERT(end_points_ && i < end_points_->size());
       endpoint_detected = (*end_points_)[i];
     }
     is_end_of_segment_[i] = endpoint_detected || is_last_chunk[i];
