@@ -27,8 +27,6 @@
 #include <numeric>
 #include <tuple>
 
-#include <nvToolsExt.h>
-
 #include "cudamatrix/cu-common.h"
 #include "feat/feature-window.h"
 #include "lat/lattice-functions.h"
@@ -137,8 +135,8 @@ void BatchedThreadedNnet3CudaOnlinePipeline::SetLatticeCallback(
           KALDI_WARN << "Empty result for callback";
           return;
         }
-        CompactLattice &clat = params.results[0].GetLatticeResult();
-        callback(clat);
+        CompactLattice *clat = params.results[0].GetLatticeResult();
+        callback(*clat);
       };
   SetLatticeCallback(corr_id, segmented_callback,
                      CudaPipelineResult::RESULT_TYPE_LATTICE);

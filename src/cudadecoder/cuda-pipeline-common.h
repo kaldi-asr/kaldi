@@ -88,8 +88,11 @@ class CudaPipelineResult {
 
   bool HasValidResult() const { return result_type_; }
 
-  int32 GetSegmentID() { return segment_id_; }
-  bool IsLastSegment() { return is_last_segment_; }
+  int32 GetSegmentID() const { return segment_id_; }
+
+  bool IsLastSegment() const { return is_last_segment_; }
+
+  BaseFloat GetTimeOffsetSeconds() const { return offset_seconds_; }
 
   void SetLatticeResult(CompactLattice &&clat) {
     result_type_ |= RESULT_TYPE_LATTICE;
@@ -102,16 +105,16 @@ class CudaPipelineResult {
     ctm_result_ = std::move(ctm);
   }
 
-  CompactLattice &GetLatticeResult() {
+  CompactLattice *GetLatticeResult() {
     KALDI_ASSERT("Lattice result was not requested" &&
                  result_type_ & RESULT_TYPE_LATTICE);
-    return clat_;
+    return &clat_;
   }
 
-  CTMResult &GetCTMResult() {
+  CTMResult *GetCTMResult() {
     KALDI_ASSERT("CTM result was not requested" &&
                  result_type_ & RESULT_TYPE_CTM);
-    return ctm_result_;
+    return &ctm_result_;
   }
 
   void SetTimeOffsetSeconds(BaseFloat offset_seconds) {
@@ -121,8 +124,6 @@ class CudaPipelineResult {
 
   void SetSegmentID(int segment_id) { segment_id_ = segment_id; }
   void SetAsLastSegment() { is_last_segment_ = true; }
-
-  BaseFloat GetTimeOffsetSeconds() const { return offset_seconds_; }
 };
 
 struct SegmentedLatticeCallbackParams {

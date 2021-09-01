@@ -49,7 +49,7 @@ void WriteLattices(std::vector<CudaPipelineResult> &results,
     std::ostringstream key_with_offset;
     key_with_offset << key;
     if (print_offsets) key_with_offset << "-" << offset;
-    clat_writer.Write(key_with_offset.str(), result.GetLatticeResult());
+    clat_writer.Write(key_with_offset.str(), *result.GetLatticeResult());
     if (!print_offsets) {
       if (results.size() > 1) {
         KALDI_WARN << "Utterance " << key
@@ -103,7 +103,7 @@ void MergeSegmentsToCTMOutput(std::vector<CudaPipelineResult> &results,
     BaseFloat offset_seconds =
         use_segment_offsets ? result.GetTimeOffsetSeconds() : 0;
     int isegment = result.GetSegmentID();
-    auto &ctm = result.GetCTMResult();
+    auto &ctm = *result.GetCTMResult();
     for (size_t iword = 0; iword < ctm.times_seconds.size(); ++iword) {
       BaseFloat word_from = offset_seconds + ctm.times_seconds[iword].first;
       BaseFloat word_to = offset_seconds + ctm.times_seconds[iword].second;

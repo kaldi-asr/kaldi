@@ -236,7 +236,7 @@ int main(int argc, char *argv[]) {
 
                 if (clat_writer) {
                   std::lock_guard<std::mutex> lk(output_writer_m_);
-                  clat_writer->Write(key, params.results[0].GetLatticeResult());
+                  clat_writer->Write(key, *params.results[0].GetLatticeResult());
                 }
 
                 if (ctm_writer) {
