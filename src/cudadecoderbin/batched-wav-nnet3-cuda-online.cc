@@ -192,11 +192,13 @@ int main(int argc, char *argv[]) {
               corr_id, [latency_ptr, &timer, &opts, corr_id, result_type](
                            const std::string &str, bool partial,
                            bool endpoint_detected) {
-                if (partial && opts.print_partial_hypotheses)
+                if (partial && opts.print_partial_hypotheses) {
                   KALDI_LOG << "corr_id #" << corr_id << " [partial] : " << str;
+		}
 
-                if (endpoint_detected && opts.print_endpoints)
+                if (endpoint_detected && opts.print_endpoints) {
                   KALDI_LOG << "corr_id #" << corr_id << " [endpoint detected]";
+		}
 
                 if (!partial) {
                   // *latency_ptr currently contains t1="stream_will_start_at +
@@ -210,8 +212,9 @@ int main(int argc, char *argv[]) {
                     // lattice gen into account
                     *latency_ptr = timer.Elapsed() - *latency_ptr;
                   }
-                  if (opts.print_hypotheses)
+                  if (opts.print_hypotheses) {
                     KALDI_LOG << "corr_id #" << corr_id << " : " << str;
+		  }
                 }
               });
         }
