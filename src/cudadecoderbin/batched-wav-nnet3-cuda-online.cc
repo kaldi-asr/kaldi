@@ -230,7 +230,7 @@ int main(int argc, char *argv[]) {
                &output_writer_m_, key,
                word_syms](SegmentedLatticeCallbackParams &params) {
                 if (params.results.empty()) {
-                  KALDI_WARN << "Empty result for callback";
+                  KALDI_WARN << "Empty result for callback for utterance " << key;
                   return;
                 }
                 if (params.results[0].IsLastSegment()) {

@@ -48,7 +48,7 @@ BatchedThreadedNnet3CudaOnlinePipeline::~BatchedThreadedNnet3CudaOnlinePipeline(
   WaitForLatticeCallbacks();
   KALDI_ASSERT(n_lattice_callbacks_not_done_ == 0);
   KALDI_ASSERT(available_channels_.empty() ||
-               available_channels_.size() == config_.num_channels);
+               available_channels_.size() == num_channels_);
 
   if (h_all_waveform_.SizeInBytes() > 0) {
     CU_SAFE_CALL(::cudaHostUnregister(h_all_waveform_.Data()));
@@ -90,29 +90,25 @@ void BatchedThreadedNnet3CudaOnlinePipeline::AllocateAndInitializeData(
 
   d_all_log_posteriors_.Resize(max_batch_size_ * output_frames_per_chunk_,
                                trans_model_->NumPdfs(), kUndefined);
-  available_channels_.resize(config_.num_channels);
-  channels_info_.reset(new std::vector<ChannelInfo>(config_.num_channels));
-  is_end_of_segment_.resize(config_.max_batch_size);
-  is_end_of_stream_.resize(config_.max_batch_size);
-  lattice_callbacks_.reserve(config_.num_channels);
-  best_path_callbacks_.reserve(config_.num_channels);
+  lattice_callbacks_.reserve(num_channels_);
+  best_path_callbacks_.reserve(num_channels_);
   std::iota(available_channels_.begin(), available_channels_.end(),
             0);  // 0,1,2,3..
-  corr_id2channel_.reserve(config_.num_channels);
+  corr_id2channel_.reserve(num_channels_);
 
   // Feature extraction
   if (config_.use_gpu_feature_extraction) {
     gpu_feature_pipeline_.reset(new OnlineBatchedFeaturePipelineCuda(
         config_.feature_opts, samples_per_chunk_, config_.max_batch_size,
-        config_.num_channels));
+        num_channels_));
   } else {
-    feature_pipelines_.resize(config_.num_channels);
+    feature_pipelines_.resize(num_channels_);
   }
 
   // Decoder.
   cuda_fst_ = std::make_unique<CudaFst>(decode_fst, trans_model_);
   cuda_decoder_.reset(new CudaDecoder(*cuda_fst_, config_.decoder_opts,
-                                      max_batch_size_, config_.num_channels));
+                                      max_batch_size_, num_channels_));
   if (config_.num_decoder_copy_threads > 0) {
     cuda_decoder_->SetThreadPoolAndStartCPUWorkers(
         thread_pool_.get(), config_.num_decoder_copy_threads);
@@ -203,7 +199,7 @@ bool BatchedThreadedNnet3CudaOnlinePipeline::TryInitCorrID(
         new OnlineNnet2FeaturePipeline(*feature_info_));
   }
 
-  (*channels_info_)[ichannel].Reset();
+  channels_info_[ichannel].Reset();
 
   return true;
 }
@@ -457,7 +453,7 @@ void BatchedThreadedNnet3CudaOnlinePipeline::RunLatticeCallbacks(
 
       ChannelId ichannel = channels[i];
       CorrelationID corr_id = corr_ids[i];
-      ChannelInfo &channel_info = (*channels_info_)[ichannel];
+      ChannelInfo &channel_info = channels_info_[ichannel];
 
       // End of segment, so we'll reset the decoder
       // We can only do it after the lattice has been generated
@@ -524,7 +520,7 @@ void BatchedThreadedNnet3CudaOnlinePipeline::RunLatticeCallbacks(
   // delete data used for decoding that corr_id
   for (int32 i = 0; i < list_channels_last_chunk_.size(); ++i) {
     uint64_t ichannel = list_channels_last_chunk_[i];
-    ChannelInfo &channel_info = (*channels_info_)[ichannel];
+    ChannelInfo &channel_info = channels_info_[ichannel];
     bool q_was_empty;
     {
       std::lock_guard<std::mutex> lk(channel_info.mutex);
@@ -592,7 +588,7 @@ void BatchedThreadedNnet3CudaOnlinePipeline::InitDecoding(
   init_decoding_list_channels_.clear();
   for (size_t i = 0; i < is_first_chunk.size(); ++i) {
     int ichannel = channels[i];
-    ChannelInfo &channel_info = (*channels_info_)[ichannel];
+    ChannelInfo &channel_info = channels_info_[ichannel];
 
     bool should_reset_decoder = is_first_chunk[i];
 
@@ -681,7 +677,7 @@ void BatchedThreadedNnet3CudaOnlinePipeline::ReadParametersFromModel() {
   BatchedStaticNnet3Config nnet3_config;
   nnet3_config.compute_opts = config_.compute_opts;
   nnet3_config.max_batch_size = max_batch_size_;
-  nnet3_config.nchannels = config_.num_channels;
+  nnet3_config.nchannels = num_channels_;
   nnet3_config.has_ivector = (feature.IvectorFeature() != NULL);
 
   cuda_nnet3_.reset(new BatchedStaticNnet3(nnet3_config, *am_nnet_));
@@ -689,7 +685,7 @@ void BatchedThreadedNnet3CudaOnlinePipeline::ReadParametersFromModel() {
 }
 
 void BatchedThreadedNnet3CudaOnlinePipeline::FinalizeDecoding(int32 ichannel) {
-  ChannelInfo &channel_info = (*channels_info_)[ichannel];
+  ChannelInfo &channel_info = channels_info_[ichannel];
 
   while (true) {
     std::unique_ptr<CallbackWithOptions> callback_w_options;
@@ -716,7 +712,7 @@ void BatchedThreadedNnet3CudaOnlinePipeline::FinalizeDecoding(int32 ichannel) {
       // If this is the end of a segment but not end of stream, we keep the
       // channel open, but we will reset the decoder. Saying that we can reset
       // it now.
-      (*channels_info_)[ichannel].can_reset_decoder.store(
+      channels_info_[ichannel].can_reset_decoder.store(
           true, std::memory_order_release);
     }
 

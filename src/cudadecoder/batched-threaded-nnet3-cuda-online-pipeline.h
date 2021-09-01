@@ -136,10 +136,17 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
       const nnet3::AmNnetSimple &am_nnet, const TransitionModel &trans_model)
       : config_(config),
         max_batch_size_(config.max_batch_size),
+	num_channels_(std::max(max_batch_size_ * KALDI_CUDA_DECODER_MIN_NCHANNELS_FACTOR, config_.num_channels)),
+        channels_info_(num_channels_),
         trans_model_(&trans_model),
         am_nnet_(&am_nnet),
+        available_channels_(num_channels_),
         partial_hypotheses_(NULL),
         end_points_(NULL),
+        is_end_of_segment_(max_batch_size_),
+        is_end_of_stream_(max_batch_size_),
+        n_samples_valid_(max_batch_size_),
+        n_input_frames_valid_(max_batch_size_),
         word_syms_(NULL) {
     config_.compute_opts.CheckAndFixConfigs(am_nnet_->GetNnet().Modulus());
     config_.CheckAndFixConfigs();
@@ -369,10 +376,10 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
 
   BatchedThreadedNnet3CudaOnlinePipelineConfig config_;
 
-  // Using unique_ptr to be able to allocate the vector directly with the right
-  // size We cannot move std::atomic
-  std::unique_ptr<std::vector<ChannelInfo>> channels_info_;
   int32 max_batch_size_;  // extracted from config_
+  int32 num_channels_;
+
+  std::vector<ChannelInfo> channels_info_;
   // Models
   const TransitionModel *trans_model_;
   const nnet3::AmNnetSimple *am_nnet_;
