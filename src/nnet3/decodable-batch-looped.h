@@ -51,7 +51,7 @@ struct NnetBatchLoopedComputationOptions {
   int32 extra_left_context_initial;
   int32 frame_subsampling_factor;
   int32 frames_per_chunk;
-  int32 max_batch_size;
+  int32 batch_size;
   int32 compute_interval;
   BaseFloat acoustic_scale;
   bool debug_computation;
@@ -61,7 +61,7 @@ struct NnetBatchLoopedComputationOptions {
       extra_left_context_initial(0),
       frame_subsampling_factor(1),
       frames_per_chunk(20),
-      max_batch_size(16),
+      batch_size(16),
       compute_interval(2000),
       acoustic_scale(0.1),
       debug_computation(false) { }
@@ -69,7 +69,7 @@ struct NnetBatchLoopedComputationOptions {
   void Check() const {
     KALDI_ASSERT(extra_left_context_initial >= 0 &&
                  frame_subsampling_factor > 0 && frames_per_chunk > 0 &&
-                 acoustic_scale > 0.0 && max_batch_size >= 2);
+                 acoustic_scale > 0.0 && batch_size >= 2);
   }
 
   void Register(OptionsItf *opts) {
@@ -81,8 +81,8 @@ struct NnetBatchLoopedComputationOptions {
                    "Required if the frame-rate of the output (e.g. in 'chain' "
                    "models) is less than the frame-rate of the original "
                    "alignment.");
-    opts->Register("max-batch-size", &max_batch_size,
-                   "number of max sequences for decodable.");
+    opts->Register("batch-size", &batch_size,
+                   "number of sequences for decodable.");
     opts->Register("compute-interval", &compute_interval,
                    "how many microseconds to wait after one computation.");
     opts->Register("acoustic-scale", &acoustic_scale,
@@ -155,8 +155,6 @@ class DecodableNnetBatchLoopedInfo  {
   // True if the neural net accepts iVectors.  If so, the neural net will have been modified
   // to accept the iVectors
   bool has_ivectors;
-  int32 num_chunk1_ivector_frames;
-  int32 num_ivector_frames;
 
   // The 3 computation requests that are used to create the looped
   // computation are stored in the class, as we need them to work out
@@ -164,7 +162,7 @@ class DecodableNnetBatchLoopedInfo  {
   ComputationRequest request1, request2, request3;
 
   // The compiled, 'looped' computation.
-  std::vector<NnetComputation> computation;
+  NnetComputation computation;
 };
 
 class NotifiableNnetBatchLooped {
@@ -229,7 +227,7 @@ private:
   // When the NnetComputer becomes stable, which means all of the members
   // of NnetComputer become constant, we can get and set the state for 
   // any sequence in batch correctly.
-  void AdvanceChunkUntilStable(int32 batch_size, std::vector<bool> *batch_first); 
+  void AdvanceChunkUntilStable(); 
   
   // Advance one chunk in bacth
   // The sequence represented by any request in batch may be different with last 
@@ -244,7 +242,7 @@ private:
 private:
   const DecodableNnetBatchLoopedInfo &info_;
 
-  std::vector<NnetComputer*> computer_;
+  NnetComputer computer_;
 
   // Continue computation or not.
   // It don't needs lock for multi-thread synchronization,
