@@ -314,8 +314,7 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
                                const std::vector<bool> &is_last_chunk);
 
   void RunBestPathCallbacks(const std::vector<CorrelationID> &corr_ids,
-                            const std::vector<int> &channels,
-                            const std::vector<bool> &is_last_chunk);
+                            const std::vector<int> &channels);
 
   void RunLatticeCallbacks(const std::vector<CorrelationID> &corr_ids,
                            const std::vector<int> &channels,

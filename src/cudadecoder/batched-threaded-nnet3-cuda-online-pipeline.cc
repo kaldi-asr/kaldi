@@ -422,7 +422,7 @@ void BatchedThreadedNnet3CudaOnlinePipeline::ComputeOneFeature(int element) {
 
 void BatchedThreadedNnet3CudaOnlinePipeline::RunBestPathCallbacks(
     const std::vector<CorrelationID> &corr_ids,
-    const std::vector<int> &channels, const std::vector<bool> &is_last_chunk) {
+    const std::vector<int> &channels) {
   std::lock_guard<std::mutex> lk(map_callbacks_m_);
   if (!best_path_callbacks_.empty() && partial_hypotheses_ && end_points_) {
     for (int i = 0; i < corr_ids.size(); ++i) {
@@ -562,7 +562,7 @@ void BatchedThreadedNnet3CudaOnlinePipeline::RunCallbacksAndFinalize(
     is_end_of_stream_[i] = is_last_chunk[i];
   }
 
-  RunBestPathCallbacks(corr_ids, channels, is_last_chunk);
+  RunBestPathCallbacks(corr_ids, channels);
 
   RunLatticeCallbacks(corr_ids, channels, is_last_chunk);
 }
