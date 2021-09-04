@@ -54,11 +54,12 @@ fi
 # The installation directory can be changed. But be careful, set the prefix as 
 #`pwd` will cause recursive problem.
 tar vxzf libunwind-1.5-rc1.tar.gz
+(
 cd libunwind-1.5-rc1
 ./configure --prefix=$PWD/install || exit 1;
 make || exit 1;
 make install || exit 1;
-cd ..
+)
 
 # prepare tcmalloc
 if [ -d gperftools ]; then
