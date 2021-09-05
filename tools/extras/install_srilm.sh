@@ -13,15 +13,14 @@ if [ ! -d liblbfgs-1.10 ]; then
     bash extras/install_liblbfgs.sh || exit 1
 fi
 
-# http://www.speech.sri.com/projects/srilm/download.html
-if [ ! -f srilm.tgz ] && [ ! -f srilm.tar.gz ]; then  # Changed format type from tgz to tar.gz as the srilm v1.7.3 downloads as tar.gz
-  echo This script cannot install SRILM in a completely automatic
-  echo way because you need to put your address in a download form.
-  echo Please download SRILM from http://www.speech.sri.com/projects/srilm/download.html
-  echo put it in ./srilm.tar.gz , then run this script.
-  echo Note: You may have to rename the downloaded file to remove version name from filename eg: mv srilm-1.7.3.tar.gz srilm.tar.gz
-  exit 1
+if [ $# -ne 3 ]; then
+    echo "The download require some information about you"
+    echo
+    echo "Usage: $0 <name> <organization> <email>"
+    exit 1
 fi
+
+curl -d "WWW_file=srilm-1.7.3.tar.gz&WWW_name=$1&WWW_org=$2&WWW_email=$3" -X POST http://www.speech.sri.com/projects/srilm/srilm_download.php > ./srlim.tar.gz
 
 ! which gawk 2>/dev/null && \
    echo "GNU awk is not installed so SRILM will probably not work correctly: refusing to install" && exit 1;
