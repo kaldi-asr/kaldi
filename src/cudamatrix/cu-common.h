@@ -57,7 +57,7 @@
 { \
   int32 ret; \
   if ((ret = (fun)) != 0) { \
-    KALDI_ERR << "cublasStatus_t " << ret << " : \"" << cublasGetStatusString((cublasStatus_t)ret) << "\" returned from '" << #fun << "'"; \
+    KALDI_ERR << "cublasStatus_t " << ret << " : \"" << cublasGetStatusStringK((cublasStatus_t)ret) << "\" returned from '" << #fun << "'"; \
   } \
 }
 
@@ -130,7 +130,7 @@ void GetBlockSizesForSimpleMatrixOperation(int32 num_rows,
                                            dim3 *dimBlock);
 
 /** This is analogous to the CUDA function cudaGetErrorString(). **/
-const char* cublasGetStatusString(cublasStatus_t status);
+const char* cublasGetStatusStringK(cublasStatus_t status);
 
 /** This is analogous to the CUDA function cudaGetErrorString(). **/
 const char* cusparseGetStatusString(cusparseStatus_t status);

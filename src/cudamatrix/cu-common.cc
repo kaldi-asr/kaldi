@@ -85,7 +85,7 @@ void GetBlockSizesForSimpleMatrixOperation(int32 num_rows,
   dimGrid->z = 1;
 }
 
-const char* cublasGetStatusString(cublasStatus_t status) {
+const char* cublasGetStatusStringK(cublasStatus_t status) {
   // Defined in CUDA include file: cublas.h or cublas_api.h
   switch(status) {
     case CUBLAS_STATUS_SUCCESS:           return "CUBLAS_STATUS_SUCCESS";
