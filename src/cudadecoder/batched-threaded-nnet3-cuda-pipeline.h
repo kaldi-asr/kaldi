@@ -29,6 +29,7 @@
 #include "feat/wave-reader.h"
 #include "lat/determinize-lattice-pruned.h"
 #include "nnet3/nnet-batch-compute.h"
+#include "nnet3/decodable-simple-looped.h"
 #include "online2/online-nnet2-feature-pipeline.h"
 
 // This pipeline is deprecated and will be removed. Please switch to

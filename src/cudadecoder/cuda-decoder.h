@@ -257,7 +257,7 @@ class CudaDecoder {
   // If max_num_frames is >= 0 it will decode no more than
   // that many frames.
   void AdvanceDecoding(
-      const std::vector<std::pair<ChannelId, BaseFloat *>> &lanes_assignements);
+      const std::vector<std::pair<ChannelId, const BaseFloat *>> &lanes_assignements);
 
   // Version with deprecated API - will be removed at some point
   void AdvanceDecoding(const std::vector<ChannelId> &channels,
