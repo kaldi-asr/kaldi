@@ -42,9 +42,9 @@ elif [  -f ../srilm.tar.gz ]; then
     tar -xvzf ../srilm.tar.gz # Changed format type from tgz to tar.gz
 fi
 
-major=`awk -F. '{ print $1 }' RELEASE`
-minor=`awk -F. '{ print $2 }' RELEASE`
-micro=`awk -F. '{ print $3 }' RELEASE`
+major=`gawk -F. '{ print $1 }' RELEASE`
+minor=`gawk -F. '{ print $2 }' RELEASE`
+micro=`gawk -F. '{ print $3 }' RELEASE`
 
 if [ $major -le 1 ] && [ $minor -le 7 ] && [ $micro -le 1 ]; then
   echo "Detected version 1.7.1 or earlier. Applying patch."
@@ -54,7 +54,7 @@ fi
 # set the SRILM variable in the top-level Makefile to this directory.
 cp Makefile tmpf
 
-cat tmpf | awk -v pwd=`pwd` '/SRILM =/{printf("SRILM = %s\n", pwd); next;} {print;}' \
+cat tmpf | gawk -v pwd=`pwd` '/SRILM =/{printf("SRILM = %s\n", pwd); next;} {print;}' \
   > Makefile || exit 1
 rm tmpf
 
