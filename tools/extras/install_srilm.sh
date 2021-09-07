@@ -20,7 +20,14 @@ if [ $# -ne 3 ]; then
     exit 1
 fi
 
-wget --post-data "WWW_file=srilm-1.7.3.tar.gz&WWW_name=$1&WWW_org=$2&WWW_email=$3" -O ./srilm.tar.gz http://www.speech.sri.com/projects/srilm/srilm_download.php
+srilm_url="http://www.speech.sri.com/projects/srilm/srilm_download.php"
+post_data="WWW_file=srilm-1.7.3.tar.gz&WWW_name=$1&WWW_org=$2&WWW_email=$3"
+
+if ! wget --post-data "$post_data" -O ./srilm.tar.gz "$srilm_url"; then
+    echo 'There was a problem downloading the file.'
+    echo 'Check you internet connection and try again.'
+    exit 1
+fi
 
 ! which gawk 2>/dev/null && \
    echo "GNU awk is not installed so SRILM will probably not work correctly: refusing to install" && exit 1;
