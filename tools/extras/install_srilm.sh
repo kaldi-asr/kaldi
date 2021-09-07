@@ -13,6 +13,9 @@ if [ ! -d liblbfgs-1.10 ]; then
     bash extras/install_liblbfgs.sh || exit 1
 fi
 
+! which gawk 2>/dev/null && \
+   echo "GNU awk is not installed so SRILM will probably not work correctly: refusing to install" && exit 1;
+
 if [ $# -ne 3 ]; then
     echo "SRILM download requires some information about you"
     echo
@@ -28,9 +31,6 @@ if ! wget --post-data "$post_data" -O ./srilm.tar.gz "$srilm_url"; then
     echo 'Check you internet connection and try again.'
     exit 1
 fi
-
-! which gawk 2>/dev/null && \
-   echo "GNU awk is not installed so SRILM will probably not work correctly: refusing to install" && exit 1;
 
 mkdir -p srilm
 cd srilm
