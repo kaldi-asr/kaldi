@@ -13,7 +13,7 @@ if [ ! -d liblbfgs-1.10 ]; then
     bash extras/install_liblbfgs.sh || exit 1
 fi
 
-! which gawk 2>/dev/null && \
+! command -v gawk > /dev/null && \
    echo "GNU awk is not installed so SRILM will probably not work correctly: refusing to install" && exit 1;
 
 if [ $# -ne 3 ]; then
