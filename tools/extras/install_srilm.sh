@@ -14,7 +14,7 @@ if [ ! -d liblbfgs-1.10 ]; then
 fi
 
 if [ $# -ne 3 ]; then
-    echo "The download require some information about you"
+    echo "SRILM download requires some information about you"
     echo
     echo "Usage: $0 <name> <organization> <email>"
     exit 1
