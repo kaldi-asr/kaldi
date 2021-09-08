@@ -1294,24 +1294,18 @@ else
 fi
 
 if $enable_tcmalloc ; then
-  if [ -d ../tools/gperftools ]; then
+  if [ -f ../tools/gperftools/lib/libtcmalloc_minimal.so ]; then
     TCMALLOC_ROOT=$(rel2abs ../tools/gperftools)
-    echo "Checking tcmalloc library in $TCMALLOC_ROOT"
-    if [ -f $TCMALLOC_ROOT/lib/libtcmalloc.so ]; then
-      if [ "$(uname)" == "Linux" ]; then
-        #If profiler is needed, use -ltcmalloc_and_profiler
-        echo "LDLIBS += -Wl,-rpath=$TCMALLOC_ROOT/lib -ltcmalloc" >> kaldi.mk
-      else
-        failure "Now, --enable-tcmalloc option is only supported for Linux"
-      fi
+    echo "Configuring tcmalloc since --enable-tcmalloc"
+    if [ "$(uname)" == "Linux" ]; then
+      echo "LDLIBS += -Wl,-rpath=$TCMALLOC_ROOT/lib -ltcmalloc_minimal" >> kaldi.mk
     else
-      failure "Can't find libtcmalloc.so in ../tools/gperftools,
-               refer to ../tools/extras/install_tcmalloc.sh for instruction."
+      failure "Now, --enable-tcmalloc option is only supported for Linux"
     fi
+    echo "Successfully configured tcmalloc for Linux from $TCMALLOC_ROOT"
   else
-    failure "--enable-tcmalloc switched on, but can't find tcmalloc in 
-             ../tools/gperftools, refer to ../tools/extras/install_tcmalloc.sh 
-             for instruction."
+    failure "Can't find tcmalloc in tools/gperftools. Run" \
+            "'extras/install_tcmalloc.sh' in 'tools/' to install."
   fi
 fi
 
