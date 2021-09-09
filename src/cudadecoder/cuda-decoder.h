@@ -44,7 +44,7 @@
 #include "cudadecoder/cuda-fst.h"
 #include "cudadecoder/thread-pool-light.h"
 #include "fst/symbol-table.h"
-#include "cudadecoder/online-endpoint.h"
+#include "online2/online-endpoint.h"
 
 namespace kaldi {
 namespace cuda_decoder {
