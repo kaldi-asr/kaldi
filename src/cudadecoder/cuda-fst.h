@@ -89,7 +89,7 @@ class CudaFst {
   template<typename T>
   struct CuDeleter {
     constexpr CuDeleter() noexcept = default;
-      void operator()(T* ptr) const { CU_SAFE_CALL(cudaFree(ptr)); }
+    void operator()(T* ptr) const { CU_SAFE_CALL(cudaFree(ptr)); }
   };
   /// A uniquely owned, movable pointer to device-allocated memory.
   template<typename T>
@@ -148,8 +148,8 @@ class CudaFst {
   std::vector<int32> h_arc_pdf_ilabels_;
 };
 
-}  // end namespace cuda_decoder
-}  // end namespace kaldi
+}  // namespace cuda_decoder
+}  // namespace kaldi
 
 #endif  // HAVE_CUDA
 #endif  // KALDI_CUDADECODER_CUDA_FST_H_
