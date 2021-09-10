@@ -1307,7 +1307,7 @@ if $enable_tcmalloc ; then
     TCMALLOC_ROOT=$(rel2abs ../tools/gperftools)
     echo "Configuring tcmalloc since --enable-tcmalloc"
     if [ "$(uname)" == "Linux" ]; then
-      echo "LDLIBS += -Wl,-rpath=$TCMALLOC_ROOT/lib -ltcmalloc_minimal" >> kaldi.mk
+      echo "LDLIBS += -Wl,-rpath=$TCMALLOC_ROOT/lib -L$TCMALLOC_ROOT/lib -ltcmalloc_minimal" >> kaldi.mk
     else
       failure "Now, --enable-tcmalloc option is only supported for Linux"
     fi
