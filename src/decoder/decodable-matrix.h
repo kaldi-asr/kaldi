@@ -24,8 +24,8 @@
 #include <vector>
 
 #include "base/kaldi-common.h"
-#include "hmm/transition-model.h"
 #include "itf/decodable-itf.h"
+#include "itf/transition-information.h"
 #include "matrix/kaldi-matrix.h"
 
 namespace kaldi {

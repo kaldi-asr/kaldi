@@ -28,12 +28,8 @@
 #include "matrix/matrix-lib.h"
 #include "util/common-utils.h"
 #include "base/kaldi-error.h"
-#include "feat/feature-functions.h"
-#include "feat/feature-mfcc.h"
-#include "feat/feature-plp.h"
-#include "itf/online-feature-itf.h"
+#include "itf/transition-information.h"
 #include "lat/kaldi-lattice.h"
-#include "hmm/transition-model.h"
 #include "decoder/lattice-faster-online-decoder.h"
 #include "decoder/lattice-incremental-online-decoder.h"
 
@@ -189,7 +185,7 @@ bool EndpointDetected(const OnlineEndpointConfig &config,
 /// BestPathEnd() and TraceBackOneLink() functions of LatticeFasterOnlineDecoder
 /// to do this efficiently.
 template <typename DEC>
-int32 TrailingSilenceLength(const TransitionModel &tmodel,
+int32 TrailingSilenceLength(const TransitionInformation &tmodel,
                             const std::string &silence_phones,
                             const DEC &decoder);
 
@@ -199,7 +195,7 @@ int32 TrailingSilenceLength(const TransitionModel &tmodel,
 template <typename DEC>
 bool EndpointDetected(
     const OnlineEndpointConfig &config,
-    const TransitionModel &tmodel,
+    const TransitionInformation &tmodel,
     BaseFloat frame_shift_in_seconds,
     const DEC &decoder);
 

@@ -26,7 +26,6 @@
 
 #include "base/kaldi-common.h"
 #include "cudamatrix/cu-matrixdim.h"
-#include "matrix/kaldi-blas.h"
 
 namespace kaldi {
 

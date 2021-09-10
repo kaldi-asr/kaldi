@@ -72,7 +72,7 @@ bool EndpointDetected(const OnlineEndpointConfig &config,
 }
 
 template <typename DEC>
-int32 TrailingSilenceLength(const TransitionModel &tmodel,
+int32 TrailingSilenceLength(const TransitionInformation &tmodel,
                             const std::string &silence_phones_str,
                             const DEC &decoder) {
   std::vector<int32> silence_phones;
@@ -109,7 +109,7 @@ int32 TrailingSilenceLength(const TransitionModel &tmodel,
 template <typename DEC>
 bool EndpointDetected(
     const OnlineEndpointConfig &config,
-    const TransitionModel &tmodel,
+    const TransitionInformation &tmodel,
     BaseFloat frame_shift_in_seconds,
     const DEC &decoder) {
   if (decoder.NumFramesDecoded() == 0) return false;
@@ -131,7 +131,7 @@ bool EndpointDetected(
 template
 bool EndpointDetected<LatticeFasterOnlineDecoderTpl<fst::Fst<fst::StdArc> > >(
     const OnlineEndpointConfig &config,
-    const TransitionModel &tmodel,
+    const TransitionInformation &tmodel,
     BaseFloat frame_shift_in_seconds,
     const LatticeFasterOnlineDecoderTpl<fst::Fst<fst::StdArc> > &decoder);
 
@@ -139,7 +139,7 @@ bool EndpointDetected<LatticeFasterOnlineDecoderTpl<fst::Fst<fst::StdArc> > >(
 template
 bool EndpointDetected<LatticeFasterOnlineDecoderTpl<fst::ConstGrammarFst > >(
     const OnlineEndpointConfig &config,
-    const TransitionModel &tmodel,
+    const TransitionInformation &tmodel,
     BaseFloat frame_shift_in_seconds,
     const LatticeFasterOnlineDecoderTpl<fst::ConstGrammarFst > &decoder);
 
@@ -147,7 +147,7 @@ bool EndpointDetected<LatticeFasterOnlineDecoderTpl<fst::ConstGrammarFst > >(
 template
 bool EndpointDetected<LatticeFasterOnlineDecoderTpl<fst::VectorGrammarFst > >(
     const OnlineEndpointConfig &config,
-    const TransitionModel &tmodel,
+    const TransitionInformation &tmodel,
     BaseFloat frame_shift_in_seconds,
     const LatticeFasterOnlineDecoderTpl<fst::VectorGrammarFst > &decoder);
 
@@ -155,14 +155,14 @@ bool EndpointDetected<LatticeFasterOnlineDecoderTpl<fst::VectorGrammarFst > >(
 template
 bool EndpointDetected<LatticeIncrementalOnlineDecoderTpl<fst::Fst<fst::StdArc> > >(
     const OnlineEndpointConfig &config,
-    const TransitionModel &tmodel,
+    const TransitionInformation &tmodel,
     BaseFloat frame_shift_in_seconds,
     const LatticeIncrementalOnlineDecoderTpl<fst::Fst<fst::StdArc> > &decoder);
 
 template
 bool EndpointDetected<LatticeIncrementalOnlineDecoderTpl<fst::ConstGrammarFst > >(
     const OnlineEndpointConfig &config,
-    const TransitionModel &tmodel,
+    const TransitionInformation &tmodel,
     BaseFloat frame_shift_in_seconds,
     const LatticeIncrementalOnlineDecoderTpl<fst::ConstGrammarFst > &decoder);
 
@@ -170,7 +170,7 @@ bool EndpointDetected<LatticeIncrementalOnlineDecoderTpl<fst::ConstGrammarFst > 
 template
 bool EndpointDetected<LatticeIncrementalOnlineDecoderTpl<fst::VectorGrammarFst > >(
     const OnlineEndpointConfig &config,
-    const TransitionModel &tmodel,
+    const TransitionInformation &tmodel,
     BaseFloat frame_shift_in_seconds,
     const LatticeIncrementalOnlineDecoderTpl<fst::VectorGrammarFst > &decoder);
 

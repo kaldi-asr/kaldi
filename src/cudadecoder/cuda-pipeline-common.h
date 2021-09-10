@@ -24,7 +24,7 @@
 #define KALDI_CUDA_DECODER_AUDIO_HOST_DEVICE_BUFFER_SIZE 16000 * 50
 
 #include "base/kaldi-utils.h"
-#include "cudamatrix/cu-device.h"
+#include "cudamatrix/cu-common.h"
 #include "lat/lattice-functions.h"
 #include "util/stl-utils.h"
 
