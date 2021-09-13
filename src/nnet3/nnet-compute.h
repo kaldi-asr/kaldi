@@ -51,6 +51,19 @@ struct NnetComputeState {
   std::vector< CuMatrix<BaseFloat> > matrices;
 };
 
+/*
+ * The information tell the constructor which of the matrices_ are to be 
+ * initialized, and also the value of program_counter_.
+ * The NnetComputerSnapshot is only used by NnetBatchLoopedComputer
+ */
+struct NnetComputerSnapshot {
+  int32 program_counter;
+  std::vector<int32> pending_commands;
+  std::vector<void*> memos;
+  std::vector<int32> num_rows_of_matrices;
+  std::vector<int32> num_cols_of_matrices;
+};
+
 /**
   class NnetComputer is responsible for executing the computation described in the
   "computation" object.
@@ -72,6 +85,14 @@ class NnetComputer {
                const NnetComputation &computation,
                const Nnet &nnet,
                Nnet *nnet_to_update);
+
+  /// The matrices_ and program_counter_ will be set if computation_info 
+  /// is not NULL. It will be used by NnetBatchLoopedComputer only.
+  NnetComputer(const NnetComputeOptions &options,
+               const NnetComputation &computation,
+               const Nnet &nnet,
+               Nnet *nnet_to_update,
+               NnetComputerSnapshot *snapshot);
 
   /// This version of the constructor accepts a pointer to 'nnet' instead
   /// of a const reference.  The difference is that this version will,
@@ -145,6 +166,8 @@ class NnetComputer {
 
   // Return true if all the members are equal to other's.
   bool Equal(const NnetComputer &other);
+
+  void GetSnapshot(NnetComputerSnapshot *snapshot);
 
   void Print(std::ostream &os);
 
