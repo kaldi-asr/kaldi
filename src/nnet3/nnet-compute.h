@@ -52,9 +52,17 @@ struct NnetComputeState {
 };
 
 /*
- * The information tell the constructor which of the matrices_ are to be 
- * initialized, and also the value of program_counter_.
- * The NnetComputerSnapshot is only used by NnetBatchLoopedComputer
+ * struct NnetComputerSnapshot contains information held by NnetComputer,
+ * except the data saved in matrices_.
+ *
+ * If the NnetComputerSnapshot is provided in constructor, the NnetComputer
+ * will restore from the snapshot, and all of matrix in matrices_ will be 
+ * resized with the size recorded by snapshot and kUndefined. So remember to 
+ * fill the matrices_ with correct data before call Run() of NnetComputer.
+ *
+ * Caution: the NnetComputerSnapshot is only used by NnetBatchLoopedComputer 
+ * now!!! The matrices_ are filled by state from difference streams per chunk
+ * before Run() is called.
  */
 struct NnetComputerSnapshot {
   int32 program_counter;
@@ -86,8 +94,8 @@ class NnetComputer {
                const Nnet &nnet,
                Nnet *nnet_to_update);
 
-  /// The matrices_ and program_counter_ will be set if computation_info 
-  /// is not NULL. It will be used by NnetBatchLoopedComputer only.
+  /// Constructor, restore from the snapshot.
+  /// Fill the matrices_ with correct data before call Run().
   NnetComputer(const NnetComputeOptions &options,
                const NnetComputation &computation,
                const Nnet &nnet,
@@ -167,6 +175,7 @@ class NnetComputer {
   // Return true if all the members are equal to other's.
   bool Equal(const NnetComputer &other);
 
+  // Take a snapshot of the NnetComputer, discard the data saved in matrices_
   void GetSnapshot(NnetComputerSnapshot *snapshot);
 
   void Print(std::ostream &os);

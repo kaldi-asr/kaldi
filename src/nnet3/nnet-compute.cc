@@ -833,7 +833,8 @@ void NnetComputer::SetState(const std::vector<bool> &batch_first,
 
       if (stream_num_rows == stream_matrix.NumRows() 
           && stream_num_cols == stream_matrix.NumCols()) {
-        // Case: completely match. e.g. LSTM
+        // just copy the data if size matched completely. 
+        // e.g. cell state of LSTM.
         if (batch_first[i]) {
           for (int32 j = 0; j < stream_num_rows; j++)
             src[stream * stream_num_rows + j] = stream_matrix.RowData(j);
@@ -843,7 +844,9 @@ void NnetComputer::SetState(const std::vector<bool> &batch_first,
         }
       } else if (stream_num_rows < stream_matrix.NumRows()
           && stream_num_cols == stream_matrix.NumCols()) {
-        // Case: part match. e.g. inputs of 1st chunk to 2nd chunk
+        // copy the recent parts of the data if less frames. 
+        // e.g. the inputs cached by 1st chunk are more the other chunks,
+        // so just copy the recent parts to the 2nd chunk.
         int32 offset = stream_matrix.NumRows() - stream_num_rows;
         if (batch_first[i]) {
           for (int32 j = 0; j < stream_num_rows; j++)
@@ -854,8 +857,9 @@ void NnetComputer::SetState(const std::vector<bool> &batch_first,
         }
       } else if(stream_num_rows < stream_matrix.NumRows()
           && stream_num_cols % stream_matrix.NumCols() == 0) {
-        // Case: part match with overlaped window.
-        // e.g. TDNN of 1st chunk to 2nd chunk
+        // copy data in overlapped windows if dimension changed.
+        // e.g. the data's dimensions cached by TDNN are changed between 
+        // 1st chunk and 2nd chunk
         int32 multiple = stream_num_cols / stream_matrix.NumCols();
         int32 offset = stream_matrix.NumRows() - stream_num_rows - (multiple - 1);
         KALDI_ASSERT(stream_matrix.NumCols() == stream_matrix.Stride());
