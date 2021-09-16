@@ -126,7 +126,7 @@ void BatchedThreadedNnet3CudaOnlinePipeline::AllocateAndInitializeData(
 void BatchedThreadedNnet3CudaOnlinePipeline::SetLatticeCallback(
     CorrelationID corr_id, const LatticeCallback &callback) {
   SegmentedResultsCallback segmented_callback =
-      [=](SegmentedLatticeCallbackParams params) {
+      [=](SegmentedLatticeCallbackParams& params) {
         if (params.results.empty()) {
           KALDI_WARN << "Empty result for callback";
           return;

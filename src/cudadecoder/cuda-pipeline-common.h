@@ -67,6 +67,7 @@ struct CTMResult {
 
 // Struct to provide a result back to the user
 class CudaPipelineResult {
+
   int result_type_;
   CompactLattice clat_;
   CTMResult ctm_result_;
@@ -127,6 +128,11 @@ class CudaPipelineResult {
 };
 
 struct SegmentedLatticeCallbackParams {
+  KALDI_DISALLOW_COPY_AND_ASSIGN(SegmentedLatticeCallbackParams);
+
+  // Default constructor was deleted by KALDI_DISALLOW_COPY_AND_ASSIGN
+  SegmentedLatticeCallbackParams() {}
+
   std::vector<CudaPipelineResult> results;
 };
 
