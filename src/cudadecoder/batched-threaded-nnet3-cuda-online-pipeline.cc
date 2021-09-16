@@ -788,7 +788,7 @@ void BatchedThreadedNnet3CudaOnlinePipeline::SetLatticePostprocessor(
     const std::shared_ptr<LatticePostprocessor> &lattice_postprocessor) {
   lattice_postprocessor_ = lattice_postprocessor;
   lattice_postprocessor_->SetDecoderFrameShift(GetDecoderFrameShiftSeconds());
-  lattice_postprocessor_->SetTransitionModel(&GetTransitionModel());
+  lattice_postprocessor_->SetTransitionInformation(&GetTransitionModel());
 }
 
 void BatchedThreadedNnet3CudaOnlinePipeline::WaitForLatticeCallbacks()
