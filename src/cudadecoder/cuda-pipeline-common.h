@@ -67,7 +67,6 @@ struct CTMResult {
 
 // Struct to provide a result back to the user
 class CudaPipelineResult {
-
   int result_type_;
   CompactLattice clat_;
   CTMResult ctm_result_;
