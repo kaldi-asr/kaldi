@@ -170,18 +170,26 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
   bool TryInitCorrID(CorrelationID corr_id, int wait_for = 0);
 
   void SetBestPathCallback(CorrelationID corr_id,
+                           BestPathCallback &&callback);
+  void SetBestPathCallback(CorrelationID corr_id,
                            const BestPathCallback &callback);
 
   // Set the callback function to call with the final lattice for a given
   // corr_id
+  void SetLatticeCallback(CorrelationID corr_id,
+                          LatticeCallback &&callback);
   void SetLatticeCallback(CorrelationID corr_id,
                           const LatticeCallback &callback);
 
   // Set callback using SegmentedResultsCallback
   // Able to run lattice postprocessor and generate CTM outputs
   void SetLatticeCallback(CorrelationID corr_id,
+                          SegmentedResultsCallback &&callback,
+                          const int result_type);
+  void SetLatticeCallback(CorrelationID corr_id,
                           const SegmentedResultsCallback &callback,
                           const int result_type);
+
   // Lattice postprocessor
   // Applied on both lattice output or CTM output
   // Optional if lattice output is used

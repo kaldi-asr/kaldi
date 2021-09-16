@@ -124,9 +124,9 @@ void BatchedThreadedNnet3CudaOnlinePipeline::AllocateAndInitializeData(
 }
 
 void BatchedThreadedNnet3CudaOnlinePipeline::SetLatticeCallback(
-    CorrelationID corr_id, const LatticeCallback &callback) {
+    CorrelationID corr_id, LatticeCallback &&callback) {
   SegmentedResultsCallback segmented_callback =
-      [=](SegmentedLatticeCallbackParams& params) {
+      [callback = std::move(callback)](SegmentedLatticeCallbackParams& params) {
         if (params.results.empty()) {
           KALDI_WARN << "Empty result for callback";
           return;
@@ -134,23 +134,47 @@ void BatchedThreadedNnet3CudaOnlinePipeline::SetLatticeCallback(
         CompactLattice *clat = params.results[0].GetLatticeResult();
         callback(*clat);
       };
-  SetLatticeCallback(corr_id, segmented_callback,
+
+  SetLatticeCallback(corr_id, std::move(segmented_callback),
                      CudaPipelineResult::RESULT_TYPE_LATTICE);
 }
 
+void BatchedThreadedNnet3CudaOnlinePipeline::SetLatticeCallback(
+    CorrelationID corr_id, const LatticeCallback &callback_) {
+  auto callback = callback_;
+  SetLatticeCallback(corr_id, std::move(callback));
+}
+
 void BatchedThreadedNnet3CudaOnlinePipeline::SetBestPathCallback(
-    CorrelationID corr_id, const BestPathCallback &callback) {
+    CorrelationID corr_id, BestPathCallback &&callback) {
   std::lock_guard<std::mutex> lk(map_callbacks_m_);
   best_path_callbacks_.erase(corr_id);
-  best_path_callbacks_.insert({corr_id, callback});
+  best_path_callbacks_.insert({corr_id, std::move(callback)});
+}
+
+void BatchedThreadedNnet3CudaOnlinePipeline::SetBestPathCallback(
+    CorrelationID corr_id, const BestPathCallback &callback_) {
+  auto callback = callback_;
+  SetBestPathCallback(corr_id, std::move(callback));
 }
 
 void BatchedThreadedNnet3CudaOnlinePipeline::SetLatticeCallback(
-    CorrelationID corr_id, const SegmentedResultsCallback &callback,
+    CorrelationID corr_id, SegmentedResultsCallback &&callback,
     const int result_type) {
   std::lock_guard<std::mutex> lk(map_callbacks_m_);
   lattice_callbacks_.erase(corr_id);
-  lattice_callbacks_.insert({corr_id, {callback, result_type}});
+  lattice_callbacks_.emplace(
+    std::piecewise_construct,
+    std::forward_as_tuple(corr_id),
+    std::forward_as_tuple(std::move(callback), result_type));
+}
+
+
+void BatchedThreadedNnet3CudaOnlinePipeline::SetLatticeCallback(
+    CorrelationID corr_id, const SegmentedResultsCallback &callback_,
+    const int result_type) {
+  auto callback = callback_;
+  SetLatticeCallback(corr_id, std::move(callback), result_type);
 }
 
 bool BatchedThreadedNnet3CudaOnlinePipeline::TryInitCorrID(

@@ -140,6 +140,9 @@ typedef std::function<void(SegmentedLatticeCallbackParams &params)>
 typedef std::function<void(CompactLattice &)> LatticeCallback;
 
 struct CallbackWithOptions {
+  CallbackWithOptions(SegmentedResultsCallback&& cb, int rt) noexcept
+    : callback{std::move(cb)}, result_type(rt) {}
+
   SegmentedResultsCallback callback;
   int result_type;
   int segment_id;
