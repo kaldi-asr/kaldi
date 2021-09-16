@@ -17,7 +17,7 @@
 
 #ifndef KALDI_CUDA_DECODER_CUDA_DECODER_UTILS_H_
 #define KALDI_CUDA_DECODER_CUDA_DECODER_UTILS_H_
-#include "cudamatrix/cu-device.h"
+#include "cudamatrix/cu-common.h"
 #include "util/stl-utils.h"
 
 // A decoder channel is linked to one utterance. Frames
@@ -207,13 +207,14 @@ class DeviceMatrix {
     KALDI_ASSERT(nrows_ > 0);
     KALDI_ASSERT(ncols_ > 0);
     KALDI_ASSERT(!data_);
-    data_ = static_cast<T *>(CuDevice::Instantiate().Malloc(
-        (size_t)nrows_ * ncols_ * sizeof(*data_)));
+    CU_SAFE_CALL(cudaMalloc((void **)&data_,
+                            (size_t)nrows_ * ncols_ * sizeof(*data_)));
     KALDI_ASSERT(data_);
   }
   void Free() {
     KALDI_ASSERT(data_);
-    CuDevice::Instantiate().Free(data_);
+    CU_SAFE_CALL(cudaFree(data_));
+    data_ = nullptr;
   }
 
  protected:
@@ -257,6 +258,7 @@ class HostMatrix {
   void Free() {
     KALDI_ASSERT(data_);
     CU_SAFE_CALL(cudaFreeHost(data_));
+    data_ = nullptr;
   }
 
  protected:
@@ -404,7 +406,7 @@ struct LaneCounters {
   // hannel that this lane will compute for the current frame
   ChannelId channel_to_compute;
   // Pointer to the loglikelihoods array for this channel and current frame
-  BaseFloat *loglikelihoods;
+  const BaseFloat *loglikelihoods;
   // Contains both main_q_end and narcs
   // End index of the main queue
   // only tokens at index i with i < main_q_end

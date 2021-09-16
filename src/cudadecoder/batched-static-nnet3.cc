@@ -298,7 +298,7 @@ void BatchedStaticNnet3::RunBatch(
     const std::vector<bool> &is_first_chunk,
     const std::vector<bool> &is_last_chunk,
     CuMatrix<BaseFloat> *d_all_log_posteriors,
-    std::vector<std::vector<std::pair<int, BaseFloat *>>>
+    std::vector<std::vector<std::pair<int, const BaseFloat *>>>
         *all_frames_log_posteriors_ptrs) {
   // Using >= to avoid having to recompute d_features
   // In some cases the ptrs in d_features and d_ivectors are always the same,
@@ -366,7 +366,7 @@ void BatchedStaticNnet3::RunBatch(
 
 void BatchedStaticNnet3::FormatOutputPtrs(
     const std::vector<int> &channels, CuMatrix<BaseFloat> *d_all_log_posteriors,
-    std::vector<std::vector<std::pair<int, BaseFloat *>>>
+    std::vector<std::vector<std::pair<int, const BaseFloat *>>>
         *all_frames_log_posteriors_ptrs,
     const std::vector<int> &n_output_frames_valid,
     const std::vector<int> *n_output_frames_valid_offset) {
@@ -380,7 +380,7 @@ void BatchedStaticNnet3::FormatOutputPtrs(
     if (all_frames_log_posteriors_ptrs->size() < total_output_nframes)
       all_frames_log_posteriors_ptrs->resize(total_output_nframes);
     for (int iframe = offset; iframe < total_output_nframes; ++iframe) {
-      std::vector<std::pair<int, BaseFloat *>> &this_frame =
+      std::vector<std::pair<int, const BaseFloat *>> &this_frame =
           (*all_frames_log_posteriors_ptrs)[iframe];
       int local_iframe = iframe - offset;
       CuSubVector<BaseFloat> out = d_all_log_posteriors->Row(

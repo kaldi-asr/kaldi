@@ -2,6 +2,7 @@
 *.tar.gz
 *.tgz
 *.zip
+*.bak
 
 env.sh
 

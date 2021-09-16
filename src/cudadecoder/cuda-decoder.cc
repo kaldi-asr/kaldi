@@ -808,21 +808,21 @@ void CudaDecoder::AdvanceDecoding(
   if (max_num_frames >= 0)
     nframes_to_decode = std::min(nframes_to_decode, max_num_frames);
 
-  std::vector<std::pair<ChannelId, BaseFloat *>> lanes_assignements;
+  std::vector<std::pair<ChannelId, const BaseFloat *>> lanes_assignments;
   for (int f = 0; f < nframes_to_decode; ++f) {
-    lanes_assignements.clear();
+    lanes_assignments.clear();
     for (int32 ilane = 0; ilane < channels.size(); ++ilane) {
       const ChannelId ichannel = channels[ilane];
       int32 iframe = num_frames_decoded_[ichannel];
-      BaseFloat *ptr = decodables[ilane]->GetLogLikelihoodsCudaPointer(iframe);
-      lanes_assignements.push_back({ichannel, ptr});
+      const BaseFloat *ptr = decodables[ilane]->GetLogLikelihoodsCudaPointer(iframe);
+      lanes_assignments.push_back({ichannel, ptr});
     }
-    AdvanceDecoding(lanes_assignements);
+    AdvanceDecoding(lanes_assignments);
   }
 }
 
 void CudaDecoder::AdvanceDecoding(
-    const std::vector<std::pair<ChannelId, BaseFloat *>> &lanes_assignements) {
+    const std::vector<std::pair<ChannelId, const BaseFloat *>> &lanes_assignements) {
   if (lanes_assignements.size() == 0) return;  // nothing to do
   // Context switch : Loading the channels state in lanes
 

@@ -22,10 +22,12 @@
 namespace kaldi {
 
 DecodableMatrixMapped::DecodableMatrixMapped(
-    const TransitionModel &tm,
+    const TransitionInformation &tm,
     const MatrixBase<BaseFloat> &likes,
     int32 frame_offset):
-    trans_model_(tm), likes_(&likes), likes_to_delete_(NULL),
+    trans_model_(tm),
+    tid_to_pdf_(trans_model_.TransitionIdToPdfArray()),
+    likes_(&likes), likes_to_delete_(NULL),
     frame_offset_(frame_offset) {
   stride_ = likes.Stride();
   raw_data_ = likes.Data() - (stride_ * frame_offset);
@@ -37,9 +39,11 @@ DecodableMatrixMapped::DecodableMatrixMapped(
 }
 
 DecodableMatrixMapped::DecodableMatrixMapped(
-    const TransitionModel &tm, const Matrix<BaseFloat> *likes,
+    const TransitionInformation &tm, const Matrix<BaseFloat> *likes,
     int32 frame_offset):
-    trans_model_(tm), likes_(likes), likes_to_delete_(likes),
+    trans_model_(tm),
+    tid_to_pdf_(trans_model_.TransitionIdToPdfArray()),
+    likes_(likes), likes_to_delete_(likes),
     frame_offset_(frame_offset) {
   stride_ = likes->Stride();
   raw_data_ = likes->Data() - (stride_ * frame_offset_);
@@ -51,7 +55,8 @@ DecodableMatrixMapped::DecodableMatrixMapped(
 
 
 BaseFloat DecodableMatrixMapped::LogLikelihood(int32 frame, int32 tid) {
-  int32 pdf_id = trans_model_.TransitionIdToPdfFast(tid);
+  KALDI_PARANOID_ASSERT(tid >= 1 && tid < tid_to_pdf_.size());
+  int32 pdf_id = tid_to_pdf_[tid];
 #ifdef KALDI_PARANOID
   return (*likes_)(frame - frame_offset_, pdf_id);
 #else

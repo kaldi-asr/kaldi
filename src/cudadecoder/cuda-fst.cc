@@ -20,6 +20,7 @@
 #endif
 
 #include "cudadecoder/cuda-fst.h"
+#include "cudamatrix/cu-common.h"
 
 #include <cuda_runtime_api.h>
 #include <nvToolsExt.h>
@@ -28,7 +29,7 @@ namespace kaldi {
 namespace cuda_decoder {
 
 CudaFst::CudaFst(const fst::StdFst &fst,
-                 const TransitionModel *trans_model /* = nullptr */) {
+                 const TransitionInformation *trans_model /* = nullptr */) {
   nvtxRangePushA("CudaFst constructor");
 
   start_ = fst.Start();
@@ -106,12 +107,13 @@ void CudaFst::ComputeOffsets(const fst::StdFst &fst) {
 }
 
 void CudaFst::AllocateData(const fst::StdFst &fst) {
-  d_e_offsets_.reset(static_cast<uint32*>(CuDevice::Instantiate().Malloc(
-      (num_states_ + 1) * sizeof(*d_e_offsets_))));
-  d_ne_offsets_.reset(static_cast<uint32*>(CuDevice::Instantiate().Malloc(
-      (num_states_ + 1) * sizeof(*d_ne_offsets_))));
-  d_final_.reset(static_cast<float*>(CuDevice::Instantiate().Malloc(
-      (num_states_) * sizeof(*d_final_))));
+  void *temp_pointer;
+  CU_SAFE_CALL(cudaMalloc(&temp_pointer, (num_states_ + 1) * sizeof(uint32)));
+  d_e_offsets_.reset(static_cast<uint32*>(temp_pointer));
+  CU_SAFE_CALL(cudaMalloc(&temp_pointer, (num_states_ + 1) * sizeof(uint32)));
+  d_ne_offsets_.reset(static_cast<uint32*>(temp_pointer));
+  CU_SAFE_CALL(cudaMalloc(&temp_pointer, num_states_ * sizeof(float)));
+  d_final_.reset(static_cast<float*>(temp_pointer));
 
   h_arc_weights_.resize(arc_count_);
   h_arc_nextstate_.resize(arc_count_);
@@ -119,14 +121,13 @@ void CudaFst::AllocateData(const fst::StdFst &fst) {
   h_arc_id_ilabels_.resize(arc_count_);
   h_arc_olabels_.resize(arc_count_);
 
-  d_arc_weights_.reset(static_cast<CostType*>(CuDevice::Instantiate().Malloc(
-      arc_count_ * sizeof(*d_arc_weights_))));
-  d_arc_nextstates_.reset(static_cast<StateId*>(CuDevice::Instantiate().Malloc(
-      arc_count_ * sizeof(*d_arc_nextstates_))));
-
+  CU_SAFE_CALL(cudaMalloc(&temp_pointer, arc_count_ * sizeof(CostType)));
+  d_arc_weights_.reset(static_cast<CostType*>(temp_pointer));
+  CU_SAFE_CALL(cudaMalloc(&temp_pointer, arc_count_ * sizeof(StateId)));
+  d_arc_nextstates_.reset(static_cast<StateId*>(temp_pointer));
   // Only the ilabels for the e_arc are needed on the device
-  d_arc_pdf_ilabels_.reset(static_cast<int32*>(CuDevice::Instantiate().Malloc(
-      e_count_ * sizeof(*d_arc_pdf_ilabels_))));
+  CU_SAFE_CALL(cudaMalloc(&temp_pointer, e_count_ * sizeof(int32)));
+  d_arc_pdf_ilabels_.reset(static_cast<int32*>(temp_pointer));
 }
 
 void CudaFst::PopulateArcs(const fst::StdFst &fst) {
@@ -156,7 +157,7 @@ void CudaFst::PopulateArcs(const fst::StdFst &fst) {
 }
 
 void CudaFst::ApplyTransitionModelOnIlabels(
-    const TransitionModel &trans_model) {
+    const TransitionInformation &trans_model) {
   // Converting ilabel here, to avoid reindexing when reading nnet3 output
   // We only need to convert the emitting arcs
   // The emitting arcs are the first e_count_ arcs

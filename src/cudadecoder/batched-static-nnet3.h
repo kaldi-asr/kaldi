@@ -119,7 +119,7 @@ class BatchedStaticNnet3 {
                 const std::vector<bool> &is_first_chunk,
                 const std::vector<bool> &is_last_chunk,
                 CuMatrix<BaseFloat> *d_all_log_posteriors,
-                std::vector<std::vector<std::pair<int, BaseFloat *>>>
+                std::vector<std::vector<std::pair<int, const BaseFloat *>>>
                     *all_frames_log_posteriors);
 
   // Nnet3 puts the output frames in the matrix all_frames_log_posteriors_ptrs
@@ -130,7 +130,7 @@ class BatchedStaticNnet3 {
   void FormatOutputPtrs(
       const std::vector<int> &channels,
       CuMatrix<BaseFloat> *d_all_log_posteriors,
-      std::vector<std::vector<std::pair<int, BaseFloat *>>>
+      std::vector<std::vector<std::pair<int, const BaseFloat *>>>
           *all_frames_log_posteriors_ptrs,
       const std::vector<int> &n_output_frames_valid,
       const std::vector<int> *n_output_frames_valid_offset = NULL);

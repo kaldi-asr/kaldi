@@ -458,7 +458,7 @@ void BatchedThreadedNnet3CudaPipeline2::SetLatticePostprocessor(
   lattice_postprocessor_ = lattice_postprocessor;
   lattice_postprocessor_->SetDecoderFrameShift(
       cuda_online_pipeline_.GetDecoderFrameShiftSeconds());
-  lattice_postprocessor_->SetTransitionModel(
+  lattice_postprocessor_->SetTransitionInformation(
       &cuda_online_pipeline_.GetTransitionModel());
 }
 

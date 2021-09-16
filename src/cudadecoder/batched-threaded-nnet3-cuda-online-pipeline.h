@@ -422,7 +422,7 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
 
   std::vector<int> n_samples_valid_, n_input_frames_valid_;
 
-  std::vector<std::vector<std::pair<int, BaseFloat *>>>
+  std::vector<std::vector<std::pair<int, const BaseFloat *>>>
       all_frames_log_posteriors_;
 
   // Channels done after current batch. We've just received

@@ -73,7 +73,7 @@ struct LatticePostprocessorConfig {
 
 class LatticePostprocessor {
   const LatticePostprocessorConfig config_;
-  const TransitionModel *tmodel_;
+  const TransitionInformation *tmodel_;
   std::shared_ptr<const WordBoundaryInfo> word_info_;
   BaseFloat decoder_frame_shift_;
   // Params for ScaleLattice.
@@ -87,7 +87,7 @@ class LatticePostprocessor {
   bool GetPostprocessedLattice(CompactLattice &clat,
                                CompactLattice *out_clat) const;
 
-  void SetTransitionModel(const TransitionModel *tmodel) { tmodel_ = tmodel; }
+  void SetTransitionInformation(const TransitionInformation *tmodel) { tmodel_ = tmodel; }
 
   void SetWordBoundaryInfo(
       const std::shared_ptr<const WordBoundaryInfo> &word_info) {

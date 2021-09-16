@@ -24,9 +24,9 @@
 
 #include "base/kaldi-utils.h"
 #include "cudadecoder/cuda-decoder-common.h"
-#include "cudamatrix/cu-device.h"
+#include "cudamatrix/cu-common.h"
 #include "lat/kaldi-lattice.h"
-#include "nnet3/decodable-online-looped.h"  // TransitionModel
+#include "itf/transition-information.h"
 
 namespace kaldi {
 namespace cuda_decoder {
@@ -70,12 +70,12 @@ class CudaFst {
   ///
   /// If a non-null \p trans_model is passed, we'll use it to convert the
   /// ilabel ID indexes into PDF indexes. Otherwise we assume
-  /// TransitionModel == identity.
+  /// TransitionInformation == identity.
   ///
-  ///\warning The CudaDecodable won't apply the TransitionModel. If you use a
-  ///  TransitionModel, you need to apply it now.
+  ///\warning The CudaDecodable won't apply the TransitionInformation. If you use a
+  ///  TransitionInformation, you need to apply it now.
   CudaFst(const fst::StdFst &fst,
-          const TransitionModel *trans_model = nullptr);
+          const TransitionInformation *trans_model = nullptr);
 
   KALDI_DISALLOW_COPY_AND_ASSIGN(CudaFst);
 
@@ -89,7 +89,7 @@ class CudaFst {
   template<typename T>
   struct CuDeleter {
     constexpr CuDeleter() noexcept = default;
-    void operator()(T* ptr) const { CuDevice::Instantiate().Free(ptr); }
+    void operator()(T* ptr) const { CU_SAFE_CALL(cudaFree(ptr)); }
   };
   /// A uniquely owned, movable pointer to device-allocated memory.
   template<typename T>
@@ -106,7 +106,7 @@ class CudaFst {
   // Converting the id ilabels into pdf ilabels using the transition model
   // It allows the CudaDecoder to read the acoustic model loglikelihoods at the
   // right indexes
-  void ApplyTransitionModelOnIlabels(const TransitionModel &trans_model);
+  void ApplyTransitionModelOnIlabels(const TransitionInformation &trans_model);
   // Copies fst to device into the pre-allocated datastructures
   void CopyDataToDevice();
   // Total number of states
@@ -148,8 +148,8 @@ class CudaFst {
   std::vector<int32> h_arc_pdf_ilabels_;
 };
 
-}  // end namespace cuda_decoder
-}  // end namespace kaldi
+}  // namespace cuda_decoder
+}  // namespace kaldi
 
 #endif  // HAVE_CUDA
 #endif  // KALDI_CUDADECODER_CUDA_FST_H_

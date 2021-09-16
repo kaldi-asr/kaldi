@@ -44,7 +44,6 @@
 #include "cudadecoder/cuda-fst.h"
 #include "cudadecoder/thread-pool-light.h"
 #include "fst/symbol-table.h"
-#include "nnet3/decodable-online-looped.h"
 #include "online2/online-endpoint.h"
 
 namespace kaldi {
@@ -257,7 +256,7 @@ class CudaDecoder {
   // If max_num_frames is >= 0 it will decode no more than
   // that many frames.
   void AdvanceDecoding(
-      const std::vector<std::pair<ChannelId, BaseFloat *>> &lanes_assignements);
+      const std::vector<std::pair<ChannelId, const BaseFloat *>> &lanes_assignements);
 
   // Version with deprecated API - will be removed at some point
   void AdvanceDecoding(const std::vector<ChannelId> &channels,

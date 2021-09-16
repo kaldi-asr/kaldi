@@ -20,7 +20,7 @@ function show_help
       echo "By default, utt2spk is expected to be sorted by both, which can be "
       echo "achieved by making the speaker-id prefixes of the utterance-ids"
       echo "e.g.: $0 data/train"
-}      
+}
 
 while [ $# -ne 0 ] ; do
   case "$1" in
@@ -126,7 +126,12 @@ fi
 num_utts=`cat $tmpdir/utts | wc -l`
 if ! $no_text; then
   if ! $non_print; then
-    n_non_print=$(LC_ALL="C.UTF-8" grep -c '[^[:print:][:space:]]' $data/text) && \
+    if locale -a | grep "C.UTF-8" >/dev/null; then
+      L=C.UTF-8
+    else
+      L=en_US.UTF-8
+    fi
+    n_non_print=$(LC_ALL="$L" grep -c '[^[:print:][:space:]]' $data/text) && \
     echo "$0: text contains $n_non_print lines with non-printable characters" &&\
     exit 1;
   fi
