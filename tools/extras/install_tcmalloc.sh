@@ -36,7 +36,7 @@ fi
 # prepare tcmalloc
 if [ -d gperftools ]; then
   echo "$0: existing 'gperftools' subdirectory is renamed 'gperftools.bak'"
-  mv -f gpreftools gpreftools.bak
+  mv -f gperftools gperftools.bak
 fi
 
 wget https://github.com/gperftools/gperftools/releases/download/gperftools-2.9.1/gperftools-2.9.1.tar.gz &&
