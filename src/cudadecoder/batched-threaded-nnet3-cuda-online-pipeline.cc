@@ -479,9 +479,9 @@ void BatchedThreadedNnet3CudaOnlinePipeline::RunCallbacksAndFinalize(
         } else {
           // All done with this corr_ids. Cleaning up
           available_channels_.push_back(ichannel);
-          int32 ndeleted = corr_id2channel_.erase(corr_id);
-          KALDI_ASSERT(ndeleted == 1);
         }
+        int32 ndeleted = corr_id2channel_.erase(corr_id);
+        KALDI_ASSERT(ndeleted == 1);
 
         if (!config_.use_gpu_feature_extraction) {
           // Done with this CPU FE pipeline
