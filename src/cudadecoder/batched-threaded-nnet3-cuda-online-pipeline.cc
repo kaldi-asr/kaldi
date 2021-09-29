@@ -522,8 +522,6 @@ void BatchedThreadedNnet3CudaOnlinePipeline::RunLatticeCallbacks(
           // We already own the available_channels_m_ lock
           available_channels_.push_back(ichannel);
         }
-        int32 ndeleted = corr_id2channel_.erase(corr_id);
-        KALDI_ASSERT(ndeleted == 1);
 
         if (!config_.use_gpu_feature_extraction) {
           // Done with this CPU FE pipeline
