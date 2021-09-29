@@ -278,7 +278,6 @@ if [ $stage -le $num_iters ]; then
    $cmd $gpu_cmd_opt $dir/log/combine.log \
       nnet3-chain-combine2 --use-gpu=$use_gpu \
         --leaky-hmm-coefficient=$leaky_hmm_coefficient \
-        --print-interval=10  \
         $den_fst_dir $input_models \
         "ark:nnet3-chain-merge-egs $multilingual_eg_opts  scp:$egs_dir/train_subset.scp ark:-|" \
         $dir/final.raw || exit 1;
