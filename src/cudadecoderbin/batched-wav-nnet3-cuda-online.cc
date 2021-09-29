@@ -23,14 +23,14 @@
 #error CUDA support must be configured to compile this binary.
 #endif
 
+#include <cuda.h>
+#include <cuda_profiler_api.h>
+#include <nvToolsExt.h>
+
 #include <algorithm>
 #include <iomanip>
 #include <queue>
 #include <sstream>
-
-#include <cuda.h>
-#include <cuda_profiler_api.h>
-#include <nvToolsExt.h>
 
 #include "cudadecoder/cuda-online-pipeline-dynamic-batcher.h"
 #include "cudadecoderbin/cuda-bin-tools.h"
@@ -58,11 +58,11 @@ struct Stream {
 
   Stream(const std::shared_ptr<WaveData> &wav, CorrelationID corr_id,
          double send_next_chunk_at, double *latency_ptr)
-    : wav(wav),
-      corr_id(corr_id),
-      offset(0),
-      send_next_chunk_at(send_next_chunk_at),
-      latency_ptr(latency_ptr) {}
+      : wav(wav),
+        corr_id(corr_id),
+        offset(0),
+        send_next_chunk_at(send_next_chunk_at),
+        latency_ptr(latency_ptr) {}
 
   bool operator<(const Stream &other) const {
     return (send_next_chunk_at > other.send_next_chunk_at);
@@ -80,15 +80,35 @@ int main(int argc, char *argv[]) {
     fst::SymbolTable *word_syms;
     ReadModels(opts, &trans_model, &am_nnet, &decode_fst, &word_syms);
     BatchedThreadedNnet3CudaOnlinePipeline cuda_pipeline(
-      opts.batched_decoder_config, *decode_fst, am_nnet, trans_model);
+        opts.batched_decoder_config, *decode_fst, am_nnet, trans_model);
     delete decode_fst;
     if (word_syms) cuda_pipeline.SetSymbolTable(*word_syms);
 
-    CompactLatticeWriter clat_writer(opts.clat_wspecifier);
-    std::mutex clat_writer_m;
+    std::unique_ptr<CompactLatticeWriter> clat_writer;
+    std::unique_ptr<Output> ctm_writer;
+    OpenOutputHandles(opts.clat_wspecifier, &clat_writer, &ctm_writer);
+
+    std::mutex output_writer_m_;
     if (!opts.write_lattice) {
-      KALDI_LOG << ("If you want to write lattices to disk, please set "
-                    "--write-lattice=true");
+      KALDI_LOG
+          << ("If you want to write lattices to disk, please set "
+              "--write-lattice=true");
+      clat_writer.reset();
+    }
+    // result_type is used by the pipeline to know what to generate
+    int result_type = 0;
+    if (ctm_writer) result_type |= CudaPipelineResult::RESULT_TYPE_CTM;
+    if (clat_writer) result_type |= CudaPipelineResult::RESULT_TYPE_LATTICE;
+
+    // Lattice postprocessor
+    if (opts.lattice_postprocessor_config_rxfilename.empty()) {
+      if (ctm_writer) {
+        KALDI_ERR << "You must configure the lattice postprocessor with "
+                     "--lattice-postprocessor-rxfilename to use CTM output";
+      }
+    } else {
+      LoadAndSetLatticePostprocessor(
+          opts.lattice_postprocessor_config_rxfilename, &cuda_pipeline);
     }
 
     int chunk_length = cuda_pipeline.GetNSampsPerChunk();
@@ -101,10 +121,10 @@ int main(int argc, char *argv[]) {
     KALDI_ASSERT(all_wav.size() > 0);
     KALDI_ASSERT(all_wav.size() == all_wav_keys.size());
     KALDI_LOG << "Loaded " << all_wav.size() << "files.";
-    for (int i=0; i < all_wav.size(); ++i) {
+    for (int i = 0; i < all_wav.size(); ++i) {
       if (all_wav[i]->Data().NumRows() <= 0) {
-        KALDI_ERR << "Bad file, 0 channels at index [" << i << "], id="
-                  << all_wav_keys[i];
+        KALDI_ERR << "Bad file, 0 channels at index [" << i
+                  << "], id=" << all_wav_keys[i];
       }
     }
 
@@ -152,7 +172,7 @@ int main(int argc, char *argv[]) {
         // "spoken" e.g. if the first chunk is made of 0.5s for audio, we have
         // to wait 0.5s after stream_will_start_at
         double first_chunk_available_at =
-          stream_will_start_at + std::min(stream_duration, chunk_seconds);
+            stream_will_start_at + std::min(stream_duration, chunk_seconds);
 
         // stream_will_stop_at is used for latency computation.
         // Streaming starts at t0 = stream_will_start_at and ends at
@@ -163,51 +183,75 @@ int main(int argc, char *argv[]) {
         // we'll do lat_ptr = now - lat_ptr in callback
         *latency_ptr = stream_will_stop_at;
 
-        // Define the callback for results.
-        cuda_pipeline.SetBestPathCallback(
-          corr_id,
-          [&, latency_ptr, corr_id](const std::string &str, bool partial,
-                                    bool endpoint_detected) {
-              if (partial && opts.print_partial_hypotheses) {
-                KALDI_LOG << "corr_id #" << corr_id << " [partial] : " << str;
-              }
+        // Define the callback for results
+        bool use_bestpath_callback = !result_type ||
+                                     opts.print_partial_hypotheses ||
+                                     opts.print_endpoints;
+        if (use_bestpath_callback) {
+          cuda_pipeline.SetBestPathCallback(
+              corr_id, [latency_ptr, &timer, &opts, corr_id, result_type](
+                           const std::string &str, bool partial,
+                           bool endpoint_detected) {
+                if (partial && opts.print_partial_hypotheses) {
+                  KALDI_LOG << "corr_id #" << corr_id << " [partial] : " << str;
+		}
 
-              if (endpoint_detected && opts.print_endpoints) {
-                KALDI_LOG << "corr_id #" << corr_id << " [endpoint detected]";
-              }
+                if (endpoint_detected && opts.print_endpoints) {
+                  KALDI_LOG << "corr_id #" << corr_id << " [endpoint detected]";
+		}
 
-              if (!partial) {
-                // *latency_ptr currently contains t1="stream_will_start_at +
-                // duration" where stream_will_start_at is the time when this
-                // stream has started and 'duration' is the duration of this
-                // audio file, so t1 is the time when the virtual user is done
-                // talking. timer.Elapsed() now contains t2, i.e. when the
-                // result is ready, the latency = t2 - t1.
-                if (!opts.generate_lattice) {
-                  // If generating a lattice, latency will include the time
-                  // spent generating it.
-                  *latency_ptr = timer.Elapsed() - *latency_ptr;
+                if (!partial) {
+                  // *latency_ptr currently contains t1="stream_will_start_at +
+                  // duration" where stream_will_start_at is when this stream
+                  // started and duration is the duration of this audio file so
+                  // t1 is the time when the virtual user is done talking
+                  // timer.Elapsed() now contains t2, i.e. when the result is
+                  // ready latency = t2 - t1
+                  if (!result_type) {
+                    // If we need to gen a lattice, latency will take the
+                    // lattice gen into account
+                    *latency_ptr = timer.Elapsed() - *latency_ptr;
+                  }
+                  if (opts.print_hypotheses) {
+                    KALDI_LOG << "corr_id #" << corr_id << " : " << str;
+		  }
                 }
-                if (opts.print_hypotheses)
-                  KALDI_LOG << "corr_id #" << corr_id << " : " << str;
-              }
-            });
+              });
+        }
 
-        if (opts.generate_lattice) {
+        if (result_type) {
           // Setting a callback will indicate the pipeline to generate a
           // lattice
           int iter = all_wav_i / all_wav.size();
           std::string key = all_wav_keys[all_wav_i_modulo];
           if (iter > 0) key += std::to_string(iter);
-          cuda_pipeline.SetLatticeCallback(
-            corr_id,
-            [&, key, latency_ptr](CompactLattice &clat) {
-              *latency_ptr = timer.Elapsed() - *latency_ptr;
-              if (opts.write_lattice) {
-                std::lock_guard<std::mutex> lk(clat_writer_m);
-                clat_writer.Write(key, clat);
-              }
-            });
+          SegmentedResultsCallback segmented_callback =
+              [&clat_writer, latency_ptr, &timer, &ctm_writer,
+               &output_writer_m_, key,
+               word_syms](SegmentedLatticeCallbackParams &params) {
+                if (params.results.empty()) {
+                  KALDI_WARN << "Empty result for callback for utterance " << key;
+                  return;
+                }
+                if (params.results[0].IsLastSegment()) {
+                  *latency_ptr = timer.Elapsed() - *latency_ptr;
+                }
+
+                if (clat_writer) {
+                  std::lock_guard<std::mutex> lk(output_writer_m_);
+                  clat_writer->Write(key, *params.results[0].GetLatticeResult());
+                }
+
+                if (ctm_writer) {
+                  std::lock_guard<std::mutex> lk(output_writer_m_);
+                  MergeSegmentsToCTMOutput(params.results, key,
+                                           ctm_writer->Stream(), word_syms,
+                                           /* use segment offset */ false);
+                }
+              };
+
+          cuda_pipeline.SetLatticeCallback(corr_id, segmented_callback,
+                                           result_type);
         }
 
         // Adding that stream to our simulation stream pool
@@ -231,9 +275,9 @@ int main(int argc, char *argv[]) {
       // Current chunk
       int32 total_num_samp = data.Dim();
       int this_chunk_num_samp =
-        std::min(total_num_samp - chunk.offset, chunk_length);
+          std::min(total_num_samp - chunk.offset, chunk_length);
       bool is_last_chunk =
-        ((chunk.offset + this_chunk_num_samp) == total_num_samp);
+          ((chunk.offset + this_chunk_num_samp) == total_num_samp);
       bool is_first_chunk = (chunk.offset == 0);
       SubVector<BaseFloat> wave_part(data, chunk.offset, this_chunk_num_samp);
 
@@ -250,7 +294,7 @@ int main(int argc, char *argv[]) {
       // send_next_chunk_at with send_next_chunk_at = send_current_chunk_at +
       // next_chunk_duration
       int next_chunk_num_samp =
-        std::min(total_num_samp - chunk.offset, chunk_length);
+          std::min(total_num_samp - chunk.offset, chunk_length);
       double next_chunk_seconds = next_chunk_num_samp * seconds_per_sample;
       chunk.send_next_chunk_at += next_chunk_seconds;
 
@@ -266,7 +310,7 @@ int main(int argc, char *argv[]) {
     PrintLatencyStats(latencies);
     delete word_syms;
 
-    clat_writer.Close();
+    if (clat_writer) clat_writer->Close();
     cudaDeviceSynchronize();
 
     return 0;

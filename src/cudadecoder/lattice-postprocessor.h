@@ -103,6 +103,26 @@ class LatticePostprocessor {
                                                     word_boundary_rxfilename);
   }
 };
+
+void SetResultUsingLattice(
+    CompactLattice &clat, const int result_type,
+    const std::shared_ptr<LatticePostprocessor> &lattice_postprocessor,
+    CudaPipelineResult *result);
+
+// Read lattice postprocessor config, apply it,
+// and assign it to the pipeline
+template <class PIPELINE>
+void LoadAndSetLatticePostprocessor(const std::string &config_filename,
+                                    PIPELINE *cuda_pipeline) {
+  ParseOptions po("");  // No usage, reading from a file
+  LatticePostprocessorConfig pp_config;
+  pp_config.Register(&po);
+  po.ReadConfigFile(config_filename);
+  auto lattice_postprocessor =
+      std::make_shared<LatticePostprocessor>(pp_config);
+  cuda_pipeline->SetLatticePostprocessor(lattice_postprocessor);
+}
+
 }  // namespace cuda_decoder
 }  // namespace kaldi
 

@@ -19,7 +19,7 @@ OBJFILES = cuda-decoder.o cuda-decoder-kernels.o cuda-fst.o \
 	   batched-threaded-nnet3-cuda-pipeline2.o \
 	   batched-static-nnet3.o batched-static-nnet3-kernels.o \
 	   cuda-online-pipeline-dynamic-batcher.o decodable-cumatrix.o \
-	   lattice-postprocessor.o
+	   cuda-pipeline-common.o lattice-postprocessor.o
 
 LIBNAME = kaldi-cudadecoder
 

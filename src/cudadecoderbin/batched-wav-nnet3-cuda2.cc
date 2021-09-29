@@ -21,7 +21,9 @@
 #include <cuda.h>
 #include <cuda_profiler_api.h>
 #include <nvToolsExt.h>
+
 #include <sstream>
+
 #include "cudadecoder/batched-threaded-nnet3-cuda-pipeline2.h"
 #include "cudadecoderbin/cuda-bin-tools.h"
 #include "cudamatrix/cu-allocator.h"
