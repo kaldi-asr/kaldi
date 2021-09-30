@@ -11,7 +11,7 @@ cd $xroot
 
 add_deb () {
   echo "Adding deb package $1 to $xroot"
-  $WGET -nv $1
+  $WGET -nv --no-check-certificate $1
   dpkg-deb -x ${1##*/} $xroot
 }
 
