@@ -97,10 +97,9 @@ function filter_recordings {
     utils/filter_scp.pl $data/wav.scp $tmpdir/recordings > $tmpdir/recordings.tmp
     mv $tmpdir/recordings.tmp $tmpdir/recordings
 
-
-    cp $data/segments{,.tmp}; awk '{print $2, $1, $3, $4}' <$data/segments.tmp >$data/segments
+    cp $data/segments{,.tmp}; awk '{out=""; for(i=3;i<=NF;i++){out=out" "$i}; print $2, $1, out}' <$data/segments.tmp >$data/segments
     filter_file $tmpdir/recordings $data/segments
-    cp $data/segments{,.tmp}; awk '{print $2, $1, $3, $4}' <$data/segments.tmp >$data/segments
+    cp $data/segments{,.tmp}; awk '{out=""; for(i=3;i<=NF;i++){out=out" "$i}; print $2, $1, out}' <$data/segments.tmp >$data/segments
     rm $data/segments.tmp
 
     filter_file $tmpdir/recordings $data/wav.scp
