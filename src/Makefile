@@ -100,7 +100,7 @@ kaldi.mk:
 	@[ -f kaldi.mk ] || { echo "kaldi.mk does not exist; you have to run ./configure"; exit 1; }
 
 # Compile optional stuff
-ext: ext_depend $(SUBDIRS) $(EXT_SUBDIRS)
+ext: check_ext_depend $(SUBDIRS) $(EXT_SUBDIRS)
 	-echo Done
 
 check_portaudio:
@@ -131,14 +131,17 @@ valgrind:
 base/.depend.mk:
 	$(MAKE) depend
 
-depend: $(addsuffix /depend, $(SUBDIRS))
+depend: $(addsuffix /depend, $(SUBDIRS)) ext_depend
 
 %/depend:
 	$(MAKE) -C $(dir $@) depend
 
+%/.depend.mk:
+	$(MAKE) -C $(dir $@) depend
 
-ext_depend: check_portaudio
-	-for x in $(EXT_SUBDIRS); do $(MAKE) -C $$x depend; done
+check_ext_depend: check_portaudio $(addsuffix /.depend.mk, $(EXT_SUBDIRS))
+
+ext_depend: check_portaudio $(addsuffix /depend, $(EXT_SUBDIRS))
 
 # 'make libs' to skip binaries, and build only libraries.
 .PHONY: libs $(SUBDIRS_LIB)
@@ -151,7 +154,7 @@ $(SUBDIRS_BIN) : checkversion kaldi.mk mklibdir
 	$(MAKE) -C $@
 
 .PHONY: $(EXT_SUBDIRS)
-$(EXT_SUBDIRS) : checkversion kaldi.mk mklibdir ext_depend
+$(EXT_SUBDIRS) : checkversion kaldi.mk mklibdir check_ext_depend
 	$(MAKE) -C $@
 
 ### Dependency list ###
