@@ -1,7 +1,7 @@
 // nnet3bin/nnet3-compute-batch-from-wavs.cc
 
 // Copyright 2012-2018   Johns Hopkins University (author: Daniel Povey)
-//           2021        Yan Zhao
+//           2020-2021   Xiaomi Corporation (Author: Zhao Yan)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -107,7 +107,8 @@ void *ThreadFunction(void *para) {
       thread_para->matrix_writer->Write(utt, matrix);
     }
     else {
-      KALDI_LOG << "Propagate failed for " << utt;
+      KALDI_WARN << "Propagate failed for " << utt;
+      return NULL;
     }
   }
 
@@ -195,8 +196,7 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "Time taken "<< elapsed << "s";
     return 0;
 #else
-    KALDI_LOG << "It must run on GPU";
-    return -1;
+    KALDI_ERR << "This program requires CUDA available.";
 #endif
   } catch(const std::exception &e) {
     std::cerr << e.what();

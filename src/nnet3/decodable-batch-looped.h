@@ -1,6 +1,6 @@
 // nnet3/decodable-batch-looped.h
 
-// Copyright 2020 XiaoMi.crop (author: yanzhao)
+// Copyright 2020-2021  Xiaomi Corporation (Author: Zhao Yan)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
