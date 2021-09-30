@@ -1,6 +1,7 @@
 // nnet3/nnet-compute.h
 
 // Copyright   2012-2015  Johns Hopkins University (author: Daniel Povey)
+//             2020-2021  Xiaomi Corporation (Author: Zhao Yan)
 
 // See ../../COPYING for clarification regarding multiple authors
 //

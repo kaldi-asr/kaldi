@@ -21,11 +21,12 @@
 #define KALDI_NNET3_DECODABLE_BATCH_LOOPED_H_
 
 #if HAVE_CUDA == 1
-#include <queue>
-#include <vector>
-#include <mutex>
-#include <thread>
 #include <chrono>
+#include <mutex>
+#include <queue>
+#include <thread>
+#include <vector>
+
 #include "base/kaldi-common.h"
 #include "util/kaldi-semaphore.h"
 #include "gmm/am-diag-gmm.h"
@@ -111,7 +112,7 @@ struct NnetBatchLoopedComputationOptions {
    When you instantiate class DecodableNnetBatchLooped, you should give it
    a const reference to this class, that has been previously initialized.
  */
-class DecodableNnetBatchLoopedInfo  {
+struct DecodableNnetBatchLoopedInfo  {
  public:
   // The constructor takes a non-const pointer to 'nnet' because it may have to
   // modify it to be able to take multiple iVectors.
@@ -133,7 +134,7 @@ class DecodableNnetBatchLoopedInfo  {
 
   const NnetBatchLoopedComputationOptions &opts;
 
-  const Nnet &nnet;
+  Nnet &nnet;
 
   // the log priors (or the empty vector if the priors are not set in the model)
   CuVector<BaseFloat> log_priors;
@@ -200,7 +201,7 @@ class NnetBatchLoopedComputer {
 public:
   NnetBatchLoopedComputer(const DecodableNnetBatchLoopedInfo &info);
 
-  inline const DecodableNnetBatchLoopedInfo &GetInfo() { return info_; }
+  inline const DecodableNnetBatchLoopedInfo &GetInfo() const { return info_; }
   
   // Enqueue request of computation from decoding thread
   void Enqueue(NnetComputeRequest *request);
@@ -213,7 +214,7 @@ private:
   static void *Chunk1ThreadFunction(void *para);
   static void *ThreadFunction(void *para); 
 
-  // Start a new thread to handles the computation in batch looped mode 
+  // Start a new thread to handle the computation in batch looped mode 
   void Start();
   
   // Stop the thread which handles the computation.
@@ -281,7 +282,7 @@ public:
                                  OnlineFeatureInterface *input_features,
                                  OnlineFeatureInterface *ivector_features);
 
-  virtual BaseFloat LogLikelihood(int32 subsampled_frame, int32 index);
+  BaseFloat LogLikelihood(int32 subsampled_frame, int32 index) override;
 
   void GetOutputForFrame(int32 subsampled_frame, VectorBase<BaseFloat> *output);
   
@@ -353,5 +354,5 @@ private:
 } // namespace nnet3
 } // namespace kaldi
 
-#endif
+#endif  // HAVE_CUDA
 #endif  // KALDI_NNET3_DECODABLE_BATCH_LOOPED_H_

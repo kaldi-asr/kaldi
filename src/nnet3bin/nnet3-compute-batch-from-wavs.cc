@@ -22,37 +22,32 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "base/timer.h"
-#include "nnet3/nnet-utils.h"
+#include "feat/wave-reader.h"
 #include "matrix/kaldi-vector.h"
+#include "nnet3/nnet-utils.h"
 #include "nnet3/decodable-batch-looped.h"
 #include "online2/online-nnet2-feature-pipeline.h"
 
 using namespace kaldi;
 using namespace kaldi::nnet3;
-typedef kaldi::int32 int32;
-typedef kaldi::int64 int64;
 
 typedef struct _ThreadPara {
   std::vector<std::string> wavs_file_name;
   std::vector<std::string> utts;
   BaseFloatMatrixWriter    *matrix_writer;
   std::mutex               mtx;
-  int                      index;
+  int32                    index;
   
   OnlineNnet2FeaturePipelineInfo *pipeline_info;
   NnetBatchLoopedComputer        *computer;
   TransitionModel                *trans_model;
-
 } ThreadPara; 
 
 
 void *ThreadFunction(void *para) {
   ThreadPara *thread_para = reinterpret_cast<ThreadPara *>(para);
-  int output_dim = thread_para->computer->GetInfo().output_dim;
-  static int package_size = 1024;
-  char package[package_size];
-  FILE *wav_file;
-  int read_len, num_frames_read;
+  int32 output_dim = thread_para->computer->GetInfo().output_dim;
+  const int kPackageSize = 512;
   
   while (true) {
     std::string utt, wav_file_name;
@@ -67,7 +62,6 @@ void *ThreadFunction(void *para) {
       thread_para->index++;
     }
 
-
     OnlineNnet2FeaturePipeline feature_pipeline(*(thread_para->pipeline_info));
     DecodableNnetBatchLoopedOnline decodable(
         thread_para->computer, *(thread_para->trans_model), 
@@ -75,19 +69,24 @@ void *ThreadFunction(void *para) {
         feature_pipeline.IvectorFeature());
     std::vector< Vector<BaseFloat> > likelihoods;
     
-    wav_file = fopen(wav_file_name.c_str(), "rb");
-    read_len = 0;
-    num_frames_read = 0;
+    bool binary = true;
+    Input ki(wav_file_name, &binary);
+    WaveHolder wave_holder;
+    if (!wave_holder.Read(ki.Stream())) 
+      KALDI_ERR << "Read failure from " << wav_file_name;
+    
+    const Matrix<BaseFloat> &waveform = wave_holder.Value().Data();
+    int32 num_samplers_read = 0, num_frames_read = 0;
+    BaseFloat samp_freq = wave_holder.Value().SampFreq();
 
-    fseek(wav_file, 44, SEEK_SET);
-    while (read_len = fread(package, sizeof(char), package_size, wav_file)) {
-      Vector<BaseFloat> wav_data(read_len/2, kSetZero);
-      for (int32 i = 0; i < read_len / 2; i++) {
-        int16 k = *reinterpret_cast<uint16 *>(package + 2*i);
-        wav_data(i) = static_cast<BaseFloat>(k);
-      } 
-
-      feature_pipeline.AcceptWaveform(16000, wav_data);
+    while (num_samplers_read < waveform.NumCols()) {
+      Vector<BaseFloat> wave_data;
+      int32 num_samplers = num_samplers_read + kPackageSize <= waveform.NumCols()
+                           ? kPackageSize
+                           : (waveform.NumCols() - num_samplers_read);
+      
+      wave_data.CopyColsFromMat(waveform.ColRange(num_samplers_read, num_samplers));
+      feature_pipeline.AcceptWaveform(samp_freq, wave_data);
       if (decodable.NumFramesReady() > num_frames_read) {
         likelihoods.resize(decodable.NumFramesReady(), Vector<BaseFloat>(output_dim));
         while (num_frames_read < decodable.NumFramesReady()) {
@@ -95,20 +94,19 @@ void *ThreadFunction(void *para) {
           num_frames_read++;
         }
       }
-    }
 
-    fclose(wav_file);
+      num_samplers_read += num_samplers;
+    }
 
     if (num_frames_read > 0) {
       std::unique_lock<std::mutex> lck(thread_para->mtx);
       Matrix<BaseFloat> matrix(num_frames_read, likelihoods[0].Dim());
-      for (int i = 0; i < num_frames_read; i++) 
+      for (int32 i = 0; i < num_frames_read; i++) 
         matrix.CopyRowFromVec(likelihoods[i], i);
       thread_para->matrix_writer->Write(utt, matrix);
     }
     else {
       KALDI_WARN << "Propagate failed for " << utt;
-      return NULL;
     }
   }
 

@@ -1,6 +1,6 @@
 // nnet3/decodable-batch-looped.cc
 
-// Copyright      2020  XiaoMi.corp (author: yanzhao)
+// Copyright      2020-2021  Xiaomi Corporation (Author: Zhao Yan)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -77,7 +77,7 @@ void DecodableNnetBatchLoopedInfo::Init(
 
   num_chunk1_ivector_frames = 0;
   num_ivector_frames = 0;
-  computation.resize(opts.max_batch_size+1);
+  computation.resize(opts.max_batch_size + 1);
   for (int32 num_sequences = 1; 
        num_sequences <= opts.max_batch_size; 
        num_sequences++) {
