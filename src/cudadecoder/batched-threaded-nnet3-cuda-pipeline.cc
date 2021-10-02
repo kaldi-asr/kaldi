@@ -540,6 +540,12 @@ void BatchedThreadedNnet3CudaPipeline::ComputeOneFeatureCPU(TaskState *task_) {
   // If we don't have anything to do, we must return now
   if (numFrames == 0) {
     task_->finished = true;
+    {
+        std::lock_guard<std::mutex> lk(group_tasks_mutex_);
+        --all_group_tasks_not_done_;
+        int32 left_in_group = --group_tasks_not_done_[task_->group];
+        if (left_in_group == 0) group_done_cv_.notify_all();
+    }
     return;
   }
   int32 input_dim = feature.InputFeature()->Dim();
