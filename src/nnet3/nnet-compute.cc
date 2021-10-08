@@ -794,8 +794,6 @@ void NnetComputer::GetState(const std::vector<bool> &batch_first,
 
     src.CopyToRows(CuArray<BaseFloat *>(dst));
   }
-
-  return;
 }
 
 void NnetComputer::SetState(const std::vector<bool> &batch_first,
@@ -880,8 +878,6 @@ void NnetComputer::SetState(const std::vector<bool> &batch_first,
 
     dst.CopyRows(CuArray<const BaseFloat *>(src));
   }
-  
-  return;
 }
 
 
@@ -894,11 +890,9 @@ void NnetComputer::Print(std::ostream &os) {
     }
   }
   os << "\n";
-
-  return;
 }
 
-void NnetComputer::GetSnapshot(NnetComputerSnapshot *snapshot) {
+void NnetComputer::GetSnapshot(NnetComputerSnapshot *snapshot) const {
   if (NULL == snapshot) return;
 
   snapshot->program_counter = program_counter_;
@@ -911,8 +905,6 @@ void NnetComputer::GetSnapshot(NnetComputerSnapshot *snapshot) {
     snapshot->num_rows_of_matrices.push_back(matrices_[i].NumRows());
     snapshot->num_cols_of_matrices.push_back(matrices_[i].NumCols());
   }
-
-  return;
 }
 
 } // namespace nnet3

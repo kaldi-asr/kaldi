@@ -48,6 +48,10 @@ struct NnetComputeOptions {
 
 };
 
+// NnetComputeState stores computation state of Nnet.
+// The data stored in matrices are copied from NnetComputer, 
+// and will be copied to NnetComputer before next computation.
+// It's only needed for NnetBatchLoopedComputer.
 struct NnetComputeState {
   std::vector< CuMatrix<BaseFloat> > matrices;
 };
@@ -161,14 +165,29 @@ class NnetComputer {
   inline const std::vector< CuMatrix<BaseFloat> > &GetMatrices() const { 
     return matrices_; }
 
-  // Get state of streams. The parameter named "batch_first" indicates whether 
-  // the matrices saved state is batch first or not.
+  // Copy the state of stream from NnetComputer to NnetComputeState,
+  // avoid being rewritten by next computation. 
+  // The parameter named "batch_first" indicates whether the matrices which 
+  // holding state in NnetComputer is batch first or not. The size of 
+  // "batch_first" must be equal to the number of matrices which are not empty
+  // in NnetComputer.
+  // The parameter named "batch_size" is the same as the batch size of 
+  // the NnetComputation. 
+  // The parameter named "state" stores state of streams.
   void GetState(const std::vector<bool> &batch_first,
                 const int32 batch_size,
-                std::vector< NnetComputeState* > *statuses);
+                std::vector< NnetComputeState* > *state);
   
-  // Set state of streams, The parameter named "batch_first" indicates whether 
-  // the matrices saved state is batch first or not.
+  // Copy the state of stream from NnetComputeState to NnetComputer, 
+  // filling matrices of NnetComputer with corresponding state of stream 
+  // before computation. 
+  // The parameter named "batch_first" indicates whether the matrices which 
+  // holding state in NnetComputer is batch first or not. The size of 
+  // "batch_first" must be equal to the number of matrices which are not empty
+  // in NnetComputer.
+  // The parameter named "batch_size" is the same as the batch size of 
+  // the NnetComputation. 
+  // The parameter named "state" stores state of streams.
   void SetState(const std::vector<bool> &batch_first,
                 const int32 batch_size,
                 const std::vector< NnetComputeState* > &state);
@@ -176,8 +195,9 @@ class NnetComputer {
   // Return true if all the members are equal to other's.
   bool Equal(const NnetComputer &other);
 
-  // Take a snapshot of the NnetComputer, discard the data saved in matrices_
-  void GetSnapshot(NnetComputerSnapshot *snapshot);
+  // Take a snapshot of the NnetComputer. 
+  // It save the size but not the data of matrices in NnetComputer.
+  void GetSnapshot(NnetComputerSnapshot *snapshot) const;
 
   void Print(std::ostream &os);
 

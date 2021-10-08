@@ -112,7 +112,7 @@ struct NnetBatchLoopedComputationOptions {
    When you instantiate class DecodableNnetBatchLooped, you should give it
    a const reference to this class, that has been previously initialized.
  */
-struct DecodableNnetBatchLoopedInfo  {
+class DecodableNnetBatchLoopedInfo  {
  public:
   // The constructor takes a non-const pointer to 'nnet' because it may have to
   // modify it to be able to take multiple iVectors.
@@ -211,7 +211,6 @@ public:
 private:
   KALDI_DISALLOW_COPY_AND_ASSIGN(NnetBatchLoopedComputer);
 
-  static void *Chunk1ThreadFunction(void *para);
   static void *ThreadFunction(void *para); 
 
   // Start a new thread to handle the computation in batch looped mode 
@@ -306,7 +305,6 @@ public:
       current_log_post_.Resize(output.NumRows(), output.NumCols());
     current_log_post_.CopyFromMat(output);
     semaphone_.Signal();
-    return ;
   }
 
 private:

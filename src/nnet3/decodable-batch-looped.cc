@@ -233,8 +233,6 @@ void NnetBatchLoopedComputer::AdvanceChunkUntilStable(
       break;
     }
   }
-
-  return;
 }
 
 void NnetBatchLoopedComputer::Enqueue(NnetComputeRequest *request) {
@@ -246,8 +244,6 @@ void NnetBatchLoopedComputer::Enqueue(NnetComputeRequest *request) {
   queue.push(std::make_pair(request, std::chrono::system_clock::now()));
   if (queue.size() >= info_.opts.max_batch_size)
     condition_variable_.notify_one();
-
-  return;
 }
 
 bool NnetBatchLoopedComputer::Continue() {
@@ -288,8 +284,6 @@ void NnetBatchLoopedComputer::Compute() {
 
   if (batch_requests.size() > 0) AdvanceChunk(batch_requests);
   if (chunk1_batch_requests.size() > 0) AdvanceChunk(chunk1_batch_requests);
-    
-  return;
 }
 
 void *NnetBatchLoopedComputer::ThreadFunction(void *para) {
@@ -306,13 +300,11 @@ void *NnetBatchLoopedComputer::ThreadFunction(void *para) {
 void NnetBatchLoopedComputer::Start() {
   is_working_ = true;
   work_thread_ = std::thread(ThreadFunction, this);
-  return;
 }
 
 void NnetBatchLoopedComputer::Stop() {
   is_working_ = false;
   if (work_thread_.joinable()) work_thread_.join();
-  return;
 }
 
 void NnetBatchLoopedComputer::AdvanceChunk(
@@ -399,8 +391,6 @@ void NnetBatchLoopedComputer::AdvanceChunk(
       requests[i]->notifiable->Receive(outputs);
     }
   }
-   
-  return;
 }
 
 
