@@ -23,15 +23,15 @@
 #ifndef KALDI_DECODER_LATTICE_FASTER_DECODER_H_
 #define KALDI_DECODER_LATTICE_FASTER_DECODER_H_
 
-
-#include "util/stl-utils.h"
-#include "util/hash-list.h"
+#include "decoder/grammar-fst.h"
 #include "fst/fstlib.h"
-#include "itf/decodable-itf.h"
+#include "fst/memory.h"
 #include "fstext/fstext-lib.h"
+#include "itf/decodable-itf.h"
 #include "lat/determinize-lattice-pruned.h"
 #include "lat/kaldi-lattice.h"
-#include "decoder/grammar-fst.h"
+#include "util/hash-list.h"
+#include "util/stl-utils.h"
 
 namespace kaldi {
 
@@ -50,20 +50,24 @@ struct LatticeFasterDecoderConfig {
   // tokens as we go.
   BaseFloat prune_scale;
 
+  int32 memory_pool_size;
+
   // Most of the options inside det_opts are not actually queried by the
   // LatticeFasterDecoder class itself, but by the code that calls it, for
   // example in the function DecodeUtteranceLatticeFaster.
   fst::DeterminizeLatticePhonePrunedOptions det_opts;
 
-  LatticeFasterDecoderConfig(): beam(16.0),
-                                max_active(std::numeric_limits<int32>::max()),
-                                min_active(200),
-                                lattice_beam(10.0),
-                                prune_interval(25),
-                                determinize_lattice(true),
-                                beam_delta(0.5),
-                                hash_ratio(2.0),
-                                prune_scale(0.1) { }
+  LatticeFasterDecoderConfig()
+      : beam(16.0),
+        max_active(std::numeric_limits<int32>::max()),
+        min_active(200),
+        lattice_beam(10.0),
+        prune_interval(25),
+        determinize_lattice(true),
+        beam_delta(0.5),
+        hash_ratio(2.0),
+        prune_scale(0.1),
+        memory_pool_size(1 << 10) {}
   void Register(OptionsItf *opts) {
     det_opts.Register(opts);
     opts->Register("beam", &beam, "Decoding beam.  Larger->slower, more accurate.");
@@ -82,6 +86,8 @@ struct LatticeFasterDecoderConfig {
                    "max-active constraint is applied.  Larger is more accurate.");
     opts->Register("hash-ratio", &hash_ratio, "Setting used in decoder to "
                    "control hash behavior");
+    opts->Register("memory-pool-size", &memory_pool_size,
+                   "Memory pool size suggestion for storing common data");
   }
   void Check() const {
     KALDI_ASSERT(beam > 0.0 && max_active > 1 && lattice_beam > 0.0
@@ -345,7 +351,7 @@ class LatticeFasterDecoderTpl {
   // internals.
 
   // Deletes the elements of the singly linked list tok->links.
-  inline static void DeleteForwardLinks(Token *tok);
+  void DeleteForwardLinks(Token *tok);
 
   // head of per-frame list of Tokens (list is in topological order),
   // and something saying whether we ever pruned it using PruneForwardLinks.
@@ -491,6 +497,10 @@ class LatticeFasterDecoderTpl {
   unordered_map<Token*, BaseFloat> final_costs_;
   BaseFloat final_relative_cost_;
   BaseFloat final_best_cost_;
+
+  // Memory pools for storing tokens and forward links.
+  fst::MemoryPool<Token> token_pool_;
+  fst::MemoryPool<ForwardLinkT> forward_link_pool_;
 
   // There are various cleanup tasks... the toks_ structure contains
   // singly linked lists of Token pointers, where Elem is the list type.
