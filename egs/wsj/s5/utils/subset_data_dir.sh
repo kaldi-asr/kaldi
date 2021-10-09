@@ -116,7 +116,7 @@ else
     # Select $numutt shortest utterances.
     . ./path.sh
     if [ -f $srcdir/utt2num_frames ]; then
-      ln -sf $srcdir/utt2num_frames $destdir/tmp.len
+      ln -sf $(utils/make_absolute.sh $srcdir)/utt2num_frames $destdir/tmp.len
     else
       feat-to-len scp:$srcdir/feats.scp ark,t:$destdir/tmp.len || exit 1;
     fi
