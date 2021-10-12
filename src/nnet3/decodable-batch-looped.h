@@ -271,17 +271,16 @@ private:
 
 
 class DecodableNnetBatchLoopedOnline : public DecodableInterface, 
-  public NotifiableNnetBatchLooped {
+                                       public NotifiableNnetBatchLooped {
 public:
   // Constructor.  'input_feature' is for the feature that will be given
   // as 'input' to the neural network; 'ivector_feature' is for the iVectors
   // OnlineFeatureInterface *ivector_features);
   DecodableNnetBatchLoopedOnline(NnetBatchLoopedComputer *computer,
-                                 const TransitionModel &trans_model,
                                  OnlineFeatureInterface *input_features,
                                  OnlineFeatureInterface *ivector_features);
 
-  BaseFloat LogLikelihood(int32 subsampled_frame, int32 index) override;
+  virtual BaseFloat LogLikelihood(int32 subsampled_frame, int32 index);
 
   void GetOutputForFrame(int32 subsampled_frame, VectorBase<BaseFloat> *output);
   
@@ -291,7 +290,7 @@ public:
 
   virtual int32 NumFramesReady() const;
 
-  virtual int32 NumIndices() const { return trans_model_.NumTransitionIds(); }
+  virtual int32 NumIndices() const { return info_.output_dim; }
 
   // this is not part of the standard Decodable interface but I think is needed for
   // something.
@@ -326,7 +325,6 @@ private:
   // The current log-posteriors that we got from the last time we
   // ran the computation.
   Matrix<BaseFloat> current_log_post_;
-  Matrix<BaseFloat> current_xent_log_post_;
 
   // The number of chunks we have computed so far.
   int32 num_chunks_computed_;
@@ -342,12 +340,277 @@ private:
   // This object will accepts computation requests from this,
   // and push outputs to this after computation finished.
   NnetBatchLoopedComputer *computer_;
-  const TransitionModel &trans_model_;
   const DecodableNnetBatchLoopedInfo &info_;
     
   NnetComputeRequest request_;
   Semaphore semaphone_;
 };
+
+class DecodableAmNnetBatchLoopedOnline : public DecodableInterface {
+public:
+  // Constructor.  'input_feature' is for the feature that will be given
+  // as 'input' to the neural network; 'ivector_feature' is for the iVectors
+  // OnlineFeatureInterface *ivector_features);
+  DecodableAmNnetBatchLoopedOnline(NnetBatchLoopedComputer *computer,
+                                   const TransitionModel &trans_model,
+                                   OnlineFeatureInterface *input_features,
+                                   OnlineFeatureInterface *ivector_features);
+
+  virtual BaseFloat LogLikelihood(int32 frame, int32 transition_id);
+
+  virtual inline int32 NumFramesReady() const {
+    return decodable_nnet_.NumFramesReady();
+  }
+
+  virtual int32 NumIndices() const { return trans_model_.NumTransitionIds(); }
+
+  virtual bool IsLastFrame(int32 frame) const { 
+    return decodable_nnet_.IsLastFrame(frame); 
+  }
+  
+private:
+  KALDI_DISALLOW_COPY_AND_ASSIGN(DecodableAmNnetBatchLoopedOnline);
+  DecodableNnetBatchLoopedOnline decodable_nnet_;
+  const TransitionModel &trans_model_;
+};
+
+/*
+  This class handles the neural net computation; it's mostly accessed
+  via other wrapper classes.
+
+  It can accept just input features, or input features plus iVectors.  */
+class DecodableNnetBatchSimpleLooped : public NotifiableNnetBatchLooped {
+public:
+  /**
+     This constructor takes features as input, and you can either supply a
+     single iVector input, estimated in batch-mode ('ivector'), or 'online'
+     iVectors ('online_ivectors' and 'online_ivector_period', or none at all.
+     Note: it stores references to all arguments to the constructor, so don't
+     delete them till this goes out of scope.
+
+     @param [in] computer This class submit computation requests to computer,
+                          which handles the neural net computation acturallly.
+     @param [in] feats  The input feature matrix.
+     @param [in] ivector If you are using iVectors estimated in batch mode,
+                         a pointer to the iVector, else NULL.
+     @param [in] online_ivectors
+                        If you are using iVectors estimated 'online'
+                        a pointer to the iVectors, else NULL.
+     @param [in] online_ivector_period If you are using iVectors estimated 'online'
+                        (i.e. if online_ivectors != NULL) gives the periodicity
+                        (in frames) with which the iVectors are estimated.
+  */
+  DecodableNnetBatchSimpleLooped(NnetBatchLoopedComputer *computer,
+                                 const MatrixBase<BaseFloat> &feats,
+                                 const VectorBase<BaseFloat> *ivector = NULL,
+                                 const MatrixBase<BaseFloat> *online_ivectors = NULL,
+                                 int32 online_ivector_period = 1);
+
+  // returns the number of frames of likelihoods.  The same as feats_.NumRows()
+  // in the normal case (but may be less if opts_.frame_subsampling_factor !=
+  // 1).
+  inline int32 NumFrames() const { return num_subsampled_frames_; }
+  
+  inline int32 OutputDim() const { return info_.output_dim; }
+
+  // Gets the output for a particular frame and pdf_id, with
+  // 0 <= subsampled_frame < NumFrames(),
+  // and 0 <= pdf_id < OutputDim().
+  inline BaseFloat GetOutput(int32 subsampled_frame, int32 pdf_id) {
+    KALDI_ASSERT(subsampled_frame >= current_log_post_subsampled_offset_ &&
+                 "Frames must be accessed in order.");
+    while (subsampled_frame >= current_log_post_subsampled_offset_ +
+                            current_log_post_.NumRows())
+      AdvanceChunk();
+    return current_log_post_(subsampled_frame -
+                             current_log_post_subsampled_offset_,
+                             pdf_id);
+  }
+  
+  virtual void Receive(const CuMatrixBase<BaseFloat> &output) {
+    if (current_log_post_.NumRows() != output.NumRows() ||
+        current_log_post_.NumCols() != output.NumCols())
+      current_log_post_.Resize(output.NumRows(), output.NumCols());
+    current_log_post_.CopyFromMat(output);
+    semaphone_.Signal();
+  }
+
+private:
+  KALDI_DISALLOW_COPY_AND_ASSIGN(DecodableNnetBatchSimpleLooped);
+
+  // This function does the computation for the next chunk.  It will change
+  // current_log_post_ and current_log_post_subsampled_offset_, and
+  // increment num_chunks_computed_.
+  void AdvanceChunk();
+
+  // Gets the iVector for the specified frame., if we are
+  // using iVectors (else does nothing).
+  void GetCurrentIvector(int32 input_frame, Vector<BaseFloat> *ivector);
+
+  // The current log-posteriors that we got from the last time we
+  // ran the computation.
+  Matrix<BaseFloat> current_log_post_;
+
+  // The number of chunks we have computed so far.
+  int32 num_chunks_computed_;
+
+  // The time-offset of the current log-posteriors, equals
+  // (num_chunks_computed_ - 1) *
+  //    (info_.frames_per_chunk_ / info_.opts_.frame_subsampling_factor).
+  int32 current_log_post_subsampled_offset_;
+
+  const MatrixBase<BaseFloat> &feats_;
+  // note: num_subsampled_frames_ will equal feats_->.NumRows() in the normal case
+  // when opts_.frame_subsampling_factor == 1.
+  int32 num_subsampled_frames_;
+
+  // ivector_ is the iVector if we're using iVectors that are estimated in batch
+  // mode.
+  const VectorBase<BaseFloat> *ivector_;
+
+  // online_ivector_feats_ is the iVectors if we're using online-estimated ones.
+  const MatrixBase<BaseFloat> *online_ivector_feats_;
+  // online_ivector_period_ helps us interpret online_ivector_feats_; it's the
+  // number of frames the rows of ivector_feats are separated by.
+  int32 online_ivector_period_;
+
+  // This object will accepts computation requests from this,
+  // and push outputs to this after computation finished.
+  NnetBatchLoopedComputer *computer_;
+  const DecodableNnetBatchLoopedInfo &info_;
+  
+  // This is the struct represents computation request,
+  // contains feats, state of computations, and point of 
+  // notifiable which will be notified when computation finished.
+  NnetComputeRequest request_;
+  
+  // The Semaphore used to synchronize with computer_.
+  Semaphore semaphone_;
+};
+
+class DecodableAmNnetBatchSimpleLooped : public DecodableInterface {
+public:
+  /**
+     This constructor takes features as input, and you can either supply a
+     single iVector input, estimated in batch-mode ('ivector'), or 'online'
+     iVectors ('online_ivectors' and 'online_ivector_period', or none at all.
+     Note: it stores references to all arguments to the constructor, so don't
+     delete them till this goes out of scope.
+
+
+     @param [in] computer This class submit computation requests to computer,
+                          which handles the neural net computation acturallly.
+     @param [in] trans_model  The transition model to use.  This takes care of the
+                        mapping from transition-id (which is an arg to
+                        LogLikelihood()) to pdf-id (which is used internally).
+     @param [in] feats   A pointer to the input feature matrix; must be non-NULL.
+                         We
+     @param [in] ivector If you are using iVectors estimated in batch mode,
+                         a pointer to the iVector, else NULL.
+     @param [in] ivector If you are using iVectors estimated in batch mode,
+                         a pointer to the iVector, else NULL.
+     @param [in] online_ivectors
+                        If you are using iVectors estimated 'online'
+                        a pointer to the iVectors, else NULL.
+     @param [in] online_ivector_period If you are using iVectors estimated 'online'
+                        (i.e. if online_ivectors != NULL) gives the periodicity
+                        (in frames) with which the iVectors are estimated.
+  */
+  DecodableAmNnetBatchSimpleLooped(
+      NnetBatchLoopedComputer *computer,
+      const TransitionModel &trans_model,
+      const MatrixBase<BaseFloat> &feats,
+      const VectorBase<BaseFloat> *ivector = NULL,
+      const MatrixBase<BaseFloat> *online_ivectors = NULL,
+      int32 online_ivector_period = 1);
+
+  virtual BaseFloat LogLikelihood(int32 frame, int32 transition_id);
+
+  virtual inline int32 NumFramesReady() const {
+    return decodable_nnet_.NumFrames();
+  }
+
+  virtual int32 NumIndices() const { return trans_model_.NumTransitionIds(); }
+
+  virtual bool IsLastFrame(int32 frame) const {
+    KALDI_ASSERT(frame < NumFramesReady());
+    return (frame == NumFramesReady() - 1);
+  }
+
+private:
+  KALDI_DISALLOW_COPY_AND_ASSIGN(DecodableAmNnetBatchSimpleLooped);
+  DecodableNnetBatchSimpleLooped decodable_nnet_;
+  const TransitionModel &trans_model_;
+};
+
+class DecodableAmNnetBatchSimpleLoopedParallel : public DecodableInterface {
+public:
+  /**
+     This decodable object is for use in multi-threaded decoding.
+     It differs from DecodableAmNnetBatchSimpleLooped in respect followed:
+        (1) It doesn't keep around pointers to the features and iVectors;
+            instead, it creates copies of them (so the caller can
+            delete the originals).
+     
+     This constructor takes features as input, and you can either supply a
+     single iVector input, estimated in batch-mode ('ivector'), or 'online'
+     iVectors ('online_ivectors' and 'online_ivector_period', or none at all.
+     Note: it stores references to all arguments to the constructor, so don't
+     delete them till this goes out of scope.
+
+
+     @param [in] computer This class submit computation requests to computer,
+                          which handles the neural net computation acturallly.
+     @param [in] trans_model  The transition model to use.  This takes care of the
+                        mapping from transition-id (which is an arg to
+                        LogLikelihood()) to pdf-id (which is used internally).
+     @param [in] feats   A pointer to the input feature matrix; must be non-NULL.
+                         We
+     @param [in] ivector If you are using iVectors estimated in batch mode,
+                         a pointer to the iVector, else NULL.
+     @param [in] ivector If you are using iVectors estimated in batch mode,
+                         a pointer to the iVector, else NULL.
+     @param [in] online_ivectors
+                        If you are using iVectors estimated 'online'
+                        a pointer to the iVectors, else NULL.
+     @param [in] online_ivector_period If you are using iVectors estimated 'online'
+                        (i.e. if online_ivectors != NULL) gives the periodicity
+                        (in frames) with which the iVectors are estimated.
+  */
+  DecodableAmNnetBatchSimpleLoopedParallel(
+      NnetBatchLoopedComputer *computer,
+      const TransitionModel &trans_model,
+      const MatrixBase<BaseFloat> &feats,
+      const VectorBase<BaseFloat> *ivector = NULL,
+      const MatrixBase<BaseFloat> *online_ivectors = NULL,
+      int32 online_ivector_period = 1);
+
+  virtual BaseFloat LogLikelihood(int32 frame, int32 transition_id);
+
+  virtual inline int32 NumFramesReady() const {
+    return decodable_nnet_->NumFrames();
+  }
+
+  virtual int32 NumIndices() const { return trans_model_.NumTransitionIds(); }
+
+  virtual bool IsLastFrame(int32 frame) const {
+    KALDI_ASSERT(frame < NumFramesReady());
+    return (frame == NumFramesReady() - 1);
+  }
+
+  ~DecodableAmNnetBatchSimpleLoopedParallel() { DeletePointers(); }
+private:
+  KALDI_DISALLOW_COPY_AND_ASSIGN(DecodableAmNnetBatchSimpleLoopedParallel);
+  void DeletePointers();
+
+  DecodableNnetBatchSimpleLooped *decodable_nnet_;
+  const TransitionModel &trans_model_;
+
+  Matrix<BaseFloat> feats_copy_;
+  Vector<BaseFloat> *ivector_copy_;
+  Matrix<BaseFloat> *online_ivectors_copy_;
+};
+
 
 } // namespace nnet3
 } // namespace kaldi

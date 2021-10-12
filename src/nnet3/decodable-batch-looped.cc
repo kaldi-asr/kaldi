@@ -396,7 +396,6 @@ void NnetBatchLoopedComputer::AdvanceChunk(
 
 DecodableNnetBatchLoopedOnline::DecodableNnetBatchLoopedOnline(
     NnetBatchLoopedComputer *computer,
-    const TransitionModel &trans_model,
     OnlineFeatureInterface *input_features,
     OnlineFeatureInterface *ivector_features):
     num_chunks_computed_(0),
@@ -404,7 +403,6 @@ DecodableNnetBatchLoopedOnline::DecodableNnetBatchLoopedOnline(
     input_features_(input_features),
     ivector_features_(ivector_features),
     computer_(computer),
-    trans_model_(trans_model),
     info_(computer->GetInfo()),
     semaphone_(0) {
   KALDI_ASSERT(computer_ != NULL);
@@ -594,7 +592,7 @@ BaseFloat DecodableNnetBatchLoopedOnline::LogLikelihood(int32 subsampled_frame,
   EnsureFrameIsComputed(subsampled_frame);
   return current_log_post_(
       subsampled_frame - current_log_post_subsampled_offset_,
-      trans_model_.TransitionIdToPdf(index));
+      index);
 }
 
 void DecodableNnetBatchLoopedOnline::GetOutputForFrame(
@@ -603,6 +601,205 @@ void DecodableNnetBatchLoopedOnline::GetOutputForFrame(
   EnsureFrameIsComputed(subsampled_frame);
   output->CopyFromVec(current_log_post_.Row(
         subsampled_frame - current_log_post_subsampled_offset_));
+}
+
+DecodableAmNnetBatchLoopedOnline::DecodableAmNnetBatchLoopedOnline(
+    NnetBatchLoopedComputer *computer,
+    const TransitionModel &trans_model,
+    OnlineFeatureInterface *input_features,
+    OnlineFeatureInterface *ivector_features):
+    decodable_nnet_(computer, input_features, ivector_features),
+    trans_model_(trans_model) { }
+
+BaseFloat DecodableAmNnetBatchLoopedOnline::LogLikelihood(
+    int32 frame,
+    int32 transition_id) {
+  int32 pdf_id = trans_model_.TransitionIdToPdfFast(transition_id);
+  return decodable_nnet_.LogLikelihood(frame, pdf_id);
+}
+
+DecodableNnetBatchSimpleLooped::DecodableNnetBatchSimpleLooped(
+    NnetBatchLoopedComputer *computer,
+    const MatrixBase<BaseFloat> &feats,
+    const VectorBase<BaseFloat> *ivector,
+    const MatrixBase<BaseFloat> *online_ivectors,
+    int32 online_ivector_period):
+    num_chunks_computed_(0),
+    current_log_post_subsampled_offset_(-1),
+    feats_(feats),
+    ivector_(ivector),
+    online_ivector_feats_(online_ivectors),
+    online_ivector_period_(online_ivector_period),
+    computer_(computer),
+    info_(computer->GetInfo()),
+    semaphone_(0) {
+  num_subsampled_frames_ = 
+    (feats_.NumRows() + info_.opts.frame_subsampling_factor - 1) /
+    info_.opts.frame_subsampling_factor;
+  KALDI_ASSERT(computer != NULL);
+  KALDI_ASSERT(!(ivector != NULL && online_ivectors != NULL));
+  KALDI_ASSERT(!(online_ivectors != NULL && online_ivector_period <= 0 &&
+                 "You need to set the --online-ivector-period option!"));
+}
+
+void DecodableNnetBatchSimpleLooped::AdvanceChunk() {
+  // Prepare the input data for the next chunk of features.
+  // note: 'end' means one past the last.
+  int32 begin_input_frame, end_input_frame;
+  if (num_chunks_computed_ == 0) {
+    begin_input_frame = -info_.frames_left_context;
+    // note: end is last plus one.
+    end_input_frame = info_.frames_per_chunk + info_.frames_right_context;
+  } else {
+    // note: begin_input_frame will be the same as the previous end_input_frame.
+    // you can verify this directly if num_chunks_computed_ == 0, and then by
+    // induction.
+    begin_input_frame = num_chunks_computed_ * info_.frames_per_chunk +
+                        info_.frames_right_context;
+    end_input_frame = begin_input_frame + info_.frames_per_chunk;
+  }
+ 
+  Matrix<BaseFloat> feats_chunk(end_input_frame - begin_input_frame,
+                                feats_.NumCols(), kUndefined);
+  int32 num_features = feats_.NumRows();
+  if (begin_input_frame >= 0 && end_input_frame <= num_features) {
+    SubMatrix<BaseFloat> this_feats(feats_,
+                                    begin_input_frame, 
+                                    end_input_frame - begin_input_frame,
+                                    0, feats_.NumCols());
+    feats_chunk.CopyFromMat(this_feats);
+  } else {
+    for (int32 r = begin_input_frame; r < end_input_frame; r++) {
+      int32 input_frame = r;
+      if (input_frame < 0) input_frame = 0;
+      if (input_frame >= num_features) input_frame = num_features - 1;
+      feats_chunk.Row(r - begin_input_frame).CopyFromVec(feats_.Row(input_frame));
+    }
+  }
+  request_.inputs.Swap(&feats_chunk);
+
+  if (info_.has_ivectors) {
+    // all but the 1st chunk should have 1 iVector, but there is no need to
+    // assume this.
+    int32 num_ivectors = num_chunks_computed_ == 0 ?
+			                   info_.num_chunk1_ivector_frames :
+			                   info_.num_ivector_frames;
+    KALDI_ASSERT(num_ivectors > 0);
+
+    Vector<BaseFloat> ivector;
+    // we just get the iVector from the last input frame we needed...
+    // we don't bother trying to be 'accurate' in getting the iVectors
+    // for their 'correct' frames, because in general using the
+    // iVector from as large 't' as possible will be better.
+    GetCurrentIvector(end_input_frame, &ivector);
+    Matrix<BaseFloat> ivectors(num_ivectors, ivector.Dim());
+    ivectors.CopyRowsFromVec(ivector);
+    request_.ivectors.Swap(&ivectors);
+  }
+
+  request_.notifiable = this;
+  if (num_chunks_computed_ == 0) {
+    request_.first_chunk = true;
+    request_.state.matrices.clear();
+  }
+  else {
+    request_.first_chunk = false;
+  }
+
+  computer_->Enqueue(&request_);
+
+  semaphone_.Wait();
+  KALDI_ASSERT(current_log_post_.NumRows() == info_.frames_per_chunk /
+               info_.opts.frame_subsampling_factor &&
+               current_log_post_.NumCols() == info_.output_dim);
+
+  num_chunks_computed_++;
+
+  current_log_post_subsampled_offset_ =
+      (num_chunks_computed_ - 1) *
+      (info_.frames_per_chunk / info_.opts.frame_subsampling_factor);
+}
+
+void DecodableNnetBatchSimpleLooped::GetCurrentIvector(
+    int32 input_frame, 
+    Vector<BaseFloat> *ivector) {
+  if (!info_.has_ivectors)
+    return;
+  if (ivector_ != NULL) {
+    *ivector = *ivector_;
+    return; 
+  } else if (online_ivector_feats_ == NULL) {
+    KALDI_ERR << "Neural net expects iVectors but none provided.";
+  }
+  KALDI_ASSERT(online_ivector_period_ > 0);
+  int32 ivector_frame = input_frame / online_ivector_period_;
+  KALDI_ASSERT(ivector_frame >= 0);
+  if (ivector_frame >= online_ivector_feats_->NumRows())
+    ivector_frame = online_ivector_feats_->NumRows() - 1;
+  KALDI_ASSERT(ivector_frame >= 0 && "ivector matrix cannot be empty.");
+  *ivector = online_ivector_feats_->Row(ivector_frame);
+}
+
+DecodableAmNnetBatchSimpleLooped::DecodableAmNnetBatchSimpleLooped(
+    NnetBatchLoopedComputer *computer,
+    const TransitionModel &trans_model,
+    const MatrixBase<BaseFloat> &feats,
+    const VectorBase<BaseFloat> *ivector,
+    const MatrixBase<BaseFloat> *online_ivectors,
+    int32 online_ivector_period):
+    decodable_nnet_(computer, feats, ivector, online_ivectors, online_ivector_period),
+    trans_model_(trans_model) { }
+
+BaseFloat DecodableAmNnetBatchSimpleLooped::LogLikelihood(
+    int32 frame,
+    int32 transition_id) {
+  int32 pdf_id = trans_model_.TransitionIdToPdfFast(transition_id);
+  return decodable_nnet_.GetOutput(frame, pdf_id);
+}
+
+DecodableAmNnetBatchSimpleLoopedParallel::DecodableAmNnetBatchSimpleLoopedParallel(
+    NnetBatchLoopedComputer *computer,
+    const TransitionModel &trans_model,
+    const MatrixBase<BaseFloat> &feats,
+    const VectorBase<BaseFloat> *ivector,
+    const MatrixBase<BaseFloat> *online_ivectors,
+    int32 online_ivector_period):
+    decodable_nnet_(NULL),
+    trans_model_(trans_model), 
+    feats_copy_(feats),
+    ivector_copy_(NULL),
+    online_ivectors_copy_(NULL) { 
+  try {
+    if (ivector != NULL) 
+      ivector_copy_ = new Vector<BaseFloat>(*ivector);
+    if (online_ivectors != NULL)
+      online_ivectors_copy_ = new Matrix<BaseFloat>(*online_ivectors);
+
+    decodable_nnet_ = new DecodableNnetBatchSimpleLooped(
+        computer, feats_copy_, ivector_copy_, 
+        online_ivectors_copy_, online_ivector_period);
+  } catch (...) {
+    DeletePointers();
+    KALDI_ERR << "Error occurred in constructor (see above)";
+  }
+}
+
+void DecodableAmNnetBatchSimpleLoopedParallel::DeletePointers() {
+  // delete[] does nothing for null pointers, so we have no checks.
+  delete decodable_nnet_;
+  decodable_nnet_ = NULL;
+  delete ivector_copy_;
+  ivector_copy_ = NULL;
+  delete online_ivectors_copy_;
+  online_ivectors_copy_ = NULL;
+}
+
+
+BaseFloat DecodableAmNnetBatchSimpleLoopedParallel::LogLikelihood(
+    int32 frame,
+    int32 transition_id) {
+  int32 pdf_id = trans_model_.TransitionIdToPdfFast(transition_id);
+  return decodable_nnet_->GetOutput(frame, pdf_id);
 }
 
 } // namespace nnet3
