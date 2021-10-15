@@ -35,6 +35,11 @@
 
 int main(int argc, char *argv[]) {
   // This program processes utterances in parallel, in looped mode.
+  // Additionally, multiple nnet computation requests which from 
+  // different decoding threads are batched to run parallelly in GPU.
+  // Note that the audio streams represented by these requests can be 
+  // different between two consecutive computaion, and the audio streams 
+  // of batch can be asynchronous in timing.
   // 
   // First, the computer(type of NnetBatchLoopedComputer) is initialized,
   // start a thread for listening computation request from other threads.
