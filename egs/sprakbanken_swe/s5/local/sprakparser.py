@@ -33,7 +33,7 @@ class Session(object):
     def __init__(self, topfolder, splfile):
         self.filestem = splfile.split(".")[0]
         self.source = topfolder+ "/" +splfile
-        splhandle = codecs.open(self.source, "r", "latin-1")
+        splhandle = codecs.open(self.source, "r", "utf8")
         
         self.set_system_vars(splhandle)
         self.set_channel_vars(splhandle)

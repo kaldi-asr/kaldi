@@ -36,7 +36,7 @@ for line in transcript:
     normtext1 = re.sub(r'[\.,:;\?]', '', line)
     normtext2 = re.sub(r'[\t\\]', ' ', normtext1)
     normtext3 = re.sub(r'  +', ' ', normtext2.strip())
-    outtext.write(normtext3.upper())
+    outtext.write(normtext3.upper() + "\n")
 
 transcript.close()
 outtext.close()
