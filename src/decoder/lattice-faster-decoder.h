@@ -50,7 +50,10 @@ struct LatticeFasterDecoderConfig {
   // tokens as we go.
   BaseFloat prune_scale;
 
-  int32 memory_pool_size;
+  // Number of elements in the block for Token and ForwardLink memory
+  // pool allocation.
+  int32 memory_pool_tokens_block_size;
+  int32 memory_pool_links_block_size;
 
   // Most of the options inside det_opts are not actually queried by the
   // LatticeFasterDecoder class itself, but by the code that calls it, for
@@ -67,7 +70,8 @@ struct LatticeFasterDecoderConfig {
         beam_delta(0.5),
         hash_ratio(2.0),
         prune_scale(0.1),
-        memory_pool_size(1 << 10) {}
+        memory_pool_tokens_block_size(1 << 8),
+        memory_pool_links_block_size(1 << 8) {}
   void Register(OptionsItf *opts) {
     det_opts.Register(opts);
     opts->Register("beam", &beam, "Decoding beam.  Larger->slower, more accurate.");
@@ -86,8 +90,12 @@ struct LatticeFasterDecoderConfig {
                    "max-active constraint is applied.  Larger is more accurate.");
     opts->Register("hash-ratio", &hash_ratio, "Setting used in decoder to "
                    "control hash behavior");
-    opts->Register("memory-pool-size", &memory_pool_size,
-                   "Memory pool size suggestion for storing common data");
+    opts->Register("memory-pool-tokens-block-size", &memory_pool_tokens_block_size,
+                   "Memory pool block size suggestion for storing tokens (in elements). "
+                   "Smaller uses less memory but increases cache misses.");
+    opts->Register("memory-pool-links-block-size", &memory_pool_links_block_size,
+                   "Memory pool block size suggestion for storing links (in elements). "
+                   "Smaller uses less memory but increases cache misses.");
   }
   void Check() const {
     KALDI_ASSERT(beam > 0.0 && max_active > 1 && lattice_beam > 0.0
@@ -499,6 +507,9 @@ class LatticeFasterDecoderTpl {
   BaseFloat final_best_cost_;
 
   // Memory pools for storing tokens and forward links.
+  // We use it to decrease the work put on allocator and to move some of data
+  // together. Too small block sizes will result in more work to allocator but
+  // bigger ones increase the memory usage.
   fst::MemoryPool<Token> token_pool_;
   fst::MemoryPool<ForwardLinkT> forward_link_pool_;
 

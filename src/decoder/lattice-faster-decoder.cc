@@ -33,8 +33,8 @@ LatticeFasterDecoderTpl<FST, Token>::LatticeFasterDecoderTpl(
       delete_fst_(false),
       config_(config),
       num_toks_(0),
-      token_pool_(config.memory_pool_size),
-      forward_link_pool_(config.memory_pool_size) {
+      token_pool_(config.memory_pool_tokens_block_size),
+      forward_link_pool_(config.memory_pool_links_block_size) {
   config.Check();
   toks_.SetSize(1000);  // just so on the first frame we do something reasonable.
 }
@@ -46,8 +46,8 @@ LatticeFasterDecoderTpl<FST, Token>::LatticeFasterDecoderTpl(
       delete_fst_(true),
       config_(config),
       num_toks_(0),
-      token_pool_(config.memory_pool_size),
-      forward_link_pool_(config.memory_pool_size) {
+      token_pool_(config.memory_pool_tokens_block_size),
+      forward_link_pool_(config.memory_pool_links_block_size) {
   config.Check();
   toks_.SetSize(1000);  // just so on the first frame we do something reasonable.
 }
