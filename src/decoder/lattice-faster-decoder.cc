@@ -28,22 +28,29 @@ namespace kaldi {
 // instantiate this class once for each thing you have to decode.
 template <typename FST, typename Token>
 LatticeFasterDecoderTpl<FST, Token>::LatticeFasterDecoderTpl(
-    const FST &fst,
-    const LatticeFasterDecoderConfig &config):
-    fst_(&fst), delete_fst_(false), config_(config), num_toks_(0) {
+    const FST &fst, const LatticeFasterDecoderConfig &config)
+    : fst_(&fst),
+      delete_fst_(false),
+      config_(config),
+      num_toks_(0),
+      token_pool_(config.memory_pool_tokens_block_size),
+      forward_link_pool_(config.memory_pool_links_block_size) {
   config.Check();
   toks_.SetSize(1000);  // just so on the first frame we do something reasonable.
 }
-
 
 template <typename FST, typename Token>
 LatticeFasterDecoderTpl<FST, Token>::LatticeFasterDecoderTpl(
-    const LatticeFasterDecoderConfig &config, FST *fst):
-    fst_(fst), delete_fst_(true), config_(config), num_toks_(0) {
+    const LatticeFasterDecoderConfig &config, FST *fst)
+    : fst_(fst),
+      delete_fst_(true),
+      config_(config),
+      num_toks_(0),
+      token_pool_(config.memory_pool_tokens_block_size),
+      forward_link_pool_(config.memory_pool_links_block_size) {
   config.Check();
   toks_.SetSize(1000);  // just so on the first frame we do something reasonable.
 }
-
 
 template <typename FST, typename Token>
 LatticeFasterDecoderTpl<FST, Token>::~LatticeFasterDecoderTpl() {
@@ -65,7 +72,8 @@ void LatticeFasterDecoderTpl<FST, Token>::InitDecoding() {
   StateId start_state = fst_->Start();
   KALDI_ASSERT(start_state != fst::kNoStateId);
   active_toks_.resize(1);
-  Token *start_tok = new Token(0.0, 0.0, NULL, NULL, NULL);
+  Token *start_tok =
+      new (token_pool_.Allocate()) Token(0.0, 0.0, NULL, NULL, NULL);
   active_toks_[0].toks = start_tok;
   toks_.Insert(start_state, start_tok);
   num_toks_++;
@@ -263,7 +271,8 @@ LatticeFasterDecoderTpl<FST, Token>::FindOrAddToken(
     // tokens on the currently final frame have zero extra_cost
     // as any of them could end up
     // on the winning path.
-    Token *new_tok = new Token (tot_cost, extra_cost, NULL, toks, backpointer);
+    Token *new_tok = new (token_pool_.Allocate())
+        Token(tot_cost, extra_cost, NULL, toks, backpointer);
     // NULL: no forward links yet
     toks = new_tok;
     num_toks_++;
@@ -340,7 +349,7 @@ void LatticeFasterDecoderTpl<FST, Token>::PruneForwardLinks(
           ForwardLinkT *next_link = link->next;
           if (prev_link != NULL) prev_link->next = next_link;
           else tok->links = next_link;
-          delete link;
+          forward_link_pool_.Free(link);
           link = next_link;  // advance link but leave prev_link the same.
           *links_pruned = true;
         } else {   // keep the link and update the tok_extra_cost if needed.
@@ -428,7 +437,7 @@ void LatticeFasterDecoderTpl<FST, Token>::PruneForwardLinksFinal() {
           ForwardLinkT *next_link = link->next;
           if (prev_link != NULL) prev_link->next = next_link;
           else tok->links = next_link;
-          delete link;
+          forward_link_pool_.Free(link);
           link = next_link; // advance link but leave prev_link the same.
         } else { // keep the link and update the tok_extra_cost if needed.
           if (link_extra_cost < 0.0) { // this is just a precaution.
@@ -489,7 +498,7 @@ void LatticeFasterDecoderTpl<FST, Token>::PruneTokensForFrame(int32 frame_plus_o
       // excise tok from list and delete tok.
       if (prev_tok != NULL) prev_tok->next = tok->next;
       else toks = tok->next;
-      delete tok;
+      token_pool_.Free(tok);
       num_toks_--;
     } else {  // fetch next Token
       prev_tok = tok;
@@ -792,8 +801,9 @@ BaseFloat LatticeFasterDecoderTpl<FST, Token>::ProcessEmitting(
           // NULL: no change indicator needed
 
           // Add ForwardLink from tok to next_tok (put on head of list tok->links)
-          tok->links = new ForwardLinkT(e_next->val, arc.ilabel, arc.olabel,
-                                        graph_cost, ac_cost, tok->links);
+          tok->links = new (forward_link_pool_.Allocate())
+              ForwardLinkT(e_next->val, arc.ilabel, arc.olabel, graph_cost,
+                           ac_cost, tok->links);
         }
       } // for all arcs
     }
@@ -809,7 +819,7 @@ void LatticeFasterDecoderTpl<FST, Token>::DeleteForwardLinks(Token *tok) {
   ForwardLinkT *l = tok->links, *m;
   while (l != NULL) {
     m = l->next;
-    delete l;
+    forward_link_pool_.Free(l);
     l = m;
   }
   tok->links = NULL;
@@ -873,8 +883,8 @@ void LatticeFasterDecoderTpl<FST, Token>::ProcessNonemitting(BaseFloat cutoff) {
           Elem *e_new = FindOrAddToken(arc.nextstate, frame + 1, tot_cost,
                                           tok, &changed);
 
-          tok->links = new ForwardLinkT(e_new->val, 0, arc.olabel,
-                                        graph_cost, 0, tok->links);
+          tok->links = new (forward_link_pool_.Allocate()) ForwardLinkT(
+              e_new->val, 0, arc.olabel, graph_cost, 0, tok->links);
 
           // "changed" tells us whether the new token has a different
           // cost from before, or is new [if so, add into queue].
@@ -903,7 +913,7 @@ void LatticeFasterDecoderTpl<FST, Token>::ClearActiveTokens() { // a cleanup rou
     for (Token *tok = active_toks_[i].toks; tok != NULL; ) {
       DeleteForwardLinks(tok);
       Token *next_tok = tok->next;
-      delete tok;
+      token_pool_.Free(tok);
       num_toks_--;
       tok = next_tok;
     }
