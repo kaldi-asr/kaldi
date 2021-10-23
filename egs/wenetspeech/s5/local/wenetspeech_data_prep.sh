@@ -151,7 +151,7 @@ fi
 
 # We train the language model with segmented "train_l" dataset.
 # The unsegmented data can be used for other tools.
-if [ $stage -le 3 -a "$do_segmentation" == "true" ]; then
+if [ $stage -le 3 ] && [ "$do_segmentation" == "true" ]; then
   if [ ! -f data/corpus/train_l_utt_list ]; then
     cat $corpus_dir/utt2subsets | \
        awk -v s=L '{for (i=2;i<=NF;i++) if($i==s) print $0;}' \

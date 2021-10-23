@@ -1,9 +1,11 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
+#encoding=utf-8
 
-# encoding=utf-8
 # Copyright 2018 AIShell-Foundation(Authors:Jiayu DU, Xingyu NA, Bengu WU, Hao ZHENG)
 #           2018 Beijing Shell Shell Tech. Co. Ltd. (Author: Hui BU)
 # Apache 2.0
+#
+# This script does Mandarin word segmentation with jieba.
 
 from __future__ import print_function
 import sys

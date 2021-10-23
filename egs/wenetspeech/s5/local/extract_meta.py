@@ -1,6 +1,12 @@
+#!/usr/bin/env python3
+
 # Copyright 2021  Xiaomi Corporation (Author: Yongqing Wang)
 #                 Mobvoi Inc (Author: Di Wu, Binbin Zhang)
 #                 ASLP@NWPU (Author: Hang Lyu)
+#
+# This script is used to process raw json dataset of WenetSpeech, where
+# the long wav is split into segments and the data of wenet formate is
+# generated.
 
 import sys
 import os
@@ -11,7 +17,7 @@ import json
 def get_args():
     parser = argparse.ArgumentParser(description="""
       This script is used to process raw json dataset of WenetSpeech,
-      where the long wav is splitinto segments and
+      where the long wav is split into segments and
       data of wenet format is generated.
       """)
     parser.add_argument('input_json', help="""Input json file of WenetSpeech""")

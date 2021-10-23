@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 # Copyright 2021 ASLP, NWPU (Author: Hang Lyu)
 #
 # This script splits the Chinese words into character and keep the English

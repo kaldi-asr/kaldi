@@ -120,7 +120,7 @@ if [ $stage -le 2 ] ; then
   for f in "${files[@]}" ; do
     fout=${f%.txt}.chars.txt
     if [ -f local/character_tokenizer.py ]; then
-       python2 local/character_tokenizer.py $f $fout
+       python3 local/character_tokenizer.py $f $fout
     else
       echo 'Error: No File :local/character_tokenizer.py.'
       cat $f |  perl -CSDA -ane '
