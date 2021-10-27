@@ -274,68 +274,69 @@ function configure_cuda {
     # Determine 'CUDA_ARCH',
     CUDA_VERSION=$($CUDATKDIR/bin/nvcc -V | tr '.,' '_ ' |
                      awk '/release/{sub(/.*release/,""); print $1;}') # MAJOR_MINOR,
-    if [[ ! $CUDA_VERSION ]] ; then
-      failure "Cannot figure out CUDA_VERSION from the nvcc output.
+    [[ $CUDA_VERSION ]] ||
+      failure "Cannot figure out CUDA version from the nvcc output.
 Either your CUDA is too new or too old."
-    fi
 
     COMPILER_VER_INFO=$($CXX --version 2>/dev/null)
     if [[ $COMPILER_VER_INFO == *[gc]"++"* ]]; then
       GCC_VER=$($CXX -dumpversion)
       GCC_VER_NUM=$(echo $GCC_VER | sed 's/\./ /g' | xargs printf "%d%02d%02d")
       case $CUDA_VERSION in
-        # Disabling CUDA 7 and CUDA 8 because we now use C++14 to compile CUDA code
-        # It is still possible to use those cuda versions by switching back to C++11
-        # in src/makefiles/cuda_64bit.mk and use CUB <= 1.8.0 (see tools/)
-        # https://github.com/kaldi-asr/kaldi/pull/4242
+        # Disabling CUDA 7 and CUDA 8 because we now use C++14 to compile CUDA
+        # code. It is still possible to use those cuda versions by switching
+        # back to C++11 in src/makefiles/cuda_64bit.mk and use CUB <= 1.8.0.
+        # See tools/ and https://github.com/kaldi-asr/kaldi/pull/4242
         #7_*)
         #  MIN_UNSUPPORTED_GCC_VER="5.0"
         #  MIN_UNSUPPORTED_GCC_VER_NUM=50000;
-        #  CUSOLVER=false
         #;;
         #8_*)
         #  MIN_UNSUPPORTED_GCC_VER="6.0"
         #  MIN_UNSUPPORTED_GCC_VER_NUM=60000;
-        #  CUSOLVER=false
         #;;
-        9_0)
+        [1-8]_*)
+          failure "CUDA version $CUDA_VERSION is too old and unsupported."
+          ;;
+        9_[01])
           MIN_UNSUPPORTED_GCC_VER="7.0"
-          MIN_UNSUPPORTED_GCC_VER_NUM=70000;
-          CUSOLVER=false
-        ;;
-        9_1)
-          MIN_UNSUPPORTED_GCC_VER="7.0"
-          MIN_UNSUPPORTED_GCC_VER_NUM=70000;
-          CUSOLVER=true
-        ;;
-        9_2 | 9_* | 10_0)
+          MIN_UNSUPPORTED_GCC_VER_NUM=70000
+          ;;
+        9_* | 10_0)
           MIN_UNSUPPORTED_GCC_VER="8.0"
-          MIN_UNSUPPORTED_GCC_VER_NUM=80000;
-          CUSOLVER=true
-        ;;
-        10_1 | 10_*)
+          MIN_UNSUPPORTED_GCC_VER_NUM=80000
+          ;;
+        10_*)
           MIN_UNSUPPORTED_GCC_VER="9.0"
-          MIN_UNSUPPORTED_GCC_VER_NUM=90000;
-          CUSOLVER=true
-        ;;
-        11_*)
+          MIN_UNSUPPORTED_GCC_VER_NUM=90000
+          ;;
+        11_[0-3])
           MIN_UNSUPPORTED_GCC_VER="10.0"
-          MIN_UNSUPPORTED_GCC_VER_NUM=100000;
-          CUSOLVER=true
-        ;;
+          MIN_UNSUPPORTED_GCC_VER_NUM=100000
+          ;;
+        11_*)
+          MIN_UNSUPPORTED_GCC_VER="12.0"
+          MIN_UNSUPPORTED_GCC_VER_NUM=120000
+          ;;
         *)
-          echo "Unsupported CUDA_VERSION (CUDA_VERSION=$CUDA_VERSION), please report it to Kaldi mailing list, together with 'nvcc -h' or 'ptxas -h' which lists allowed -gencode values..."; exit 1;
-        ;;
+          failure "Unsupported CUDA version ${CUDA_VERSION}.
+Please open an issue at https://github.com/kaldi-asr/kaldi/issues and include\
+ output of either 'nvcc -h' or 'ptxas -h'."
+          ;;
       esac
-      if [ $GCC_VER_NUM -ge $MIN_UNSUPPORTED_GCC_VER_NUM ]; then
-        failure "CUDA $CUDA_VERSION does not support $CXX (g++-$GCC_VER).
-                 You need g++ < $MIN_UNSUPPORTED_GCC_VER."
-      fi
+      (( GCC_VER_NUM < MIN_UNSUPPORTED_GCC_VER_NUM )) ||
+        failure "CUDA $CUDA_VERSION does not support $CXX (g++-$GCC_VER).\
+ Only versions strictly older than $MIN_UNSUPPORTED_GCC_VER are supported."
+
+      case $CUDA_VERSION in
+        [1-8]_* | 9_0) CUSOLVER=false ;;
+        *) CUSOLVER=true ;;
+      esac
     fi
 
-    if [ -z "$CUDA_ARCH" ]; then
+    if [[ ! $CUDA_ARCH ]]; then
       case `uname -m` in
-        x86_64|ppc64le)
+        x86_64 | ppc64le)
           case $CUDA_VERSION in
             # Disabling CUDA 7 and 8. See a few lines above for details.
             #7_*) CUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52" ;;
@@ -343,8 +344,11 @@ Either your CUDA is too new or too old."
             9_*) CUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_70,code=sm_70" ;;
             10_*) CUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_70,code=sm_70 -gencode arch=compute_75,code=sm_75" ;;
             11_0) CUDA_ARCH="-gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_70,code=sm_70 -gencode arch=compute_75,code=sm_75 -gencode arch=compute_80,code=sm_80" ;;
-            11_1 | 11_*) CUDA_ARCH="-gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_70,code=sm_70 -gencode arch=compute_75,code=sm_75 -gencode arch=compute_80,code=sm_80 -gencode arch=compute_86,code=sm_86" ;;
-            *) echo "Unsupported CUDA_VERSION (CUDA_VERSION=$CUDA_VERSION), please report it to Kaldi mailing list, together with 'nvcc -h' or 'ptxas -h' which lists allowed -gencode values..."; exit 1 ;;
+            11_*) CUDA_ARCH="-gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_70,code=sm_70 -gencode arch=compute_75,code=sm_75 -gencode arch=compute_80,code=sm_80 -gencode arch=compute_86,code=sm_86" ;;
+            *) failure \
+                 "Unsupported CUDA version ${CUDA_VERSION}. Please open an" \
+                 "issue at https://github.com/kaldi-asr/kaldi/issues and" \
+                 "include output of either 'nvcc -h' or 'ptxas -h'."
           esac
         ;;
         aarch64)
@@ -697,7 +701,7 @@ do
     shift ;;
   --static-speex=no)
     static_speex=false;
-    shift ;;    
+    shift ;;
   --fst-root=*)
     GetSwitchExistingPathOrDie FSTROOT "$1"
     shift ;;
