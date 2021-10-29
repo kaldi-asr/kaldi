@@ -23,7 +23,6 @@
 #include "base/kaldi-common.h"
 #include "base/kaldi-utils.h"
 #include "cudadecoder/cuda-pipeline-common.h"
-#include "cudamatrix/cu-device.h"
 #include "fstext/fstext-lib.h"
 #include "lat/kaldi-lattice.h"
 #include "lat/sausages.h"
