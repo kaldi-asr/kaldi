@@ -61,7 +61,7 @@ if $use_vtln; then
   # Vtln-related things:
   # We'll use a subset of utterances to train the GMM we'll use for VTLN
   # warping.
-  utils/subset_data_dir.sh data/train_novtln 5000 data/train_novtln_5k
+  utils/subset_data_dir.sh data/train_novtln 5000 data/train_5k_novtln
 
   # for the features we use to estimate VTLN warp factors, we use more cepstra
   # (13 instead of just 7); this needs to be tuned.
