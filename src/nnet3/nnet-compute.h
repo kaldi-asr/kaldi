@@ -1,6 +1,7 @@
 // nnet3/nnet-compute.h
 
 // Copyright   2012-2015  Johns Hopkins University (author: Daniel Povey)
+//             2020-2021  Xiaomi Corporation (Author: Zhao Yan)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -47,6 +48,34 @@ struct NnetComputeOptions {
 
 };
 
+// NnetComputeState stores computation state of Nnet.
+// The data stored in matrices are copied from NnetComputer, 
+// and will be copied to NnetComputer before next computation.
+// It's only needed for NnetBatchLoopedComputer.
+struct NnetComputeState {
+  std::vector< CuMatrix<BaseFloat> > matrices;
+};
+
+/*
+ * struct NnetComputerSnapshot contains information held by NnetComputer,
+ * except the data saved in matrices_.
+ *
+ * If the NnetComputerSnapshot is provided in constructor, the NnetComputer
+ * will restore from the snapshot, and all of matrix in matrices_ will be 
+ * resized with the size recorded by snapshot and kUndefined. So remember to 
+ * fill the matrices_ with correct data before call Run() of NnetComputer.
+ *
+ * Caution: the NnetComputerSnapshot is only used by NnetBatchLoopedComputer 
+ * now!!! The matrices_ are filled by state from difference streams per chunk
+ * before Run() is called.
+ */
+struct NnetComputerSnapshot {
+  int32 program_counter;
+  std::vector<int32> pending_commands;
+  std::vector<void*> memos;
+  std::vector<int32> num_rows_of_matrices;
+  std::vector<int32> num_cols_of_matrices;
+};
 
 /**
   class NnetComputer is responsible for executing the computation described in the
@@ -69,6 +98,14 @@ class NnetComputer {
                const NnetComputation &computation,
                const Nnet &nnet,
                Nnet *nnet_to_update);
+
+  /// Constructor, restore from the snapshot.
+  /// Fill the matrices_ with correct data before call Run().
+  NnetComputer(const NnetComputeOptions &options,
+               const NnetComputation &computation,
+               const Nnet &nnet,
+               Nnet *nnet_to_update,
+               NnetComputerSnapshot *snapshot);
 
   /// This version of the constructor accepts a pointer to 'nnet' instead
   /// of a const reference.  The difference is that this version will,
@@ -124,6 +161,45 @@ class NnetComputer {
   void GetOutputDestructive(const std::string &output_name,
                             CuMatrix<BaseFloat> *output);
 
+  // Get the matrices where store the state for next computation
+  inline const std::vector< CuMatrix<BaseFloat> > &GetMatrices() const { 
+    return matrices_; }
+
+  // Copy the state of stream from NnetComputer to NnetComputeState,
+  // avoid being rewritten by next computation. 
+  // The parameter named "batch_first" indicates whether the matrices which 
+  // holding state in NnetComputer is batch first or not. The size of 
+  // "batch_first" must be equal to the number of matrices which are not empty
+  // in NnetComputer.
+  // The parameter named "batch_size" is the same as the batch size of 
+  // the NnetComputation. 
+  // The parameter named "state" stores state of streams.
+  void GetState(const std::vector<bool> &batch_first,
+                const int32 batch_size,
+                std::vector< NnetComputeState* > *state);
+  
+  // Copy the state of stream from NnetComputeState to NnetComputer, 
+  // filling matrices of NnetComputer with corresponding state of stream 
+  // before computation. 
+  // The parameter named "batch_first" indicates whether the matrices which 
+  // holding state in NnetComputer is batch first or not. The size of 
+  // "batch_first" must be equal to the number of matrices which are not empty
+  // in NnetComputer.
+  // The parameter named "batch_size" is the same as the batch size of 
+  // the NnetComputation. 
+  // The parameter named "state" stores state of streams.
+  void SetState(const std::vector<bool> &batch_first,
+                const int32 batch_size,
+                const std::vector< NnetComputeState* > &state);
+
+  // Return true if all the members are equal to other's.
+  bool Equal(const NnetComputer &other);
+
+  // Take a snapshot of the NnetComputer. 
+  // It save the size but not the data of matrices in NnetComputer.
+  void GetSnapshot(NnetComputerSnapshot *snapshot) const;
+
+  void Print(std::ostream &os);
 
   ~NnetComputer();
  private:
