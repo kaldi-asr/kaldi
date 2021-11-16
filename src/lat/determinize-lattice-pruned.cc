@@ -223,10 +223,6 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
          iter != initial_hash_.end(); ++iter)
       delete iter->first;
     { InitialSubsetHash tmp; tmp.swap(initial_hash_); }
-    for (size_t i = 0; i < output_states_.size(); i++) {
-      vector<Element> tmp;
-      tmp.swap(output_states_[i]->minimal_subset);
-    }
     { vector<char> tmp;  tmp.swap(isymbol_or_final_); }
     { // Free up the queue.  I'm not sure how to make sure all
       // the memory is really freed (no swap() function)... doesn't really
