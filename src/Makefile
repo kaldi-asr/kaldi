@@ -161,9 +161,9 @@ BMU = base matrix util
 # this is necessary for correct parallel compilation
 #1) The tools depend on all the libraries (which is a nonsense)
 bin chainbin featbin fgmmbin fstbin gmmbin ivectorbin \
-    kwsbin latbin lmbin nnet2bin nnet3bin nnetbin online2bin rnnlmbin sgmm2bin: \
+    kwsbin latbin lmbin nnet2bin nnet3bin nnetbin online2bin rnnlmbin : \
  $(BMU) chain cudamatrix decoder feat fstext gmm hmm ivector \
-        kws lat lm nnet nnet2 nnet3 online2 rnnlm sgmm2 transform tree
+        kws lat lm nnet nnet2 nnet3 online2 rnnlm transform tree
 
 #2) The libraries have inter-dependencies
 base:   base/.depend.mk
