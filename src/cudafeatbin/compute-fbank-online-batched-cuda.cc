@@ -146,7 +146,7 @@ int main(int argc, char *argv[]) {
     int32_t ldf = max_chunk_frames;
 
     CudaOnlineBatchedSpectralFeatures fbank(feature_opts, max_chunk_frames,
-                                            num_channels, num_lanes);
+                                           num_channels, num_lanes);
 
     int32_t feat_dim = fbank.Dim();
 
@@ -186,6 +186,12 @@ int main(int argc, char *argv[]) {
     for (; !reader.Done(); reader.Next()) {
       std::string utt = reader.Key();
       WaveData &wave_data = reader.Value();
+      if (wave_data.SampFreq() != feature_opts.frame_opts.samp_freq) {
+        KALDI_ERR << "File: " << utt << " has an incompatible sampling "
+          << "frequency (config= " << feature_opts.frame_opts.samp_freq
+          << " vs file=" << wave_data.SampFreq() << ".";
+      }
+
       duration += wave_data.Duration();
       data_handles.emplace_back(utt, wave_data, frame_opts, feat_dim);
     }
@@ -260,7 +266,7 @@ int main(int argc, char *argv[]) {
 
       // process batch
       fbank.ComputeFeaturesBatched(d_lanes, lanes.size(), d_batch_wav_in,
-                                   sample_freq, vtln_warp, &d_batch_feats_out);
+                                  sample_freq, vtln_warp, &d_batch_feats_out);
 
       // copy feats to host
       cudaMemcpyAsync(h_batch_feats_out.Data(), d_batch_feats_out.Data(),

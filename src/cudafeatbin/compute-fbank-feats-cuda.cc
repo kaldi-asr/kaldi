@@ -66,7 +66,7 @@ int main(int argc, char *argv[]) {
       po.PrintUsage();
       exit(1);
     }
-    
+
     g_cuda_allocator.SetOptions(g_allocator_options);
     CuDevice::Instantiate().SelectGpuId("yes");
     CuDevice::Instantiate().AllowMultithreading();
@@ -76,7 +76,7 @@ int main(int argc, char *argv[]) {
 
     std::string output_wspecifier = po.GetArg(2);
 
-    // Fbank is implemented via the MFCC code path 
+    // Fbank is implemented via the MFCC code path
     CudaSpectralFeatures fbank(fbank_opts);
 
     SequentialTableReader<WaveHolder> reader(wav_rspecifier);
@@ -88,7 +88,7 @@ int main(int argc, char *argv[]) {
                    "needed if the vtln-map option is used.");
     RandomAccessBaseFloatReaderMapped vtln_map_reader(vtln_map_rspecifier,
                                                       utt2spk_rspecifier);
-    
+
     if (output_format == "kaldi") {
       if (!kaldi_writer.Open(output_wspecifier))
         KALDI_ERR << "Could not initialize output with wspecifier "
@@ -106,6 +106,11 @@ int main(int argc, char *argv[]) {
       num_utts++;
       std::string utt = reader.Key();
       const WaveData &wave_data = reader.Value();
+      if (wave_data.SampFreq() != fbank_opts.frame_opts.samp_freq) {
+        KALDI_ERR << "File: " << utt << " has an incompatible sampling "
+          << "frequency (config= " << fbank_opts.frame_opts.samp_freq
+          << " vs file=" << wave_data.SampFreq() << ".";
+      }
       if (wave_data.Duration() < min_duration) {
         KALDI_WARN << "File: " << utt << " is too short ("
                    << wave_data.Duration() << " sec): producing no output.";
