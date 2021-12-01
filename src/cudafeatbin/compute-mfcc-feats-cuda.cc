@@ -24,7 +24,6 @@
 #include "cudamatrix/cu-vector.h"
 
 
-
 int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
@@ -109,8 +108,8 @@ int main(int argc, char *argv[]) {
       std::string utt = reader.Key();
       const WaveData &wave_data = reader.Value();
       if (wave_data.SampFreq() != mfcc_opts.frame_opts.samp_freq) {
-        KALDI_ERR << "File: " << utt << " has an incompatible sampling "
-          << "frequency (config= " << mfcc_opts.frame_opts.samp_freq
+        KALDI_ERR << "File: " << utt << " has an mismatched sampling "
+          << "rate (config= " << mfcc_opts.frame_opts.samp_freq
           << " vs file=" << wave_data.SampFreq() << ".";
       }
       if (wave_data.Duration() < min_duration) {
