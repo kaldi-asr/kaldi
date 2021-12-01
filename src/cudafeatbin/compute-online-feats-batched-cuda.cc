@@ -34,7 +34,7 @@ using namespace kaldi;
 
 // This class stores data for input and output for this binary.
 // We will read/write slices of this input/output in an online
-// fasion.
+// fashion.
 struct UtteranceDataHandle {
   std::string utt;
   WaveData wave_data_in;
@@ -205,7 +205,7 @@ int main(int argc, char *argv[]) {
 
     // This binary is pipelined to allow concurrent memory copies and compute.
     // State exists for each pipeline and successive chunks go to different
-    // pipelines in a modular fasion.  The calling thread will synchronize with
+    // pipelines in a modular fashion.  The calling thread will synchronize with
     // a pipeline prior to launching work in that pipeline.  2 should be enough
     // to get concurrency on current hardware.
     const int num_pipelines = 3;

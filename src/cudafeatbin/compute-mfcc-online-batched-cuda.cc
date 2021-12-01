@@ -34,7 +34,7 @@ using namespace kaldi;
 
 // This class stores data for input and output for this binary.
 // We will read/write slices of this input/output in an online
-// fasion.
+// fashion.
 struct UtteranceDataHandle {
   std::string utt;
   WaveData wave_data_in;
@@ -186,6 +186,12 @@ int main(int argc, char *argv[]) {
     for (; !reader.Done(); reader.Next()) {
       std::string utt = reader.Key();
       WaveData &wave_data = reader.Value();
+      if (wave_data.SampFreq() != feature_opts.frame_opts.samp_freq) {
+        KALDI_ERR << "File: " << utt << " has an mismatched sampling "
+          << "rate (config= " << feature_opts.frame_opts.samp_freq
+          << " vs file=" << wave_data.SampFreq() << ".";
+      }
+
       duration += wave_data.Duration();
       data_handles.emplace_back(utt, wave_data, frame_opts, feat_dim);
     }
@@ -373,6 +379,7 @@ int main(int argc, char *argv[]) {
 #if HAVE_CUDA == 1
     cudaProfilerStop();
 #endif
+
     return 0;
   } catch (const std::exception &e) {
     std::cerr << e.what();
