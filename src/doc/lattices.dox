@@ -31,7 +31,7 @@ namespace kaldi {
  graphs in the WFST framework (see \ref graph).
  In this section we summarize the issues relating to Kaldi lattices, and in the rest of this page
  we will explain them more precisely.  The reader may also want to read the paper
- <a href=https://sites.google.com/site/dpovey/2012_icassp_lattices.pdf?attredirects=0>
+ <a href=https://www.danielpovey.com/files/2012_icassp_lattices.pdf>
 "Generating exact lattices in the WFST framework", D. Povey, M. Hannemann et. al, ICASSP 2012 (submitted)</a>,
  which provides more context as to how our lattices relate to previously published algorithms.
  This page gives more focus to the programming aspects.
