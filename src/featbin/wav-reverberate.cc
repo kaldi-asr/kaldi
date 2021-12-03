@@ -104,7 +104,7 @@ float DoReverberation(const Vector<BaseFloat> &rir, BaseFloat samp_freq,
 void AddNoise(Vector<BaseFloat> *noise, BaseFloat snr_db,
                 BaseFloat time, BaseFloat samp_freq,
                 BaseFloat signal_power, Vector<BaseFloat> *signal) {
-  float noise_power = VecVec(*noise, *noise) / noise->Dim();
+  float noise_power = VecVec(*noise, *noise) / noise->Dim() + FLT_EPSILON;
   float scale_factor = sqrt(pow(10, -snr_db / 10) * signal_power / noise_power);
   noise->Scale(scale_factor);
   KALDI_VLOG(1) << "Noise signal is being scaled with " << scale_factor
