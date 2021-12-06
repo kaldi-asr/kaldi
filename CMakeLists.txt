@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.18)
 project(kaldi)
 
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
@@ -7,6 +7,18 @@ endif(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake;${CMAKE_MODULE_PATH}")
 include(GNUInstallDirs)
 include(Utils)
+
+if(CONDA_ROOT)
+    message(STATUS "Adding ${CONDA_ROOT} directories")
+    set(CMAKE_INCLUDE_PATH "${CONDA_ROOT}/include")
+    set(CMAKE_LIBRARY_PATH "${CONDA_ROOT}/lib")
+    link_directories("${CONDA_ROOT}/lib")
+    include_directories("${CONDA_ROOT}/include")
+    if (NOT CUDA_TOOLKIT_ROOT_DIR)
+        set(CUDA_TOOLKIT_ROOT_DIR "${CONDA_ROOT}")
+    endif()
+
+endif()
 
 include(third_party/get_third_party)
 
@@ -66,45 +78,53 @@ link_libraries(${CMAKE_DL_LIBS})
 find_package(Threads)
 link_libraries(Threads::Threads)
 
-if(MATHLIB STREQUAL "OpenBLAS")
-    set(BLA_VENDOR "OpenBLAS")
-    find_package(LAPACK REQUIRED)
-    add_definitions(-DHAVE_CLAPACK=1)
-    include_directories(${CMAKE_CURRENT_SOURCE_DIR}/tools/CLAPACK)
-    link_libraries(${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
-elseif(MATHLIB STREQUAL "MKL")
-    if(NOT DEFINED ENV{MKLROOT} OR "$ENV{MKLROOT}" STREQUAL "")
-        message(FATAL_ERROR "Environment variable MKLROOT is not defined")
-    else()
-        message(STATUS "Finding MKL from \"$ENV{MKLROOT}\"")
-    endif()
-    normalize_env_path(ENV{MKLROOT})
-    set(BLA_VENDOR "Intel10_64lp_seq") # use the single threaded MKL by default
-    find_package(LAPACK REQUIRED)
-    add_definitions(-DHAVE_MKL=1)
-    include_directories($ENV{MKLROOT}/include)
-    link_libraries(${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
-elseif(MATHLIB STREQUAL "Accelerate")
-    execute_process(COMMAND sw_vers -productVersion
-        OUTPUT_VARIABLE MACOS_VERSION)
-    if(MACOS_VERSION VERSION_LESS "10.12" AND MACOS_VERSION VERSION_GREATER_EQUAL "10.11")
-        message(WARNING
-            "**BAD WARNING**: You are using OS X El Capitan.  Some versions of this OS"
-            " have a bug in the BLAS implementation that affects Kaldi."
-            " After compiling, cd to matrix/ and type 'make test'.  The"
-            " test will fail if the problem exists in your version."
-            " Eventually this issue will be fixed by system updates from"
-            " Apple.  Unexplained crashes with reports of NaNs will"
-            " be caused by this bug, but some recipes will (sometimes) work."
-        )
-    endif()
-    set(BLA_VENDOR "Apple")
+if(CONDA_ROOT)
+    set(BLA_VENDOR "Generic")
     find_package(BLAS REQUIRED)
     find_package(LAPACK REQUIRED)
     add_definitions(-DHAVE_CLAPACK=1)
-    link_libraries(${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
+    include_directories(${CMAKE_CURRENT_SOURCE_DIR}/tools/CLAPACK)
+    link_libraries(BLAS::BLAS)
+    link_libraries(LAPACK::LAPACK)
 else()
-    message(FATAL_ERROR "${MATHLIB} is not tested and supported, you are on your own now.")
+    if(MATHLIB STREQUAL "OpenBLAS")
+        add_definitions(-DHAVE_CLAPACK=1)
+        include_directories(${CMAKE_CURRENT_SOURCE_DIR}/tools/CLAPACK)
+        link_libraries(${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
+    elseif(MATHLIB STREQUAL "MKL")
+        if(NOT DEFINED ENV{MKLROOT} OR "$ENV{MKLROOT}" STREQUAL "")
+            message(FATAL_ERROR "Environment variable MKLROOT is not defined")
+        else()
+            message(STATUS "Finding MKL from \"$ENV{MKLROOT}\"")
+        endif()
+        normalize_env_path(ENV{MKLROOT})
+        set(BLA_VENDOR "Intel10_64lp_seq") # use the single threaded MKL by default
+        find_package(LAPACK REQUIRED)
+        add_definitions(-DHAVE_MKL=1)
+        include_directories($ENV{MKLROOT}/include)
+        link_libraries(${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
+    elseif(MATHLIB STREQUAL "Accelerate")
+        execute_process(COMMAND sw_vers -productVersion
+            OUTPUT_VARIABLE MACOS_VERSION)
+        if(MACOS_VERSION VERSION_LESS "10.12" AND MACOS_VERSION VERSION_GREATER_EQUAL "10.11")
+            message(WARNING
+                "**BAD WARNING**: You are using OS X El Capitan.  Some versions of this OS"
+                " have a bug in the BLAS implementation that affects Kaldi."
+                " After compiling, cd to matrix/ and type 'make test'.  The"
+                " test will fail if the problem exists in your version."
+                " Eventually this issue will be fixed by system updates from"
+                " Apple.  Unexplained crashes with reports of NaNs will"
+                " be caused by this bug, but some recipes will (sometimes) work."
+            )
+        endif()
+        set(BLA_VENDOR "Apple")
+        find_package(BLAS REQUIRED)
+        find_package(LAPACK REQUIRED)
+        add_definitions(-DHAVE_CLAPACK=1)
+        link_libraries(${BLAS_LIBRARIES} ${LAPACK_LIBRARIES})
+    else()
+        message(FATAL_ERROR "${MATHLIB} is not tested and supported, you are on your own now.")
+    endif()
 endif()
 
 if(MSVC)
@@ -125,7 +145,12 @@ if(MSVC)
     endif()
 endif()
 
-find_package(CUDA)
+if (CONDA_ROOT)
+    find_package(CUDAToolkit)
+    find_package(CUDA)
+else()
+    find_package(CUDA)
+endif()
 if(CUDA_FOUND)
     set(CUDA_PROPAGATE_HOST_FLAGS ON)
     set(KALDI_CUDA_NVCC_FLAGS "--default-stream=per-thread;-std=c++${CMAKE_CXX_STANDARD}")
@@ -158,18 +183,26 @@ if(CUDA_FOUND)
     include_directories(${NvToolExt_INCLUDE_DIR})
     link_libraries(${NvToolExt_LIBRARIES})
 
-    get_third_party(cub)
-    set(CUB_ROOT_DIR "${CMAKE_CURRENT_BINARY_DIR}/cub")
+    if (NOT CONDA_ROOT)
+        get_third_party(cub)
+        set(CUB_ROOT_DIR "${CMAKE_CURRENT_BINARY_DIR}/cub")
+    endif()
     find_package(CUB REQUIRED)
     include_directories(${CUB_INCLUDE_DIR})
 endif()
 
 add_definitions(-DKALDI_NO_PORTAUDIO=1)
 
-include(VersionHelper)
-get_version() # this will set KALDI_VERSION and KALDI_PATCH_NUMBER
-if(${KALDI_USE_PATCH_NUMBER})
-    set(KALDI_VERSION "${KALDI_VERSION}.${KALDI_PATCH_NUMBER}")
+if(OVERRIDE_KALDI_VERSION)
+    set(KALDI_VERSION "${OVERRIDE_KALDI_VERSION}")
+    message(STATUS "Setting KALDI_VERSION to \"${KALDI_VERSION}\"")
+else() # Original functionality
+    message(STATUS "Setting KALDI_VERSION with get_version...")
+    include(VersionHelper)
+    get_version() # this will set KALDI_VERSION and KALDI_PATCH_NUMBER
+    if(${KALDI_USE_PATCH_NUMBER})
+        set(KALDI_VERSION "${KALDI_VERSION}.${KALDI_PATCH_NUMBER}")
+    endif()
 endif()
 
 # get_third_party(openfst)
@@ -208,8 +241,10 @@ add_subdirectory(src/nnet3)
 add_subdirectory(src/rnnlm)
 add_subdirectory(src/chain)
 add_subdirectory(src/ivector)
-add_subdirectory(src/online)
-add_subdirectory(src/online2)
+if(NOT MSVC)
+    add_subdirectory(src/online)
+    add_subdirectory(src/online2)
+endif()
 add_subdirectory(src/kws)
 
 add_subdirectory(src/itf)
@@ -228,6 +263,7 @@ endif()
 # add all native executables
 add_subdirectory(src/bin)
 add_subdirectory(src/gmmbin)
+add_subdirectory(src/fgmmbin)
 add_subdirectory(src/featbin)
 add_subdirectory(src/sgmm2bin)
 add_subdirectory(src/fstbin)
@@ -239,8 +275,10 @@ add_subdirectory(src/nnet3bin)
 add_subdirectory(src/rnnlmbin)
 add_subdirectory(src/chainbin)
 add_subdirectory(src/ivectorbin)
-add_subdirectory(src/onlinebin)
-add_subdirectory(src/online2bin)
+if(NOT MSVC)
+    add_subdirectory(src/onlinebin)
+    add_subdirectory(src/online2bin)
+endif()
 add_subdirectory(src/kwsbin)
 
 # add all cuda executables
@@ -249,19 +287,21 @@ if(CUDA_FOUND)
     add_subdirectory(src/cudadecoderbin)
 endif()
 
-include(CMakePackageConfigHelpers)
-# maybe we should put this into subfolder?
-configure_package_config_file(
-    ${CMAKE_CURRENT_SOURCE_DIR}/cmake/kaldi-config.cmake.in
-    ${CMAKE_CURRENT_BINARY_DIR}/cmake/kaldi-config.cmake
-    INSTALL_DESTINATION lib/cmake/kaldi
-)
-write_basic_package_version_file(
-    ${CMAKE_CURRENT_BINARY_DIR}/cmake/kaldi-config-version.cmake
-    VERSION ${KALDI_VERSION}
-    COMPATIBILITY AnyNewerVersion
-)
-install(FILES ${CMAKE_CURRENT_BINARY_DIR}/cmake/kaldi-config.cmake ${CMAKE_CURRENT_BINARY_DIR}/cmake/kaldi-config-version.cmake
-    DESTINATION lib/cmake/kaldi
-)
-install(EXPORT kaldi-targets DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/cmake/kaldi)
+if(NOT CONDA_ROOT)
+    include(CMakePackageConfigHelpers)
+    # maybe we should put this into subfolder?
+    configure_package_config_file(
+        ${CMAKE_CURRENT_SOURCE_DIR}/cmake/kaldi-config.cmake.in
+        ${CMAKE_CURRENT_BINARY_DIR}/cmake/kaldi-config.cmake
+        INSTALL_DESTINATION lib/cmake/kaldi
+    )
+    write_basic_package_version_file(
+        ${CMAKE_CURRENT_BINARY_DIR}/cmake/kaldi-config-version.cmake
+        VERSION ${KALDI_VERSION}
+        COMPATIBILITY AnyNewerVersion
+    )
+    install(FILES ${CMAKE_CURRENT_BINARY_DIR}/cmake/kaldi-config.cmake ${CMAKE_CURRENT_BINARY_DIR}/cmake/kaldi-config-version.cmake
+        DESTINATION lib/cmake/kaldi
+    )
+    install(EXPORT kaldi-targets DESTINATION ${CMAKE_INSTALL_PREFIX}/lib/cmake/kaldi)
+endif()

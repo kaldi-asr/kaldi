@@ -23,7 +23,7 @@ macro(add_kaldi_executable)
         add_executable(${kaldi_exe_NAME} ${kaldi_exe_SOURCES})
         target_link_libraries(${kaldi_exe_NAME} PRIVATE ${kaldi_exe_DEPENDS})
         # list(APPEND KALDI_EXECUTABLES ${kaldi_exe_NAME})
-        install(TARGETS ${kaldi_exe_NAME} RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR})
+        install(TARGETS ${kaldi_exe_NAME} RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR} COMPONENT kaldi)
 
         unset(kaldi_exe_NAME)
         unset(kaldi_exe_SOURCES)
