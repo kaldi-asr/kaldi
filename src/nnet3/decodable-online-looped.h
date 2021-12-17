@@ -112,6 +112,11 @@ class DecodableNnetLoopedOnlineBase: public DecodableInterface {
   // ran the computation.
   Matrix<BaseFloat> current_log_post_;
 
+  // Ryan Xia
+  // For cumulative log-posteriors
+  Matrix<BaseFloat> updated_log_post_;
+
+
   // The number of chunks we have computed so far.
   int32 num_chunks_computed_;
 
@@ -198,6 +203,8 @@ class DecodableAmNnetLoopedOnline: public DecodableNnetLoopedOnlineBase {
   // reduced-rate output frame (e.g. a 't' index divided by 3).
   virtual BaseFloat LogLikelihood(int32 subsampled_frame,
                                   int32 transition_id);
+
+  void GetOutput(Matrix<BaseFloat> *output);
 
  private:
   const TransitionModel &trans_model_;

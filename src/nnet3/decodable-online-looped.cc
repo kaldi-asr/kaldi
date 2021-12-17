@@ -233,6 +233,22 @@ void DecodableNnetLoopedOnlineBase::AdvanceChunk() {
   current_log_post_subsampled_offset_ =
       (num_chunks_computed_ - 1) *
       (info_.frames_per_chunk / info_.opts.frame_subsampling_factor);
+
+    KALDI_LOG << "num chunks computed " << num_chunks_computed_;
+  // KALDI_LOG << "num_feature_frames_ready " << num_feature_frames_ready;
+  // KALDI_LOG << "begin_input_frame " << begin_input_frame;
+  // KALDI_LOG << "end_input_frame " << end_input_frame;
+  // KALDI_LOG << "current_log_post_subsampled_offset_ " << current_log_post_subsampled_offset_;
+  // KALDI_LOG << "current log posteriors row num " << current_log_post_.NumRows();
+  // KALDI_LOG << "The posteriors\n" << current_log_post_;
+    // Ryan Xia
+  updated_log_post_.Resize(num_feature_frames_ready,info_.output_dim, kCopyData);
+  for(int i= current_log_post_subsampled_offset_; i < std::min(num_feature_frames_ready, current_log_post_subsampled_offset_ + info_.frames_per_chunk); i++){
+    SubVector<BaseFloat> log_post_row_(current_log_post_, i-current_log_post_subsampled_offset_);
+    updated_log_post_.CopyRowFromVec(log_post_row_, i);
+    // KALDI_LOG << "Copy from current log post Row " << i-current_log_post_subsampled_offset_ << " to updated log post " << i;
+  }
+
 }
 
 BaseFloat DecodableNnetLoopedOnline::LogLikelihood(int32 subsampled_frame,
@@ -243,6 +259,19 @@ BaseFloat DecodableNnetLoopedOnline::LogLikelihood(int32 subsampled_frame,
   return current_log_post_(
       subsampled_frame - current_log_post_subsampled_offset_,
       index - 1);
+}
+
+
+// Ryan Xia
+void DecodableAmNnetLoopedOnline::GetOutput(Matrix<BaseFloat> *output) {
+  // bool is_output = true;
+  // int32 matrix_index = GetIoMatrixIndex(node_name, is_output);
+  // KALDI_ASSERT(matrices_[matrix_index].NumRows() != 0);
+  // matrices_[matrix_index].Swap(output);
+  // matrices_[matrix_index].Resize(0, 0);
+  KALDI_ASSERT(updated_log_post_.NumRows() != 0);
+  updated_log_post_.Swap(output);
+  updated_log_post_.Resize(0,0);
 }
 
 

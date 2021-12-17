@@ -56,7 +56,7 @@ template <typename FST>
 void SingleUtteranceNnet3DecoderTpl<FST>::FinalizeDecoding() {
   decoder_.FinalizeDecoding();
 }
-
+ 
 template <typename FST>
 int32 SingleUtteranceNnet3DecoderTpl<FST>::NumFramesDecoded() const {
   return decoder_.NumFramesDecoded();
