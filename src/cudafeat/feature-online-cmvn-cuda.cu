@@ -87,7 +87,7 @@ __global__ void apply_cmvn_kernel(
 
   for (int c = threadIdx.x; c < num_cols; c += blockDim.x) {
     float2 frame_stats =
-        reinterpret_cast<const float2 __restrict__*>(&stats[r * lds])[c];
+        reinterpret_cast<const float2 *__restrict__>(&stats[r * lds])[c];
 
     float val = feat_in[r * ldi + c];
 
@@ -100,7 +100,7 @@ __global__ void apply_cmvn_kernel(
 
       // stats at the start row of the window that must be removed
       float2 ostats =
-          reinterpret_cast<const float2 __restrict__*>(&stats[o * lds])[c];
+          reinterpret_cast<const float2 *__restrict__>(&stats[o * lds])[c];
 
       // remove start of the window stats
       frame_stats = frame_stats - ostats;
