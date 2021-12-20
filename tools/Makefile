@@ -26,14 +26,14 @@ ifeq ("$(shell expr $(OPENFST_VER_NUM) \< 10607)","1")
 endif
 
 .PHONY: all clean distclean
-all: check_required_programs cub openfst sctk_made sph2pipe
+all: check_required_programs cub openfst sctk_made sph2pipe portaudio
 	@echo -e "\n\n"
 	@echo "Warning: IRSTLM is not installed by default anymore. If you need IRSTLM"
 	@echo "Warning: use the script extras/install_irstlm.sh"
 	@echo "All done OK."
 
 # make sure check_required_programs runs before anything else:
-all cub openfst sctk_made sph2pipe: | check_required_programs
+all cub openfst sctk_made sph2pipe portaudio: | check_required_programs
 
 check_required_programs:
 	extras/check_dependencies.sh
@@ -51,6 +51,7 @@ distclean: clean
 	       BeamformIt-3.51 BeamformIt-3.51.tgz
 	rm -rf cub cub-$(CUB_VERSION) \
 	       cub-$(CUB_VERSION).zip cub-$(CUB_VERSION).tar.gz
+	rm -rf portaudio pa_stable_v19_20111121.tgz
 
 #=== OpenFST ===================================================================
 
@@ -169,6 +170,7 @@ sph2pipe-$(SPH2PIPE_VERSION).tar.gz:
 	    https://github.com/burrmill/sph2pipe/archive/$(SPH2PIPE_VERSION).tar.gz; \
 	fi
 
+
 #== CUB ========================================================================
 
 .PHONY: cub
@@ -186,6 +188,15 @@ cub-$(CUB_VERSION).tar.gz:
 	  $(WGET) -nv -T 10 -t 3 -O cub-$(CUB_VERSION).tar.gz \
 	    https://github.com/NVlabs/cub/archive/$(CUB_VERSION).tar.gz; \
 	fi
+
+
+#== portaudio ==================================================================
+# portaudio is required by the current 'src' build
+
+.PHONY: portaudio
+portaudio:
+	./install_portaudio.sh
+
 
 #== No OpenBLAS ================================================================
 
