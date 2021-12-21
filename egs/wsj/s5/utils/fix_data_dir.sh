@@ -98,9 +98,9 @@ function filter_recordings {
     mv $tmpdir/recordings.tmp $tmpdir/recordings
 
 
-    cp $data/segments{,.tmp}; awk '{print $2, $1, $3, $4}' <$data/segments.tmp >$data/segments
+    cp $data/segments{,.tmp}; awk '{print $2, $1, $3, $4, $5}' <$data/segments.tmp >$data/segments
     filter_file $tmpdir/recordings $data/segments
-    cp $data/segments{,.tmp}; awk '{print $2, $1, $3, $4}' <$data/segments.tmp >$data/segments
+    cp $data/segments{,.tmp}; awk '{print $2, $1, $3, $4, $5}' <$data/segments.tmp >$data/segments
     rm $data/segments.tmp
 
     filter_file $tmpdir/recordings $data/wav.scp
