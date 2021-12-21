@@ -72,6 +72,7 @@ my $jobstart;
 my $jobend;
 
 my $array_job = 0;
+my $sge_job_id;
 
 sub print_usage() {
   print STDERR
@@ -100,6 +101,14 @@ sub exec_command {
   my $command = join ' ', @_;
   # To get the actual exit value, shift right by eight bits.
   ($_ = `$command 2>&1`, $? >> 8);
+}
+sub caught_signal {
+  if ( defined $sge_job_id ) { # Signal trapped after submitting jobs
+    my $signal = $!;
+    system ("scancel $sge_job_id");
+    print STDERR "Caught a signal: $signal , deleting SLURM task: $sge_job_id and exiting\n";
+    exit(2);
+  }
 }
 
 if (@ARGV < 2) {
@@ -194,6 +203,8 @@ EOF
 # A more detailed description of the ways the options would be handled is at
 # the top of this file.
 
+$SIG{INT} = \&caught_signal;
+$SIG{TERM} = \&caught_signal;
 my $opened_config_file = 1;
 
 open CONFIG, "<$config" or $opened_config_file = 0;
@@ -434,7 +445,6 @@ if ($ret != 0) {
   exit(1);
 }
 
-my $sge_job_id;
 if (! $sync) { # We're not submitting with -sync y, so we
   # need to wait for the jobs to finish.  We wait for the
   # sync-files we "touched" in the script to exist.
