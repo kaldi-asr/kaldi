@@ -64,6 +64,7 @@ void CudaOnlinePipelineDynamicBatcher::Push(
     backlog_.push_back(
         {corr_id, is_first_chunk, is_last_chunk, std::move(wave_samples)});
   }
+  n_chunks_per_corr_[corr_id] = n_chunks_per_corr_[corr_id] + 1;
   n_chunks_not_done_.fetch_add(1, std::memory_order_release);
 }
 
@@ -146,7 +147,9 @@ void CudaOnlinePipelineDynamicBatcher::BatcherThreadLoop() {
             curr_batch_->is_last_chunk);
         n_chunks_not_done_.fetch_sub(curr_batch_->Size(),
                                      std::memory_order_release);
-
+        for (auto const& corr_id: curr_batch_->corr_ids) {
+          n_chunks_per_corr_[corr_id]--;
+        }
         curr_batch_->Clear();
       }
 
@@ -165,6 +168,11 @@ void CudaOnlinePipelineDynamicBatcher::WaitForCompletion() {
   }
   // Waiting for pipeline to complete
   cuda_pipeline_.WaitForLatticeCallbacks();
+}
+
+int CudaOnlinePipelineDynamicBatcher::GetPendingChunks(CorrelationID corr_id) {
+  std::lock_guard<std::mutex> lk(next_batch_and_backlog_m_);
+  return n_chunks_per_corr_[corr_id];
 }
 
 }  // namespace cuda_decoder
