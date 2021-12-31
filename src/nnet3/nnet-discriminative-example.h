@@ -167,8 +167,8 @@ struct NnetDiscriminativeExampleStructureCompare {
   MergeExamples() routine while avoiding having to rewrite code.
 */
 void MergeDiscriminativeExamples(
-    std::vector<NnetDiscriminativeExample> *input,
     bool compress,
+    std::vector<NnetDiscriminativeExample> *input,
     NnetDiscriminativeExample *output);
 
 // called from MergeDiscriminativeExamples, this function merges the Supervision
