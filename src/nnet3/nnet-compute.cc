@@ -690,6 +690,8 @@ void NnetComputer::AcceptInputs(const Nnet &nnet,
                                 const std::vector<NnetIo> &io_vec) {
   for (size_t i = 0; i < io_vec.size(); i++) {
     const NnetIo &io = io_vec[i];
+    if (io.name.substr(0, 2) == "__")   // It's non-compute input data, e.g. for LWF
+      continue;
     int32 node_index = nnet.GetNodeIndex(io.name);
     if (node_index == -1)
       KALDI_ERR << "No node named '" << io.name << "' in nnet.";
