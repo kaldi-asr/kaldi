@@ -165,7 +165,9 @@ class NgramCounts:
                 n1 += stat[1]
                 n2 += stat[2]
             assert n1 + 2 * n2 > 0
-            self.d.append(n1 * 1.0 / (n1 + 2 * n2))
+            self.d.append(max(0.001, n1 * 1.0) / (n1 + 2 * n2))   # We are doing this max(0.001, xxx) to avoid zero discounting constant D due to n1=0,
+                                                                  # which could happen if the number of symbols is small.
+                                                                  # Otherwise, zero discounting constant can cause division by zero in computing BOW.            
 
     def cal_f(self):
         # f(a_z) is a probability distribution of word sequence a_z.
