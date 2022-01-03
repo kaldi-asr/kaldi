@@ -790,7 +790,7 @@ s5# head data/local/tmp/G.txt
 0    2    AJAX+S    AJAX+S    5.19849703126583
 0    3    APALACHICOLA+S    APALACHICOLA+S    5.19849703126583
 \endverbatim
-See <a href=www.openfst.org> www.openfst.org </a> for more information on OpenFst (they
+See <a href=https://www.openfst.org> www.openfst.org </a> for more information on OpenFst (they
 have a useful tutorial).  The script <DFN>local/rm_prepare_grammar.sh</DFN> will turn this into
 the binary-format file <DFN>G.fst</DFN> using the following statement:
 \verbatim
