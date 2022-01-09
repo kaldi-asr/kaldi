@@ -145,10 +145,19 @@ void CudaOnlinePipelineDynamicBatcher::BatcherThreadLoop() {
             curr_batch_->corr_ids, curr_batch_->h_all_waveform,
             curr_batch_->n_samples_valid, curr_batch_->is_first_chunk,
             curr_batch_->is_last_chunk);
-        n_chunks_not_done_.fetch_sub(curr_batch_->Size(),
-                                     std::memory_order_release);
-        for (auto const& corr_id: curr_batch_->corr_ids) {
-          n_chunks_per_corr_[corr_id]--;
+
+        {
+          // Update counts
+          std::lock_guard<std::mutex> lk(next_batch_and_backlog_m_);
+          n_chunks_not_done_.fetch_sub(curr_batch_->Size(),
+                                       std::memory_order_release);
+          for (int i = 0; i < curr_batch_->corr_ids.size(); i++) {
+            CorrelationID corr_id = curr_batch_->corr_ids[i];
+            n_chunks_per_corr_[corr_id]--;
+            if (curr_batch_->is_last_chunk[i]) {
+              n_chunks_per_corr_.erase(corr_id);
+            }
+          }
         }
         curr_batch_->Clear();
       }
