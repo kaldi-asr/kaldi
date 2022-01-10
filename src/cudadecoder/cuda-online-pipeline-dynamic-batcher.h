@@ -51,7 +51,10 @@ class CudaOnlinePipelineDynamicBatcher {
   // return
   void Push(CorrelationID corr_id, bool is_first_chunk, bool is_last_chunk,
             const SubVector<BaseFloat> &wave_samples);
+
+  // Wait for completion of the submitted chunks
   void WaitForCompletion();
+  // Get the number of unprocessed chunks for poll-like processing
   int GetPendingChunks(CorrelationID corr_id);
 
  private:
@@ -126,8 +129,9 @@ class CudaOnlinePipelineDynamicBatcher {
 
   std::vector<const std::string *> partial_hypotheses_;
   std::vector<bool> end_points_;
+
   std::atomic<std::uint32_t> n_chunks_not_done_;
-  std::map<CorrelationID, int> n_chunks_per_corr_;
+  std::unordered_map<CorrelationID, int> n_chunks_per_corr_;
 
   int max_batch_size_;
   int num_channels_;
