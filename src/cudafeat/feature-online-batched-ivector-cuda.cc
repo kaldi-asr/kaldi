@@ -59,7 +59,7 @@ BatchedIvectorExtractorCuda::BatchedIvectorExtractorCuda(
                            kUndefined);
   spliced_feats_.Resize(num_lanes * chunk_size, feat_dim_ * size, kUndefined);
   tmp_feats_.Resize(num_lanes * chunk_size, feat_dim_, kUndefined);
-  tmp_lda_feats_.Resize(num_lanes * chunk_size, lda_dim_, kUndefined);
+  lda_feats_.Resize(num_lanes * chunk_size, lda_dim_, kUndefined);
   posteriors_.Resize(num_lanes * chunk_size, num_gauss_, kUndefined);
 
   gamma_.Resize(num_lanes * num_gauss_, kUndefined);
@@ -186,11 +186,11 @@ void BatchedIvectorExtractorCuda::GetIvectors(
     // Stash feats
     StashFeats(tmp_feats_, &norm_feats_stash_, lanes, num_lanes);
 
-    // LDA transform spliced feats back into tmp_feats
-    LDATransform(spliced_feats_, &tmp_lda_feats_, lanes, num_lanes);
+    // LDA transform spliced feats
+    LDATransform(spliced_feats_, &lda_feats_, lanes, num_lanes);
 
     // compute posteriors based normalized lda feats
-    ComputePosteriors(tmp_lda_feats_, lanes, num_lanes);
+    ComputePosteriors(lda_feats_, lanes, num_lanes);
   }
 
   // non-normalized pipeline
@@ -201,12 +201,12 @@ void BatchedIvectorExtractorCuda::GetIvectors(
     // Stash feats
     StashFeats(feats, &feats_stash_, lanes, num_lanes);
 
-    // LDA transform spliced feats back into tmp_feats
-    LDATransform(spliced_feats_, &tmp_lda_feats_, lanes, num_lanes);
+    // LDA transform spliced feats
+    LDATransform(spliced_feats_, &lda_feats_, lanes, num_lanes);
   }
 
   // compute ivector stats
-  ComputeIvectorStats(tmp_lda_feats_, lanes, num_lanes);
+  ComputeIvectorStats(lda_feats_, lanes, num_lanes);
 
   // compute ivectors for the stats
   ComputeIvectorsFromStats(ivectors, lanes, num_lanes);

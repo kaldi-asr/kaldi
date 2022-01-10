@@ -124,9 +124,9 @@ class BatchedIvectorExtractorCuda {
   CuMatrix<BaseFloat> ie_Sigma_inv_M_f_;
 
   // temporary memory unique per batch element
-  CuMatrix<BaseFloat> spliced_feats_;
   CuMatrix<BaseFloat> tmp_feats_;
-  CuMatrix<BaseFloat> tmp_lda_feats_;
+  CuMatrix<BaseFloat> spliced_feats_;
+  CuMatrix<BaseFloat> lda_feats_;
   CuMatrix<BaseFloat> posteriors_;
   CuMatrix<BaseFloat> X_;
   CuVector<BaseFloat> gamma_;
