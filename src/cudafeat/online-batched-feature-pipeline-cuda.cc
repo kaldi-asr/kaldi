@@ -87,6 +87,7 @@ OnlineBatchedFeaturePipelineCuda::OnlineBatchedFeaturePipelineCuda(
     info_.ivector_extractor_info.Init(ivector_extraction_opts);
 
     ivector_ = new BatchedIvectorExtractorCuda(ivector_extraction_opts,
+                                               FeatureDim(),
                                                max_chunk_size_frames_,
                                                max_lanes_, num_channels_);
   }

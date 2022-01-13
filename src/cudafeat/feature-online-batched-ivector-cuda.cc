@@ -20,9 +20,11 @@
 
 namespace kaldi {
 BatchedIvectorExtractorCuda::BatchedIvectorExtractorCuda(
-    const OnlineIvectorExtractionConfig &config, int32_t chunk_size,
+    const OnlineIvectorExtractionConfig &config,
+    int32_t feat_dim, int32_t chunk_size,
     int32_t num_lanes, int32_t num_channels)
     : cmvn_(NULL),
+      feat_dim_(feat_dim),
       chunk_size_(chunk_size),
       max_lanes_(num_lanes),
       num_channels_(num_channels) {
@@ -57,13 +59,14 @@ BatchedIvectorExtractorCuda::BatchedIvectorExtractorCuda(
                            kUndefined);
   spliced_feats_.Resize(num_lanes * chunk_size, feat_dim_ * size, kUndefined);
   tmp_feats_.Resize(num_lanes * chunk_size, feat_dim_, kUndefined);
+  lda_feats_.Resize(num_lanes * chunk_size, lda_dim_, kUndefined);
   posteriors_.Resize(num_lanes * chunk_size, num_gauss_, kUndefined);
 
   gamma_.Resize(num_lanes * num_gauss_, kUndefined);
   gamma_stash_.Resize(num_channels * num_gauss_, kUndefined);
 
-  X_.Resize(num_lanes * num_gauss_, feat_dim_, kUndefined);
-  X_stash_.Resize(num_channels * num_gauss_, feat_dim_, kUndefined);
+  X_.Resize(num_lanes * num_gauss_, lda_dim_, kUndefined);
+  X_stash_.Resize(num_channels * num_gauss_, lda_dim_, kUndefined);
 
   linear_.Resize(num_lanes * ivector_dim_);
   sp_quadratic_.Resize(num_lanes, ivector_dim_ * (ivector_dim_ + 1) / 2);
@@ -142,14 +145,14 @@ void BatchedIvectorExtractorCuda::Read(
 
   // compute derived variables
   ivector_dim_ = ie_M[0].NumCols();
-  feat_dim_ = ie_M[0].NumRows();
+  lda_dim_ = ie_M[0].NumRows();
 
-  ie_Sigma_inv_M_f_.Resize(num_gauss_ * feat_dim_, ivector_dim_, kUndefined);
+  ie_Sigma_inv_M_f_.Resize(num_gauss_ * lda_dim_, ivector_dim_, kUndefined);
 
   ie_U_.Resize(num_gauss_, ivector_dim_ * (ivector_dim_ + 1) / 2);
 
   SpMatrix<float> tmp_sub_U(ivector_dim_);
-  Matrix<float> tmp_Sigma_inv_M(feat_dim_, ivector_dim_);
+  Matrix<float> tmp_Sigma_inv_M(lda_dim_, ivector_dim_);
   for (int32 i = 0; i < num_gauss_; i++) {
     // compute matrix ie_Sigma_inv_M[i]
     tmp_sub_U.AddMat2Sp(1, ie_M[i], kTrans, ie_Sigma_inv[i], 0);
@@ -160,7 +163,7 @@ void BatchedIvectorExtractorCuda::Read(
     tmp_Sigma_inv_M.AddSpMat(1, ie_Sigma_inv[i], ie_M[i], kNoTrans, 0);
 
     // copy into global matrix
-    CuSubMatrix<float> window(ie_Sigma_inv_M_f_, i * feat_dim_, feat_dim_, 0,
+    CuSubMatrix<float> window(ie_Sigma_inv_M_f_, i * lda_dim_, lda_dim_, 0,
                               ivector_dim_);
     window.CopyFromMat(tmp_Sigma_inv_M);
   }
@@ -183,11 +186,11 @@ void BatchedIvectorExtractorCuda::GetIvectors(
     // Stash feats
     StashFeats(tmp_feats_, &norm_feats_stash_, lanes, num_lanes);
 
-    // LDA transform spliced feats back into tmp_feats
-    LDATransform(spliced_feats_, &tmp_feats_, lanes, num_lanes);
+    // LDA transform spliced feats
+    LDATransform(spliced_feats_, &lda_feats_, lanes, num_lanes);
 
     // compute posteriors based normalized lda feats
-    ComputePosteriors(tmp_feats_, lanes, num_lanes);
+    ComputePosteriors(lda_feats_, lanes, num_lanes);
   }
 
   // non-normalized pipeline
@@ -198,12 +201,12 @@ void BatchedIvectorExtractorCuda::GetIvectors(
     // Stash feats
     StashFeats(feats, &feats_stash_, lanes, num_lanes);
 
-    // LDA transform spliced feats back into tmp_feats
-    LDATransform(spliced_feats_, &tmp_feats_, lanes, num_lanes);
+    // LDA transform spliced feats
+    LDATransform(spliced_feats_, &lda_feats_, lanes, num_lanes);
   }
 
   // compute ivector stats
-  ComputeIvectorStats(tmp_feats_, lanes, num_lanes);
+  ComputeIvectorStats(lda_feats_, lanes, num_lanes);
 
   // compute ivectors for the stats
   ComputeIvectorsFromStats(ivectors, lanes, num_lanes);
@@ -211,7 +214,7 @@ void BatchedIvectorExtractorCuda::GetIvectors(
 
 void BatchedIvectorExtractorCuda::InitializeChannels(const LaneDesc *lanes,
                                                      int32_t num_lanes) {
-  initialize_channels(num_gauss_, feat_dim_, gamma_stash_.Data(), num_gauss_,
+  initialize_channels(num_gauss_, lda_dim_, gamma_stash_.Data(), num_gauss_,
                       X_stash_.Data(), X_stash_.Stride(),
                       X_stash_.Stride() * num_gauss_, lanes, num_lanes);
 }
@@ -273,7 +276,7 @@ void BatchedIvectorExtractorCuda::ComputePosteriors(CuMatrix<BaseFloat> &feats,
   posteriors_.AddMatMat(1.0, feats, kNoTrans, ubm_means_inv_vars_, kTrans, 1.0);
 
   // square feats
-  square_batched_matrix(chunk_size_, feat_dim_, feats.Data(), feats.Stride(),
+  square_batched_matrix(chunk_size_, lda_dim_, feats.Data(), feats.Stride(),
                         feats.Stride() * chunk_size_, feats.Data(),
                         feats.Stride(), feats.Stride() * chunk_size_, lanes,
                         num_lanes);
@@ -300,7 +303,7 @@ void BatchedIvectorExtractorCuda::ComputeIvectorStats(
                          num_gauss_, info_.posterior_scale, lanes, num_lanes);
 
 #if CUDA_VERSION >= 9010
-  int32_t m = feat_dim_;
+  int32_t m = lda_dim_;
   int32_t n = num_gauss_;
   int32_t k = chunk_size_;
   float alpha = info_.posterior_scale;
@@ -323,7 +326,7 @@ void BatchedIvectorExtractorCuda::ComputeIvectorStats(
 #endif
 
   apply_and_update_stash(
-      num_gauss_, feat_dim_, gamma_.Data(), gamma_stash_.Data(), num_gauss_,
+      num_gauss_, lda_dim_, gamma_.Data(), gamma_stash_.Data(), num_gauss_,
       X_.Data(), X_.Stride(), X_.Stride() * num_gauss_, X_stash_.Data(),
       X_stash_.Stride(), X_stash_.Stride() * num_gauss_, lanes, num_lanes);
 }
@@ -336,7 +339,7 @@ void BatchedIvectorExtractorCuda::ComputeIvectorsFromStats(
     // need to set this term to zero because batched_compute_linear_term
     // uses atomics with a +=
     linear_.SetZero();
-    batched_compute_linear_term(num_gauss_, feat_dim_, ivector_dim_,
+    batched_compute_linear_term(num_gauss_, lda_dim_, ivector_dim_,
                                 ie_Sigma_inv_M_f_.Data(),
                                 ie_Sigma_inv_M_f_.Stride(), X_.Data(),
                                 X_.Stride(), X_.Stride() * num_gauss_,

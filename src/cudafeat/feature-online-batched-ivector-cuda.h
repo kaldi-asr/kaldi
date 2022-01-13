@@ -30,6 +30,7 @@ namespace kaldi {
 class BatchedIvectorExtractorCuda {
  public:
   BatchedIvectorExtractorCuda(const OnlineIvectorExtractionConfig &config,
+                              int32_t feat_dim,
                               int32_t chunk_size, int32_t num_lanes,
                               int32_t num_channels);
   ~BatchedIvectorExtractorCuda();
@@ -58,6 +59,7 @@ class BatchedIvectorExtractorCuda {
                    int32_t num_lanes);
 
   int32 FeatDim() const { return feat_dim_; }
+  int32 LdaDim() const { return lda_dim_; }
   int32 IvectorDim() const { return ivector_dim_; }
   int32 NumGauss() const { return num_gauss_; }
 
@@ -106,6 +108,7 @@ class BatchedIvectorExtractorCuda {
   CudaOnlineCmvnState naive_cmvn_state_;
   CudaOnlineBatchedCmvn *cmvn_;
   int32_t feat_dim_;
+  int32_t lda_dim_;
   int32_t ivector_dim_;
   int32_t num_gauss_;
 
@@ -121,8 +124,9 @@ class BatchedIvectorExtractorCuda {
   CuMatrix<BaseFloat> ie_Sigma_inv_M_f_;
 
   // temporary memory unique per batch element
-  CuMatrix<BaseFloat> spliced_feats_;
   CuMatrix<BaseFloat> tmp_feats_;
+  CuMatrix<BaseFloat> spliced_feats_;
+  CuMatrix<BaseFloat> lda_feats_;
   CuMatrix<BaseFloat> posteriors_;
   CuMatrix<BaseFloat> X_;
   CuVector<BaseFloat> gamma_;
