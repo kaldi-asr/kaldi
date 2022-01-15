@@ -181,7 +181,7 @@ void CudaOnlinePipelineDynamicBatcher::WaitForCompletion() {
   cuda_pipeline_.WaitForLatticeCallbacks();
 }
 
-int CudaOnlinePipelineDynamicBatcher::GetPendingChunks(CorrelationID corr_id) {
+int CudaOnlinePipelineDynamicBatcher::GetNumPendingChunks(CorrelationID corr_id) {
   std::lock_guard<std::mutex> lk(next_batch_and_backlog_m_);
   if (n_chunks_per_corr_.find(corr_id) == n_chunks_per_corr_.end())
     return 0;

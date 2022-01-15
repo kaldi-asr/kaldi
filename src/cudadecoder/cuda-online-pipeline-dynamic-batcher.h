@@ -55,7 +55,7 @@ class CudaOnlinePipelineDynamicBatcher {
   // Wait for completion of the submitted chunks
   void WaitForCompletion();
   // Get the number of unprocessed chunks for poll-like processing
-  int GetPendingChunks(CorrelationID corr_id);
+  int GetNumPendingChunks(CorrelationID corr_id);
 
  private:
   // Batches created by this Batcher
