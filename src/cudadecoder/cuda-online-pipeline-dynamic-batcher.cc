@@ -44,6 +44,8 @@ CudaOnlinePipelineDynamicBatcher::CudaOnlinePipelineDynamicBatcher(
 
   batcher_thread_.reset(new std::thread(
       &CudaOnlinePipelineDynamicBatcher::BatcherThreadLoop, this));
+
+  n_chunks_per_corr_.reserve(num_channels_);
 }
 
 CudaOnlinePipelineDynamicBatcher::~CudaOnlinePipelineDynamicBatcher() {
@@ -64,6 +66,7 @@ void CudaOnlinePipelineDynamicBatcher::Push(
     backlog_.push_back(
         {corr_id, is_first_chunk, is_last_chunk, std::move(wave_samples)});
   }
+  ++n_chunks_per_corr_[corr_id];
   n_chunks_not_done_.fetch_add(1, std::memory_order_release);
 }
 
@@ -144,9 +147,20 @@ void CudaOnlinePipelineDynamicBatcher::BatcherThreadLoop() {
             curr_batch_->corr_ids, curr_batch_->h_all_waveform,
             curr_batch_->n_samples_valid, curr_batch_->is_first_chunk,
             curr_batch_->is_last_chunk);
-        n_chunks_not_done_.fetch_sub(curr_batch_->Size(),
-                                     std::memory_order_release);
 
+        {
+          // Update counts
+          std::lock_guard<std::mutex> lk(next_batch_and_backlog_m_);
+          n_chunks_not_done_.fetch_sub(curr_batch_->Size(),
+                                       std::memory_order_release);
+          for (size_t i = 0; i < curr_batch_->corr_ids.size(); ++i) {
+            CorrelationID corr_id = curr_batch_->corr_ids[i];
+            --n_chunks_per_corr_[corr_id];
+            if (curr_batch_->is_last_chunk[i]) {
+              n_chunks_per_corr_.erase(corr_id);
+            }
+          }
+        }
         curr_batch_->Clear();
       }
 
@@ -165,6 +179,13 @@ void CudaOnlinePipelineDynamicBatcher::WaitForCompletion() {
   }
   // Waiting for pipeline to complete
   cuda_pipeline_.WaitForLatticeCallbacks();
+}
+
+int CudaOnlinePipelineDynamicBatcher::GetNumPendingChunks(CorrelationID corr_id) {
+  std::lock_guard<std::mutex> lk(next_batch_and_backlog_m_);
+  if (n_chunks_per_corr_.find(corr_id) == n_chunks_per_corr_.end())
+    return 0;
+  return n_chunks_per_corr_[corr_id];
 }
 
 }  // namespace cuda_decoder
