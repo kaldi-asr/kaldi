@@ -381,7 +381,7 @@ template<class Arc>
 void PropagateFinal(typename Arc::Label phi_label,
                     MutableFst<Arc> *fst);
 
-// PhiCompose is a version of composition where
+// RhoCompose is a version of composition where
 // the right hand FST (fst2) has speciall "rho transitions"
 // which are taken whenever no normal transition matches; these
 // transitions will be rewritten with whatever symbol was on
