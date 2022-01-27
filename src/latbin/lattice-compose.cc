@@ -78,7 +78,7 @@ int main(int argc, char *argv[]) {
 
     { // convert 'compose_with_fst' to lowercase to support: true, True, TRUE
       std::string& str(compose_with_fst);
-      std::transform(str.begin(), str.end(), str.begin(), ::tolower);  // lc
+      std::transform(str.begin(), str.end(), str.begin(), (int(*)(int))std::tolower); // lc
     }
     if (compose_with_fst != "auto" && compose_with_fst != "true" &&
                                                  compose_with_fst != "false") {
