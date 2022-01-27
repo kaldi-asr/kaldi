@@ -34,19 +34,15 @@ int main(int argc, char *argv[]) {
     using fst::StdArc;
 
     const char *usage =
-        "Composes lattices (in transducer form, as type Lattice).  Depending\n"
-        "on the command-line arguments, either composes lattices with lattices,\n"
-        "or lattices with FSTs (rspecifiers are assumed to be lattices, and\n"
-        "rxfilenames are assumed to be FSTs, which have their weights interpreted\n"
-        "as \"graph weights\" when converted into the Lattice format.\n"
-        "Or, rspecifier can be ark of biasing FSTs, see --compose-with-fst=true.\n"
+        "Composes lattices (in transducer form, as type Lattice).\n"
+        "Depending on the command-line arguments, either composes\n"
+        "lattices with lattices, or lattices with a single FST or\n"
+        " multiple FSTs (whose weights are interpreted as \"graph weights\").\n"
         "\n"
-        "Usage: lattice-compose [options] lattice-rspecifier1 "
-        "(lattice-rspecifier2|fst-rxfilename2) lattice-wspecifier\n"
-        " e.g.: lattice-compose ark:1.lats ark:2.lats ark:composed.lats\n"
-        " or: lattice-compose ark:1.lats G.fst ark:composed.lats\n"
-        " or: lattice-compose --compose-with-fst=true ark:1.lats\n"
-        "       ark:biasing.fsts ark:composed.lats\n";
+        "Usage: lattice-compose [options] <lattice-rspecifier1> "
+        "<lattice-rspecifier2|fst-rxfilename2|fst-rspecifier2> <lattice-wspecifier>\n"
+        "If the 2nd arg is an rspecifier, it is interpreted by default as a table of\n"
+        "lattices, or as a table of FSTs if you specify --compose-with-fst=true.\n";
 
     ParseOptions po(usage);
 
@@ -59,7 +55,7 @@ int main(int argc, char *argv[]) {
     po.Register("write-compact", &write_compact, "If true, write in normal (compact) form.");
     po.Register("phi-label", &phi_label, "If >0, the label on backoff arcs of the LM");
     po.Register("rho-label", &rho_label,
-                "If >0, the label to forward fst1 paths not present biasing graph fst2. "
+                "If >0, the label to forward fst1 paths not present in biasing graph fst2 "
                 "(rho is input and output symbol on special arc in biasing graph)");
     po.Register("num-states-cache", &num_states_cache,
                 "Number of states we cache when mapping LM FST to lattice type. "
@@ -81,10 +77,8 @@ int main(int argc, char *argv[]) {
     }
 
     { // convert 'compose_with_fst' to lowercase to support: true, True, TRUE
-      std::string tmp_lc(compose_with_fst);
-      std::transform(compose_with_fst.begin(), compose_with_fst.end(),
-                     tmp_lc.begin(), ::tolower);  // lc
-      compose_with_fst.swap(tmp_lc);
+      std::string& str(compose_with_fst);
+      std::transform(str.begin(), str.end(), str.begin(), ::tolower);  // lc
     }
     if (compose_with_fst != "auto" && compose_with_fst != "true" &&
                                                  compose_with_fst != "false") {
@@ -109,11 +103,11 @@ int main(int argc, char *argv[]) {
 
     bool arg2_is_rxfilename = (ClassifyRspecifier(arg2, NULL, NULL) == kNoRspecifier);
 
-    /**
-     * arg2 is rxfilename that contains a single fst
-     * - compose arg1 lattices with single fst in arg2
-     */
     if (arg2_is_rxfilename && (compose_with_fst == "auto" || compose_with_fst == "true")) {
+      /**
+       * arg2 is rxfilename that contains a single fst
+       * - compose arg1 lattices with single fst in arg2
+       */
       std::string fst_rxfilename = arg2;
       VectorFst<StdArc>* fst2 = fst::ReadFstKaldi(fst_rxfilename);
 
@@ -164,29 +158,27 @@ int main(int argc, char *argv[]) {
         }
       }
       delete fst2;
-    }
 
-    /**
-     * arg2 is rxfilename that contains a single lattice
-     */
-    else if (arg2_is_rxfilename && compose_with_fst == "false") {
-      // Would it make sense to do this? Not implementing...
+    } else if (arg2_is_rxfilename && compose_with_fst == "false") {
+      /**
+       * arg2 is rxfilename that contains a single lattice
+       * - would it make sense to do this? Not implementing...
+       */
       KALDI_ERR << "Unimplemented...";
-    }
 
-    /**
-     * arg2 is rspecifier that contains a table of lattices
-     * - composing arg1 lattices with arg2 lattices
-     */
-    else if (not arg2_is_rxfilename &&
+    } else if (!arg2_is_rxfilename &&
                   (compose_with_fst == "auto" || compose_with_fst == "false")) {
-      //
+      /**
+       * arg2 is rspecifier that contains a table of lattices
+       * - composing arg1 lattices with arg2 lattices
+       */
       std::string lats_rspecifier2 = arg2;
       // This is the case similar to lattice-interp.cc, where we
       // read in another set of lattices and compose them.  But in this
       // case we don't do any projection; we assume that the user has already
       // done this (e.g. with lattice-project).
       RandomAccessLatticeReader lattice_reader2(lats_rspecifier2);
+
       for (; !lattice_reader1.Done(); lattice_reader1.Next()) {
         std::string key = lattice_reader1.Key();
         KALDI_VLOG(1) << "Processing lattice for key " << key;
@@ -234,13 +226,12 @@ int main(int argc, char *argv[]) {
           n_done++;
         }
       }
-    }
 
-    /**
-     * arg2 is rspecifier that contains a table of fsts
-     * - composing arg1 lattices with arg2 fsts
-     */
-    else if (not arg2_is_rxfilename && compose_with_fst == "true") {
+    } else if (!arg2_is_rxfilename && compose_with_fst == "true") {
+      /**
+       * arg2 is rspecifier that contains a table of fsts
+       * - composing arg1 lattices with arg2 fsts
+       */
       std::string fst_rspecifier2 = arg2;
       RandomAccessTableReader<fst::VectorFstHolder> fst_reader2(fst_rspecifier2);
 
@@ -303,12 +294,10 @@ int main(int argc, char *argv[]) {
           n_done++;
         }
       }
-    }
-
-    /**
-     * none of the 'if-else-if' applied...
-     */
-    else {
+    } else {
+      /**
+       * none of the 'if-else-if' applied...
+       */
       KALDI_ERR << "You should never reach here...";
     }
 
