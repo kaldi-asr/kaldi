@@ -55,8 +55,10 @@ int main(int argc, char *argv[]) {
     po.Register("write-compact", &write_compact, "If true, write in normal (compact) form.");
     po.Register("phi-label", &phi_label, "If >0, the label on backoff arcs of the LM");
     po.Register("rho-label", &rho_label,
-                "If >0, the label to forward fst1 paths not present in biasing graph fst2 "
-                "(rho is input and output symbol on special arc in biasing graph)");
+                "If >0, the label to forward lat1 paths not present in biasing graph fst2 "
+                "(rho is input and output symbol on special arc in biasing graph fst2;"
+                " rho is like phi (matches rest), but rho label is rewritten to the"
+                " specific symbol from lat1)");
     po.Register("num-states-cache", &num_states_cache,
                 "Number of states we cache when mapping LM FST to lattice type. "
                 "More -> more memory but faster.");
