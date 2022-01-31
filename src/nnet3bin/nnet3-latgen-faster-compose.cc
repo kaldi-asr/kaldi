@@ -64,6 +64,8 @@ int main(int argc, char *argv[]) {
     Timer timer, timer_compose;
     double elapsed_compose = 0.0;
 
+    int32 rho_label = fst::kNoLabel; // == -1
+
     bool allow_partial = false;
     LatticeFasterDecoderConfig config;
     NnetSimpleComputationOptions decodable_opts;
@@ -75,6 +77,10 @@ int main(int argc, char *argv[]) {
     int32 online_ivector_period = 0;
     config.Register(&po);
     decodable_opts.Register(&po);
+
+    po.Register("rho-label", &rho_label,
+                "If >0, symbol for 'match the rest' in the biasing graph boosting_fst");
+
     po.Register("word-symbol-table", &word_syms_filename,
                 "Symbol table for words [for debug output]");
     po.Register("allow-partial", &allow_partial,
@@ -125,7 +131,7 @@ int main(int argc, char *argv[]) {
            : lattice_writer.Open(lattice_wspecifier))) {
       KALDI_ERR << "Could not open table for writing lattices: "
                 << lattice_wspecifier;
-    }                 
+    }
 
     RandomAccessBaseFloatMatrixReader online_ivector_reader(
         online_ivector_rspecifier);
@@ -229,7 +235,11 @@ int main(int argc, char *argv[]) {
 
         // run composition,
         VectorFst<StdArc> decode_fst;
-        fst::Compose(hclg_fst, boosting_fst, &decode_fst);
+        if (rho_label > 0) {
+          fst::RhoCompose(hclg_fst, boosting_fst, rho_label, &decode_fst);
+        } else {
+          fst::Compose(hclg_fst, boosting_fst, &decode_fst);
+        }
 
         // check that composed graph is non-empty,
         if (decode_fst.Start() == fst::kNoStateId) {
