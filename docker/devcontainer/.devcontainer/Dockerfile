@@ -16,7 +16,7 @@ FROM mcr.microsoft.com/vscode/devcontainers/javascript-node:0-${VARIANT}
 # RUN su node -c "npm install -g <your-package-list-here>"
 
 RUN apt-get -qq update && \
-    apt-get install -y -q \
+    apt-get install -y -q --no-install-recommends \
     build-essential \
     curl \
     git \
@@ -34,6 +34,8 @@ RUN apt-get -qq update && \
     python2.7 \
     # Needed to kill the server on debug mode.
     lsof \
-    libzmq3-dev 
+    libzmq3-dev \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
 
 # RUN ln -s /usr/bin/python2.7 /usr/bin/python
