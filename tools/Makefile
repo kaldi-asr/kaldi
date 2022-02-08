@@ -103,7 +103,7 @@ openfst_cleaned:
 
 #== SCTK =======================================================================
 
-SCTK_CXFLAGS = -w -march=native
+SCTK_CXFLAGS = -w
 SCTK_MKENV = CFLAGS="$(CFLAGS) $(SCTK_CXFLAGS)" \
              CXXFLAGS="$(CXXFLAGS) -std=c++11 $(SCTK_CXFLAGS)" \
 
