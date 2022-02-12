@@ -41,14 +41,6 @@ local/chain/run_finetune_1b.sh \
   --exp exp_cvi_train_10hr --train-set cvi_train_10hr \
   --src-mdl exp_fsh_train_10hr/chain/tdnn1a_noiv_small_sp/final.mdl
 
-# Do LWF continual learing
-local/chain/run_lwf_clean_1a.sh \
-  --src-tree-dir exp_fsh_train_10hr/chain/tree_sp_mono \
-  --dir exp_cvi_train_10hr/chain/tdnn_lwf1a_fsh2cvi_sp \
-  --exp exp_cvi_train_10hr --train-set cvi_train_10hr \
-  --src-mdl exp_fsh_train_10hr/chain/tdnn1a_noiv_small_sp/final.mdl \
-  --lwf-scale 0.8
-
 # Do DenLWF continual learning
 local/chain/run_lwf_clean_1a.sh \
   --src-tree-dir exp_fsh_train_10hr/chain/tree_sp_mono \
@@ -57,6 +49,13 @@ local/chain/run_lwf_clean_1a.sh \
   --src-mdl exp_fsh_train_10hr/chain/tdnn1a_noiv_small_sp/final.mdl \
   --lwf-den-scale 0.6
 
+# Do LWF continual learing (for comparison)
+local/chain/run_lwf_clean_1a.sh \
+  --src-tree-dir exp_fsh_train_10hr/chain/tree_sp_mono \
+  --dir exp_cvi_train_10hr/chain/tdnn_lwf1a_fsh2cvi_sp \
+  --exp exp_cvi_train_10hr --train-set cvi_train_10hr \
+  --src-mdl exp_fsh_train_10hr/chain/tdnn1a_noiv_small_sp/final.mdl \
+  --lwf-scale 0.8 --lwf-den-scale ""
 
 local/run_evaluation.sh --test-sets "cvi_test fsh_dev" exp_cvi_train_10hr/chain/tdnn_ft1b_fsh2cvi_sp/
 local/run_evaluation.sh --test-sets "cvi_test fsh_dev" exp_cvi_train_10hr/chain/tdnn_lwf1a_fsh2cvi_sp/

@@ -223,17 +223,20 @@ if [[ -z $common_egs_dir ]] && [[ $stage -le 17 ]]; then
     mkdir -p $dir/egs/log
     rm -rf $dir/egs/info || true
     ln -sr $egs0_dir/info $dir/egs/
-    tm=true # test mode for nnet computation
+    test_mode=true # test mode for nnet computation
     $train_cmd JOB=1:$num_archives $dir/egs/log/add_full_post.JOB.log \
-               nnet3-chain-add-post-to-egs $egs_lwf_opts --batchnorm-test-mode=$tm --dropout-test-mode=$tm \
+               nnet3-chain-add-post-to-egs $egs_lwf_opts \
+               --batchnorm-test-mode=$test_mode --dropout-test-mode=$test_mode \
                --use-gpu=$egs_gpu $dir/input.raw $dir/den.fst \
                ark:$egs0_dir/cegs.JOB.ark ark:$dir/egs/cegs.JOB.ark
     $train_cmd $dir/egs/log/add_full_post.train.log \
-               nnet3-chain-add-post-to-egs $egs_lwf_opts --batchnorm-test-mode=$tm --dropout-test-mode=$tm \
+               nnet3-chain-add-post-to-egs $egs_lwf_opts \
+               --batchnorm-test-mode=$test_mode --dropout-test-mode=$test_mode \
                --use-gpu=$egs_gpu $dir/input.raw $dir/den.fst \
                ark:$egs0_dir/train_diagnostic.cegs ark:$dir/egs/train_diagnostic.cegs
     $train_cmd $dir/egs/log/add_full_post.valid.log \
-               nnet3-chain-add-post-to-egs $egs_lwf_opts --batchnorm-test-mode=$tm --dropout-test-mode=$tm \
+               nnet3-chain-add-post-to-egs $egs_lwf_opts \
+               --batchnorm-test-mode=$test_mode --dropout-test-mode=$test_mode \
                --use-gpu=$egs_gpu $dir/input.raw $dir/den.fst \
                ark:$egs0_dir/valid_diagnostic.cegs ark:$dir/egs/valid_diagnostic.cegs
   fi
