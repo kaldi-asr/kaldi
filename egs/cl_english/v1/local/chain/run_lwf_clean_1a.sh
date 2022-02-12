@@ -3,14 +3,17 @@
 # Copyright 2021  Behavox (author: Hossein Hadian)
 # Apache 2.0
 
-# This script fine tunes a model on new data with LWF regularization
-# (Continual learning).
+# This script fine tunes a model on new data using Learning Without
+# Forgetting (LWF) regularization which is a Continual learning (CL) method.
 # This recipe does not add new layers or freeze the
 # weights. The alignments come from the source model.
 # So nothing in the network is re-initialized.
 # By defualt it does not use ivectors.
-# LWF is applied through full posteriors.
-# Supports both LWF and DenLWF.
+# By default, it uses a variant of LWF called DenLWF as explained in the
+# linked paper below. However you may use standard LWF by setting lwf_den_scale
+# to "" and setting lwf_scale to non-zero.
+# Note that currently this only works with unconstrained egs (so
+# you must use "--constrained false").
 # See this paper for more info: https://arxiv.org/abs/2110.07055
 
 set -e
@@ -37,7 +40,7 @@ keep_xent=false
 remove_egs=true
 gmm_ali=true  # set to false if the target train data is too small
 
-lwf_den_scale=  # Set to some value between 0.4 and 1.0, enables DenLWF
+lwf_den_scale=0.6  # Set to some value between 0.4 and 1.0, enables DenLWF
 lwf_scale=        # Set to some value between 0.7 and 1.3, enables LWF
 
 egs0_dir=

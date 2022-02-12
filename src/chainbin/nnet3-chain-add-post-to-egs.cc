@@ -86,9 +86,8 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "This program reads the input nnet3 egs, computes nnet outputs for them and .\n"
         "appends the outputs as NnetIos to the egs. For Continual Learning. Search for LWF.\n"
-        "\n"
-        "Usage:  nnet3-chain-copy-egs [options] <nnet-chain- model> <denominator-fst> <egs-rspecifier> <egs-wspecifier1> \n"
-        "\n";
+        "Usage:  nnet3-chain-add-post-to-egs [options] <nnet-chain- model> <denominator-fst> \
+<egs-rspecifier> <egs-wspecifier> \n";
 
     NnetChainTrainingOptions opts;
     bool batchnorm_test_mode = false, dropout_test_mode = false;
@@ -176,10 +175,10 @@ int main(int argc, char *argv[]) {
       if (type == "raw") {
         Matrix<BaseFloat> full_post(nnet_output);
         if (apply_exp) {
-          KALDI_LOG << "Adding exped full raw post to " << key << ".";
+          KALDI_VLOG(1) << "Adding exped full raw post to " << key << ".";
           full_post.ApplyExp();
         } else {
-          KALDI_LOG << "Adding full raw post to " << key << ".";
+          KALDI_VLOG(1) << "Adding full raw post to " << key << ".";
         }
         NnetIo full_io("__LWF-posteriors", 0, full_post, 3);
         eg.inputs.push_back(full_io);
@@ -189,7 +188,7 @@ int main(int argc, char *argv[]) {
                                 false, 1.0, &den_gamma);
         Matrix<BaseFloat> full_post(den_gamma);
         Clip(full_post, clip_threshold);
-        KALDI_LOG << "Adding den only post to " << key << ".";
+        KALDI_VLOG(1) << "Adding den only post to " << key << ".";
         NnetIo full_io("__LWF-posteriors", 0, full_post, 3);
         eg.inputs.push_back(full_io);
       }

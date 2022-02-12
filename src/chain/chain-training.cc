@@ -124,9 +124,6 @@ void ComputeChainObjfAndDerivE2e(const ChainTrainingOptions &opts,
     if (nnet_output_deriv) {
       float den_multiplier = 1.0;
       den_multiplier += opts.lwf_den_scale;
-      if (opts.lwf_den_scale != 0.0)
-        KALDI_LOG << "DenLWF * sup.weight: " << -den_multiplier * supervision.weight;
-
       denominator_ok = denominator.Backward(-supervision.weight * den_multiplier,
                                 nnet_output_deriv);
     }

@@ -291,19 +291,17 @@ void NnetChainTrainer::ProcessOutputs(bool is_backstitch_step2,
         if (abs(sum - 1.0) > 0.1) KALDI_ERR << "Sup does not sum to 1.0.";
       }
       if (opts_.chain_config.lwf_den_scale != 0.0) {
-        KALDI_LOG << "Applying DenLWF loss. Scale: " << opts_.chain_config.lwf_den_scale;
         CuMatrix<BaseFloat> cu_post(sup_mat);
         lwf_weight = cu_post.Sum();
         lwf_objf = opts_.chain_config.lwf_den_scale * TraceMatMat(nnet_output, cu_post, kTrans);
-        KALDI_LOG << "Full DenLWF objf: " << lwf_objf/lwf_weight << "  weight: " << lwf_weight;
+        KALDI_VLOG(1) << "Full DenLWF objf: " << lwf_objf/lwf_weight << "  weight: " << lwf_weight;
         nnet_output_deriv.AddMat(opts_.chain_config.lwf_den_scale, cu_post);
       }
       if (opts_.chain_config.lwf_scale != 0.0) {
-        KALDI_LOG << "Applying LWF-CE loss. Scale: " << opts_.chain_config.lwf_scale;
         CuMatrix<BaseFloat> cu_post(sup_mat);
         lwf_weight = cu_post.Sum();
         lwf_objf = opts_.chain_config.lwf_scale * TraceMatMat(nnet_output, cu_post, kTrans);
-        KALDI_LOG << "Full LWF objf: " << lwf_objf/lwf_weight << "  weight: " << lwf_weight;
+        KALDI_VLOG(1) << "Full LWF objf: " << lwf_objf/lwf_weight << "  weight: " << lwf_weight;
         nnet_output_deriv.AddMat(opts_.chain_config.lwf_scale, cu_post);
       }
     } //// LWF
