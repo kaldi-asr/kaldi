@@ -18,6 +18,7 @@
 # Common Voice under data/cvi_train and data/cvi_test.
 # Finally run these commands one by one:
 
+run_baseline=false  # If set, will run LWF baseline for comparison.
 
 # Note: You can change 10000 to 50000 to replicate the results in the paper.
 utils/subset_data_dir.sh data/fsh_train 10000 data/fsh_train_10hr
@@ -41,7 +42,7 @@ local/chain/run_finetune_1b.sh \
   --exp exp_cvi_train_10hr --train-set cvi_train_10hr \
   --src-mdl exp_fsh_train_10hr/chain/tdnn1a_noiv_small_sp/final.mdl
 
-# Do DenLWF continual learning
+# Do DenLWF continual learning (recommended method)
 local/chain/run_lwf_clean_1a.sh \
   --src-tree-dir exp_fsh_train_10hr/chain/tree_sp_mono \
   --dir exp_cvi_train_10hr/chain/tdnn_denlwf1a_fsh2cvi_sp \
@@ -49,19 +50,22 @@ local/chain/run_lwf_clean_1a.sh \
   --src-mdl exp_fsh_train_10hr/chain/tdnn1a_noiv_small_sp/final.mdl \
   --lwf-den-scale 0.6
 
-# Do LWF continual learing (for comparison)
-local/chain/run_lwf_clean_1a.sh \
-  --src-tree-dir exp_fsh_train_10hr/chain/tree_sp_mono \
-  --dir exp_cvi_train_10hr/chain/tdnn_lwf1a_fsh2cvi_sp \
-  --exp exp_cvi_train_10hr --train-set cvi_train_10hr \
-  --src-mdl exp_fsh_train_10hr/chain/tdnn1a_noiv_small_sp/final.mdl \
-  --lwf-scale 0.8 --lwf-den-scale ""
-
 local/run_evaluation.sh --test-sets "cvi_test fsh_dev" exp_cvi_train_10hr/chain/tdnn_ft1b_fsh2cvi_sp/
-local/run_evaluation.sh --test-sets "cvi_test fsh_dev" exp_cvi_train_10hr/chain/tdnn_lwf1a_fsh2cvi_sp/
 local/run_evaluation.sh --test-sets "cvi_test fsh_dev" exp_cvi_train_10hr/chain/tdnn_denlwf1a_fsh2cvi_sp/
 
 
+
+if $run_baseline; then
+  # Do LWF continual learing (for comparison)
+  local/chain/run_lwf_clean_1a.sh \
+    --src-tree-dir exp_fsh_train_10hr/chain/tree_sp_mono \
+    --dir exp_cvi_train_10hr/chain/tdnn_lwf1a_fsh2cvi_sp \
+    --exp exp_cvi_train_10hr --train-set cvi_train_10hr \
+    --src-mdl exp_fsh_train_10hr/chain/tdnn1a_noiv_small_sp/final.mdl \
+    --lwf-scale 0.8 --lwf-den-scale ""
+
+  local/run_evaluation.sh --test-sets "cvi_test fsh_dev" exp_cvi_train_10hr/chain/tdnn_lwf1a_fsh2cvi_sp/
+fi
 
 
 ### Results:
