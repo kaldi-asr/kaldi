@@ -303,6 +303,8 @@ void GetChainComputationRequest(const Nnet &nnet,
   for (size_t i = 0; i < eg.inputs.size(); i++) {
     const NnetIo &io = eg.inputs[i];
     const std::string &name = io.name;
+    if (name.substr(0, 2) == "__")   // It's non-compute data, e.g. for LWF
+      continue;
     int32 node_index = nnet.GetNodeIndex(name);
     if (node_index == -1 ||
         !nnet.IsInputNode(node_index))

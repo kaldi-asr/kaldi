@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 
 # Copyright 2016    Vijayaditya Peddinti.
 #           2016    Vimal Manohar
@@ -189,6 +189,9 @@ def get_args():
     parser.add_argument("--dir", type=str, required=True,
                         help="Directory to store the models and "
                         "all other files.")
+    parser.add_argument("--chain-opts", type=str, default="",
+                        help="Options to pass directly to nnet3-chain-compute..."
+                        "or nnet3-chain-train... programs.")
 
     print(' '.join(sys.argv))
     print(sys.argv)
@@ -484,6 +487,9 @@ def train(args, run_opts):
     logger.info("Training will run for {0} epochs = "
                 "{1} iterations".format(args.num_epochs, num_iters))
 
+    with open(f'{args.dir}/num_iters', 'w', encoding='utf-8') as fp:
+        print(num_iters, file=fp)
+
     for iter in range(num_iters):
         if (args.exit_stage is not None) and (iter == args.exit_stage):
             logger.info("Exiting early due to --exit-stage {0}".format(iter))
@@ -557,7 +563,8 @@ def train(args, run_opts):
                 run_opts=run_opts,
                 backstitch_training_scale=args.backstitch_training_scale,
                 backstitch_training_interval=args.backstitch_training_interval,
-                use_multitask_egs=use_multitask_egs)
+                use_multitask_egs=use_multitask_egs,
+                chain_opts=args.chain_opts)
 
             if args.cleanup:
                 # do a clean up everything but the last 2 models, under certain

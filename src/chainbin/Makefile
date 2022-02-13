@@ -13,7 +13,7 @@ BINFILES = chain-est-phone-lm chain-get-supervision chain-make-den-fst \
         nnet3-chain-combine nnet3-chain-normalize-egs \
         nnet3-chain-e2e-get-egs nnet3-chain-compute-post \
         chain-make-num-fst-e2e \
-		nnet3-chain-train2 nnet3-chain-combine2
+		nnet3-chain-train2 nnet3-chain-combine2 nnet3-chain-add-post-to-egs
 
 
 OBJFILES =
@@ -28,6 +28,6 @@ ADDLIBS = ../nnet3/kaldi-nnet3.a ../chain/kaldi-chain.a \
           ../lat/kaldi-lat.a ../fstext/kaldi-fstext.a ../hmm/kaldi-hmm.a \
           ../transform/kaldi-transform.a ../gmm/kaldi-gmm.a \
           ../tree/kaldi-tree.a ../util/kaldi-util.a ../matrix/kaldi-matrix.a \
-          ../base/kaldi-base.a 
+          ../base/kaldi-base.a
 
 include ../makefiles/default_rules.mk
