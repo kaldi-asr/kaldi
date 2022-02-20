@@ -88,6 +88,11 @@ if(CONDA_ROOT)
     add_definitions(-DHAVE_OPENBLAS=1)
     if(MSVC)
         include_directories($ENV{LIBRARY_INC}/)
+        # necessary macros to compile on windows, from here:
+        # https://icl.cs.utk.edu/lapack-for-windows/lapack/
+        add_definitions(-DADD_)
+        add_definitions(-DHAVE_LAPACK_CONFIG_H)
+        add_definitions(-DLAPACK_COMPLEX_STRUCTURE)
     else()
         include_directories($ENV{PREFIX}/include)
     endif()
