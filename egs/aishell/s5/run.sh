@@ -87,11 +87,11 @@ steps/decode.sh --cmd "$decode_cmd" --config conf/decode.config --nj 10 \
 steps/decode.sh --cmd "$decode_cmd" --config conf/decode.config --nj 10 \
   exp/tri2/graph data/test exp/tri2/decode_test
 
-# train and decode tri2b [LDA+MLLT]
+# train and decode tri2 [delta+delta-deltas]
 steps/align_si.sh --cmd "$train_cmd" --nj 10 \
   data/train data/lang exp/tri2 exp/tri2_ali || exit 1;
 
-# Train tri3a, which is LDA+MLLT,
+# train tri3a, which is LDA+MLLT,
 steps/train_lda_mllt.sh --cmd "$train_cmd" \
  2500 20000 data/train data/lang exp/tri2_ali exp/tri3a || exit 1;
 
@@ -101,35 +101,40 @@ steps/decode.sh --cmd "$decode_cmd" --nj 10 --config conf/decode.config \
 steps/decode.sh --cmd "$decode_cmd" --nj 10 --config conf/decode.config \
   exp/tri3a/graph data/test exp/tri3a/decode_test
 
-# From now, we start building a more serious system (with SAT), and we'll
-# do the alignment with fMLLR.
+# align tri3a with fMLLR
 
 steps/align_fmllr.sh --cmd "$train_cmd" --nj 10 \
   data/train data/lang exp/tri3a exp/tri3a_ali || exit 1;
 
+# train tri4a, which is LDA+MLLT+SAT
+# From now, we start building a more serious system (with SAT)
 steps/train_sat.sh --cmd "$train_cmd" \
   2500 20000 data/train data/lang exp/tri3a_ali exp/tri4a || exit 1;
 
+# decode tri4a
 utils/mkgraph.sh data/lang_test exp/tri4a exp/tri4a/graph
 steps/decode_fmllr.sh --cmd "$decode_cmd" --nj 10 --config conf/decode.config \
   exp/tri4a/graph data/dev exp/tri4a/decode_dev
 steps/decode_fmllr.sh --cmd "$decode_cmd" --nj 10 --config conf/decode.config \
   exp/tri4a/graph data/test exp/tri4a/decode_test
-
+  
+# align tri4a with fMLLR
 steps/align_fmllr.sh  --cmd "$train_cmd" --nj 10 \
   data/train data/lang exp/tri4a exp/tri4a_ali
 
-# Building a larger SAT system.
+# Train tri5a, which is LDA+MLLT+SAT
+# Building a larger SAT system. You can see the num-leaves is 3500 and tot-gauss is 100000
 
 steps/train_sat.sh --cmd "$train_cmd" \
   3500 100000 data/train data/lang exp/tri4a_ali exp/tri5a || exit 1;
-
+# decode tri5a
 utils/mkgraph.sh data/lang_test exp/tri5a exp/tri5a/graph || exit 1;
 steps/decode_fmllr.sh --cmd "$decode_cmd" --nj 10 --config conf/decode.config \
    exp/tri5a/graph data/dev exp/tri5a/decode_dev || exit 1;
 steps/decode_fmllr.sh --cmd "$decode_cmd" --nj 10 --config conf/decode.config \
    exp/tri5a/graph data/test exp/tri5a/decode_test || exit 1;
-
+   
+# align tri5a with fMLLR
 steps/align_fmllr.sh --cmd "$train_cmd" --nj 10 \
   data/train data/lang exp/tri5a exp/tri5a_ali || exit 1;
 
