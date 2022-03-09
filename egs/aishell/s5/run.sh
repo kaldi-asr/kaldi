@@ -47,10 +47,11 @@ for x in train dev test; do
   utils/fix_data_dir.sh data/$x || exit 1;
 done
 
+#train Monophone [delta]
 steps/train_mono.sh --cmd "$train_cmd" --nj 10 \
   data/train data/lang exp/mono || exit 1;
 
-# Monophone decoding
+# decode Monophone 
 utils/mkgraph.sh data/lang_test exp/mono exp/mono/graph || exit 1;
 steps/decode.sh --cmd "$decode_cmd" --config conf/decode.config --nj 10 \
   exp/mono/graph data/dev exp/mono/decode_dev
@@ -61,7 +62,7 @@ steps/decode.sh --cmd "$decode_cmd" --config conf/decode.config --nj 10 \
 steps/align_si.sh --cmd "$train_cmd" --nj 10 \
   data/train data/lang exp/mono exp/mono_ali || exit 1;
 
-# train tri1 [first triphone pass]
+# train tri1 [delta+delta-deltas (first triphone pass)]
 steps/train_deltas.sh --cmd "$train_cmd" \
  2500 20000 data/train data/lang exp/mono_ali exp/tri1 || exit 1;
 
@@ -87,14 +88,15 @@ steps/decode.sh --cmd "$decode_cmd" --config conf/decode.config --nj 10 \
 steps/decode.sh --cmd "$decode_cmd" --config conf/decode.config --nj 10 \
   exp/tri2/graph data/test exp/tri2/decode_test
 
-# train and decode tri2 [delta+delta-deltas]
+# align tri2 [delta+delta-deltas]
 steps/align_si.sh --cmd "$train_cmd" --nj 10 \
   data/train data/lang exp/tri2 exp/tri2_ali || exit 1;
 
-# train tri3a, which is LDA+MLLT,
+# train tri3a [LDA+MLLT (second triphone pass)]
 steps/train_lda_mllt.sh --cmd "$train_cmd" \
  2500 20000 data/train data/lang exp/tri2_ali exp/tri3a || exit 1;
-
+ 
+# decode tri3a
 utils/mkgraph.sh data/lang_test exp/tri3a exp/tri3a/graph || exit 1;
 steps/decode.sh --cmd "$decode_cmd" --nj 10 --config conf/decode.config \
   exp/tri3a/graph data/dev exp/tri3a/decode_dev
@@ -106,8 +108,8 @@ steps/decode.sh --cmd "$decode_cmd" --nj 10 --config conf/decode.config \
 steps/align_fmllr.sh --cmd "$train_cmd" --nj 10 \
   data/train data/lang exp/tri3a exp/tri3a_ali || exit 1;
 
-# train tri4a, which is LDA+MLLT+SAT
-# From now, we start building a more serious system (with SAT)
+# train tri4a [LDA+MLLT+SAT (third triphone pass)]
+# From now, we start building a more serious system with Speaker Adaptive Training(SAT)
 steps/train_sat.sh --cmd "$train_cmd" \
   2500 20000 data/train data/lang exp/tri3a_ali exp/tri4a || exit 1;
 
@@ -127,6 +129,7 @@ steps/align_fmllr.sh  --cmd "$train_cmd" --nj 10 \
 
 steps/train_sat.sh --cmd "$train_cmd" \
   3500 100000 data/train data/lang exp/tri4a_ali exp/tri5a || exit 1;
+  
 # decode tri5a
 utils/mkgraph.sh data/lang_test exp/tri5a exp/tri5a/graph || exit 1;
 steps/decode_fmllr.sh --cmd "$decode_cmd" --nj 10 --config conf/decode.config \
