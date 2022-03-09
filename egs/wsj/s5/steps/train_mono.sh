@@ -5,7 +5,7 @@
 
 
 # To be run from ..
-# Flat start and monophone training, with delta-delta features.
+# Flat start and monophone training, with delta features.
 # This script applies cepstral mean normalization (per speaker).
 
 # Begin configuration section.
