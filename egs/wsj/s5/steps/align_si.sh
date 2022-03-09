@@ -2,8 +2,7 @@
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
 # Apache 2.0
 
-# Computes training alignments using a model with delta or
-# LDA+MLLT features.
+# Computes training alignments using a model with delta or delta+delta-delta features.
 
 # If you supply the "--use-graphs true" option, it will use the training
 # graphs from the source directory (where the model is).  In this
