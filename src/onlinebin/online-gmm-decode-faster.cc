@@ -166,9 +166,9 @@ int main(int argc, char *argv[]) {
         std::vector<int32> word_ids;
         decoder.FinishTraceBack(&out_fst);
         fst::GetLinearSymbolSequence(out_fst,
-                                     static_cast<vector<int32> *>(0),
+                                     static_cast<std::vector<int32> *>(nullptr),
                                      &word_ids,
-                                     static_cast<LatticeArc::Weight*>(0));
+                                     static_cast<LatticeArc::Weight*>(nullptr));
         PrintPartialResult(word_ids, word_syms, partial_res || word_ids.size());
         partial_res = false;
         if (dstate == decoder.kEndFeats) {
@@ -181,9 +181,9 @@ int main(int argc, char *argv[]) {
         std::vector<int32> word_ids;
         if (decoder.PartialTraceback(&out_fst)) {
           fst::GetLinearSymbolSequence(out_fst,
-                                       static_cast<vector<int32> *>(0),
+                                       static_cast<std::vector<int32> *>(nullptr),
                                        &word_ids,
-                                       static_cast<LatticeArc::Weight*>(0));
+                                       static_cast<LatticeArc::Weight*>(nullptr));
           PrintPartialResult(word_ids, word_syms, false);
           if (!partial_res)
             partial_res = (word_ids.size() > 0);

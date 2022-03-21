@@ -179,18 +179,18 @@ int main(int argc, char *argv[]) {
       if (dstate & (decoder.kEndFeats | decoder.kEndUtt)) {
         decoder.FinishTraceBack(&out_fst);
         fst::GetLinearSymbolSequence(out_fst,
-                                     static_cast<vector<int32> *>(0),
+                                     static_cast<std::vector<int32> *>(nullptr),
                                      &word_ids,
-                                     static_cast<LatticeArc::Weight*>(0));
+                                     static_cast<LatticeArc::Weight*>(nullptr));
         SendPartialResult(word_ids, word_syms, partial_res || word_ids.size(),
                           udp_input.descriptor(), udp_input.client_addr());
         partial_res = false;
       } else {
         if (decoder.PartialTraceback(&out_fst)) {
           fst::GetLinearSymbolSequence(out_fst,
-                                       static_cast<vector<int32> *>(0),
+                                       static_cast<std::vector<int32> *>(nullptr),
                                        &word_ids,
-                                       static_cast<LatticeArc::Weight*>(0));
+                                       static_cast<LatticeArc::Weight*>(nullptr));
           SendPartialResult(word_ids, word_syms, false,
                             udp_input.descriptor(), udp_input.client_addr());
           if (!partial_res)
