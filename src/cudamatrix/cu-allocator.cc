@@ -251,7 +251,7 @@ start:
       end = largest_free_block_.end();
   size_t subregion_index = 0;
   for (; iter != end; ++iter, ++subregion_index) {
-    if (*iter > size) {
+    if (*iter >= size) {
       return MallocFromSubregion(subregions_[subregion_index], size);
     }
   }
