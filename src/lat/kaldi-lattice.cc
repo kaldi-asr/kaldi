@@ -78,7 +78,7 @@ bool WriteCompactLattice(std::ostream &os, bool binary,
     fst::FstPrinter<CompactLatticeArc> printer(t, t.InputSymbols(),
                                                t.OutputSymbols(),
                                                NULL, acceptor, write_one, "\t");
-    printer.Print(&os, "<unknown>");
+    printer.Print(os, "<unknown>");
     if (os.fail())
       KALDI_WARN << "Stream failure detected.";
     // Write another newline as a terminating character.  The read routine will
@@ -403,7 +403,7 @@ bool WriteLattice(std::ostream &os, bool binary, const Lattice &t) {
     fst::FstPrinter<LatticeArc> printer(t, t.InputSymbols(),
                                         t.OutputSymbols(),
                                         NULL, acceptor, write_one, "\t");
-    printer.Print(&os, "<unknown>");
+    printer.Print(os, "<unknown>");
     if (os.fail())
       KALDI_WARN << "Stream failure detected.";
     // Write another newline as a terminating character.  The read routine will
