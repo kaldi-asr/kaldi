@@ -175,7 +175,7 @@ bool CreateFactorTransducer(const CompactLattice &clat,
 
   // Now we map the CompactLattice to VectorFst<KwsProductArc>. We drop the
   // alignment information and only keep the negated log-probs
-  Map(clat, factor_transducer, CompactLatticeToKwsProductFstMapper());
+  ArcMap(clat, factor_transducer, CompactLatticeToKwsProductFstMapper());
 
   // Now do the weight pushing manually on the CompactLattice format. Note that
   // the alphas and betas in Kaldi are stored as the log-probs, not the negated
@@ -366,7 +366,7 @@ void MaybeDoSanityCheck(const KwsProductFst &product_transducer) {
   if (GetVerboseLevel() < 2) return;
   KwsLexicographicFst index_transducer;
 
-  Map(product_transducer,
+  ArcMap(product_transducer,
       &index_transducer,
       KwsProductFstToKwsLexicographicFstMapper());
 
