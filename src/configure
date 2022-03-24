@@ -284,7 +284,7 @@ Either your CUDA is too new or too old."
       GCC_VER=$($CXX -dumpversion)
       GCC_VER_NUM=$(echo $GCC_VER | sed 's/\./ /g' | xargs printf "%d%02d%02d")
       case $CUDA_VERSION in
-        # Disabling CUDA 7 and CUDA 8 because we now use C++14 to compile CUDA code
+        # Disabling CUDA 7 and CUDA 8 because we now use c++17 to compile CUDA code
         # It is still possible to use those cuda versions by switching back to C++11
         # in src/makefiles/cuda_64bit.mk and use CUB <= 1.8.0 (see tools/)
         # https://github.com/kaldi-asr/kaldi/pull/4242

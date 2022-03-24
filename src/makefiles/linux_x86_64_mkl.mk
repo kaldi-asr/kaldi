@@ -17,7 +17,7 @@ ifndef OPENFSTLIBS
 $(error OPENFSTLIBS not defined.)
 endif
 
-CXXFLAGS = -std=c++14 -I.. -isystem $(OPENFSTINC) -O1 \
+CXXFLAGS = -std=c++17 -I.. -isystem $(OPENFSTINC) -O1 \
            -Wall -Wno-sign-compare -Wno-unused-local-typedefs \
            -Wno-deprecated-declarations -Winit-self \
            -DKALDI_DOUBLEPRECISION=$(DOUBLE_PRECISION) \

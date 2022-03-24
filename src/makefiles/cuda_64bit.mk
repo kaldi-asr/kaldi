@@ -10,7 +10,7 @@ CXXFLAGS += -DHAVE_CUDA -I$(CUDATKDIR)/include -fPIC -pthread -isystem $(OPENFST
 CUDA_INCLUDE= -I$(CUDATKDIR)/include -I$(CUBROOT) -I.. -isystem $(OPENFSTINC)
 CUDA_FLAGS = --compiler-options -fPIC --machine 64 -DHAVE_CUDA \
              -ccbin $(CXX) -DKALDI_DOUBLEPRECISION=$(DOUBLE_PRECISION) \
-             -std=c++14 -DCUDA_API_PER_THREAD_DEFAULT_STREAM -lineinfo \
+             -std=c++17 -DCUDA_API_PER_THREAD_DEFAULT_STREAM -lineinfo \
              --verbose -Wno-deprecated-gpu-targets
 
 CUDA_LDFLAGS += -L$(CUDATKDIR)/lib64/stubs -L$(CUDATKDIR)/lib64 -Wl,-rpath,$(CUDATKDIR)/lib64
