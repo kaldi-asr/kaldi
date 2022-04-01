@@ -198,9 +198,8 @@ endif()
 
 add_definitions(-DKALDI_NO_PORTAUDIO=1)
 
-if(OVERRIDE_KALDI_VERSION)
-    set(KALDI_VERSION "${OVERRIDE_KALDI_VERSION}")
-    message(STATUS "Setting KALDI_VERSION to \"${KALDI_VERSION}\"")
+if(KALDI_VERSION)
+    message(STATUS "KALDI_VERSION set to \"${KALDI_VERSION}\"")
 else() # Original functionality
     message(STATUS "Setting KALDI_VERSION with get_version...")
     include(VersionHelper)
