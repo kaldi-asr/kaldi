@@ -290,35 +290,12 @@ class CMakeListsLibrary(object):
             ret.append("endif()")
 
         ret.append("""
-if(CONDA_ROOT)
-    if(MSVC)
-        install(TARGETS {tgt}
-            EXPORT kaldi-targets
-            RUNTIME
-                DESTINATION ${{CMAKE_INSTALL_BINDIR}}
-                COMPONENT kaldi
-        )
-
-    else()
-        install(TARGETS {tgt}
-            EXPORT kaldi-targets
-            LIBRARY
-                DESTINATION ${{CMAKE_INSTALL_LIBDIR}}
-                COMPONENT kaldi
-            RUNTIME
-                DESTINATION ${{CMAKE_INSTALL_BINDIR}}
-                COMPONENT kaldi
-        )
-    endif()
-else() # Original functionality
 install(TARGETS {tgt}
     EXPORT kaldi-targets
-    ARCHIVE DESTINATION ${{CMAKE_INSTALL_LIBDIR}}
-    LIBRARY DESTINATION ${{CMAKE_INSTALL_LIBDIR}}
-    RUNTIME DESTINATION ${{CMAKE_INSTALL_BINDIR}}
+    ARCHIVE DESTINATION ${{CMAKE_INSTALL_LIBDIR}} COMPONENT kaldi
+    LIBRARY DESTINATION ${{CMAKE_INSTALL_LIBDIR}} COMPONENT kaldi
+    RUNTIME DESTINATION ${{CMAKE_INSTALL_BINDIR}} COMPONENT kaldi
 )
-
-endif()
 install(FILES ${{PUBLIC_HEADERS}} DESTINATION include/kaldi/{dir})
 """.format(tgt=self.target_name, dir=self.dir_name))
 
