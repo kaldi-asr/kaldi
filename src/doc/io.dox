@@ -313,7 +313,7 @@ namespace kaldi {
  \endverbatim
  and if you just want to express a column range, you can leave the row-range blank, as follows:
  \verbatim
-  utt_id_01002 foo.ark:89142[,89:100]
+  utt_id_01002 foo.ark:89142[:,89:100]
  \endverbatim
 
  \subsection io_sec_scp_details  How Kaldi processes lines of scp files
