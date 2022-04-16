@@ -95,6 +95,20 @@ def get_exe_additional_depends(t):
         "gmm-est-fmllr-gpost": ["sgmm2", "hmm"],
         "gmm-rescore-lattice": ["hmm", "lat"],
 
+        # solve fgmmbin
+        "fgmm-global-acc-stats-post": ["gmm", "hmm"],
+        "fgmm-global-acc-stats": ["gmm"],
+        "fgmm-global-copy": ["gmm"],
+        "fgmm-global-est": ["gmm"],
+        "fgmm-global-get-frame-likes": ["gmm"],
+        "fgmm-global-gselect-to-post": ["gmm", "hmm"],
+        "fgmm-global-info": ["gmm", "hmm"],
+        "fgmm-global-init-from-accs": ["gmm"],
+        "fgmm-global-merge": ["gmm"],
+        "fgmm-global-sum-accs": ["gmm"],
+        "fgmm-global-to-gmm": ["gmm"],
+        "fgmm-gselect": ["gmm", "hmm"],
+
         # solve fstbin
         "make-grammar-fst": ["decoder"],
 
@@ -278,11 +292,10 @@ class CMakeListsLibrary(object):
         ret.append("""
 install(TARGETS {tgt}
     EXPORT kaldi-targets
-    ARCHIVE DESTINATION ${{CMAKE_INSTALL_LIBDIR}}
-    LIBRARY DESTINATION ${{CMAKE_INSTALL_LIBDIR}}
-    RUNTIME DESTINATION ${{CMAKE_INSTALL_BINDIR}}
+    ARCHIVE DESTINATION ${{CMAKE_INSTALL_LIBDIR}} COMPONENT kaldi
+    LIBRARY DESTINATION ${{CMAKE_INSTALL_LIBDIR}} COMPONENT kaldi
+    RUNTIME DESTINATION ${{CMAKE_INSTALL_BINDIR}} COMPONENT kaldi
 )
-
 install(FILES ${{PUBLIC_HEADERS}} DESTINATION include/kaldi/{dir})
 """.format(tgt=self.target_name, dir=self.dir_name))
 
@@ -303,7 +316,10 @@ class CMakeListsExecutable(object):
     def gen_code(self):
         ret = []
         for exe_name, file_name, depend in self.list:
-            depends = (depend + " " + " ".join(get_exe_additional_depends(exe_name))).strip()
+            if exe_name.startswith('fgmm'):
+                depends =(" ".join(get_exe_additional_depends(exe_name))).strip()
+            else:
+                depends = (depend + " " + " ".join(get_exe_additional_depends(exe_name))).strip()
             ret.extend(wrap_notwin32_condition(disable_for_win32(exe_name),
                        "add_kaldi_executable(NAME " + exe_name + " SOURCES " + file_name + " DEPENDS " + depends + ")"))
 
