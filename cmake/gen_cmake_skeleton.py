@@ -92,7 +92,7 @@ def get_exe_additional_depends(t):
         "gmm-decode-*": ["decoder"],
         "gmm-align": ["decoder"],
         "gmm-align-compiled": ["decoder"],
-        "gmm-est-fmllr-gpost": ["sgmm2", "hmm"],
+        "gmm-est-fmllr-gpost": ["hmm"],
         "gmm-rescore-lattice": ["hmm", "lat"],
 
         # solve fgmmbin
