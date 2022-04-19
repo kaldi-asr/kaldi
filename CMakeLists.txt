@@ -87,7 +87,7 @@ if(CONDA_ROOT)
     # https://github.com/kaldi-asr/kaldi/blob/master/src/matrix/kaldi-blas.h#L95-L113
     add_definitions(-DHAVE_OPENBLAS=1)
     if(MSVC)
-        include_directories($ENV{LIBRARY_INC}/)
+        link_libraries(cblas lapack)
         # necessary macros to compile on windows, from here:
         # https://icl.cs.utk.edu/lapack-for-windows/lapack/
         add_definitions(-DADD_)
