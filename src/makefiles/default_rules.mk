@@ -21,6 +21,12 @@ ifeq ($(KALDI_FLAVOR), dynamic)
     endif
     LDFLAGS += -Wl,-rpath=$(shell readlink -f $(KALDILIBDIR))
     EXTRA_LDLIBS += $(foreach dep,$(ADDLIBS), $(dir $(dep))lib$(notdir $(basename $(dep))).so)
+  else ifeq ($(shell uname), FreeBSD)
+    ifdef LIBNAME
+      LIBFILE = lib$(LIBNAME).so
+    endif
+    LDFLAGS += -Wl,-rpath=$(shell readlink -f $(KALDILIBDIR))
+    EXTRA_LDLIBS += $(foreach dep,$(ADDLIBS), $(dir $(dep))lib$(notdir $(basename $(dep))).so)
   else  # Platform not supported
     $(error Dynamic libraries not supported on this platform. Run configure with --static flag.)
   endif
@@ -48,6 +54,10 @@ $(LIBFILE): $(LIBNAME).a
 	$(CXX) -dynamiclib -o $@ -install_name @rpath/$@ $(LDFLAGS) $(OBJFILES) $(LDLIBS)
 	ln -sf $(shell pwd)/$@ $(KALDILIBDIR)/$@
   else ifeq ($(shell uname), Linux)
+        # Building shared library from static (static was compiled with -fPIC)
+	$(CXX) -shared -o $@ -Wl,--as-needed  -Wl,-soname=$@,--whole-archive $(LIBNAME).a -Wl,--no-whole-archive $(LDFLAGS) $(LDLIBS)
+	ln -sf $(shell pwd)/$@ $(KALDILIBDIR)/$@
+  else ifeq ($(shell uname), FreeBSD)
         # Building shared library from static (static was compiled with -fPIC)
 	$(CXX) -shared -o $@ -Wl,--as-needed  -Wl,-soname=$@,--whole-archive $(LIBNAME).a -Wl,--no-whole-archive $(LDFLAGS) $(LDLIBS)
 	ln -sf $(shell pwd)/$@ $(KALDILIBDIR)/$@

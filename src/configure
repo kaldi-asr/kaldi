@@ -938,7 +938,7 @@ else
   if [ "`uname`" == "Darwin"  ]; then
     OPENFSTLIBS="$FSTROOT/lib/libfst.dylib"
     OPENFSTLDFLAGS="-Wl,-rpath -Wl,${FSTROOT}/lib"
-  elif [ "`uname`" == "Linux" ]; then
+  elif [ "`uname`" == "Linux" -o "`uname`" == "FreeBSD" ]; then
     OPENFSTLIBS="$FSTROOT/lib/libfst.so"
     OPENFSTLDFLAGS="-Wl,-rpath=${FSTROOT}/lib"
   else
@@ -1084,7 +1084,7 @@ elif [ "`uname -o`" == "Cygwin"  ]; then
   cat makefiles/cygwin.mk >> kaldi.mk
   echo "Successfully configured for Cygwin with CLAPACK."
 
-elif [ "`uname`" == "Linux" ]; then
+elif [ "`uname`" == "Linux" -o "`uname`" == "FreeBSD"  ]; then
   echo "On Linux: Checking for linear algebra header files ..."
   if [ "$MATHLIB" == "ATLAS" ]; then
     if [ ! -f $ATLASROOT/include/cblas.h ] || [ ! -f $ATLASROOT/include/clapack.h ] ; then
