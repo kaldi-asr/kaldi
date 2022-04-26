@@ -103,7 +103,13 @@ openfst_cleaned:
 
 #== SCTK =======================================================================
 
-SCTK_CXFLAGS = -w -march=native
+# We don't set -march=native on MacOS because it breaks the compilation on M1 CPUs.
+OS := $(shell uname -s)
+SCTK_CXFLAGS = -w
+ifneq ($(OS), Darwin)
+SCTK_CXFLAGS += -march=native
+endif
+
 SCTK_MKENV = CFLAGS="$(CFLAGS) $(SCTK_CXFLAGS)" \
              CXXFLAGS="$(CXXFLAGS) -std=c++11 $(SCTK_CXFLAGS)" \
 
