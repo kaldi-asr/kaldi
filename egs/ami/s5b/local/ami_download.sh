@@ -58,7 +58,7 @@ wgetfile=$wdir/wget_$mic.sh
 manifest="wget --continue -O $adir/MANIFEST.TXT https://groups.inf.ed.ac.uk/ami/download/temp/amiBuild-1372-Thu-Apr-28-2022.manifest.txt"
 
 # Parse the manifest file, and separate recordings into train, dev, and eval sets
-python3 local/split_manifest.py
+python3 local/split_manifest.py $adir/MANIFEST.TXT
 
 echo "#!/usr/bin/env bash" > $wgetfile
 echo $manifest >> $wgetfile
