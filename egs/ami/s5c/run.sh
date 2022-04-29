@@ -26,6 +26,8 @@ diarizer_stage=0
 nj=50
 decode_nj=15
 
+export mic=ihm
+
 model_dir=exp/xvector_nnet_1a
 
 train_set=train

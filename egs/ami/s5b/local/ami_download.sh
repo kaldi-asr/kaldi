@@ -55,9 +55,15 @@ cat local/split_train.orig local/split_eval.orig local/split_dev.orig > $wdir/am
 
 wgetfile=$wdir/wget_$mic.sh
 
-# TODO fix this with Pawel, files don't exist anymore,
+'
+# TODO fix this with Pawel, files dont exist anymore,
 manifest="wget --continue -O $adir/MANIFEST.TXT http://groups.inf.ed.ac.uk/ami/download/temp/amiBuild-04237-Sun-Jun-15-2014.manifest.txt"
 license="wget --continue -O $adir/LICENCE.TXT http://groups.inf.ed.ac.uk/ami/download/temp/Creative-Commons-Attribution-NonCommercial-ShareAlike-2.5.txt"
+'
+manifest="wget --continue -O $adir/MANIFEST.TXT https://groups.inf.ed.ac.uk/ami/download/temp/amiBuild-1372-Thu-Apr-28-2022.manifest.txt"
+
+# Parse the manifest file, and separate recordings into train, dev, and eval sets
+python3 split_manifest.py
 
 echo "#!/usr/bin/env bash" > $wgetfile
 echo $manifest >> $wgetfile
@@ -86,6 +92,7 @@ echo "Look at $wdir/log/download_ami_$mic.log for progress"
 $wgetfile &> $wdir/log/download_ami_$mic.log
 
 # Do rough check if #wavs is as expected, it will fail anyway in data prep stage if it isn't,
+'
 if [ "$mic" == "ihm" ]; then
   num_files=$(find $adir -iname *Headset* | wc -l)
   if [ $num_files -ne 687 ]; then
@@ -102,6 +109,7 @@ else
     exit 1;
   fi
 fi
+'
 
 echo "Downloads of AMI corpus completed succesfully. License can be found under $adir/LICENCE.TXT"
 exit 0;

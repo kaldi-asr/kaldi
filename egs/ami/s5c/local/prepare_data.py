@@ -28,6 +28,8 @@ def find_audios(wav_path, file_list):
 
     # Filter list to keep only those in annotations (for the specific data split)
     file_names_str = "|".join(file_list)
+    #print(file_names_str)
+    #print(df_wav)
     df_wav = df_wav.loc[df_wav['key'].str.contains(file_names_str)].sort_values('key')
     return df_wav
 
