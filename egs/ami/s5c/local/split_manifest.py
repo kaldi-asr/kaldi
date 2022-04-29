@@ -32,11 +32,15 @@ N = len(m)
 
 train = m[:round(N*.5)]
 dev = m[round(N*.5)+1:round(N*.8)]
-eval = m[round(N*.8)+1:]
+ev = m[round(N*.8)+1:]
+
+train = train[:8]
+dev = dev[:5]
+ev = ev[:5]
 
 print("Train set: "+str(train))
 print("Dev set: "+str(dev))
-print("Eval set: "+str(eval))
+print("Eval set: "+str(ev))
 
 if os.path.exists('local/split_train.orig'):
     os.remove('local/split_train.orig')
@@ -56,6 +60,6 @@ with open('local/split_dev.orig', 'a') as dev_file:
         dev_file.write("\n")
 
 with open('local/split_eval.orig', 'a') as eval_file:
-    for d in eval:
+    for d in ev:
         eval_file.write(d)
         eval_file.write("\n")
