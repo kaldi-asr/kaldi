@@ -20,7 +20,7 @@ import pandas as pd
 
 def find_audios(wav_path, file_list):
     # Get all wav file names from audio directory
-    command = 'find %s -name "*Mix-Headset.wav"' % (wav_path)
+    command = 'find %s -name "*.wav"' % (wav_path)
     wavs = subprocess.check_output(command, shell=True).decode('utf-8').splitlines()
     keys = [ os.path.splitext(os.path.basename(wav))[0] for wav in wavs ]
     data = {'key': keys, 'file_path': wavs}
@@ -28,8 +28,8 @@ def find_audios(wav_path, file_list):
 
     # Filter list to keep only those in annotations (for the specific data split)
     file_names_str = "|".join(file_list)
-    #print(file_names_str)
-    #print(df_wav)
+    print(file_names_str)
+    print(df_wav)
     df_wav = df_wav.loc[df_wav['key'].str.contains(file_names_str)].sort_values('key')
     return df_wav
 
