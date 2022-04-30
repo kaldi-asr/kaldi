@@ -30,13 +30,17 @@ print("Got the audio files from MANIFEST.TXT")
 # Separate files and save off into train, dev, and eval partitions
 N = len(m)
 
-train = m[:round(N*.5)]
-dev = m[round(N*.5)+1:round(N*.8)]
-ev = m[round(N*.8)+1:]
+#train = m[:round(N*.5)]
+#dev = m[round(N*.5)+1:round(N*.8)]
+#ev = m[round(N*.8)+1:]
 
-train = train[:8]
-dev = dev[:5]
-ev = ev[:5]
+#train = train[:12]
+#dev = dev[:10]
+#ev = ev[:10]
+
+train = m[:8]
+dev = m[9:15]
+ev = m[16:20]
 
 print("Train set: "+str(train))
 print("Dev set: "+str(dev))

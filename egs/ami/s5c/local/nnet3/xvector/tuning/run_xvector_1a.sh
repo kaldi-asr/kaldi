@@ -58,15 +58,18 @@ if [ $stage -le 6 ]; then
     utils/create_split_dir.pl \
      /export/b{03,04,05,06}/$USER/kaldi-data/egs/callhome_diarization/v2/xvector-$(date +'%m_%d_%H_%M')/$egs_dir/storage $egs_dir/storage
   fi
+  # frame per iter original 1000000000
+  # frame per iter diagnostic original 500000
+  # num repeat original 1
   sid/nnet3/xvector/get_egs.sh --cmd "$train_cmd" \
     --nj 8 \
     --stage 0 \
-    --frames-per-iter 1000000000 \
-    --frames-per-iter-diagnostic 500000 \
+    --frames-per-iter 100000 \
+    --frames-per-iter-diagnostic 10000 \
     --min-frames-per-chunk 200 \
     --max-frames-per-chunk 400 \
     --num-diagnostic-archives 3 \
-    --num-repeats 40 \
+    --num-repeats 1 \
     "$data" $egs_dir
 fi
 

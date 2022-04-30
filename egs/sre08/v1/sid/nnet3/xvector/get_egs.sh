@@ -24,9 +24,9 @@ cmd=run.pl
 # $min_frames_per_eg and $max_frames_per_eg.
 min_frames_per_chunk=50
 max_frames_per_chunk=300
-frames_per_iter=10000000 # target number of frames per archive.
+frames_per_iter=100000 #10000000 # target number of frames per archive.
 
-frames_per_iter_diagnostic=100000 # have this many frames per archive for
+frames_per_iter_diagnostic=10000 #100000 # have this many frames per archive for
                                    # the archives used for diagnostics.
 
 num_diagnostic_archives=3  # we want to test the training likelihoods
@@ -34,7 +34,7 @@ num_diagnostic_archives=3  # we want to test the training likelihoods
                            # how many archives we evaluate on.
 
 
-compress=true   # set this to false to disable compression (e.g. if you want to see whether
+compress=false #true   # set this to false to disable compression (e.g. if you want to see whether
                 # results are affected).
 
 num_heldout_utts=100     # number of utterances held out for training subset

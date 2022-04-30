@@ -20,10 +20,10 @@
 set -euo pipefail
 mfccdir=`pwd`/mfcc
 
-stage=2
+stage=4
 overlap_stage=0
 diarizer_stage=0
-nj=50
+nj=10
 decode_nj=15
 
 export mic=ihm
@@ -89,6 +89,7 @@ if [ $stage -le 3 ]; then
     steps/make_mfcc.sh --mfcc-config conf/mfcc_hires.conf --nj $nj --cmd "$train_cmd" data/$dataset
     steps/compute_cmvn_stats.sh data/$dataset
     utils/fix_data_dir.sh data/$dataset
+    echo "FEATURES COMPLETE FOR DATASET"
   done
 fi
 
@@ -96,6 +97,8 @@ if [ $stage -le 4 ]; then
   echo "$0: preparing a AMI training data to train PLDA model"
   local/nnet3/xvector/prepare_feats.sh --nj $nj --cmd "$train_cmd" \
     data/train data/plda_train exp/plda_train_cmn
+  local/nnet3/xvector/run_xvector.sh --stage $stage --train-stage -1 \
+    --data data/plda_train
 fi
 
 if [ $stage -le 5 ]; then
