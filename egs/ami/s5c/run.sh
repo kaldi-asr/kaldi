@@ -20,7 +20,7 @@
 set -euo pipefail
 mfccdir=`pwd`/mfcc
 
-stage=4
+stage=2
 overlap_stage=0
 diarizer_stage=0
 nj=10
