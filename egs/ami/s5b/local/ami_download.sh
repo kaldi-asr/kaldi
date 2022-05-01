@@ -59,7 +59,7 @@ manifest=$adir/MANIFEST.TXT
 license="wget --continue -O $adir/LICENSE.TXT http://groups.inf.ed.ac.uk/ami/corpus/license.shtml"
 
 # Parse the manifest file, and separate recordings into train, dev, and eval sets
-python3 local/split_manifest.py $adir/MANIFEST.TXT
+# python3 local/split_manifest.py $adir/MANIFEST.TXT
 
 cat local/split_train.orig local/split_eval.orig local/split_dev.orig > $wdir/ami_meet_ids.flist
 
