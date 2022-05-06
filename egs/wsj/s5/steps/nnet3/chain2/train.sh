@@ -80,6 +80,11 @@ dir=$2
 
 set -e -u  # die on failed command or undefined variable
 
+# remove the error flag that might have been set the previous run
+# just to get the script the chance to finish successfuly when user
+# has fixed the issue reported in the previous run
+[ -f $dir/.error ] && rm $dir/.error
+
 steps/chain2/validate_randomized_egs.sh $egs_dir
 
 for f in $dir/init/info.txt; do
