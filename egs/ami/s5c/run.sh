@@ -20,7 +20,7 @@
 set -euo pipefail
 mfccdir=`pwd`/mfcc
 
-stage=2
+stage=4
 overlap_stage=0
 diarizer_stage=0
 nj=10
@@ -39,11 +39,6 @@ diarizer_type=spectral  # must be one of (ahc, spectral, vbx)
 
 # Path where AMI gets downloaded (or where locally available):
 AMI_DIR=$PWD/wav_db # Default,
-case $(hostname -d) in
-  fit.vutbr.cz) AMI_DIR=/mnt/matylda5/iveselyk/KALDI_AMI_WAV ;; # BUT,
-  clsp.jhu.edu) AMI_DIR=/export/corpora5/amicorpus ;; # JHU,
-  cstr.ed.ac.uk) AMI_DIR= ;; # Edinburgh,
-esac
 
 # Download AMI corpus, You need around 130GB of free space to get whole data
 if [ $stage -le 1 ]; then
@@ -95,8 +90,8 @@ fi
 
 if [ $stage -le 4 ]; then
   echo "$0: preparing a AMI training data to train PLDA model"
-  local/nnet3/xvector/prepare_feats.sh --nj $nj --cmd "$train_cmd" \
-    data/train data/plda_train exp/plda_train_cmn
+  #local/nnet3/xvector/prepare_feats.sh --nj $nj --cmd "$train_cmd" \
+  #  data/train data/plda_train exp/plda_train_cmn
   local/nnet3/xvector/run_xvector.sh --stage $stage --train-stage -1 \
     --data data/plda_train
 fi

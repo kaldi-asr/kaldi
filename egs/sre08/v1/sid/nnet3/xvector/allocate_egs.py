@@ -257,12 +257,17 @@ def main():
                 print("Ran out of speakers for archive {0}".format(archive_index + 1))
                 break
             spkr = spkrs.pop()
+            # apt2141 : fix from https://github.com/brijmohan/kaldi/commit/62b8ed90e261a6bb5088dfe506b7972dd052743f to stop infinite loop
             utt_len = 0
-            while utt_len < length:
+            nutt_spkr = len(spk2utt[spkr])
+            break_loop=0
+            while utt_len < length and break_loop < nutt_spkr:
                 utt = get_random_utt(spkr, spk2utt)
                 utt_len = utt2len[utt]
-            offset = get_random_offset(utt_len, length)
-            this_egs.append( (utt, offset) )
+                break_loop+=1
+            if break_loop < nutt_spkr:
+                offset = get_random_offset(utt_len, length)
+                this_egs.append( (utt, offset) )
         all_egs.append(this_egs)
     info_f.close()
 

@@ -54,10 +54,6 @@ num_pdfs=$(awk '{print $2}' $data/utt2spk | sort | uniq -c | wc -l)
 if [ $stage -le 6 ]; then
   echo "$0: Getting neural network training egs";
   # dump egs.
-  if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $egs_dir/storage ]; then
-    utils/create_split_dir.pl \
-     /export/b{03,04,05,06}/$USER/kaldi-data/egs/callhome_diarization/v2/xvector-$(date +'%m_%d_%H_%M')/$egs_dir/storage $egs_dir/storage
-  fi
   # frame per iter original 1000000000
   # frame per iter diagnostic original 500000
   # num repeat original 1
@@ -69,7 +65,7 @@ if [ $stage -le 6 ]; then
     --min-frames-per-chunk 200 \
     --max-frames-per-chunk 400 \
     --num-diagnostic-archives 3 \
-    --num-repeats 1 \
+    --num-repeats 10 \
     "$data" $egs_dir
 fi
 

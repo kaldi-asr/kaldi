@@ -41,8 +41,8 @@ num_heldout_utts=100     # number of utterances held out for training subset
 
 num_repeats=1 # number of times each speaker repeats per archive
 
-stage=0
-nj=6         # This should be set to the maximum number of jobs you are
+stage=3
+nj=8         # This should be set to the maximum number of jobs you are
              # comfortable to run in parallel; you can increase it if your disk
              # speed is greater and you have more machines.
 
@@ -171,6 +171,9 @@ if [ $stage -le 2 ]; then
       --utt2len-filename=$dir/temp/utt2num_frames.train_subset \
       --utt2int-filename=$dir/temp/utt2int.train_subset --egs-dir=$dir  || exit 1
 
+fi
+
+if [ $stage -le 2 ]; then
   echo "$0: Allocating validation examples"
   $cmd $dir/log/allocate_examples_valid.log \
     sid/nnet3/xvector/allocate_egs.py \
