@@ -79,7 +79,7 @@ void GrammarFstTpl<FST>::DecodeSymbol(Label label,
   KALDI_ASSERT(big_number % static_cast<int32>(kNontermMediumNumber) == 0);
 
   *nonterminal_symbol = (label - big_number) / encoding_multiple;
-  *left_context_phone = label % encoding_multiple;
+  *left_context_phone = (label - big_number) % encoding_multiple;
   if (*nonterminal_symbol <= nonterm_phones_offset ||
       *left_context_phone == 0 || *left_context_phone >
       nonterm_phones_offset + static_cast<int32>(kNontermBos))
