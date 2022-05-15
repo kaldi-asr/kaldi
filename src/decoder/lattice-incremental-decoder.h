@@ -128,6 +128,7 @@ struct LatticeIncrementalDecoderConfig {
   // If you call
   int32 determinize_max_delay;
   int32 determinize_min_chunk_size;
+  int32 determinize_max_active;
 
 
   LatticeIncrementalDecoderConfig()
@@ -140,7 +141,8 @@ struct LatticeIncrementalDecoderConfig {
         hash_ratio(2.0),
         prune_scale(0.01),
         determinize_max_delay(60),
-        determinize_min_chunk_size(20) {
+        determinize_min_chunk_size(20),
+        determinize_max_active(200) {
     det_opts.minimize = false;
   }
   void Register(OptionsItf *opts) {
@@ -168,6 +170,8 @@ struct LatticeIncrementalDecoderConfig {
                    "determinizing it");
     opts->Register("determinize-min-chunk-size", &determinize_min_chunk_size,
                    "Minimum chunk size used in determinization");
+    opts->Register("determinize-max-active", &determinize_max_active,
+                   "Maximum number of active tokens to update determinization");
 
   }
   void Check() const {
@@ -176,7 +180,8 @@ struct LatticeIncrementalDecoderConfig {
           beam_delta > 0.0 && hash_ratio >= 1.0 &&
           prune_scale > 0.0 && prune_scale < 1.0 &&
           determinize_max_delay > determinize_min_chunk_size &&
-          determinize_min_chunk_size > 0))
+          determinize_min_chunk_size > 0 &&
+          determinize_max_active >= 0))
         KALDI_ERR << "Invalid options given to decoder";
     /* Minimization of the chunks is not compatible withour algorithm (or at
        least, would require additional complexity to implement.) */
@@ -496,7 +501,7 @@ class LatticeIncrementalDecoderTpl {
      determinization. It decodes until there are no more frames left in the
      "decodable" object.
 
-     In this example, config_.determinize_delay, config_.determinize_period
+     In this example, config_.determinize_max_delay, config_.determinize_min_chunk_size
      and config_.determinize_max_active are used to determine the time to
      call GetLattice().
 
@@ -708,8 +713,8 @@ class LatticeIncrementalDecoderTpl {
   /**
      UpdateLatticeDeterminization() ensures the work of determinization is kept
      up to date so that when you do need the lattice you can get it fast.  It
-     uses the configuration values `determinize_delay`, `determinize_max_delay`
-     and `determinize_min_chunk_size` to decide whether and when to call
+     uses the configuration values `determinize_max_delay`, `determinize_min_chunk_size`
+     and `determinize_max_active`, to decide whether and when to call
      GetLattice().  You can safely call this as often as you want (e.g.  after
      each time you call AdvanceDecoding(); it won't do subtantially more work if
      it is called frequently.
