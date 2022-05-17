@@ -114,13 +114,14 @@ endif
 
 # Compile optional stuff
 .PHONY: ext check_portaudio clean distclean test ext_test
-ext: ext_depend $(SUBDIRS) $(EXT_SUBDIRS)
+ext: check_portaudio ext_depend $(SUBDIRS) $(EXT_SUBDIRS)
 	@echo Done
 
 check_portaudio: | ../tools/portaudio
 
 ../tools/portaudio:
 	@echo "ERROR: portaudio is required. Run tools/install_portaudio.sh."
+	@false
 
 clean: rmlibdir
 	-for x in $(SUBDIRS) $(EXT_SUBDIRS); do $(MAKE) -C $$x clean; done
