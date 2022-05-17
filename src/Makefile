@@ -61,7 +61,8 @@ ifneq ($(KALDILIBDIR), )
 	-rmdir 2>/dev/null $(KALDILIBDIR); true
 else
 # KALDILIBDIR might have been unset because of reconfigure. Do a best guess.
-	-rm -f lib/*{.so,.a,.o}; rmdir 2>/dev/null lib; true
+ 	@echo "Something seems wrong. Please re-run configure."
+	@echo "I will continue but the cleanup might not be complete."
 endif
 
 kaldi.mk:
@@ -148,7 +149,7 @@ valgrind:
 base/.depend.mk:
 	$(MAKE) depend
 
-depend: $(addsuffix /depend, $(EXT_SUBDIRS))
+depend: $(addsuffix /depend, $(SUBDIRS))
 
 ext_depend: check_portaudio $(addsuffix /depend, $(EXT_SUBDIRS))
 
