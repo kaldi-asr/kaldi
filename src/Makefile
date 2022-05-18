@@ -41,33 +41,48 @@ KALDI_SONAME ?= libkaldi.so
 
 # Reset the default goal, so that the all target will become default
 .DEFAULT_GOAL :=
+.PHONY: all mklibdir rmlibdir checkversion
 all: $(SUBDIRS) matrix/test
-	-echo Done
+	@echo Done
 
-mklibdir:
-	test -d $(KALDILIBDIR) || mkdir $(KALDILIBDIR)
+ifneq ($(KALDILIBDIR), )
+mklibdir: | $(KALDILIBDIR)/
+
+$(KALDILIBDIR)/:
+	mkdir $(KALDILIBDIR)
+else
+mklibdir: ;
+endif
 
 # Don't call rm -rf.
 rmlibdir:
 ifneq ($(KALDILIBDIR), )
-	-rm $(KALDILIBDIR)/*{.so,.a,.o}
-	-rmdir $(KALDILIBDIR)
+	-rm -f $(KALDILIBDIR)/*{.so,.a,.o}
+	-rmdir 2>/dev/null $(KALDILIBDIR); true
 else
-	@true
+# KALDILIBDIR might have been unset because of reconfigure. Do a best guess.
+ 	@echo "Something seems wrong. Please re-run configure."
+	@echo "I will continue but the cleanup might not be complete."
 endif
 
-.PHONY: checkversion
-checkversion:
+kaldi.mk:
+	@echo "ERROR: kaldi.mk does not exist; run ./configure first.";
+	@false
+
+checkversion: | kaldi.mk
 ifeq ($(shell ./configure --version),$(CONFIGURE_VERSION))
 	@echo "The version of configure script matches kaldi.mk version. Good."
 else
+	@echo "ERROR: The kaldi.mk file was generated using a different" \
+	      "version of configure script. Please run ./configure again."
+	@echo "Hint: Previous configure command line: "
 	@echo ""
-	@echo "The kaldi.mk file was generated using a different version of configure script. Please rerun the configure again"
-	@test -f ./kaldi.mk && echo  "Hint: Previous configure command line: " && head -n 2 ./kaldi.mk | grep configure | sed 's/^# *//g'
+	@head -n 2 ./kaldi.mk | grep configure | sed 's/^# */  /g'
 	@echo ""
 	@false
 endif
 
+.PHONY: biglib
 biglib: $(SUBDIRS_LIB)
 ifeq ($(KALDI_FLAVOR), dynamic)
 ifeq ($(shell uname), Darwin)
@@ -82,6 +97,7 @@ endif
 endif
 endif
 
+.PHONY: biglibext
 biglibext: $(EXT_SUBDIRS_LIB)
 ifeq ($(KALDI_FLAVOR), dynamic)
 ifeq ($(shell uname), Darwin)
@@ -96,15 +112,16 @@ endif
 endif
 endif
 
-kaldi.mk:
-	@[ -f kaldi.mk ] || { echo "kaldi.mk does not exist; you have to run ./configure"; exit 1; }
-
 # Compile optional stuff
-ext: ext_depend $(SUBDIRS) $(EXT_SUBDIRS)
-	-echo Done
+.PHONY: ext check_portaudio clean distclean test ext_test
+ext: check_portaudio ext_depend $(SUBDIRS) $(EXT_SUBDIRS)
+	@echo Done
 
-check_portaudio:
-	@[ -d ../tools/portaudio ] || ( cd ../tools;  ./install_portaudio.sh )
+check_portaudio: | ../tools/portaudio
+
+../tools/portaudio:
+	@echo "ERROR: portaudio is required. Run tools/install_portaudio.sh."
+	@false
 
 clean: rmlibdir
 	-for x in $(SUBDIRS) $(EXT_SUBDIRS); do $(MAKE) -C $$x clean; done
@@ -122,6 +139,8 @@ ext_test: $(addsuffix /test, $(EXT_SUBDIRS_LIB))
 %/test: % mklibdir
 	$(MAKE) -C $< test
 
+
+.PHONY: cudavalgrind valgrind depend ext_depend
 cudavalgrind:
 	-for x in $(CUDAMEMTESTDIR); do $(MAKE) -C $$x valgrind || { echo "valgrind on $$x failed"; exit 1; }; done
 
@@ -133,67 +152,94 @@ base/.depend.mk:
 
 depend: $(addsuffix /depend, $(SUBDIRS))
 
+ext_depend: check_portaudio $(addsuffix /depend, $(EXT_SUBDIRS))
+
 %/depend:
 	$(MAKE) -C $(dir $@) depend
-
-
-ext_depend: check_portaudio
-	-for x in $(EXT_SUBDIRS); do $(MAKE) -C $$x depend; done
 
 # 'make libs' to skip binaries, and build only libraries.
 .PHONY: libs $(SUBDIRS_LIB)
 libs: $(SUBDIRS_LIB) ;
-$(SUBDIRS_LIB) : checkversion kaldi.mk mklibdir
+$(SUBDIRS_LIB) : checkversion mklibdir
 	$(MAKE) -C $@
 
 .PHONY: bins $(SUBDIRS_BIN) libs
-$(SUBDIRS_BIN) : checkversion kaldi.mk mklibdir
+$(SUBDIRS_BIN) : checkversion mklibdir
 	$(MAKE) -C $@
 
 .PHONY: $(EXT_SUBDIRS)
-$(EXT_SUBDIRS) : checkversion kaldi.mk mklibdir ext_depend
+$(EXT_SUBDIRS) : checkversion mklibdir ext_depend
 	$(MAKE) -C $@
 
-### Dependency list ###
-# Three base libraries that mostly everything depends on
-BMU = base matrix util
+########################################################################
+### Dependency list
 
-# this is necessary for correct parallel compilation
-#1) The tools depend on all the libraries (which is a nonsense)
-bin chainbin featbin fgmmbin fstbin gmmbin ivectorbin \
-    kwsbin latbin lmbin nnet2bin nnet3bin nnetbin online2bin rnnlmbin : \
- $(BMU) chain cudamatrix decoder feat fstext gmm hmm ivector \
-        kws lat lm nnet nnet2 nnet3 online2 rnnlm transform tree
+# 1) Binaries. A bin's main lib is listed first, extra space, then the rest of
+#    dependencies in lexicographic order.
+#    Exceptions: fgmmbin's main lib is gmm; bin does not have one.
+bin:        decoder  fstext gmm hmm lat lm transform tree
+chainbin:   chain  nnet3
+featbin:    feat  hmm
+fgmmbin:    gmm  decoder feat hmm lat transform
+fstbin:     fstext  decoder
+gmmbin:     gmm  decoder feat fstext hmm lat transform
+ivectorbin: ivector  hmm
+kwsbin:     kws
+latbin:     lat  cudamatrix fstext lm nnet3 rnnlm
+lmbin:      lm
+nnet2bin:   nnet2  decoder lat nnet fstext
+nnet3bin:   nnet3
+nnetbin:    nnet  hmm lat
+rnnlmbin:   rnnlm  decoder fstext lat tree
 
-#2) The libraries have inter-dependencies
+# 2.  The library inter-dependencies.
+# 2a. Low-level libs. Normally these are those which do not have a corresponding
+#     LIBNAMEbin/ directory, but this is not universal. These 5 libraries are
+#     guaranteed to have the following unbroken chain of dependencies:
+#          { cudamatrix | tree } > util > matrix > base.
+
 base:   base/.depend.mk
 matrix: base
-util:   base matrix
-feat:      $(BMU) gmm transform tree
-tree:      $(BMU)
-gmm:       $(BMU) tree
-transform: $(BMU) gmm tree
-sgmm2:     $(BMU) gmm hmm transform tree
-fstext:    $(BMU) tree
-hmm:       $(BMU) tree
-lm:        $(BMU) fstext
-decoder:   $(BMU) fstext gmm hmm lat transform tree
-lat:       $(BMU) hmm tree
-cudamatrix: $(BMU)
-nnet:      $(BMU) cudamatrix hmm tree
-nnet2:     $(BMU) cudamatrix gmm hmm lat transform tree
-nnet3:     $(BMU) chain cudamatrix decoder fstext gmm hmm lat transform tree
-rnnlm:     $(BMU) cudamatrix hmm lm nnet3
-chain:     $(BMU) cudamatrix fstext hmm lat tree
-ivector:   $(BMU) gmm transform tree
-#3) Dependencies for optional parts of Kaldi
-onlinebin: $(BMU) cudamatrix decoder feat fstext gmm hmm lat lm nnet nnet2 online sgmm2 transform tree
-# python-kaldi-decoding: $(BMU) decoder feat fstext gmm hmm lat online sgmm2 transform tree
-online:    $(BMU) decoder feat gmm hmm lat transform tree
-online2:   $(BMU) chain cudamatrix decoder feat gmm hmm ivector lat nnet2 nnet3 transform tree
-kws:       $(BMU) hmm lat tree
+util:   matrix
+cudamatrix tree: util
+
+# 2b. Higher-level libs.
+#     All libraries must depend on the "big three": base, matrix, util.
+#     Dependency on cudamatrix, tree, or util transitively creates a dependency
+#     on matrix and base, so either of these three is both enough and necessary.
+#
+#     Relying on other implicit dependencies is *discouraged*: for example,
+#     if you depend on tree and gmm, do *not* use gmm alone as a proxy to
+#     create the common dependencies listed above, but rather explicitly list
+#     both gmm and tree. Otherwise, you are risking breaking a long chain of
+#     dependencies by removing an unused one.
+feat:      gmm transform tree
+gmm:       tree
+transform: gmm tree
+fstext:    tree
+hmm:       tree
+kws:       hmm lat tree
+lm:        fstext util
+decoder:   fstext gmm hmm lat transform tree
+lat:       hmm tree
+nnet:      cudamatrix hmm tree
+nnet2:     cudamatrix gmm hmm lat transform tree
+nnet3:     chain cudamatrix decoder fstext gmm hmm lat transform tree
+rnnlm:     cudamatrix hmm lm nnet3
+chain:     cudamatrix fstext hmm lat tree
+ivector:   gmm transform tree
+
+#3) Dependencies for optional parts of Kaldi.
+onlinebin: online
+online:    cudamatrix decoder feat fstext gmm hmm lat lm nnet nnet2 online sgmm2 transform tree
+online2bin: online2 fstext
+online2:   chain cudamatrix decoder feat gmm hmm ivector lat nnet2 nnet3 transform tree
+# python-kaldi-decoding: decoder feat fstext gmm hmm lat online sgmm2 transform tree
+sgmm2bin:  sgmm2 decoder feat fstext hmm lat
+sgmm2:     gmm hmm transform tree
+
 #4) CUDA decoder library and binary dependencies.
-cudafeat:  $(BMU) cudamatrix feat gmm online2 transform tree
-cudafeatbin: cudafeat
-cudadecoder: chain cudafeat cudamatrix feat fstext ivector lat nnet3 online2 transform
-cudadecoderbin: cudadecoder cudafeat
+cudafeat:  cudamatrix feat gmm ivector online2
+cudafeatbin: cudafeat decoder hmm transform tree
+cudadecoder: cudafeat cudamatrix fstext gmm hmm lat matrix nnet3 online2 transform tree util
+cudadecoderbin: cudadecoder chain decoder feat ivector nnet2
