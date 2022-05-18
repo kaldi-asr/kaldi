@@ -108,6 +108,11 @@ void LatticeIncrementalDecoderTpl<FST, Token>::UpdateLatticeDeterminization() {
       best_frame = t;
     }
   }
+  /* Skip this update if we have too many tokens, determinization will take too long,
+     postpone it to the next update */
+  if (fewest_tokens > config_.determinize_max_active)
+      return;
+
   /* OK, determinize the chunk that spans from num_frames_in_lattice_ to
      best_frame. */
   bool use_final_probs = false;
