@@ -6,6 +6,7 @@
 
 set -e
 stage=0
+generate_alignments=true
 aug_list="reverb music noise babble clean"  #clean refers to the original train dir
 use_ivectors=true
 num_reverb_copies=1
