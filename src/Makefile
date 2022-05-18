@@ -19,7 +19,7 @@ SUBDIRS := base bin chain chainbin cudamatrix decoder		\
 # (default 'true' if CUDA is used, else 'false')
 CUDADECODER = cudafeat cudafeatbin cudadecoder cudadecoderbin
 
-MEMTESTDIRS = $(filter-out chainbin cudamatrix rnnlmbin $(SUBDIRS))
+MEMTESTDIRS = $(filter-out chainbin cudamatrix rnnlmbin, $(SUBDIRS))
 CUDAMEMTESTDIR = cudamatrix
 
 # Optional subdirectories
