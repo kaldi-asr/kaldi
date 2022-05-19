@@ -61,7 +61,7 @@ ifneq ($(KALDILIBDIR), )
 	-rmdir 2>/dev/null $(KALDILIBDIR); true
 else
 # KALDILIBDIR might have been unset because of reconfigure. Do a best guess.
- 	@echo "Something seems wrong. Please re-run configure."
+	@echo "Something seems wrong. Please re-run configure."
 	@echo "I will continue but the cleanup might not be complete."
 endif
 
