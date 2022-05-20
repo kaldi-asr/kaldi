@@ -110,7 +110,7 @@ steps/align_fmllr.sh --cmd "$train_cmd" --nj 10 \
 
 # Train the third triphone pass model tri4a on LDA+MLLT+SAT features.
 # From now on, we start building a more serious system with Speaker
-# Adaptive Training (SAT).```
+# Adaptive Training (SAT).
 steps/train_sat.sh --cmd "$train_cmd" \
   2500 20000 data/train data/lang exp/tri3a_ali exp/tri4a || exit 1;
 
