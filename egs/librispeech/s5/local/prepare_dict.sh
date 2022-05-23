@@ -72,10 +72,15 @@ if [ $stage -le 1 ]; then
   auto_lexicon_prefix="$g2p_dir/lexicon_autogen"
 
   mkdir -p $g2p_dir/log
-  auto_vocab_splits=$(eval "echo $auto_vocab_prefix.{$(seq -s',' $nj | sed 's/,$//')}")
-  awk 'NR==FNR{a[$1] = 1; next} !($1 in a)' $cmudict_plain $vocab |\
-    sort | tee $g2p_dir/vocab_autogen.full |\
-    utils/split_scp.pl /dev/stdin $auto_vocab_splits || exit 1
+  if [ ! $nj -eq 1 ];
+    then
+      auto_vocab_splits=$(eval "echo $auto_vocab_prefix.{$(seq -s',' $nj | sed 's/,$//')}") #Create the list of files to split  
+    else
+      auto_vocab_splits="$g2p_dir/vocab_autogen.1" #If nj is 1, use vocab_autogen.1 instead of .{1}
+    fi
+  awk 'NR==FNR{a[$1] = 1; next} !($1 in a)' $cmudict_plain $vocab  |\
+  sort | tee $g2p_dir/vocab_autogen.full |\
+  utils/split_scp.pl /dev/stdin $auto_vocab_splits || exit 1
   echo "Autogenerating pronunciations for the words in $auto_vocab_prefix.* ..."
   $cmd JOB=1:$nj $g2p_dir/log/g2p.JOB.log \
     local/g2p.sh  $auto_vocab_prefix.JOB $g2p_model_dir $auto_lexicon_prefix.JOB || exit 1
