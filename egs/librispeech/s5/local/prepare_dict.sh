@@ -77,7 +77,7 @@ if [ $stage -le 1 ]; then
   else
     auto_vocab_splits=$(eval "echo $auto_vocab_prefix.{$(seq -s',' $nj | sed 's/,$//')}") #Create the list of files to split
   fi
-  awk 'NR==FNR{a[$1] = 1; next} !($1 in a)' $cmudict_plain $vocab  |\
+  awk 'NR==FNR{a[$1] = 1; next} !($1 in a)' $cmudict_plain $vocab |\
     sort | tee $g2p_dir/vocab_autogen.full |\
     utils/split_scp.pl /dev/stdin $auto_vocab_splits || exit 1
   echo "Autogenerating pronunciations for the words in $auto_vocab_prefix.* ..."
