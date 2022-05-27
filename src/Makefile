@@ -188,7 +188,7 @@ kwsbin:     kws
 latbin:     lat  cudamatrix fstext lm nnet3 rnnlm
 lmbin:      lm
 nnet2bin:   nnet2  decoder lat nnet fstext
-nnet3bin:   nnet3
+nnet3bin:   nnet3 online2
 nnetbin:    nnet  hmm lat
 rnnlmbin:   rnnlm  decoder fstext lat tree
 
