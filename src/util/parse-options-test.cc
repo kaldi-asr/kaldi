@@ -293,6 +293,20 @@ void UnitTestParseOptions() {
   po6.Read(argc6, argv6);
   KALDI_ASSERT(po6.NumArgs() == 1);
   KALDI_ASSERT(po6.GetArg(1) == "--foo=8");
+
+  // test that a second registration is ignored
+  int argc7 = 2;
+  const char *const argv7[] = {"program_name", "--i=8"};
+  ParseOptions po7("my usage msg");
+
+  int i7 = 10, k7 = 20;
+  po7.Register("i", &i7, "My int32 variable");
+  po7.Register("i", &k7, "My int32 variable");
+
+  po7.Read(argc7, argv7);
+
+  KALDI_ASSERT(i7 == 8);
+  KALDI_ASSERT(k7 == 20);
 }
 
 
@@ -303,5 +317,3 @@ int main() {
   UnitTestParseOptions();
   return 0;
 }
-
-
