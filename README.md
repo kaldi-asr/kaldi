@@ -1,5 +1,12 @@
-[![Build Status](https://travis-ci.com/kaldi-asr/kaldi.svg?branch=master)](https://travis-ci.com/kaldi-asr/kaldi)
-[![Gitpod Ready-to-Code](https://img.shields.io/badge/Gitpod-Ready--to--Code-blue?logo=gitpod)](https://gitpod.io/#https://github.com/kaldi-asr/kaldi) 
+# What is SYSCOM?
+
+SYSCOM is a Speech To Text tool Powered by Kaldi.
+
+SYSCOM vision's to be used in embedded systems by the use of low-powered devices.
+
+well of course since it's a Speech to Text tool. It will rely on various hurdles.
+
+
 Kaldi Speech Recognition Toolkit
 ================================
 
