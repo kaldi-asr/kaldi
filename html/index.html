@@ -8,27 +8,37 @@
     <link rel="script" href="source/script.js">
   </head>
   <body>
-      <!--color pallete 1st:Black 2nd:White Accent:Orange-->
+      <!--color pallete 1st:White 2nd:Black Accent:Orange-->
     <table>
       <tr>
+        <td><img src="source/images/icon.png" alt="kaldi" class="kaldi_icon">
+        </td>
         <th><h1 style="font-size:64px;">Kaldi</h1></th>
         <td>Open Source Speech Recognition</td>
         <td></td>
         <td>
-        <button type="button" name="Download">Download</button>
-        <button type="button" name="Github">Source</button>
-        <button type="button" name="Contact">E-mail us!</button></td>
+          <button type="button" onclick="iframeDownload(true)" name="Download">Download</button>
+          <script type="text/javascript">
+              function iframeDownload(state) {
+                state=false
+                if (state = true) {
+                  getElementById('#webview')
+                }
+              }
+              function () {
+
+              }
+          </script>
       </tr>
       <tr>
         <td></td>
         <td>
-          Kaldi is Available to all major platforms such as Windows <br>
-          Linux, And MacOS. it's written in C so you don't have to worry <br>
+          It's written in C so you don't have to worry <br>
           for the performance issues.
         </td>
         <td></td>
         <td>
-          <iframe id="webview" src="" width="512" height="640"></iframe>
+          <iframe id="webview" src="" width="512" height="640" class="MultiFrame"></iframe>
         </td>
       </tr>
     </table>

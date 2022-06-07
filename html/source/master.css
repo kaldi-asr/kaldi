@@ -1,5 +1,20 @@
 body {
-  background-color: black;
-  color: orange;
+  background-color: white;
+  color: Black;
   font-family: sans-serif;
+}
+.kaldi_icon {
+  width: 120px;
+  height: 120px;
+  border: 3px solid orange;
+  border-radius: 15px;
+}
+.MultiFrame {
+  border-radius: 16px;
+  border: 3px solid orange;
+}
+table {
+  align-items: center;
+  align-self: center;
+  padding: 20px
 }
