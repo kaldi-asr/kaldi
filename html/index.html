@@ -18,12 +18,11 @@
         <td></td>
         <td>
           <button type="button" onclick="iframeDownload(true)" name="Download">Download</button>
+          <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.1/jquery.min.js"></script>
           <script type="text/javascript">
               function iframeDownload(state) {
-                state=false
-                if (state = true) {
-                  getElementById('#webview')
-                }
+                var iframe = $("#forPostyouradd");
+                iframe.attr("src", iframe.data("source/html/download.html"));
               }
               function () {
 
