@@ -53,7 +53,7 @@
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Console</SubSystem>
       <AdditionalLibraryDirectories>c:\Program Files\Intel\MKL\10.2.5.035\ia32\lib;</AdditionalLibraryDirectories>
-      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;libguide.lib;libguide40.lib;libiomp5md.lib;libiomp5mt.lib;mkl_blacs_intelmpi.lib;mkl_blacs_mpich2.lib;mkl_blas95.lib;mkl_cdft_core.lib;mkl_core.lib;mkl_intel_c.lib;mkl_intel_s.lib;mkl_intel_thread.lib;mkl_lapack95.lib;mkl_pgi_thread.lib;mkl_scalapack_core.lib;mkl_sequential.lib;mkl_solver.lib;mkl_solver_sequential.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;libguide.lib;libguide40.lib;libiomp5md.lib;libiomp5mt.lib;mkl_blacs_intelmpi.lib;mkl_blacs_mpich2.lib;mkl_blas95.lib;mkl_cdft_core.lib;mkl_core.lib;mkl_intel_s.lib;mkl_intel_thread.lib;mkl_lapack95.lib;mkl_pgi_thread.lib;mkl_scalapack_core.lib;mkl_sequential.lib;mkl_solver.lib;mkl_solver_sequential.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
