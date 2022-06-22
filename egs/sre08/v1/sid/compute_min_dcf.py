@@ -53,40 +53,40 @@ def CheckArgs(args):
 # and a list of decision thresholds that give those error-rates.
 def ComputeErrorRates(scores, labels):
 
-      # Sort the scores from smallest to largest, and also get the corresponding
-      # indexes of the sorted scores.  We will treat the sorted scores as the
-      # thresholds at which the the error-rates are evaluated.
-      sorted_indexes, thresholds = zip(*sorted(
-          [(index, threshold) for index, threshold in enumerate(scores)],
-          key=itemgetter(1)))
-      sorted_labels = []
-      labels = [labels[i] for i in sorted_indexes]
-      fnrs = []
-      fprs = []
+    # Sort the scores from smallest to largest, and also get the corresponding
+    # indexes of the sorted scores.  We will treat the sorted scores as the
+    # thresholds at which the the error-rates are evaluated.
+    sorted_indexes, thresholds = zip(*sorted(
+        [(index, threshold) for index, threshold in enumerate(scores)],
+        key=itemgetter(1)))
+    labels = [labels[i] for i in sorted_indexes]
+    fns = []
+    tns = []
 
-      # At the end of this loop, fnrs[i] is the number of errors made by
-      # incorrectly rejecting scores less than thresholds[i]. And, fprs[i]
-      # is the total number of times that we have correctly accepted scores
-      # greater than thresholds[i].
-      for i in range(0, len(labels)):
-          if i == 0:
-              fnrs.append(labels[i])
-              fprs.append(1 - labels[i])
-          else:
-              fnrs.append(fnrs[i-1] + labels[i])
-              fprs.append(fprs[i-1] + 1 - labels[i])
-      fnrs_norm = sum(labels)
-      fprs_norm = len(labels) - fnrs_norm
+    # At the end of this loop, fns[i] is the number of errors made by
+    # incorrectly rejecting scores less than thresholds[i]. And, tns[i]
+    # is the total number of times that we have correctly rejected scores
+    # less than thresholds[i].
+    for i in range(0, len(labels)):
+        if i == 0:
+            fns.append(labels[i])
+            tns.append(1 - labels[i])
+        else:
+            fns.append(fns[i-1] + labels[i])
+            tns.append(tns[i-1] + 1 - labels[i])
+    positives = sum(labels)
+    negatives = len(labels) - positives
 
-      # Now divide by the total number of false negative errors to
-      # obtain the false positive rates across all thresholds
-      fnrs = [x / float(fnrs_norm) for x in fnrs]
+    # Now divide the false negatives by the total number of 
+    # positives to obtain the false negative rates across
+    # all thresholds
+    fnrs = [fn / float(positives) for fn in fns]
 
-      # Divide by the total number of corret positives to get the
-      # true positive rate.  Subtract these quantities from 1 to
-      # get the false positive rates.
-      fprs = [1 - x / float(fprs_norm) for x in fprs]
-      return fnrs, fprs, thresholds
+    # Divide the true negatives by the total number of 
+    # negatives to get the true negative rate. Subtract these 
+    # quantities from 1 to get the false positive rates.
+    fprs = [1 - tn / float(negatives) for tn in tns]
+    return fnrs, fprs, thresholds
 
 # Computes the minimum of the detection cost function.  The comments refer to
 # equations in Section 3 of the NIST 2016 Speaker Recognition Evaluation Plan.
