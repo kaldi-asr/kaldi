@@ -154,7 +154,8 @@ if [ $stage -le 3 ]; then
       exit 0
     fi
     # Perform segmentation
-    local/segmentation/detect_speech_activity.sh --nj $nj --stage $sad_stage \
+    local/segmentation/detect_speech_activity.sh --nj $nj \
+      --cmd "$train_cmd" --stage $sad_stage \
       $test_set $sad_nnet_dir mfcc $sad_work_dir \
       data/${datadir} || exit 1
 
