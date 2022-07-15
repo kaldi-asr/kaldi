@@ -261,6 +261,10 @@ if [ $stage -le 15 ]; then
     --train-set ${train_set}_cleaned \
     --test-sets "$test_sets" \
     --gmm tri3_cleaned --nnet3-affix _${train_set}_cleaned_rvb
+    
+  # Pretrained model
+  # wget http://kaldi-asr.org/models/12/0012_asr_v1.tar.gz
+  # tar -xvzf 0012_asr_v1.tar.gz --strip-components=1 0012_asr_v1/exp
 fi
 
 ##########################################################################
@@ -275,6 +279,10 @@ if [ $stage -le 16 ]; then
     --data-dir data/${sad_train_set} --test-sets "${test_sets}" \
     --sat-model-dir exp/tri3_cleaned \
     --model-dir exp/tri2
+    
+  # Pretrained model
+  # wget http://kaldi-asr.org/models/12/0012_sad_v1.tar.gz
+  # tar -xvzf 0012_sad_v1.tar.gz --strip-components=1 0012_sad_v1/exp
 fi
 
 ##########################################################################
@@ -288,6 +296,10 @@ if [ $stage -le 17 ]; then
   local/train_diarizer.sh --stage $diarizer_stage \
     --data-dir data/${train_set} \
     --model-dir exp/xvector_nnet_1a
+  
+  # Pretrained model
+  # wget http://kaldi-asr.org/models/12/0012_diarization_v1.tar.gz
+  # tar -xvzf 0012_diarization_v1.tar.gz --strip-components=1 0012_diarization_v1/exp
 fi
 
 ##########################################################################
@@ -302,6 +314,12 @@ if [ $stage -le 18 ]; then
   local/train_ts-vad.sh --stage $ts_vad_stage \
     --nnet3-affix _${train_set}_cleaned_rvb \
     --basedata ${train_set}_cleaned_sp
+    
+  # Pretrained model
+  # ts_vad_name=ts-vad_1a.tar.gz
+  # ts_vad_link=https://github.com/yuri-hohlov/ts-vad-data/raw/master/${ts_vad_name}
+  # [ ! -f $ts_vad_name ] && wget -O $ts_vad_name $ts_vad_link
+  # [ ! -d $ts_vad_dir ] && tar -zxvf $ts_vad_name -C $(dirname $ts_vad_dir)
 fi
 
 ##########################################################################
