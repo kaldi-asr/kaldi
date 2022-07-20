@@ -140,7 +140,7 @@ scoring=$out/scoring
 hyp_rttm=$scoring/rttm
 if [ ! -f $scoring/.done ]; then
   if [ ! -f $hyp_rttm ]; then 
-    python local/ts-vad/convert_prob_to_rttm.py --threshold $thr --window $window --min_silence $min_silence --min_speech $min_speech ark:"sort $out/weights.ark |" $hyp_rttm || exit 1;
+    python3 local/ts-vad/convert_prob_to_rttm.py --threshold $thr --window $window --min_silence $min_silence --min_speech $min_speech ark:"sort $out/weights.ark |" $hyp_rttm || exit 1;
   fi
   echo "Diarization results for $test"
   [ ! -f $ref_rttm.scoring ] && sed 's/_U0[1-6]\.ENH//g' $ref_rttm > $ref_rttm.scoring
@@ -148,7 +148,7 @@ if [ ! -f $scoring/.done ]; then
   ref_rttm_path=$(readlink -f ${ref_rttm}.scoring)
   hyp_rttm_path=$(readlink -f ${hyp_rttm}.scoring)
   [ ! -f ./local/uem_file.scoring ] && cat ./local/uem_file | grep 'U06' | sed 's/_U0[1-6]//g' > ./local/uem_file.scoring
-  cd dscore && python score.py -u ../local/uem_file.scoring -r $ref_rttm_path \
+  cd dscore && python3 score.py -u ../local/uem_file.scoring -r $ref_rttm_path \
     -s $hyp_rttm_path 2>&1 | tee -a ../$scoring/DER && cd .. || exit 1;
   touch $scoring/.done
 fi
