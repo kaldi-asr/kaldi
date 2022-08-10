@@ -51,7 +51,7 @@ dropout_schedule='0,0@0.20,0.3@0.50,0'
 test_online_decoding=true  # if true, it will run the last decoding stage.
 
 # End configuration section.
-echo "$0 $@"  # Print the command line for logging
+echo "$0" "$@"  # Print the command line for logging
 
 . ./cmd.sh
 . ./path.sh

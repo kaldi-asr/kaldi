@@ -20,7 +20,7 @@ lang=
 lat_dir=
 tree_dir=
 # End configuration section.
-echo "$0 $@"  # Print the command line for logging
+echo "$0" "$@"  # Print the command line for logging
 
 . ./cmd.sh
 . ./path.sh
