@@ -6,7 +6,7 @@ train_text=
 dev_text=
 oov_symbol="<UNK>"
 
-echo "$0 $@"
+echo "$0" "$@"
 
 . ./utils/parse_options.sh || exit 1
 
