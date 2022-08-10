@@ -36,12 +36,12 @@ outlm=lm.gz
 
 
 ##End of configuration
-loc=`which ngram-count`;
+loc=$(which ngram-count);
 if [ -z $loc ]; then
   if uname -a | grep 64 >/dev/null; then # some kind of 64 bit...
-    sdir=`pwd`/../../../tools/srilm/bin/i686-m64
+    sdir=$PWD/../../../tools/srilm/bin/i686-m64
   else
-    sdir=`pwd`/../../../tools/srilm/bin/i686
+    sdir=$PWD/../../../tools/srilm/bin/i686
   fi
   if [ -f $sdir/ngram-count ]; then
     echo Using SRILM tools from $sdir
@@ -62,7 +62,7 @@ for f in $train_text $dev_text; do
 done
 
 if [ ! -z "$train_text" ] && [ -z "$dev_text" ] ; then
-  nr=`cat  $train_text | wc -l`
+  nr=$(cat  $train_text | wc -l)
   nr_dev=$(($nr / 10 ))
   nr_train=$(( $nr - $nr_dev ))
   orig_train_text=$train_text
@@ -105,7 +105,7 @@ if (($?)); then
   exit 1
 else
   # wc vocab # doesn't work due to some encoding issues
-  echo vocab contains `cat $tgtdir/vocab | perl -ne 'BEGIN{$l=$w=0;}{split; $w+=$#_; $w++; $l++;}END{print "$l lines, $w words\n";}'`
+  echo vocab contains $(cat $tgtdir/vocab | perl -ne 'BEGIN{$l=$w=0;}{split; $w+=$#_; $w++; $l++;}END{print "$l lines, $w words\n";}')
 fi
 
 # Kaldi transcript files contain Utterance_ID as the first word; remove it
@@ -116,8 +116,8 @@ if (($?)); then
 else
     echo "Removed first word (uid) from every line of $train_text"
     # wc text.train train.txt # doesn't work due to some encoding issues
-    echo $train_text contains `cat $train_text | perl -ane 'BEGIN{$w=$s=0;}{$w+=@F; $w--; $s++;}END{print "$w words, $s sentences\n";}'`
-    echo train.txt contains `cat $tgtdir/train.txt | perl -ane 'BEGIN{$w=$s=0;}{$w+=@F; $s++;}END{print "$w words, $s sentences\n";}'`
+    echo $train_text contains $(cat $train_text | perl -ane 'BEGIN{$w=$s=0;}{$w+=@F; $w--; $s++;}END{print "$w words, $s sentences\n";}')
+    echo train.txt contains $(cat $tgtdir/train.txt | perl -ane 'BEGIN{$w=$s=0;}{$w+=@F; $s++;}END{print "$w words, $s sentences\n";}')
 fi
 
 # Kaldi transcript files contain Utterance_ID as the first word; remove it
@@ -128,8 +128,8 @@ if (($?)); then
 else
     echo "Removed first word (uid) from every line of $dev_text"
     # wc text.train train.txt # doesn't work due to some encoding issues
-    echo $dev_text contains `cat $dev_text | perl -ane 'BEGIN{$w=$s=0;}{$w+=@F; $w--; $s++;}END{print "$w words, $s sentences\n";}'`
-    echo $tgtdir/dev.txt contains `cat $tgtdir/dev.txt | perl -ane 'BEGIN{$w=$s=0;}{$w+=@F;  $s++;}END{print "$w words, $s sentences\n";}'`
+    echo $dev_text contains $(cat $dev_text | perl -ane 'BEGIN{$w=$s=0;}{$w+=@F; $w--; $s++;}END{print "$w words, $s sentences\n";}')
+    echo $tgtdir/dev.txt contains $(cat $tgtdir/dev.txt | perl -ane 'BEGIN{$w=$s=0;}{$w+=@F;  $s++;}END{print "$w words, $s sentences\n";}')
 fi
 
 echo "-------------------"
@@ -246,17 +246,17 @@ echo "--------------------"
 echo "The perlexity scores report is stored in $tgtdir/perplexities.txt "
 
 #This will link the lowest perplexity LM as the output LM.
-#ln -sf $tgtdir/`head -n 1 $tgtdir/perplexities.txt | cut -f 1 -d ' '` $outlm
+#ln -sf $tgtdir/$(head -n 1 $tgtdir/perplexities.txt | cut -f 1 -d ' ') $outlm
 
 #A slight modification of the previous approach:
 #We look at the two lowest perplexity LMs and use a 3gram LM if one of the two, even if the 4gram is of lower ppl
-nof_trigram_lm=`head -n 2 $tgtdir/perplexities.txt | grep 3gram | wc -l`
+nof_trigram_lm=$(head -n 2 $tgtdir/perplexities.txt | grep 3gram | wc -l)
 if [[ $nof_trigram_lm -eq 0 ]] ; then
-  lmfilename=`head -n 1 $tgtdir/perplexities.txt | cut -f 1 -d ' '`
+  lmfilename=$(head -n 1 $tgtdir/perplexities.txt | cut -f 1 -d ' ')
 elif [[ $nof_trigram_lm -eq 2 ]] ; then
-  lmfilename=`head -n 1 $tgtdir/perplexities.txt | cut -f 1 -d ' '`
+  lmfilename=$(head -n 1 $tgtdir/perplexities.txt | cut -f 1 -d ' ')
 else  #exactly one 3gram LM
-  lmfilename=`head -n 2 $tgtdir/perplexities.txt | grep 3gram | cut -f 1 -d ' '`
+  lmfilename=$(head -n 2 $tgtdir/perplexities.txt | grep 3gram | cut -f 1 -d ' ')
 fi
-(cd $tgtdir; ln -sf `basename $lmfilename` $outlm )
+(cd $tgtdir; ln -sf $(basename $lmfilename) $outlm )
 
