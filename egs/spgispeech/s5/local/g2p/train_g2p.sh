@@ -32,7 +32,8 @@ if [ $stage -le 2 ]; then
     perl -ane 'if(!m:^;;;:){ s:(\S+)\(\d+\) :$1 :; print; }' \
     > $cmudict_plain || exit 1;
   echo "Removing special pronunciations(not helpful for G2P modelling)..."
-  egrep -v '^[^A-Z]' $cmudict_plain >$cmudict_clean
+  #egrep -v '^[^A-Z]' $cmudict_plain >$cmudict_clean
+  grep -E  -v '^[^A-Z]' $cmudict_plain >$cmudict_clean
 fi
 
 model_1=$g2p_dir/model-1
