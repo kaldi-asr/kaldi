@@ -15,10 +15,10 @@ if [ $stage -le 1 ] ; then
 fi
 
 if [ $stage -le 2 ] ; then
-  lhotse kaldi export spgispeech_recordings_val.jsonl.gz spgispeech_supervisions_val.jsonl.gz  ./val
+  lhotse kaldi export spgispeech_recordings_val.jsonl.gz spgispeech_supervisions_val.jsonl.gz  data/val
   utils/fix_data_dir.sh data/val
   utils/validate_data_dir.sh --no-feats data/val
-  lhotse kaldi export spgispeech_recordings_train.jsonl.gz spgispeech_supervisions_train.jsonl.gz  ./train
+  lhotse kaldi export spgispeech_recordings_train.jsonl.gz spgispeech_supervisions_train.jsonl.gz  data/train
   utils/fix_data_dir.sh data/train
   utils/validate_data_dir.sh --no-feats data/train
 fi

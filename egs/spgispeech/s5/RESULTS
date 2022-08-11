@@ -39,17 +39,17 @@ data/srilm/2gram.gt02.gz    file  data/srilm/dev.txt:  196610  sentences,  47260
 #
 
 # Bare TDNN-F model
-#for x in exp/chain_cleaned/tdnn_1d_sp/decode_*; do grep WER $x/wer_* | utils/best_wer.sh ; done
-%WER 5.96 [ 56419 / 946469, 11482 ins, 9916 del, 35021 sub ] exp/chain_cleaned/tdnn_1d_sp/decode_val_rescored/wer_10_0.5
-%WER 6.30 [ 59597 / 946469, 14063 ins, 8943 del, 36591 sub ] exp/chain_cleaned/tdnn_1d_sp/decode_val_tgsmall/wer_11_0.0
-#for x in exp/chain_cleaned/tdnn_1d_sp_online/decode_*; do grep WER $x/wer_* | utils/best_wer.sh ; done
-%WER 5.97 [ 56463 / 946469, 11537 ins, 9884 del, 35042 sub ] exp/chain_cleaned/tdnn_1d_sp_online/decode_val_rescored/wer_10_0.5
-%WER 6.30 [ 59616 / 946469, 12326 ins, 10792 del, 36498 sub ] exp/chain_cleaned/tdnn_1d_sp_online/decode_val_tgsmall/wer_11_0.5
+#for x in exp/chain_cleaned/tdnn_1a_sp/decode_*; do grep WER $x/wer_* | utils/best_wer.sh ; done
+%WER 5.96 [ 56419 / 946469, 11482 ins, 9916 del, 35021 sub ] exp/chain_cleaned/tdnn_1a_sp/decode_val_rescored/wer_10_0.5
+%WER 6.30 [ 59597 / 946469, 14063 ins, 8943 del, 36591 sub ] exp/chain_cleaned/tdnn_1a_sp/decode_val_tgsmall/wer_11_0.0
+#for x in exp/chain_cleaned/tdnn_1a_sp_online/decode_*; do grep WER $x/wer_* | utils/best_wer.sh ; done
+%WER 5.97 [ 56463 / 946469, 11537 ins, 9884 del, 35042 sub ] exp/chain_cleaned/tdnn_1a_sp_online/decode_val_rescored/wer_10_0.5
+%WER 6.30 [ 59616 / 946469, 12326 ins, 10792 del, 36498 sub ] exp/chain_cleaned/tdnn_1a_sp_online/decode_val_tgsmall/wer_11_0.5
 
 #TDNN+LSTM model
-# for x in exp/chain_cleaned/tdnn_lstm_1d_sp/decode_*; do grep WER $x/wer_* | utils/best_wer.sh ; done
-%WER 5.79 [ 54844 / 946469, 9971 ins, 10397 del, 34476 sub ] exp/chain_cleaned/tdnn_lstm_1d_sp/decode_val_rescored/wer_9_0.5
-%WER 6.04 [ 57165 / 946469, 10304 ins, 11651 del, 35210 sub ] exp/chain_cleaned/tdnn_lstm_1d_sp/decode_val_tgsmall/wer_10_0.5
-# for x in exp/chain_cleaned/tdnn_lstm_1d_sp_online/decode_*; do grep WER $x/wer_* | utils/best_wer.sh ; done
-%WER 5.60 [ 53036 / 946469, 10812 ins, 8601 del, 33623 sub ] exp/chain_cleaned/tdnn_lstm_1d_sp_online/decode_val_rescored/wer_10_0.0
-%WER 5.84 [ 55282 / 946469, 9973 ins, 10879 del, 34430 sub ] exp/chain_cleaned/tdnn_lstm_1d_sp_online/decode_val_tgsmall/wer_11_0.5
+# for x in exp/chain_cleaned/tdnn_lstm_1a_sp/decode_*; do grep WER $x/wer_* | utils/best_wer.sh ; done
+%WER 5.79 [ 54844 / 946469, 9971 ins, 10397 del, 34476 sub ] exp/chain_cleaned/tdnn_lstm_1a_sp/decode_val_rescored/wer_9_0.5
+%WER 6.04 [ 57165 / 946469, 10304 ins, 11651 del, 35210 sub ] exp/chain_cleaned/tdnn_lstm_1a_sp/decode_val_tgsmall/wer_10_0.5
+# for x in exp/chain_cleaned/tdnn_lstm_1a_sp_online/decode_*; do grep WER $x/wer_* | utils/best_wer.sh ; done
+%WER 5.60 [ 53036 / 946469, 10812 ins, 8601 del, 33623 sub ] exp/chain_cleaned/tdnn_lstm_1a_sp_online/decode_val_rescored/wer_10_0.0
+%WER 5.84 [ 55282 / 946469, 9973 ins, 10879 del, 34430 sub ] exp/chain_cleaned/tdnn_lstm_1a_sp_online/decode_val_tgsmall/wer_11_0.5

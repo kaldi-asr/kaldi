@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-# this script has common stages shared across librispeech chain recipes.
+# this script has common stages shared across spgispeech chain recipes.
 # It generates a new topology in a new lang directory, gets the alignments as
 # lattices, and builds a tree for the new topology
 set -e

@@ -219,7 +219,6 @@ if [ $stage -le 17 ]; then
   rm $dir/.error 2>/dev/null || true
   for decode_set in val ; do
       (
-      decode_nj=256
       steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
           --nj $decode_nj --cmd "$decode_cmd" $iter_opts \
           --extra-left-context $extra_left_context \
@@ -240,7 +239,7 @@ if [ $stage -le 17 ]; then
     exit 1
   fi
 fi
-exit
+
 if $test_online_decoding && [ $stage -le 18 ]; then
   # note: if the features change (e.g. you add pitch features), you will have to
   # change the options of the following command line.
@@ -252,12 +251,11 @@ if $test_online_decoding && [ $stage -le 18 ]; then
   rm $dir/.error 2>/dev/null || true
   for data in val; do
     (
-      nspk=256
       # note: we just give it "data/${data}" as it only uses the wav.scp, the
       # feature type does not matter.
       steps/online/nnet3/decode.sh \
           --acwt 1.0 --post-decode-acwt 10.0 \
-          --nj $nspk --cmd "$decode_cmd" \
+          --nj $decode_nj --cmd "$decode_cmd" \
           --extra-left-context-initial 0 \
           --frames-per-chunk "$frames_per_chunk_primary" \
           $graph_dir data/${data} ${dir}_online/decode_${data}_tgsmall || exit 1
