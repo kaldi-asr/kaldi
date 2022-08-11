@@ -76,8 +76,8 @@ if [ ! -z "$train_text" ] && [ -z "$dev_text" ] ; then
 elif [ ! -z "$train_text" ] && [ ! -z "$dev_text" ] ; then
   echo "Using train text: $train_text"
   echo "Using dev text  : $dev_text"
-  train_text=$train_text
-  dev_text=$dev_text
+  #train_text=$train_text
+  #dev_text=$dev_text
 else
   train_text=$datadir/train/text
   dev_text=$datadir/dev2h/text
@@ -100,6 +100,7 @@ done
 
 # Extract the word list from the training dictionary; exclude special symbols
 sort $words_file | awk '{print $1}' | grep -v '\#0' | grep -v '<eps>' | grep -v -F "$oov_symbol" > $tgtdir/vocab
+# shellcheck disable=SC2181
 if (($?)); then
   echo "Failed to create vocab from $words_file"
   exit 1
@@ -110,6 +111,7 @@ fi
 
 # Kaldi transcript files contain Utterance_ID as the first word; remove it
 cat $train_text | cut -f2- -d' ' > $tgtdir/train.txt
+# shellcheck disable=SC2181
 if (($?)); then
     echo "Failed to create $tgtdir/train.txt from $train_text"
     exit 1
@@ -122,6 +124,7 @@ fi
 
 # Kaldi transcript files contain Utterance_ID as the first word; remove it
 cat $dev_text | cut -f2- -d' ' > $tgtdir/dev.txt
+# shellcheck disable=SC2181
 if (($?)); then
     echo "Failed to create $tgtdir/dev.txt from $dev_text"
     exit 1

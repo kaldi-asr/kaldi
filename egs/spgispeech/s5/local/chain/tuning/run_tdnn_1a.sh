@@ -199,6 +199,7 @@ fi
 
 if [ $stage -le 17 ]; then
   rm $dir/.error 2>/dev/null || true
+  # shellcheck disable=SC2043
   for decode_set in val ; do
       (
       steps/nnet3/decode.sh --acwt 1.0 --post-decode-acwt 10.0 \
@@ -226,6 +227,7 @@ if $test_online_decoding && [ $stage -le 18 ]; then
 
 
   rm $dir/.error 2>/dev/null || true
+  # shellcheck disable=SC2043
   for data in val; do
     (
       # note: we just give it "data/${data}" as it only uses the wav.scp, the
