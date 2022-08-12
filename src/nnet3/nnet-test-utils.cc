@@ -21,6 +21,7 @@
 
 #include <iterator>
 #include <sstream>
+#include <random>
 #include "nnet3/nnet-test-utils.h"
 #include "nnet3/nnet-utils.h"
 
@@ -1402,6 +1403,7 @@ static void GenerateRandomComponentConfig(std::string *component_type,
 
   int32 n = RandInt(0, 37);
   BaseFloat learning_rate = 0.001 * RandInt(1, 100);
+  std::random_device rd;
 
   std::ostringstream os;
   switch(n) {
@@ -1561,7 +1563,10 @@ static void GenerateRandomComponentConfig(std::string *component_type,
       std::vector<int32> column_map(input_dim);
       for (int32 i = 0; i < input_dim; i++)
         column_map[i] = i;
-      std::random_shuffle(column_map.begin(), column_map.end());
+
+      std::mt19937 g(rd());
+      std::shuffle(column_map.begin(), column_map.end(), g);
+
       std::ostringstream buffer;
       for (int32 i = 0; i < input_dim-1; i++)
         buffer << column_map[i] << ",";
