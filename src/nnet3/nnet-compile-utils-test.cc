@@ -23,7 +23,7 @@
 namespace kaldi {
 namespace nnet3 {
 
-struct ComparePair : public std::unary_function<std::pair<int32, int32>, bool>
+struct ComparePair
 {
   explicit ComparePair(const std::pair<int32, int32> &correct_pair):
   correct_pair_(correct_pair) {}
@@ -33,8 +33,7 @@ struct ComparePair : public std::unary_function<std::pair<int32, int32>, bool>
   std::pair<int32, int32> correct_pair_;
 };
 
-struct PairIsEqualComparator  :
-    public std::unary_function<std::pair<int32, int32>, bool>
+struct PairIsEqualComparator
 {
   explicit PairIsEqualComparator(const std::pair<int32, int32> pair):
       pair_(pair) {}
