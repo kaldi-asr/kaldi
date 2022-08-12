@@ -21,6 +21,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "nnet3/nnet-example.h"
+#include <random>
 
 int main(int argc, char *argv[]) {
   try {
@@ -37,7 +38,7 @@ int main(int argc, char *argv[]) {
         "\n"
         "e.g.\n"
         "nnet3-copy-egs [args] ark:egs.1.ark ark:- | nnet-subset-egs --n=1000 ark:- ark:subset.egs\n";
-    
+
     int32 srand_seed = 0;
     int32 n = 1000;
     bool randomize_order = true;
@@ -46,11 +47,11 @@ int main(int argc, char *argv[]) {
     po.Register("n", &n, "Number of examples to output");
     po.Register("randomize-order", &randomize_order, "If true, randomize the order "
                 "of the output");
-    
+
     po.Read(argc, argv);
-    
-    srand(srand_seed);
-    
+
+    std::mt19937 g(srand_seed);
+
     if (po.NumArgs() != 2) {
       po.PrintUsage();
       exit(1);
@@ -61,7 +62,7 @@ int main(int argc, char *argv[]) {
 
     std::vector<std::pair<std::string, NnetExample> > egs;
     egs.reserve(n);
-    
+
     SequentialNnetExampleReader example_reader(examples_rspecifier);
 
     int64 num_read = 0;
@@ -81,16 +82,16 @@ int main(int argc, char *argv[]) {
       }
     }
     if (randomize_order)
-      std::random_shuffle(egs.begin(), egs.end());
+      std::shuffle(egs.begin(), egs.end(), g);
 
     NnetExampleWriter writer(examples_wspecifier);
     for (size_t i = 0; i < egs.size(); i++) {
       writer.Write(egs[i].first, egs[i].second);
     }
-    
+
     KALDI_LOG << "Selected a subset of " << egs.size() << " out of " << num_read
               << " neural-network training examples ";
-    
+
     return (num_read != 0 ? 0 : 1);
   } catch(const std::exception &e) {
     std::cerr << e.what() << '\n';

@@ -17,12 +17,13 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
+#include "base/kaldi-math.h"
+#include "rnnlm/sampler.h"
+#include "util/stl-utils.h"
 #include <algorithm>
 #include <numeric>
 #include <queue>
-#include "rnnlm/sampler.h"
-#include "base/kaldi-math.h"
-#include "util/stl-utils.h"
+#include <random>
 
 namespace kaldi {
 namespace rnnlm {
@@ -30,6 +31,8 @@ namespace rnnlm {
 
 void SampleWithoutReplacement(const std::vector<double> &probs,
                               std::vector<int32> *sample) {
+  std::random_device rd;
+  std::mt19937 g(rd());
 
   // This outer loop over 't' will *almost always* just run for t == 0.  The
   // loop is necessary only to handle a pathological case.
@@ -52,7 +55,7 @@ void SampleWithoutReplacement(const std::vector<double> &probs,
     // matter for most applications.
     std::vector<int32> order(n);
     for (int32 i = 0; i < n; i++) order[i] = i;
-    std::random_shuffle(order.begin(), order.end());
+    std::shuffle(order.begin(), order.end(), g);
 #endif
 
     double r = RandUniform();  // r <= 0 <= 1.
