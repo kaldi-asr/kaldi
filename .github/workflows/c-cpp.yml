@@ -14,7 +14,7 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: make tools
-      run: cd tool && make -j3
+      run: cd tools && make -j3
     - name: configure
       run: cd src && ./configure --shared
     - name: make depend
