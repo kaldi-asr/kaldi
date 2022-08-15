@@ -20,12 +20,12 @@ jobs:
       with:
         verbose: 1
     - name: make tools
-      run: cd tools && make -j3
+      run: cd tools && CXX="ccache g++" CC="ccache gcc" make -j3
     - name: configure
       run: cd src && ./configure --shared
     - name: make depend
       run: cd src && make depend
     - name: make 
-      run: cd src && make 
+      run: cd src &&  CXX="ccache g++" CC="ccache gcc" make 
     - name: make test
       run: cd src && make test
