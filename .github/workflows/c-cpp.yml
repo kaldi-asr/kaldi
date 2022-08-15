@@ -20,7 +20,7 @@ jobs:
       with:
         verbose: 1
     - name: make tools
-      run: export CCACHE_DIR=$PWD/.ccache; ccache -p -v ; cd tools && CXX="ccache g++" CC="ccache gcc" make -j3
+      run: export CCACHE_DIR=$PWD/.ccache; ccache -p ; cd tools && CXX="ccache g++" CC="ccache gcc" make -j3
     - name: ccache stats
       run:  ccache -v -s
     - name: configure
