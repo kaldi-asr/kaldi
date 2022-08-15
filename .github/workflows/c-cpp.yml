@@ -13,6 +13,8 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+    - name: Install sox
+      run: sudo apt-get install -y sox intel-mkl
     - name: make tools
       run: cd tools && make -j3
     - name: configure
