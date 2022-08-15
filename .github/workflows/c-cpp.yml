@@ -19,15 +19,18 @@ jobs:
       uses: hendrikmuhs/ccache-action@v1.2
       with:
         verbose: 1
+        max-size: 3G
+    - name: export bars
+      run: export CCACHE_DIR=$PWD/.ccache; export CXX="ccache g++"; export CC="ccache gcc";
     - name: make tools
-      run: export CCACHE_DIR=$PWD/.ccache; ccache -p ; cd tools && CXX="ccache g++" CC="ccache gcc" make -j3
+      run:  cd tools && make -j3
     - name: ccache stats
       run:  ccache -s
     - name: configure
-      run: export CCACHE_DIR=$PWD/.ccache; cd src && CXX="ccache g++ " ./configure --shared
+      run: cd src && ./configure --shared
     - name: make depend
-      run: cd src && make depend
+      run: cd src && make clean && make depend
     - name: make 
       run: cd src &&  make -j 3 
     - name: make test
-      run: cd src && make test
+      run: cd src && make test 
