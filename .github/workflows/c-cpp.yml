@@ -22,7 +22,7 @@ jobs:
     - name: make tools
       run: export CCACHE_DIR=$PWD/.ccache; cd tools && CXX="ccache g++" CC="ccache gcc" make -j3
     - name: ccache stats
-      run:  ccache -d $PWD/.ccache -v -s
+      run:  ccache -v -s
     - name: configure
       run: export CCACHE_DIR=$PWD/.ccache; cd src && CXX="ccache g++ " ./configure --shared
     - name: make depend
