@@ -20,9 +20,11 @@ jobs:
       with:
         verbose: 1
     - name: make tools
-      run: cd tools && CXX="ccache c++" CC="ccache cc" make -j3
+      run: cd tools && CXX="ccache -d $PWD/../.ccache c++" CC="ccache -d $PWD/../.ccache cc" make -j3
+    - name: ccache stats
+      run:  ccache -d $PWD/.ccache -v -s
     - name: configure
-      run: cd src && CXX="ccache c++" CC="ccache cc" ./configure --shared
+      run: cd src && CXX="ccache  -d $PWD/../.ccache c++ " ./configure --shared
     - name: make depend
       run: cd src && make depend
     - name: make 
