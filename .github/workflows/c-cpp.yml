@@ -11,7 +11,7 @@ jobs:
 
     runs-on: ubuntu-latest
     env:
-      CCACHE_DIR: $PWD/.ccache
+      CCACHE_DIR: /home/runner/work/kaldi/kaldi/.ccache
       CXX: "ccache g++" 
       CC: "ccache gcc"
        
