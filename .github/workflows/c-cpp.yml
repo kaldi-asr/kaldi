@@ -10,7 +10,11 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
-
+    env:
+      CCACHE_DIR: $PWD/.ccache
+      CXX: "ccache g++" 
+      CC: "ccache gcc"
+       
     steps:
     - uses: actions/checkout@v3
     - name: Install sox
@@ -21,7 +25,7 @@ jobs:
         verbose: 1
         max-size: 3G
     - name: export bars
-      run: export CCACHE_DIR=$PWD/.ccache; export CXX="ccache g++"; export CC="ccache gcc";
+      run: export  export;
     - name: make tools
       run:  cd tools && make -j3
     - name: ccache stats
