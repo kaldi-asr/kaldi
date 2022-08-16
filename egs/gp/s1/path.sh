@@ -31,6 +31,7 @@ TOOLS=$SHORTEN:$SOX
 
 export PATH=$PATH:$KALDIBIN:$FSTBIN:$LMBIN:$SCRIPTS:$TOOLS
 export LC_ALL=C
+export PYTHONUNBUFFERED=TRUE
 
 # Site-specific configs:
 [ `hostname -y` == ecdf ] && { . path_ed.sh; }
