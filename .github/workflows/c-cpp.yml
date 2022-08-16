@@ -1,0 +1,38 @@
+name: C/C++ CI
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+    env:
+      CCACHE_DIR: /home/runner/work/kaldi/kaldi/.ccache
+      CXX: "ccache g++"
+      CC: "ccache gcc"
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Install sox
+      run: sudo apt-get install -y sox intel-mkl
+    - name: ccache
+      uses: hendrikmuhs/ccache-action@v1.2
+      with:
+        verbose: 1
+        max-size: 3G
+    - name: make tools
+      run: cd tools && make -j3
+    - name: ccache stats
+      run: ccache -s
+    - name: configure
+      run: cd src && ./configure --shared
+    - name: make depend
+      run: cd src && make clean && make depend
+    - name: make
+      run: cd src &&  make -j 3
+    - name: make test
+      run: cd src && make test
