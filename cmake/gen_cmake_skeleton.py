@@ -143,10 +143,10 @@ def get_exe_additional_depends(t):
         "generate-proxy-keywords": ["fstext"],
         "transcripts-to-fsts": ["fstext"],
     }
-    l = []
+    libs = []
     for pattern in additional.keys():
         if fnmatch.fnmatch(t, pattern):
-            l.extend(list(map(lambda name: lib_dir_name_to_lib_target(name), additional[pattern])))
+            libs.extend(list(map(lambda name: lib_dir_name_to_lib_target(name), additional[pattern])))
     return sorted(list(set(l)))
 
 def disable_for_win32(t):
@@ -233,8 +233,8 @@ class CMakeListsLibrary(object):
                 return
             libs = makefile.split("ADDLIBS")[-1].split("\n\n")[0]
             libs = re.findall("[^\s\\\\=]+", libs)
-            for l in libs:
-                self.depends.append(os.path.splitext(os.path.basename(l))[0])
+            for lib in libs:
+                self.depends.append(os.path.splitext(os.path.basename(lib))[0])
 
     def gen_code(self):
         ret = []
