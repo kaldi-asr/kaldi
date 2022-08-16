@@ -26,6 +26,7 @@
 #include <mutex>
 #include <numeric>
 #include <tuple>
+#include <chrono>
 
 #include "cudamatrix/cu-common.h"
 #include "feat/feature-window.h"
@@ -38,15 +39,7 @@
 
   void usleep(__int64 usec)
   {
-      HANDLE timer;
-      LARGE_INTEGER ft;
-
-      ft.QuadPart = -(10*usec); // Convert to 100 nanosecond interval, negative value indicates relative time
-
-      timer = CreateWaitableTimer(NULL, TRUE, NULL);
-      SetWaitableTimer(timer, &ft, 0, NULL, NULL, 0);
-      WaitForSingleObject(timer, INFINITE);
-      CloseHandle(timer);
+    std::this_thread::sleep_for(std::chrono::microseconds(usec));
   }
 #endif
 namespace kaldi {
