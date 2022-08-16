@@ -24,12 +24,10 @@ jobs:
       with:
         verbose: 1
         max-size: 3G
-    - name: export bars
-      run: export  export;
     - name: make tools
-      run:  cd tools && make -j3
+      run: cd tools && make -j3
     - name: ccache stats
-      run:  ccache -s
+      run: ccache -s
     - name: configure
       run: cd src && ./configure --shared
     - name: make depend
