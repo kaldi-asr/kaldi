@@ -87,7 +87,7 @@ if(CONDA_ROOT)
     # https://github.com/kaldi-asr/kaldi/blob/master/src/matrix/kaldi-blas.h#L95-L113
     add_definitions(-DHAVE_OPENBLAS=1)
     if(MSVC)
-        include_directories($ENV{LIBRARY_INC}/)
+        link_libraries(cblas lapack)
         # necessary macros to compile on windows, from here:
         # https://icl.cs.utk.edu/lapack-for-windows/lapack/
         add_definitions(-DADD_)
@@ -146,6 +146,17 @@ if(MSVC)
     # some warnings related with fst
     add_compile_options(/wd4018 /wd4244 /wd4267 /wd4291 /wd4305)
 
+    set(CompilerFlags
+        CMAKE_CXX_FLAGS
+        CMAKE_CXX_FLAGS_DEBUG
+        CMAKE_CXX_FLAGS_RELEASE
+        CMAKE_C_FLAGS
+        CMAKE_C_FLAGS_DEBUG
+        CMAKE_C_FLAGS_RELEASE
+        )
+    foreach(CompilerFlag ${CompilerFlags})
+      string(REPLACE "/MD" "/MT" ${CompilerFlag} "${${CompilerFlag}}")
+    endforeach()
     set(CUDA_USE_STATIC_CUDA_RUNTIME OFF CACHE INTERNAL "")
     if(NOT DEFINED ENV{CUDAHOSTCXX})
         set(ENV{CUDAHOSTCXX} ${CMAKE_CXX_COMPILER})
@@ -159,23 +170,21 @@ find_package(CUDAToolkit)
 find_package(CUDA)
 if(CUDA_FOUND)
     set(CUDA_PROPAGATE_HOST_FLAGS ON)
-    set(KALDI_CUDA_NVCC_FLAGS "--default-stream=per-thread;-std=c++${CMAKE_CXX_STANDARD}")
     if(MSVC)
+        set(KALDI_CUDA_NVCC_FLAGS "--default-stream=per-thread") # Fixes incompatibility with cxx14 and cxx17 for Kaldi vs cuda in VS2019
         list(APPEND KALDI_CUDA_NVCC_FLAGS "-Xcompiler /permissive-,/FS,/wd4819,/EHsc,/bigobj")
         list(APPEND KALDI_CUDA_NVCC_FLAGS "-Xcompiler /wd4018,/wd4244,/wd4267,/wd4291,/wd4305")
-        if(BUILD_SHARED_LIBS)
-            list(APPEND CUDA_NVCC_FLAGS_RELEASE -Xcompiler /MD)
-            list(APPEND CUDA_NVCC_FLAGS_DEBUG -Xcompiler /MDd)
-        endif()
+        list(APPEND CUDA_NVCC_FLAGS_RELEASE -Xcompiler /MD) # Kaldi will always be dynamically linked to Cuda
+        list(APPEND CUDA_NVCC_FLAGS_DEBUG -Xcompiler /MDd)
     else()
     #     list(APPEND KALDI_CUDA_NVCC_FLAGS "-Xcompiler -std=c++${CMAKE_CXX_STANDARD}")
         list(APPEND KALDI_CUDA_NVCC_FLAGS "-Xcompiler -fPIC")
+        set(KALDI_CUDA_NVCC_FLAGS "--default-stream=per-thread;-std=c++${CMAKE_CXX_STANDARD}")
     endif()
     set(CUDA_NVCC_FLAGS ${KALDI_CUDA_NVCC_FLAGS} ${CUDA_NVCC_FLAGS})
 
     add_definitions(-DHAVE_CUDA=1)
     add_definitions(-DCUDA_API_PER_THREAD_DEFAULT_STREAM=1)
-    include_directories(${CUDA_INCLUDE_DIRS})
     link_libraries(
         ${CUDA_LIBRARIES}
         ${CUDA_CUDA_LIBRARY}
@@ -244,8 +253,8 @@ add_subdirectory(src/chain)
 add_subdirectory(src/ivector)
 if(NOT MSVC)
     add_subdirectory(src/online)
-    add_subdirectory(src/online2)
 endif()
+add_subdirectory(src/online2)
 add_subdirectory(src/kws)
 
 add_subdirectory(src/itf)

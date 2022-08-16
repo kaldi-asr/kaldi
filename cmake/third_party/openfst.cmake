@@ -54,6 +54,7 @@ if(NOT openfst_POPULATED)
             )
 
             install(DIRECTORY ${openfst_SOURCE_DIR}/src/include/ DESTINATION include/
+                    COMPONENT kaldi
                     FILES_MATCHING PATTERN "*.h")
 
             install(TARGETS fst

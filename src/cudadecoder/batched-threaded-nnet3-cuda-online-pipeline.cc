@@ -26,12 +26,22 @@
 #include <mutex>
 #include <numeric>
 #include <tuple>
+#include <chrono>
 
 #include "cudamatrix/cu-common.h"
 #include "feat/feature-window.h"
 #include "lat/lattice-functions.h"
 #include "nnet3/nnet-utils.h"
 
+// Necessary for supporting online2 libary on Windows
+#ifdef _WIN32
+  #include <windows.h>
+
+  void usleep(__int64 usec)
+  {
+    std::this_thread::sleep_for(std::chrono::microseconds(usec));
+  }
+#endif
 namespace kaldi {
 namespace cuda_decoder {
 

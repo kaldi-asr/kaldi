@@ -143,10 +143,10 @@ def get_exe_additional_depends(t):
         "generate-proxy-keywords": ["fstext"],
         "transcripts-to-fsts": ["fstext"],
     }
-    l = []
+    libs = []
     for pattern in additional.keys():
         if fnmatch.fnmatch(t, pattern):
-            l.extend(list(map(lambda name: lib_dir_name_to_lib_target(name), additional[pattern])))
+            libs.extend(list(map(lambda name: lib_dir_name_to_lib_target(name), additional[pattern])))
     return sorted(list(set(l)))
 
 def disable_for_win32(t):
@@ -194,7 +194,7 @@ class CMakeListsHeaderLibrary(object):
         ret.append("""
 install(TARGETS {tgt} EXPORT kaldi-targets)
 
-install(FILES ${{PUBLIC_HEADERS}} DESTINATION include/kaldi/{dir})
+install(FILES ${{PUBLIC_HEADERS}} DESTINATION include/kaldi/{dir} COMPONENT kaldi)
 """.format(tgt=self.target_name, dir=self.dir_name))
 
         return "\n".join(ret)
@@ -233,8 +233,8 @@ class CMakeListsLibrary(object):
                 return
             libs = makefile.split("ADDLIBS")[-1].split("\n\n")[0]
             libs = re.findall("[^\s\\\\=]+", libs)
-            for l in libs:
-                self.depends.append(os.path.splitext(os.path.basename(l))[0])
+            for lib in libs:
+                self.depends.append(os.path.splitext(os.path.basename(lib))[0])
 
     def gen_code(self):
         ret = []
@@ -249,7 +249,7 @@ class CMakeListsLibrary(object):
             self.source_list.append("${CUDA_OBJS}")
             ret.append("if(CUDA_FOUND)")
             ret.append("    cuda_include_directories(${CMAKE_CURRENT_SOURCE_DIR}/..)")
-            ret.append("    cuda_compile(CUDA_OBJS")
+            ret.append("    cuda_compile(CUDA_OBJS SHARED")
             for f in self.cuda_source_list:
                 ret.append("        " + f)
             ret.append("    )")
@@ -296,7 +296,7 @@ install(TARGETS {tgt}
     LIBRARY DESTINATION ${{CMAKE_INSTALL_LIBDIR}} COMPONENT kaldi
     RUNTIME DESTINATION ${{CMAKE_INSTALL_BINDIR}} COMPONENT kaldi
 )
-install(FILES ${{PUBLIC_HEADERS}} DESTINATION include/kaldi/{dir})
+install(FILES ${{PUBLIC_HEADERS}} DESTINATION include/kaldi/{dir} COMPONENT kaldi)
 """.format(tgt=self.target_name, dir=self.dir_name))
 
         return "\n".join(ret)
