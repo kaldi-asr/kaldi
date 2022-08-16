@@ -26,4 +26,4 @@ fi
 if [ -f $KALDI_ROOT/tools/env.sh ]; then
   . $KALDI_ROOT/tools/env.sh
 fi
-export PYTHONUNBUFFERED=TRUE
+export PYTHONUNBUFFERED=1
