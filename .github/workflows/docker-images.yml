@@ -40,7 +40,7 @@ jobs:
       uses: docker/build-push-action@v3
       with:
         context: "{{ defaultContext }}:docker/ubuntu18.04-cuda10.0"
-        file: docker/ubuntu18.04-cuda10.0/Dockerfile
+        file: /home/runner/work/kaldi/kaldi/docker/ubuntu18.04-cuda10.0/Dockerfile
         push: false
         tags: jtrmal/gpu:latest
         
