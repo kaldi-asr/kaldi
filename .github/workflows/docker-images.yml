@@ -29,10 +29,10 @@ jobs:
     - name: Build and push
       uses: docker/build-push-action@v3
       with:
-        context: "{{defaultContext}}:docker/ubuntu18.04-cuda10.0/"
+        context: "${{defaultContext}}:docker/ubuntu18.04-cuda10.0"
         file: "{{defaultContext}}:docker/ubuntu18.04-cuda10.0/Dockerfile"
         push: true
-        tags: jtrmal/test:$(date +%s)
+        tags: jtrmal/test:$(date +%s),jtrmal/gpu:latest
           
 #    - name: Build the Docker image
 #      run: cd docker/ubuntu18.04-cuda10.0/; docker build . --file Dockerfile --tag kaldiasr/kaldi:gpu-ubuntu18.04-cuda10.0-$(date +%s)
