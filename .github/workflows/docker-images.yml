@@ -38,12 +38,17 @@ jobs:
           echo "Flags:     ${{ steps.buildx.outputs.flags }}"
           echo "Platforms: ${{ steps.buildx.outputs.platforms }}"
           
-    - name: Build and push
+    - name: Build 
       run: |
-          pwd
-          ls -al
           cd docker/ubuntu18.04-cuda10.0/
-          docker build .
+          docker build --tag jtrmal/kaldi:gpu-latest --tag jtrmal/kaldi:gpu-ubuntu18.04-cuda10.0 .
+          
+    - name: Push
+      run: |
+          cd docker/ubuntu18.04-cuda10.0/
+          docker push jtrmal/kaldi:gpu-latest  .
+          
+
           
       #uses: docker/build-push-action@v3
       #with:
