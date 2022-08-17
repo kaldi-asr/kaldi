@@ -147,7 +147,7 @@ def get_exe_additional_depends(t):
     for pattern in additional.keys():
         if fnmatch.fnmatch(t, pattern):
             libs.extend(list(map(lambda name: lib_dir_name_to_lib_target(name), additional[pattern])))
-    return sorted(list(set(l)))
+    return sorted(list(set(libs)))
 
 def disable_for_win32(t):
     disabled = [
