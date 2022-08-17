@@ -38,29 +38,10 @@ jobs:
           echo "Flags:     ${{ steps.buildx.outputs.flags }}"
           echo "Platforms: ${{ steps.buildx.outputs.platforms }}"
           
-    - name: Build 
+    - name: Build and push
       run: |
           cd docker/ubuntu18.04-cuda10.0/
-          docker build --tag jtrmal/kaldi:gpu-latest --tag jtrmal/kaldi:gpu-ubuntu18.04-cuda10.0 .
+          docker build --push --tag jtrmal/kaldi:gpu-latest --tag jtrmal/kaldi:gpu-ubuntu18.04-cuda10.0 .
           
-    - name: Push
-      run: |
-          cd docker/ubuntu18.04-cuda10.0/
-          docker push jtrmal/kaldi:gpu-latest  .
           
-
-          
-      #uses: docker/build-push-action@v3
-      #with:
-      #  context: "{{ defaultContext }}:docker/ubuntu18.04-cuda10.0"
-      #  file: /home/runner/work/kaldi/kaldi/docker/ubuntu18.04-cuda10.0/Dockerfile
-      #  push: false
-      #  tags: jtrmal/gpu:latest
-        
-        #context: "{{ defaultContext }}:docker/ubuntu18.04-cuda10.0"
-        #file: "{{ defaultContext }}:docker/ubuntu18.04-cuda10.0/Dockerfile"
-        
-#tags: jtrmal/test:$(date +%s),jtrmal/gpu:latest          
-#    - name: Build the Docker image
-#      run: cd docker/ubuntu18.04-cuda10.0/; docker build . --file Dockerfile --tag kaldiasr/kaldi:gpu-ubuntu18.04-cuda10.0-$(date +%s)
       
