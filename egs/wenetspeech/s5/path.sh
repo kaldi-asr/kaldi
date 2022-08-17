@@ -12,3 +12,4 @@ SRILM_PATH=$SRILM_ROOT/bin:$SRILM_ROOT/bin/i686-m64
 export PATH=$PATH:$SRILM_PATH
 
 source $KALDI_ROOT/tools/env.sh
+export PYTHONUNBUFFERED=1

@@ -5,4 +5,5 @@ export PATH=$PWD/utils/:$KALDI_ROOT/tools/openfst/bin:$PWD:$PATH
 . $KALDI_ROOT/tools/config/common_path.sh
 export LC_ALL=C
 export CUDA_CACHE_DISABLE=1
+export PYTHONUNBUFFERED=1
 

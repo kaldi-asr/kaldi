@@ -7,3 +7,4 @@ export PATH=$PWD/utils/:$KALDI_ROOT/tools/openfst/bin:$PWD:$PATH
 export LD_LIBRARY_PATH=$KALDI_ROOT/tools/openfst/lib:$LD_LIBRARY_PATH
 export LD_LIBRARY_PATH=/home/dpovey/libs:$LD_LIBRARY_PATH
 export LC_ALL=C
+export PYTHONUNBUFFERED=1

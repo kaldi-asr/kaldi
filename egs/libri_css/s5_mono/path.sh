@@ -7,4 +7,5 @@ export PYTHONPATH="${PYTHONPATH}:$PWD/dscore"
 . $KALDI_ROOT/tools/config/common_path.sh
 export LC_ALL=C
 export BASH_ENV="~/.aliases"
+export PYTHONUNBUFFERED=1
 

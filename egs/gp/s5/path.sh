@@ -24,6 +24,7 @@ export kaldi_steps=$PWD/steps
 SCRIPTS=$kaldi_local:$kaldi_utils:$kaldi_steps
 
 export PATH=$PATH:$KALDIBIN:$FSTBIN:$LMBIN:$SCRIPTS
+export PYTHONUNBUFFERED=1
 
 # If the correct version of shorten and sox are not on the path,
 # the following will be set by local/gp_check_tools.sh

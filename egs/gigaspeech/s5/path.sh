@@ -12,3 +12,4 @@ PYTHON='python2.7'
 sequitur=$KALDI_ROOT/tools/sequitur-g2p/g2p.py
 sequitur_path="$(dirname $sequitur)/lib/$PYTHON/site-packages"
 export PATH=$PATH:$(dirname $sequitur):$sequitur_path
+export PYTHONUNBUFFERED=1
