@@ -21,7 +21,6 @@
 #include "util/common-utils.h"
 #include "hmm/transition-model.h"
 #include "nnet2/nnet-example-functions.h"
-#include <random>
 
 int main(int argc, char *argv[]) {
   try {
@@ -38,7 +37,7 @@ int main(int argc, char *argv[]) {
         "Usage:  nnet-shuffle-egs-discriminative [options] <egs-rspecifier> <egs-wspecifier>\n"
         "\n"
         "nnet-shuffle-egs-discriminative --srand=1 ark:train.degs ark:shuffled.degs\n";
-
+    
     int32 srand_seed = 0;
     int32 buffer_size = 0;
     ParseOptions po(usage);
@@ -46,11 +45,11 @@ int main(int argc, char *argv[]) {
     po.Register("buffer-size", &buffer_size, "If >0, size of a buffer we use "
                 "to do limited-memory partial randomization.  Otherwise, do "
                 "full randomization.");
-
+    
     po.Read(argc, argv);
 
-    std::mt19937 g(srand_seed);
-
+    srand(srand_seed);
+    
     if (po.NumArgs() != 2) {
       po.PrintUsage();
       exit(1);
@@ -69,12 +68,12 @@ int main(int argc, char *argv[]) {
     if (buffer_size == 0) { // Do full randomization
       // Putting in an extra level of indirection here to avoid excessive
       // computation and memory demands when we have to resize the vector.
-
+    
       for (; !example_reader.Done(); example_reader.Next())
         egs.push_back(new DiscriminativeNnetExample(
             example_reader.Value()));
-
-      std::shuffle(egs.begin(), egs.end(), g);
+      
+      std::random_shuffle(egs.begin(), egs.end());
     } else {
       KALDI_ASSERT(buffer_size > 0);
       egs.resize(buffer_size, NULL);
@@ -89,7 +88,7 @@ int main(int argc, char *argv[]) {
           *(egs[index]) = example_reader.Value();
           num_done++;
         }
-      }
+      }      
     }
     for (size_t i = 0; i < egs.size(); i++) {
       std::ostringstream ostr;
@@ -104,7 +103,7 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "Shuffled order of " << num_done
               << " neural-network training examples "
               << (buffer_size ? "using a buffer (partial randomization)" : "");
-
+                  
     return (num_done == 0 ? 1 : 0);
   } catch(const std::exception &e) {
     std::cerr << e.what() << '\n';

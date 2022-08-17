@@ -22,7 +22,6 @@
 #include <vector>
 #include <algorithm>
 #include <utility>
-#include <random>
 
 namespace kaldi {
 namespace nnet1 {
@@ -38,10 +37,7 @@ const std::vector<int32>& RandomizerMask::Generate(int32 mask_size) {
   mask_.resize(mask_size);
   for (int32 i = 0; i < mask_size; i++) mask_[i] = i;
   // shuffle using built-in random generator:
-  std::random_device rd;
-  std::mt19937 g(rd());
-
-  std::shuffle(mask_.begin(), mask_.end(), g);
+  std::random_shuffle(mask_.begin(), mask_.end());
   return mask_;
 }
 

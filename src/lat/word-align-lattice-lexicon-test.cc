@@ -26,8 +26,6 @@
 #include "hmm/hmm-test-utils.h"
 #include "lat/word-align-lattice-lexicon.h"
 
-#include <random>
-
 namespace kaldi {
 
 // This function generates a lexicon in the same format that
@@ -58,11 +56,8 @@ void GenerateLexicon(const std::vector<int32> &phones,
     }
   }
   SortAndUniq(lexicon);
-
   // randomize the order.
-  std::random_device rd;
-  std::mt19937 g(rd());
-  std::shuffle(lexicon->begin(), lexicon->end(), g);
+  std::random_shuffle(lexicon->begin(), lexicon->end());
 
 
   for (size_t i = 0; i < lexicon->size(); i++) {

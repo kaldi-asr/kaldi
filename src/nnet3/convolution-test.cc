@@ -19,7 +19,6 @@
 
 #include "nnet3/convolution.h"
 #include "util/common-utils.h"
-#include <random>
 
 namespace kaldi {
 namespace nnet3 {
@@ -27,9 +26,6 @@ namespace time_height_convolution {
 
 // for testing purposes, create a random ConvolutionModel.
 static void GetRandomConvolutionModel(ConvolutionModel *model) {
-    std::random_device rd;
-    std::mt19937 g(rd());
-
 start:
   {
     model->num_filters_in = RandInt(1, 10);
@@ -64,8 +60,7 @@ start:
     }
     SortAndUniq(&(model->offsets));
     SortAndUniq(&all_time_offsets);
-
-    std::shuffle(all_time_offsets.begin(), all_time_offsets.end(), g);
+    std::random_shuffle(all_time_offsets.begin(), all_time_offsets.end());
     int32 num_required_offsets = RandInt(1, all_time_offsets.size());
     for (int32 i = 0; i < num_required_offsets; i++)
       model->required_time_offsets.insert(all_time_offsets[i]);

@@ -23,7 +23,6 @@
 
 #include <iterator>
 #include <sstream>
-#include <random>
 #include "nnet2/nnet-component.h"
 #include "nnet2/nnet-precondition.h"
 #include "nnet2/nnet-precondition-online.h"
@@ -2318,9 +2317,7 @@ void PermuteComponent::Init(int32 dim) {
   KALDI_ASSERT(dim > 0);
   reorder_.resize(dim);
   for (int32 i = 0; i < dim; i++) reorder_[i] = i;
-  std::random_device rd;
-  std::mt19937 g(rd());
-  std::shuffle(reorder_.begin(), reorder_.end(), g);
+  std::random_shuffle(reorder_.begin(), reorder_.end());
 }
 
 void PermuteComponent::InitFromString(std::string args) {

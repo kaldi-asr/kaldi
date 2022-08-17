@@ -22,7 +22,6 @@
 #include <numeric>
 #include <vector>
 #include <algorithm>
-#include <random>
 
 using namespace kaldi;
 using namespace kaldi::nnet1;
@@ -182,10 +181,7 @@ void UnitTestStdVectorRandomizer() {
   for (int32 i = 0; i < v.size(); i++) {
     v.at(i) = i;
   }
-  std::random_device rd;
-  std::mt19937 g(rd());
-
-  std::shuffle(v.begin(), v.end(), g);
+  std::random_shuffle(v.begin(), v.end());
 
   // config
   NnetDataRandomizerOptions c;

@@ -22,9 +22,8 @@
 #include "lat/lattice-functions.h"
 #include "hmm/posterior.h"
 #include "util/text-utils.h"
-#include <iomanip>
 #include <numeric>
-#include <random>
+#include <iomanip>
 
 namespace kaldi {
 namespace nnet3 {
@@ -573,7 +572,7 @@ bool UtteranceSplitter::LengthsMatch(const std::string &utt,
                                      int32 length_tolerance) const {
   int32 sf = config_.frame_subsampling_factor,
       expected_supervision_length = (utterance_length + sf - 1) / sf;
-  if (std::abs(supervision_length - expected_supervision_length)
+  if (std::abs(supervision_length - expected_supervision_length) 
       <= length_tolerance) {
     return true;
   } else {
@@ -711,9 +710,7 @@ void UtteranceSplitter::DistributeRandomlyUniform(int32 n, std::vector<int32> *v
   for (; i < size; i++) {
     (*vec)[i] = common_part;
   }
-  std::random_device rd;
-  std::mt19937 g(rd());
-  std::shuffle(vec->begin(), vec->end(), g);
+  std::random_shuffle(vec->begin(), vec->end());
   KALDI_ASSERT(std::accumulate(vec->begin(), vec->end(), int32(0)) == n);
 }
 
