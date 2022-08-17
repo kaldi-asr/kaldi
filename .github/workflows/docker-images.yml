@@ -10,7 +10,7 @@ on:
 
 jobs:
 
-  build:
+  docker-buildx:
 
     runs-on: ubuntu-latest
 
@@ -28,13 +28,21 @@ jobs:
         username: ${{ secrets.DOCKERHUB_USERNAME }}
         password: ${{ secrets.DOCKERHUB_TOKEN }}
         
-    - name: Build and push
-      uses: docker/build-push-action@v3
-      with:
-        context: "${{defaultContext}}:docker/ubuntu18.04-cuda10.0"
-        file: "{{defaultContext}}:docker/ubuntu18.04-cuda10.0/Dockerfile"
-        push: true
-        tags: jtrmal/test:$(date +%s),jtrmal/gpu:latest
+    - name: Inspect builder
+      run: |
+          echo "Name:      ${{ steps.buildx.outputs.name }}"
+          echo "Endpoint:  ${{ steps.buildx.outputs.endpoint }}"
+          echo "Status:    ${{ steps.buildx.outputs.status }}"
+          echo "Flags:     ${{ steps.buildx.outputs.flags }}"
+          echo "Platforms: ${{ steps.buildx.outputs.platforms }}"
+          
+#    - name: Build and push
+#      uses: docker/build-push-action@v3
+#      with:
+#        #context: "${{defaultContext}}:docker/ubuntu18.04-cuda10.0"
+#        #file: "{{defaultContext}}:docker/ubuntu18.04-cuda10.0/Dockerfile"
+#        push: true
+#        #tags: jtrmal/test:$(date +%s),jtrmal/gpu:latest
           
 #    - name: Build the Docker image
 #      run: cd docker/ubuntu18.04-cuda10.0/; docker build . --file Dockerfile --tag kaldiasr/kaldi:gpu-ubuntu18.04-cuda10.0-$(date +%s)
