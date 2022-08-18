@@ -3,7 +3,6 @@ name: Docker Image CI
 on:
   schedule:
   - cron: '37 2 * * 1'
-  
   workflow_dispatch:
     inputs:
       logLevel:
