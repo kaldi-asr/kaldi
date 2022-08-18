@@ -41,7 +41,7 @@ jobs:
     - name: Build and push
       run: |
           cd docker/ubuntu18.04-cuda10.0/
-          docker build --push --tag jtrmal/kaldi:gpu-latest --tag jtrmal/kaldi:gpu-ubuntu18.04-cuda10.0 .
+          docker build --push --tag kaldiasr/kaldi:gpu-latest --tag kaldiasr/kaldi:gpu-ubuntu18.04-cuda10.0 .
           
           
       
