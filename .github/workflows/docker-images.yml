@@ -19,7 +19,7 @@ on:
 
 jobs:
   enable_build:
-    if: github.repository == 'kaldi-asr/kaldi'  
+    if: github.repository == 'kaldi-asr/kaldi'
     runs-on: ubuntu-latest
     outputs:
       enabled: ${{ steps.set-enabled.outputs.enabled }}
@@ -30,7 +30,7 @@ jobs:
       - name: Set enabled
         id: set-enabled
         run: |
-          set -x 
+          set -x
           echo $(git rev-list  --after="1 week"  ${{ github.sha }})
           if test -z $(git rev-list  --after="1 week"  ${{ github.sha }} | tail -n 1) ; then
             enabled=false
