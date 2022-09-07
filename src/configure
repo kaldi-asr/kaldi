@@ -275,7 +275,7 @@ function configure_rocm {
   echo "# ROCm configuration" >> kaldi.mk
   echo >> kaldi.mk
   echo IS_GPU_BUILD = true >> kaldi.mk
-  echo ROCM = true">> kaldi.mk
+  echo ROCM = true >> kaldi.mk
   echo "ROCMDIR = $ROCMDIR" >> kaldi.mk
   echo "HIPCC = $ROCMDIR/bin/hipcc" >> kaldi.mk 
 
