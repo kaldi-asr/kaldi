@@ -22,7 +22,12 @@
 
 #include "cudamatrix/cu-common.h"
 
+#ifdef __IS_HIP_COMPILE__
+#include <hip/hip_runtime_api.h>
+#include <hipify.h>
+#else
 #include <cuda.h>
+#endif
 
 #include "base/kaldi-common.h"
 #include "cudamatrix/cu-matrixdim.h"
