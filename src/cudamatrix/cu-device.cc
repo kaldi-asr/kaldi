@@ -23,10 +23,16 @@
 
 
 #if HAVE_CUDA == 1
+#ifdef __IS_HIP_COMPILE__
+#include <hipblas.h>
+#include <hip/hip_runtime.h>
+#include <hip/hip_runtime_api.h>
+#include <hipify.h>
+#else
 #include <cublas_v2.h>
 #include <cuda.h>
 #include <cuda_runtime_api.h>
-
+#endif // __IS_HIP_COMPILE__
 #include <string>
 #include <vector>
 #include <algorithm>

@@ -39,7 +39,7 @@ ifeq ($(ROCM), true)
 #%.o : %.hip
 #	$(HIPCC) -c $< -o $@ $(ROCM_INCLUDE) $(ROCM_FLAGS) $(ROCM_ARCH_FLAGS) -I../
 %.o : %.cu
-        $(HIPCC) -c -x hip $< -o $@ $(ROCM_INCLUDE) $(ROCM_FLAGS) $(ROCM_ARCH_FLAGS) -I../
-endifn
+	$(HIPCC) -c -x hip $< -o $@ $(ROCM_INCLUDE) $(ROCM_FLAGS) $(ROCM_ARCH_FLAGS) -I../
+endif
 
 include ../makefiles/default_rules.mk

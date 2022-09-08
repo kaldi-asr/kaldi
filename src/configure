@@ -258,9 +258,10 @@ function check_for_slow_expf {
 function configure_rocm {
   # Check for ROCM in the system
   if [ ! -d "$ROCMDIR" ]; then
-    for base in $ROCM_PATH  /opt/rocm /usr/local/rocm /usr/; do
+    for base in $ROCM_PATH /opt/rocm /usr/local/rocm /usr/; do
       if [ -f $base/bin/hipcc ]; then
         ROCMDIR=$base
+        break
       fi
     done
   fi
