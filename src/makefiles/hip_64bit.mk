@@ -5,7 +5,7 @@ ifndef ROCMDIR
 $(error ROCMDIR not defined.)
 endif
 
-CXXFLAGS += -DHAVE_CUDA=1 -D__IS_HIP_COMPILE__=1 -D__HIP_PLATFORM_AMD__=1 \
+CXXFLAGS += -DHAVE_CUDA=1 -D__IS_HIP_COMPILE__=1 -D__HIP_PLATFORM_AMD__=1 -DCUDA_VERSION=11000 \
 	    -I$(ROCMDIR)/include -I$(ROCMDIR)/hiprand/include -I$(ROCMDIR)/rocrand/include -I../hip -fPIC -pthread -isystem $(OPENFSTINC)
 
 ROCM_INCLUDE= -I$(ROCMDIR)/include -I$(ROCMDIR)/hiprand/include -I$(ROCMDIR)/rocrand/include -I.. -I../hip -isystem $(OPENFSTINC)

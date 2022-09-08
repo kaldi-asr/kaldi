@@ -31,11 +31,20 @@
 
 #if HAVE_CUDA
 
+#ifdef __IS_HIP_COMPILE__
+#include <hipblas/hipblas.h>
+#include <hip/hip_runtime_api.h>
+#include <hiprand/hiprand.h>
+#include <hipsparse/hipsparse.h>
+//TODO: tests with ROCTX #include <roctracer/roctracer_roctx.h>
+#include <hipify.h>
+#else
 #include <cublas_v2.h>
 #include <cuda_runtime_api.h>
 #include <curand.h>
 #include <cusparse.h>
 #include <nvToolsExt.h>
+#endif
 
 #define CU_SAFE_CALL(fun) \
 { \
