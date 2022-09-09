@@ -36,7 +36,7 @@
 #include <hip/hip_runtime_api.h>
 #include <hiprand/hiprand.h>
 #include <hipsparse/hipsparse.h>
-//TODO: tests with ROCTX #include <roctracer/roctracer_roctx.h>
+#include <roctracer/roctx.h>
 #include <hipify.h>
 #else
 #include <cublas_v2.h>

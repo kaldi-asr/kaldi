@@ -22,7 +22,6 @@
 
 #ifdef __IS_HIP_COMPILE__
 #include <hip/hip_runtime.h>
-#include <hipify.h>
 #endif
 
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ < 200

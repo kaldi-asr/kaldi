@@ -44,7 +44,7 @@
 #endif
 #if CUDA_VERSION >= 9010
 #ifdef __IS_HIP_COMPILE__
-#include <hipsolver.h>
+#include <hipsolver/hipsolver.h>
 #else
 #include <cusolverDn.h>
 #endif
