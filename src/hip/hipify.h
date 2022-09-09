@@ -7,9 +7,12 @@ inline __device__ void __syncwarp(unsigned mask=0xffffffff) {}
 // HIP types
 //
 #define CUBLAS_COMPUTE_32F                        HIPBLAS_R_32F
+#define CUBLAS_COMPUTE_32F_FAST_TF32              HIPBLAS_R_32F // TODO: Verify that plain float compute are viable replacements for the tensor cores alternative.
+#define CUBLAS_COMPUTE_32F_FAST_16F               HIPBLAS_R_32F // TODO: Verify that plain float compute are viable replacements for the tensor cores alternative.
 #define CUBLAS_DIAG_NON_UNIT                      HIPBLAS_DIAG_NON_UNIT
 #define CUBLAS_FILL_MODE_UPPER                    HIPBLAS_FILL_MODE_UPPER
 #define CUBLAS_GEMM_DEFAULT                       HIPBLAS_GEMM_DEFAULT
+#define CUBLAS_GEMM_DEFAULT_TENSOR_OP             HIPBLAS_GEMM_DEFAULT // TODO: Verify regular GEMMs are viable replacements for explicit tensor GEMMs.
 #define CUBLAS_OP_C                               HIPBLAS_OP_C
 #define CUBLAS_OP_N                               HIPBLAS_OP_N
 #define CUBLAS_OP_N                               HIPBLAS_OP_N
@@ -146,6 +149,7 @@ inline __device__ void __syncwarp(unsigned mask=0xffffffff) {}
 #define curandGenerateUniformDouble               hiprandGenerateUniformDouble
 #define curandGenerator_t                         hiprandGenerator_t
 #define curandSetGeneratorOffset                  hiprandSetGeneratorOffset
+#define curandSetGeneratorOrdering(x,y)           0 // HIP does not support generator ordeing.
 #define curandSetPseudoRandomGeneratorSeed        hiprandSetPseudoRandomGeneratorSeed
 #define curandSetStream                           hiprandSetStream
 #define curandStatus_t                            hiprandStatus_t
