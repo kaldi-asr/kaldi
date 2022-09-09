@@ -13,9 +13,7 @@ ROCM_FLAGS = -fPIC -DHAVE_CUDA=1 \
              -D__IS_HIP_COMPILE__=1 -D__CUDACC_VER_MAJOR__=11 -D__CUDA_ARCH__=800 -DCUDA_VERSION=11000 \
 	     -DKALDI_DOUBLEPRECISION=$(DOUBLE_PRECISION) -std=c++14 -fgpu-default-stream=per-thread
 
-#CUDA_LDFLAGS += -L$(CUDATKDIR)/lib64/stubs -L$(CUDATKDIR)/lib64 -Wl,-rpath,$(CUDATKDIR)/lib64
-#CUDA_LDFLAGS += -L$(CUDATKDIR)/lib/stubs -L$(CUDATKDIR)/lib -Wl,-rpath,$(CUDATKDIR)/lib
-ROCM_LDFLAGS += 
-
+#TODO: Consider use ROCM_LDFLAGS/ROCM_LDLIBS or generic GPU_LDFLAGS/GPU_LDLIBS in the makefiles.
+CUDA_LDFLAGS += -L$(ROCMDIR)/lib -Wl,-rpath,$(ROCMDIR)/lib
 #CUDA_LDLIBS += -lcuda -lcublas -lcusparse -lcusolver -lcudart -lcurand -lcufft -lnvToolsExt
-ROCM_LDLIBS += 
+CUDA_LDLIBS += -lhipblas -lhipsparse -lhipsolver -lhiprand -lamdhip64
