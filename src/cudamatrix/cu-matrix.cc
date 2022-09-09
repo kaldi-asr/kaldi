@@ -30,7 +30,7 @@
 #ifdef __IS_HIP_COMPILE__
 #include <hip/hip_runtime_api.h>
 #include <hipblas/hipblas.h>
-#include <hipify.h>
+#include "hipify.h"
 #else
 #include <cuda_runtime_api.h>
 #include <cublas_v2.h>

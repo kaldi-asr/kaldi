@@ -27,7 +27,7 @@
 #include <hipblas/hipblas.h>
 #include <hip/hip_runtime.h>
 #include <hip/hip_runtime_api.h>
-#include <hipify.h>
+#include "hipify.h"
 #else
 #include <cublas_v2.h>
 #include <cuda.h>

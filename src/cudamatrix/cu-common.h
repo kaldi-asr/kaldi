@@ -37,7 +37,7 @@
 #include <hiprand/hiprand.h>
 #include <hipsparse/hipsparse.h>
 #include <roctracer/roctx.h>
-#include <hipify.h>
+#include "hipify.h"
 #else
 #include <cublas_v2.h>
 #include <cuda_runtime_api.h>

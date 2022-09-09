@@ -30,7 +30,7 @@
 #include <math_constants.h>
 #ifdef __IS_HIP_COMPILE__
 #include <hip/hip_runtime.h>
-#include <hipify.h>
+#include "hipify.h"
 #include "cudamatrix/cu-kernels-ansi.h"
 #include <hipcub/hipcub.hpp>
 #include <hipcub/block/block_reduce.hpp>

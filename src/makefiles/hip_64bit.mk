@@ -5,8 +5,8 @@ ifndef ROCMDIR
 $(error ROCMDIR not defined.)
 endif
 
-
-ROCM_USEROCTX = -DUSE_NVTX
+# Uncomment if willing to use ROCTX capabilities.
+# ROCM_USEROCTX = -DUSE_NVTX
 
 CXXFLAGS += $(ROCM_USEROCTX) -DHAVE_CUDA=1 -D__IS_HIP_COMPILE__=1 -D__HIP_PLATFORM_AMD__=1 -DCUDA_VERSION=11000 \
 	    -I$(ROCMDIR)/include -I$(ROCMDIR)/hiprand/include -I$(ROCMDIR)/rocrand/include -I../hip -fPIC -pthread -isystem $(OPENFSTINC)
@@ -18,5 +18,4 @@ ROCM_FLAGS = $(ROCM_USEROCTX) -fPIC -DHAVE_CUDA=1 \
 
 #TODO: Consider use ROCM_LDFLAGS/ROCM_LDLIBS or generic GPU_LDFLAGS/GPU_LDLIBS in the makefiles.
 CUDA_LDFLAGS += -L$(ROCMDIR)/lib -Wl,-rpath,$(ROCMDIR)/lib
-#CUDA_LDLIBS += -lcuda -lcublas -lcusparse -lcusolver -lcudart -lcurand -lcufft -lnvToolsExt
 CUDA_LDLIBS += -lhipblas -lhipsparse -lhipsolver -lhiprand -lamdhip64

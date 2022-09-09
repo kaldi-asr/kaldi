@@ -24,7 +24,7 @@
 
 #ifdef __IS_HIP_COMPILE__
 #include <hip/hip_runtime_api.h>
-#include <hipify.h>
+#include "hipify.h"
 #define API_NAME_PREFIX "HIP"
 #else
 #include <cuda.h>
@@ -112,8 +112,12 @@ const char* cublasGetStatusStringK(cublasStatus_t status) {
     case CUBLAS_STATUS_INTERNAL_ERROR:    return API_NAME_PREFIX "BLAS_STATUS_INTERNAL_ERROR";
     case CUBLAS_STATUS_NOT_SUPPORTED:     return API_NAME_PREFIX "BLAS_STATUS_NOT_SUPPORTED";
     case CUBLAS_STATUS_LICENSE_ERROR:     return API_NAME_PREFIX "BLAS_STATUS_LICENSE_ERROR";
+#ifdef __IS_HIP_COMPILE__
+    case HIPBLAS_STATUS_HANDLE_IS_NULLPTR:return API_NAME_PREFIX "BLAS_STATUS_HANDLE_IS_NULLPTR";
+    case HIPBLAS_STATUS_INVALID_ENUM:     return API_NAME_PREFIX "BLAS_STATUS_HANDLE_IS_NULLPTR";
+#endif
   }
-  return "CUBLAS_STATUS_UNKNOWN_ERROR";
+  return API_NAME_PREFIX "BLAS_STATUS_UNKNOWN_ERROR";
 }
 
 const char* cusparseGetStatusString(cusparseStatus_t status) {
@@ -135,7 +139,7 @@ const char* cusparseGetStatusString(cusparseStatus_t status) {
     case CUSPARSE_STATUS_INSUFFICIENT_RESOURCES:    return API_NAME_PREFIX "SPARSE_STATUS_INSUFFICIENT_RESOURCES";
     #endif
   }
-  return "SPARSE_STATUS_UNKNOWN_ERROR";
+  return API_NAME_PREFIX "SPARSE_STATUS_UNKNOWN_ERROR";
 }
 
 const char* curandGetStatusString(curandStatus_t status) {
@@ -155,6 +159,9 @@ const char* curandGetStatusString(curandStatus_t status) {
     case CURAND_STATUS_INITIALIZATION_FAILED:       return API_NAME_PREFIX "RAND_STATUS_INITIALIZATION_FAILED";
     case CURAND_STATUS_ARCH_MISMATCH:               return API_NAME_PREFIX "RAND_STATUS_ARCH_MISMATCH";
     case CURAND_STATUS_INTERNAL_ERROR:              return API_NAME_PREFIX "RAND_STATUS_INTERNAL_ERROR";
+#ifdef __IS_HIP_COMPILE__
+    case HIPRAND_STATUS_NOT_IMPLEMENTED:            return API_NAME_PREFIX "RAND_STATUS_NOT_IMPLEMENTED";
+#endif
   }
   return API_NAME_PREFIX "RAND_STATUS_UNKNOWN_ERROR";
 }
