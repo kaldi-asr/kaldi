@@ -10,7 +10,7 @@ endif
 
 # Specific HIP/ROCm components should be included prior to the generic include to avoid
 # deprecation warnings.
-CXXFLAGS += -Werror $(ROCM_USEROCTX) -DHAVE_CUDA=1 \
+CXXFLAGS += $(ROCM_USEROCTX) -DHAVE_CUDA=1 \
             -D__IS_HIP_COMPILE__=1 \
             -DROCM_MAJOR_VERSION=$(ROCM_MAJOR_VERSION) -DROCM_MINOR_VERSION=$(ROCM_MINOR_VERSION) \
             -DCUDA_VERSION=11000 \

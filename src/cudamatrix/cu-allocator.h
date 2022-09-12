@@ -24,7 +24,7 @@
 
 #if HAVE_CUDA == 1
 #ifdef __IS_HIP_COMPILE__
-#include <hipblas/hipblas.h>
+#include <hipblas.h>
 #include <hip/hip_runtime.h>
 #include <hip/hip_runtime_api.h>
 #include "hipify.h"
