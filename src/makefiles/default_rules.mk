@@ -145,7 +145,7 @@ ifneq ($(CC_SRCS),)
 CC_DEP_COMMAND=$(CXX) -M $(CXXFLAGS) $(CC_SRCS)
 endif
 
-ifeq ($(IS_GPU_ENABLED), true)
+ifeq ($(IS_GPU_BUILD), true)
 CUDA_SRCS=$(wildcard *.cu)
 # Check if any CUDA .cu sources exist to run dependency commands on.
 ifneq ($(CUDA_SRCS),)
