@@ -3,6 +3,20 @@
 
 inline __device__ void __syncwarp(unsigned mask=0xffffffff) {}
 
+
+#undef hipLaunchKernelGGLInternal
+#ifdef CUDA_API_PER_THREAD_DEFAULT_STREAM
+#define hipLaunchKernelGGLInternal(kernelName, numBlocks, numThreads, memPerBlock, streamId, ...)  \
+    do {                                                                                           \
+        kernelName<<<(numBlocks), (numThreads), (memPerBlock), ( (streamId == 0) ? (hipStreamPerThread) : (streamId) )>>>(__VA_ARGS__);         \
+    } while (0)
+#else
+#define hipLaunchKernelGGLInternal(kernelName, numBlocks, numThreads, memPerBlock, streamId, ...)  \
+    do {                                                                                           \
+        kernelName<<<(numBlocks), (numThreads), (memPerBlock), ( (streamId == 0) ? (hipStreamDefault) : (streamId) )>>>(__VA_ARGS__);         \
+    } while (0)
+#endif
+
 //
 // HIP types
 //
@@ -153,10 +167,17 @@ inline __device__ void __syncwarp(unsigned mask=0xffffffff) {}
 #define curandSetPseudoRandomGeneratorSeed        hiprandSetPseudoRandomGeneratorSeed
 #define curandSetStream                           hiprandSetStream
 #define curandStatus_t                            hiprandStatus_t
+#if ROCM_MAJOR_VERSION == 5 && ROCM_MINOR_VERSION >= 1 || ROCM_MAJOR_VERSION > 5
 #define cusolverDnCreate                          hipsolverDnCreate
 #define cusolverDnDestroy                         hipsolverDnDestroy
 #define cusolverDnHandle_t                        hipsolverDnHandle_t
 #define cusolverDnSetStream                       hipsolverDnSetStream
+#else
+#define cusolverDnCreate                          hipsolverCreate
+#define cusolverDnDestroy                         hipsolverDestroy
+#define cusolverDnHandle_t                        hipsolverHandle_t
+#define cusolverDnSetStream                       hipsolverSetStream
+#endif
 #define cusparseAction_t                          hipsparseAction_t
 #define cusparseCreate                            hipsparseCreate
 #define cusparseCreateCsr                         hipsparseCreateCsr

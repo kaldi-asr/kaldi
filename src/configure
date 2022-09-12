@@ -259,7 +259,7 @@ function configure_rocm {
   # Check for ROCM in the system
   if [ ! -d "$ROCMDIR" ]; then
     for base in $ROCM_PATH /opt/rocm /usr/local/rocm /usr/; do
-      if [ -f $base/bin/hipcc ]; then
+      if [ -f $base/bin/hipcc ] && [ -f $base/bin/hipconfig ]; then
         ROCMDIR=$base
         break
       fi
@@ -268,7 +268,7 @@ function configure_rocm {
 
   if [ -d "$ROCMDIR" ]; then
     if [ ! -f $ROCMDIR/bin/hipcc ]; then
-      failure "Cannnot find hipcc in ROCm directory $ROCMDIR"
+      failure "Cannnot find hipcc and hipconfig in ROCm directory $ROCMDIR"
     fi
   fi
   echo "Using ROCm $ROCMDIR (hipcc compiler and runtime libraries)"
@@ -289,7 +289,20 @@ function configure_rocm {
   
   echo "HOST_ARCH = `uname -m`" >> kaldi.mk
   echo >> kaldi.mk
-
+  
+  ROCM_MAJOR_VERSION=$(hipconfig -v | cut -d. -f1)
+  echo "ROCM_MAJOR_VERSION = $ROCM_MAJOR_VERSION" >> kaldi.mk
+  ROCM_MINOR_VERSION=$(hipconfig -v | cut -d. -f2)
+  echo "ROCM_MINOR_VERSION = $ROCM_MINOR_VERSION" >> kaldi.mk
+  
+  # Enable HIP implementation for CXX compile commands. ROCm 5.2.0 onwards use 
+  # __HIP_PLATFORM_AMD__ others  __HIP_PLATFORM_HCC__
+  if [ $ROCM_MAJOR_VERSION -eq 5 ] && [ $ROCM_MINOR_VERSION -ge 2 ] || [ $ROCM_MAJOR_VERSION -gt 5 ] ; then
+    echo "CXXFLAGS += -D__HIP_PLATFORM_AMD__=1" >> kaldi.mk
+  else
+    echo "CXXFLAGS += -D__HIP_PLATFORM_HCC__=1" >> kaldi.mk
+  fi
+  
   # 64bit/32bit? Not Linux? We do not support cross compilation with ROCm so, 
   # use direct calls to uname -m here
   if [ "`uname -m`" == "x86_64" ] && [ "`uname`" == "Linux" ] ; then
@@ -300,10 +313,11 @@ WARNING: ROCM will not be used!
          ROCM is only supported with 64-bit Linux builds."
     exit 1;
   fi
-
-  #add cusolver flags for newer toolkits
-  if [ "$CUSOLVER" == "true" ]; then
-    echo "ROCM_LDLIBS += -lcusolver" >> kaldi.mk
+  
+  if [ $ROCM_MAJOR_VERSION -eq 5 ] && [ $ROCM_MINOR_VERSION -ge 2 ] || [ $ROCM_MAJOR_VERSION -gt 5 ] ; then
+    echo "ROCM_FLAGS += -fgpu-default-stream=per-thread" >> kaldi.mk
+  else
+    echo "ROCM_FLAGS += -DCUDA_API_PER_THREAD_DEFAULT_STREAM=1" >> kaldi.mk
   fi
 }
 
