@@ -2,12 +2,14 @@ all: ;
 
 include ../kaldi.mk
 
-ifeq ($(CUDA), true)
+ifeq ($(IS_GPU_BUILD), true)
 ifeq ($(WITH_CUDADECODER), true)
 
 # Make sure we have CUDA_ARCH from kaldi.mk,
+ifeq ($(CUDA), true)
 ifndef CUDA_ARCH
   $(error CUDA_ARCH is undefined, run 'src/configure')
+endif
 endif
 
 LDFLAGS += $(CUDA_LDFLAGS)

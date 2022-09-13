@@ -316,8 +316,9 @@ WARNING: ROCM will not be used!
   
   if [ $ROCM_MAJOR_VERSION -eq 5 ] && [ $ROCM_MINOR_VERSION -ge 2 ] || [ $ROCM_MAJOR_VERSION -gt 5 ] ; then
     echo "ROCM_FLAGS += -fgpu-default-stream=per-thread" >> kaldi.mk
+    echo "ROCM_NEEDS_KERNEL_LAUNCH_HIPIFICATION = false" >> kaldi.mk
   else
-    echo "ROCM_FLAGS += -DCUDA_API_PER_THREAD_DEFAULT_STREAM=1" >> kaldi.mk
+    echo "ROCM_NEEDS_KERNEL_LAUNCH_HIPIFICATION = true" >> kaldi.mk
   fi
 }
 
@@ -1055,7 +1056,11 @@ if $use_cuda; then
    fi
    echo "WITH_CUDADECODER = $with_cudadecoder" >> kaldi.mk
 else
-   echo "WITH_CUDADECODER = false" >> kaldi.mk
+   if $use_rocm; then
+     echo "WITH_CUDADECODER = $with_cudadecoder" >> kaldi.mk
+   else
+     echo "WITH_CUDADECODER = false" >> kaldi.mk
+   fi
 fi
 echo >> kaldi.mk
 

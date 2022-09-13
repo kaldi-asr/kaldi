@@ -15,11 +15,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifdef __IS_HIP_COMPILE__
+#include <hipcub/hipcub.hpp>
+#include "hipify.h"
+#else
 #include <cub/cub.cuh>
+#endif
+
 #include "cudafeat/feature-online-cmvn-cuda.h"
 #include "cudamatrix/cu-matrix.h"
 #include "cudamatrix/cu-vector.h"
 
+#ifndef __IS_HIP_COMPILE__
 __host__ __device__ inline float2 operator-(const float2 &a, const float2 &b) {
   float2 retval;
   retval.x = a.x - b.x;
@@ -32,6 +39,7 @@ __host__ __device__ inline float2 operator+(const float2 &a, const float2 &b) {
   retval.y = a.y + b.y;
   return retval;
 }
+#endif
 
 #if __CUDA_ARCH__ == 750
 __launch_bounds__ (1024, 1)

@@ -1,29 +1,22 @@
 #ifndef __HIPIFY_H__
 #define __HIPIFY_H__
 
+#ifdef __HIPCC__
 inline __device__ void __syncwarp(unsigned mask=0xffffffff) {}
-
-
-#undef hipLaunchKernelGGLInternal
-#ifdef CUDA_API_PER_THREAD_DEFAULT_STREAM
-#define hipLaunchKernelGGLInternal(kernelName, numBlocks, numThreads, memPerBlock, streamId, ...)  \
-    do {                                                                                           \
-        kernelName<<<(numBlocks), (numThreads), (memPerBlock), ( (streamId == 0) ? (hipStreamPerThread) : (streamId) )>>>(__VA_ARGS__);         \
-    } while (0)
+// AMDGCN only support this rounding mode.
+#define __fdiv_rd __fdiv_rn
 #else
-#define hipLaunchKernelGGLInternal(kernelName, numBlocks, numThreads, memPerBlock, streamId, ...)  \
-    do {                                                                                           \
-        kernelName<<<(numBlocks), (numThreads), (memPerBlock), ( (streamId == 0) ? (hipStreamDefault) : (streamId) )>>>(__VA_ARGS__);         \
-    } while (0)
+#define __align__(x) __attribute__((aligned (x)))
 #endif
 
 //
 // HIP types
 //
 #define CUBLAS_COMPUTE_32F                        HIPBLAS_R_32F
-#define CUBLAS_COMPUTE_32F_FAST_TF32              HIPBLAS_R_32F // TODO: Verify that plain float compute are viable replacements for the tensor cores alternative.
 #define CUBLAS_COMPUTE_32F_FAST_16F               HIPBLAS_R_32F // TODO: Verify that plain float compute are viable replacements for the tensor cores alternative.
+#define CUBLAS_COMPUTE_32F_FAST_TF32              HIPBLAS_R_32F // TODO: Verify that plain float compute are viable replacements for the tensor cores alternative.
 #define CUBLAS_DIAG_NON_UNIT                      HIPBLAS_DIAG_NON_UNIT
+#define CUBLAS_FILL_MODE_LOWER                    HIPBLAS_FILL_MODE_LOWER
 #define CUBLAS_FILL_MODE_UPPER                    HIPBLAS_FILL_MODE_UPPER
 #define CUBLAS_GEMM_DEFAULT                       HIPBLAS_GEMM_DEFAULT
 #define CUBLAS_GEMM_DEFAULT_TENSOR_OP             HIPBLAS_GEMM_DEFAULT // TODO: Verify regular GEMMs are viable replacements for explicit tensor GEMMs.
@@ -46,6 +39,8 @@ inline __device__ void __syncwarp(unsigned mask=0xffffffff) {}
 #define CUBLAS_STATUS_SUCCESS                     HIPBLAS_STATUS_SUCCESS
 #define CUDA_R_32F                                HIP_R_32F
 #define CUDA_R_64F                                HIP_R_64F
+#define CUFFT_R2C                                 HIPFFT_R2C
+#define CUFFT_SUCCESS                             HIPFFT_SUCCESS
 #define CURAND_RNG_PSEUDO_DEFAULT                 HIPRAND_RNG_PSEUDO_DEFAULT
 #define CURAND_STATUS_ALLOCATION_FAILED           HIPRAND_STATUS_ALLOCATION_FAILED
 #define CURAND_STATUS_ARCH_MISMATCH               HIPRAND_STATUS_ARCH_MISMATCH
@@ -104,6 +99,7 @@ inline __device__ void __syncwarp(unsigned mask=0xffffffff) {}
 #define cublasGemmAlgo_t                          hipblasGemmAlgo_t
 #define cublasGemmBatchedEx                       hipblasGemmBatchedEx
 #define cublasGemmEx                              hipblasGemmEx
+#define cublasGemmStridedBatchedEx                hipblasGemmStridedBatchedEx
 #define cublasHandle_t                            hipblasHandle_t
 #define cublasOperation_t                         hipblasOperation_t
 #define cublasSasum_v2                            hipblasSasum
@@ -133,15 +129,29 @@ inline __device__ void __syncwarp(unsigned mask=0xffffffff) {}
 #define cudaErrorDeviceAlreadyInUse               hipErrorContextAlreadyInUse
 #define cudaErrorInvalidDevice                    hipErrorInvalidDevice
 #define cudaError_t                               hipError_t
+#define cudaEventCreate                           hipEventCreate
+#define cudaEventCreateWithFlags                  hipEventCreateWithFlags
+#define cudaEventDestroy                          hipEventDestroy
+#define cudaEventDisableTiming                    hipEventDisableTiming
+#define cudaEventRecord                           hipEventRecord
+#define cudaEventSynchronize                      hipEventSynchronize
+#define cudaEvent_t                               hipEvent_t
 #define cudaFree                                  hipFree
+#define cudaFreeHost                              hipFreeHost
 #define cudaGetDevice                             hipGetDevice
 #define cudaGetDeviceCount                        hipGetDeviceCount
 #define cudaGetDeviceProperties                   hipGetDeviceProperties
+#define cudaGetErrorName                          hipGetErrorName
 #define cudaGetErrorString                        hipGetErrorString
 #define cudaGetErrorString                        hipGetErrorString
 #define cudaGetLastError                          hipGetLastError
+#define cudaHostRegister                          hipHostRegister
+#define cudaHostRegisterDefault                   hipHostRegisterDefault
+#define cudaHostUnregister                        hipHostUnregister
 #define cudaMalloc                                hipMalloc
+#define cudaMallocHost                            hipHostMalloc
 #define cudaMallocPitch                           hipMallocPitch
+#define cudaMemcpy                                hipMemcpy
 #define cudaMemcpy2DAsync                         hipMemcpy2DAsync
 #define cudaMemcpyAsync                           hipMemcpyAsync
 #define cudaMemcpyDeviceToDevice                  hipMemcpyDeviceToDevice
@@ -150,11 +160,20 @@ inline __device__ void __syncwarp(unsigned mask=0xffffffff) {}
 #define cudaMemset2DAsync                         hipMemset2DAsync
 #define cudaMemsetAsync                           hipMemsetAsync
 #define cudaSetDevice                             hipSetDevice
+#define cudaStreamCreate                          hipStreamCreate
+#define cudaStreamDestroy                         hipStreamDestroy
 #define cudaStreamLegacy                          ((hipStream_t)1)
 #define cudaStreamPerThread                       ((hipStream_t)2)
 #define cudaStreamSynchronize                     hipStreamSynchronize
+#define cudaStreamWaitEvent                       hipStreamWaitEvent
 #define cudaStream_t                              hipStream_t
 #define cudaSuccess                               hipSuccess
+#define cufftComplex                              hipfftComplex
+#define cufftDestroy                              hipfftDestroy
+#define cufftExecR2C                              hipfftExecR2C
+#define cufftHandle                               hipfftHandle
+#define cufftPlanMany                             hipfftPlanMany
+#define cufftSetStream                            hipfftSetStream
 #define curandCreateGenerator                     hiprandCreateGenerator
 #define curandDestroyGenerator                    hiprandDestroyGenerator
 #define curandGenerateNormal                      hiprandGenerateNormal
@@ -178,6 +197,11 @@ inline __device__ void __syncwarp(unsigned mask=0xffffffff) {}
 #define cusolverDnHandle_t                        hipsolverHandle_t
 #define cusolverDnSetStream                       hipsolverSetStream
 #endif
+#define cusolverDnSpotrf                          hipsolverDnSpotrf
+#define cusolverDnSpotrfBatched                   hipsolverDnSpotrfBatched
+#define cusolverDnSpotrf_bufferSize               hipsolverDnSpotrf_bufferSize
+#define cusolverDnSpotrs                          hipsolverDnSpotrs
+#define cusolverDnSpotrsBatched                   hipsolverDnSpotrsBatched
 #define cusparseAction_t                          hipsparseAction_t
 #define cusparseCreate                            hipsparseCreate
 #define cusparseCreateCsr                         hipsparseCreateCsr
@@ -201,7 +225,9 @@ inline __device__ void __syncwarp(unsigned mask=0xffffffff) {}
 #define cusparseSpMM_bufferSize                   hipsparseSpMM_bufferSize
 #define cusparseSpMatDescr_t                      hipsparseSpMatDescr_t
 #define cusparseStatus_t                          hipsparseStatus_t
-
+#define nvtxRangePop                              roctxRangePop
+#define nvtxRangePush                             roctxRangePush
+#define nvtxRangePushA                            roctxRangePushA
 //
 // HIPCUB namespace.
 //

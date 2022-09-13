@@ -14,9 +14,21 @@ CXXFLAGS += $(ROCM_USEROCTX) -DHAVE_CUDA=1 \
             -D__IS_HIP_COMPILE__=1 \
             -DROCM_MAJOR_VERSION=$(ROCM_MAJOR_VERSION) -DROCM_MINOR_VERSION=$(ROCM_MINOR_VERSION) \
             -DCUDA_VERSION=11000 \
-	          -I$(ROCMDIR)/hiprand/include -I$(ROCMDIR)/rocrand/include -I$(ROCMDIR)/include -I../hip -fPIC -pthread -isystem $(OPENFSTINC)
+	          -I$(ROCMDIR)/hipsparse/include \
+	          -I$(ROCMDIR)/hipfft/include \
+	          -I$(ROCMDIR)/hipblas/include \
+	          -I$(ROCMDIR)/hiprand/include \
+	          -I$(ROCMDIR)/rocrand/include \
+	          -I$(ROCMDIR)/include \
+	          -I.. -I../hip -fPIC -pthread -isystem $(OPENFSTINC)
 
-ROCM_INCLUDE = -I$(ROCMDIR)/hiprand/include -I$(ROCMDIR)/rocrand/include -I$(ROCMDIR)/include -I../hip -isystem $(OPENFSTINC)
+ROCM_INCLUDE = -I$(ROCMDIR)/hipsparse/include \
+               -I$(ROCMDIR)/hipfft/include \
+               -I$(ROCMDIR)/hipblas/include \
+               -I$(ROCMDIR)/hiprand/include \
+               -I$(ROCMDIR)/rocrand/include \
+               -I$(ROCMDIR)/include \
+               -I.. -I../hip -isystem $(OPENFSTINC)
 ROCM_FLAGS = $(ROCM_USEROCTX) -fPIC -DHAVE_CUDA=1 \
              -D__IS_HIP_COMPILE__=1 \
              -DROCM_MAJOR_VERSION=$(ROCM_MAJOR_VERSION) -DROCM_MINOR_VERSION=$(ROCM_MINOR_VERSION) \
@@ -25,4 +37,4 @@ ROCM_FLAGS = $(ROCM_USEROCTX) -fPIC -DHAVE_CUDA=1 \
 
 #TODO: Consider use ROCM_LDFLAGS/ROCM_LDLIBS or generic GPU_LDFLAGS/GPU_LDLIBS in the makefiles.
 CUDA_LDFLAGS += -L$(ROCMDIR)/lib -Wl,-rpath,$(ROCMDIR)/lib
-CUDA_LDLIBS += -lhipblas -lhipsparse -lhipsolver -lhiprand -lamdhip64
+CUDA_LDLIBS += -lhipblas -lhipsparse -lhipsolver -lhiprand -lhipfft -lroctx64 -lamdhip64

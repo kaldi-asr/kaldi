@@ -16,8 +16,19 @@
 // limitations under the License.
 
 #if HAVE_CUDA == 1
+#ifdef __IS_HIP_COMPILE__
+#include <roctracer/roctx.h>
+#include "hipify.h"
+// The BLAS enumerators are used instead of the SOLVER ones.
+#ifdef CUBLAS_FILL_MODE_LOWER
+#undef CUBLAS_FILL_MODE_LOWER
+#endif
+#define CUBLAS_FILL_MODE_LOWER HIPSOLVER_FILL_MODE_LOWER
+#else
 #include <nvToolsExt.h>
 #endif
+#endif
+
 #include <iostream>
 
 #include "base/io-funcs.h"
@@ -288,13 +299,14 @@ void IvectorExtractorFastCuda::ComputeIvectorFromStats(
   // Forming new non-SP matrix for cusolver.
   CuMatrix<float> A(quadratic);
 
+
+
 #ifdef CHOLESKY
   // query temp buffer size
   int L_work;
   CUSOLVER_SAFE_CALL(
       cusolverDnSpotrf_bufferSize(GetCusolverDnHandle(), CUBLAS_FILL_MODE_LOWER,
                                   A.NumRows(), A.Data(), A.Stride(), &L_work));
-
   // allocate temp buffer
   float *workspace = static_cast<float *>(
       CuDevice::Instantiate().Malloc(L_work * sizeof(float)));

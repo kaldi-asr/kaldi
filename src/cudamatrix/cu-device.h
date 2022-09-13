@@ -29,11 +29,11 @@
 #include <iostream>
 
 #ifdef __IS_HIP_COMPILE__
-#include <hipblas.h>
+#include <hipblas/hipblas.h>
 #include <hip/hip_runtime.h>
 #include <hip/hip_runtime_api.h>
-#include <hiprand.h>
-#include <hipsparse.h>
+#include <hiprand/hiprand.h>
+#include <hipsparse/hipsparse.h>
 #include "hipify.h"
 #else
 #include <cublas_v2.h>
@@ -44,7 +44,7 @@
 #endif
 #if CUDA_VERSION >= 9010
 #ifdef __IS_HIP_COMPILE__
-#include <hipsolver.h>
+#include <hipsolver/hipsolver.h>
 #else
 #include <cusolverDn.h>
 #endif

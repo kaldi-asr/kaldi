@@ -21,7 +21,12 @@
 
 #include "cudadecoder/batched-threaded-nnet3-cuda-online-pipeline.h"
 
+#ifdef __IS_HIP_COMPILE__
+#include <roctracer/roctx.h>
+#include "hipify.h"
+#else
 #include <nvToolsExt.h>
+#endif
 
 #include <mutex>
 #include <numeric>
