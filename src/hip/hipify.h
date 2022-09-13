@@ -191,17 +191,22 @@ inline __device__ void __syncwarp(unsigned mask=0xffffffff) {}
 #define cusolverDnDestroy                         hipsolverDnDestroy
 #define cusolverDnHandle_t                        hipsolverDnHandle_t
 #define cusolverDnSetStream                       hipsolverDnSetStream
-#else
-#define cusolverDnCreate                          hipsolverCreate
-#define cusolverDnDestroy                         hipsolverDestroy
-#define cusolverDnHandle_t                        hipsolverHandle_t
-#define cusolverDnSetStream                       hipsolverSetStream
-#endif
 #define cusolverDnSpotrf                          hipsolverDnSpotrf
 #define cusolverDnSpotrfBatched                   hipsolverDnSpotrfBatched
 #define cusolverDnSpotrf_bufferSize               hipsolverDnSpotrf_bufferSize
 #define cusolverDnSpotrs                          hipsolverDnSpotrs
 #define cusolverDnSpotrsBatched                   hipsolverDnSpotrsBatched
+#else
+#define cusolverDnCreate                          hipsolverCreate
+#define cusolverDnDestroy                         hipsolverDestroy
+#define cusolverDnHandle_t                        hipsolverHandle_t
+#define cusolverDnSetStream                       hipsolverSetStream
+#define cusolverDnSpotrf                          hipsolverSpotrf
+#define cusolverDnSpotrfBatched                   hipsolverSpotrfBatched
+#define cusolverDnSpotrf_bufferSize               hipsolverSpotrf_bufferSize
+#define cusolverDnSpotrs                          hipsolverSpotrs
+#define cusolverDnSpotrsBatched                   hipsolverSpotrsBatched
+#endif
 #define cusparseAction_t                          hipsparseAction_t
 #define cusparseCreate                            hipsparseCreate
 #define cusparseCreateCsr                         hipsparseCreateCsr
@@ -235,3 +240,4 @@ inline __device__ void __syncwarp(unsigned mask=0xffffffff) {}
 
 
 #endif //__HIPIFY_H__
+
