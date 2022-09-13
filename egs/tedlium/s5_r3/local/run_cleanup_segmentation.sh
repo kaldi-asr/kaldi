@@ -59,8 +59,7 @@ if [ $stage -le 4 ]; then
   utils/mkgraph.sh data/lang ${cleaned_dir} ${cleaned_dir}/graph
 
   for dset in dev test; do
-    steps/decode_fmllr.sh --nj $decode_nj --num-threads $decode_num_threads \
-       --cmd "$decode_cmd"  --num-threads 4 \
+    steps/decode_fmllr.sh --nj $decode_nj --cmd "$decode_cmd" --num-threads $decode_num_threads \
        ${cleaned_dir}/graph data/${dset} ${cleaned_dir}/decode_${dset}
     steps/lmrescore_const_arpa.sh --cmd "$decode_cmd" data/lang data/lang_rescore \
        data/${dset} ${cleaned_dir}/decode_${dset} ${cleaned_dir}/decode_${dset}_rescore
