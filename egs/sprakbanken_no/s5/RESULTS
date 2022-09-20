@@ -1,0 +1,19 @@
+GMM-based systems
+%WER 49.84 [ 33725 / 67665, 4337 ins, 7929 del, 21459 sub ] exp/mono0a/decode_tg_dev/wer_13_1.0
+%WER 26.75 [ 18102 / 67665, 3685 ins, 4554 del, 9863 sub ] exp/tri1/decode_fg_dev/wer_17_1.0
+%WER 27.11 [ 18341 / 67665, 3589 ins, 4725 del, 10027 sub ] exp/tri1/decode_tg_dev/wer_17_1.0
+%WER 26.01 [ 17602 / 67665, 3756 ins, 4355 del, 9491 sub ] exp/tri2a/decode_tg_dev/wer_17_1.0
+%WER 24.77 [ 16764 / 67665, 4216 ins, 4035 del, 8513 sub ] exp/tri2b/decode_tg_dev/wer_17_1.0
+%WER 22.65 [ 15327 / 67665, 4348 ins, 3787 del, 7192 sub ] exp/tri3b/decode_fg_dev/wer_17_1.0
+%WER 30.37 [ 20551 / 67665, 6005 ins, 3931 del, 10615 sub ] exp/tri3b/decode_fg_dev.si/wer_17_1.0
+%WER 15.39 [ 11800 / 76651, 3683 ins, 1139 del, 6978 sub ] exp/tri3b/decode_fg_test/wer_17_0.5
+%WER 21.84 [ 16744 / 76651, 5219 ins, 1555 del, 9970 sub ] exp/tri3b/decode_fg_test.si/wer_17_1.0
+%WER 23.01 [ 15571 / 67665, 4374 ins, 3857 del, 7340 sub ] exp/tri3b/decode_tg_dev/wer_17_1.0
+%WER 30.31 [ 20509 / 67665, 5913 ins, 4001 del, 10595 sub ] exp/tri3b/decode_tg_dev.si/wer_17_1.0
+%WER 15.67 [ 12013 / 76651, 3485 ins, 1393 del, 7135 sub ] exp/tri3b/decode_tg_test/wer_17_1.0
+%WER 21.91 [ 16796 / 76651, 5149 ins, 1645 del, 10002 sub ] exp/tri3b/decode_tg_test.si/wer_17_1.0
+Chain systems
+%WER 13.07 [ 8847 / 67665, 1674 ins, 3087 del, 4086 sub ] exp/chain2_online_cmn/tdnn1i_sp/decode_fg_dev/wer_9_1.0
+%WER 8.25 [ 6325 / 76651, 1749 ins, 419 del, 4157 sub ] exp/chain2_online_cmn/tdnn1i_sp/decode_fg_test/wer_8_0.5
+%WER 13.21 [ 8937 / 67665, 1672 ins, 3110 del, 4155 sub ] exp/chain2_online_cmn/tdnn1i_sp/decode_tg_dev/wer_9_1.0
+%WER 8.39 [ 6428 / 76651, 1750 ins, 442 del, 4236 sub ] exp/chain2_online_cmn/tdnn1i_sp/decode_tg_test/wer_8_0.5
