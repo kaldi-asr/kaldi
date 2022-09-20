@@ -109,7 +109,7 @@ get mapped to a word specified in the file data/lang/oov.txt.
 It needs to be the case that when you sort both the utt2spk and spk2utt files,
 the orders "agree", e.g. the list of speaker-ids extracted from the utt2spk file
 is the same as the string sorted order.  The easiest way to make this happen is
-to make the speaker-ids a prefix of the utter Although, in this particular
+to make the speaker-ids a prefix of the utterrance. Although, in this particular
 example we have used an underscore to separate the "speaker" and "utterance"
 parts of the utterance-id, in general it is probably safer to use a dash ("-").
 This is because it has a lower ASCII value; if the speaker-ids vary in length,
