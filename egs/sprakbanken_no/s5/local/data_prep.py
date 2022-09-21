@@ -162,3 +162,5 @@ with open(spk2gender_path, 'w', encoding="utf-8") as f:
     for data in total_data:
         _, _, id, sex, _ = data
         f.write(f'{id} {sex}\n')
+        
+        
