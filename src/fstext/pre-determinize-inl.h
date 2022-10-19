@@ -689,11 +689,9 @@ typename Arc::StateId CreateSuperFinal(MutableFst<Arc> *fst) {
   typedef typename Arc::Weight Weight;
   assert(fst != NULL);
   StateId num_states = fst->NumStates();
-  StateId num_final = 0;
   std::vector<StateId> final_states;
   for (StateId s = 0; s < num_states; s++) {
     if (fst->Final(s) != Weight::Zero()) {
-      num_final++;
       final_states.push_back(s);
     }
   }
