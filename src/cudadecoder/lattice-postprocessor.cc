@@ -78,13 +78,14 @@ bool LatticePostprocessor::GetPostprocessedLattice(
   KALDI_ASSERT(decoder_frame_shift_ != 0.0 &&
                "SetDecoderFrameShift() must be called (typically by pipeline)");
 
-  if (!word_info_)
-    KALDI_ERR << "You must set --word-boundary-rxfilename in the lattice "
-                 "postprocessor config";
-  // ok &=
-  // Ignoring the return false for now (but will print a warning),
-  // because the doc says we can, and it can happen when using endpointing
-  WordAlignLattice(clat, *tmodel_, *word_info_, max_states, out_clat);
+  if (word_info_) {
+    // ok &=
+    // Ignoring the return false for now (but will print a warning),
+    // because the doc says we can, and it can happen when using endpointing
+    WordAlignLattice(clat, *tmodel_, *word_info_, max_states, out_clat);
+  } else {
+    *out_clat = clat;
+  }
   return ok;
 }
 
