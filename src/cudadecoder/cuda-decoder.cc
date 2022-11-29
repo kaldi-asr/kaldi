@@ -37,6 +37,11 @@
 #include <utility>
 #include <vector>
 
+#ifdef __linux__
+#include <sys/syscall.h>
+#include <unistd.h>
+#endif // __linux__
+
 #include <cuda_runtime_api.h>
 #include <nvToolsExt.h>
 
@@ -96,14 +101,18 @@ CudaDecoder::CudaDecoder(const CudaFst &fst, const CudaDecoderConfig &config,
   InitHostData();
   InitDeviceData();
 
-  KALDI_DECODER_CUDA_API_CHECK_ERROR(cudaEventCreate(&nnet3_done_evt_));
-  KALDI_DECODER_CUDA_API_CHECK_ERROR(cudaEventCreate(&d2h_copy_acoustic_evt_));
-  KALDI_DECODER_CUDA_API_CHECK_ERROR(cudaEventCreate(&d2h_copy_infotoken_evt_));
+  KALDI_DECODER_CUDA_API_CHECK_ERROR(cudaEventCreate(&nnet3_done_evt_,
+                                                     cudaEventDisableTiming));
+  KALDI_DECODER_CUDA_API_CHECK_ERROR(cudaEventCreate(&d2h_copy_acoustic_evt_,
+                                                     cudaEventDisableTiming));
+  KALDI_DECODER_CUDA_API_CHECK_ERROR(cudaEventCreate(&d2h_copy_infotoken_evt_,
+                                                     cudaEventDisableTiming));
   KALDI_DECODER_CUDA_API_CHECK_ERROR(
-      cudaEventCreate(&d2h_copy_extra_prev_tokens_evt_));
+      cudaEventCreate(&d2h_copy_extra_prev_tokens_evt_, cudaEventDisableTiming));
   KALDI_DECODER_CUDA_API_CHECK_ERROR(
-      cudaEventCreate(&concatenated_data_ready_evt_));
-  KALDI_DECODER_CUDA_API_CHECK_ERROR(cudaEventCreate(&lane_offsets_ready_evt_));
+      cudaEventCreate(&concatenated_data_ready_evt_, cudaEventDisableTiming));
+  KALDI_DECODER_CUDA_API_CHECK_ERROR(cudaEventCreate(&lane_offsets_ready_evt_,
+                                                     cudaEventDisableTiming));
 
   ComputeInitialChannel();
   --nchannels_;  // removing the special initial channel from the count
@@ -682,6 +691,7 @@ void CudaDecoder::PostProcessingMainQueue() {
 }
 
 void CudaDecoder::CopyMainQueueDataToHost() {
+  nvtxRangePushA("CopyMainQueueDataToHost");
   CU_SAFE_CALL(cudaEventRecord(concatenated_data_ready_evt_, compute_st_));
   // The copies on copy_st will wait on compute_st_.
   CU_SAFE_CALL(cudaStreamWaitEvent(copy_st_, concatenated_data_ready_evt_, 0));
@@ -719,8 +729,8 @@ void CudaDecoder::CopyMainQueueDataToHost() {
       ++num_frames_decoded_[ichannel];
     }
   }
-
   LaunchH2HCopies();
+  nvtxRangePop();
 }
 
 void CudaDecoder::LaunchD2HCopies() {
@@ -838,6 +848,8 @@ void CudaDecoder::AdvanceDecoding(
     h_lanes_counters_.lane(ilane)->loglikelihoods =
         lanes_assignements[ilane].second;
   }
+  // Make sure that InitDecoding() has completed.
+  CU_SAFE_CALL(cudaStreamSynchronize(compute_st_));
   LoadChannelsStateToLanes(channels);
   KALDI_ASSERT(nlanes_used_ > 0);
   CU_SAFE_CALL(cudaMemcpyAsync(d_lanes_counters_.MutableData(),
@@ -845,6 +857,9 @@ void CudaDecoder::AdvanceDecoding(
                                nlanes_used_ * sizeof(*h_lanes_counters_.lane(0)),
                                cudaMemcpyHostToDevice, compute_st_));
   // compute_st_ will wait for nnet3 to complete
+
+  // TODO: Pass this in as a parameter instead of assuming that the
+  // neural network computes on the per-thread default stream
   CU_SAFE_CALL(cudaEventRecord(nnet3_done_evt_, cudaStreamPerThread));
   CU_SAFE_CALL(cudaStreamWaitEvent(compute_st_, nnet3_done_evt_, 0));
 
@@ -1820,6 +1835,7 @@ void CudaDecoder::CheckStaticAsserts() {
 }
 
 void CudaDecoder::LaunchH2HCopies() {
+  nvtxRangePushA("LaunchH2HCopies");
   // Each H2H copy counter
   n_acoustic_h2h_copies_todo_.store(nlanes_used_ - 1);
   n_infotoken_h2h_copies_todo_.store(nlanes_used_ - 1);
@@ -1844,10 +1860,14 @@ void CudaDecoder::LaunchH2HCopies() {
   } else {
     ComputeH2HCopies();
   }
+  nvtxRangePop();
 }
 
 void CudaDecoder::ComputeH2HCopiesCPUWorker() {
   // Run by a dedicated CPU thread
+#ifdef __linux__
+  nvtxNameOsThread(syscall(SYS_gettid), "h2hcopies");
+#endif
   while (h2h_threads_running_) {
     ComputeH2HCopies();
   }
@@ -2086,9 +2106,10 @@ void CudaDecoder::SetThreadPoolAndStartCPUWorkers(ThreadPoolLight *thread_pool,
   KALDI_ASSERT(nworkers > 0);
   n_threads_used_ = nworkers;
   thread_pool_ = thread_pool;
-  for (int32 i = 0; i < nworkers; ++i)
+  for (int32 i = 0; i < nworkers; ++i) {
     cpu_dedicated_threads_.emplace_back(&CudaDecoder::ComputeH2HCopiesCPUWorker,
                                         this);
+  }
 }
 
 }  // namespace cuda_decoder

@@ -158,7 +158,7 @@ struct HostDeviceVector {
   HostDeviceVector(
       const size_t new_size = KALDI_CUDA_DECODER_AUDIO_HOST_DEVICE_BUFFER_SIZE)
       : h_data(NULL), d_data(NULL), size(new_size) {
-    cudaEventCreate(&evt);
+    cudaEventCreate(&evt, cudaEventDisableTiming);
     Reallocate(new_size);
   }
 

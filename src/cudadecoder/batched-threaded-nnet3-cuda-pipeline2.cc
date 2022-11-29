@@ -431,13 +431,17 @@ void BatchedThreadedNnet3CudaPipeline2::AcquireTasks() {
 
 void BatchedThreadedNnet3CudaPipeline2::ComputeTasks() {
   while (threads_running_) {
+    nvtxRangePushA("AcquireTasks");
     if (current_tasks_.size() < max_batch_size_) AcquireTasks();
+    nvtxRangePop();
     if (current_tasks_.empty()) {
       // If we still have nothing to do, let's sleep a bit
       Sleep(kSleepForNewTask);
       continue;
     }
+    nvtxRangePushA("BuildBatch");
     BuildBatchFromCurrentTasks();
+    nvtxRangePop();
 
     if (use_online_features_)
       cuda_online_pipeline_.DecodeBatch(batch_corr_ids_, batch_wave_samples_,

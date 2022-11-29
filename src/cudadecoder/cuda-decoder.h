@@ -559,8 +559,8 @@ class CudaDecoder {
   //
   // The auxiliary queue is used to store the raw output of ExpandArcs.
   // We then prune that aux queue (and apply max-active) and move the
-  // survival tokens in the main queue. Tokens stored in the main q can
-  // then be used to generate new tokens (using ExpandArcs) We also
+  // survival tokens into the main queue. Tokens stored in the main q can
+  // then be used to generate new tokens (using ExpandArcs). We also
   // generate more information about what's in the main_q at the end of a
   // frame (in PostProcessingMainQueue)
   //
@@ -587,7 +587,7 @@ class CudaDecoder {
   //
   // The data linked with a channel contains the data of frame i we need
   // to remember to compute frame i+1. It is the list of tokens from frame
-  // i, with some additional info (ie the prefix sum of the emitting arcs
+  // i, with some additional info (i.e. the prefix sum of the emitting arcs
   // degrees from those tokens). We are only storing
   // d_main_q_state_and_cost_ as channel data because that's all we need
   // in a token to compute frame i+1. We don't need token.arc_idx or

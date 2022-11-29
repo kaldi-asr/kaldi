@@ -23,6 +23,12 @@
 #include <thread>
 #include <vector>
 
+#ifdef __linux__
+#include <sys/syscall.h>
+#include <unistd.h>
+#endif // __linux__
+
+
 namespace kaldi {
 namespace cuda_decoder {
 
@@ -30,7 +36,7 @@ constexpr double kSleepForWorkAvailable = 1e-3;
 constexpr double kSleepForWorkerAvailable = 1e-3;
 
 struct ThreadPoolLightTask {
-  void (*func_ptr)(void *, uint64_t, void *);
+  std::function<void(void *, uint64_t, void *)> func_ptr;
   void *obj_ptr;
   uint64_t arg1;
   void *arg2;
@@ -90,6 +96,9 @@ class ThreadPoolLightWorker final {
   std::weak_ptr<ThreadPoolLightWorker> other_;
 
   void Work() {
+#ifdef __linux__
+    nvtxNameOsThread(syscall(SYS_gettid), "threadpool");
+#endif
     while (run_thread_) {
       bool got_task = queue_.TryPop(&curr_task_);
       if (!got_task) {

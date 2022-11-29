@@ -163,6 +163,8 @@ int main(int argc, char *argv[]) {
     int32 num_task_submitted = 0, num_err = 0;
     double total_audio = 0;
 
+    KALDI_DECODER_CUDA_API_CHECK_ERROR(cudaProfilerStart());
+
     nvtxRangePush("Global Timer");
     // starting timer here so we
     // can measure throughput
@@ -242,7 +244,9 @@ int main(int argc, char *argv[]) {
 
     delete word_syms;  // will delete if non-NULL.
 
-    cudaDeviceSynchronize();
+    KALDI_DECODER_CUDA_API_CHECK_ERROR(cudaDeviceSynchronize());
+
+    KALDI_DECODER_CUDA_API_CHECK_ERROR(cudaProfilerStop());
 
     return 0;
   } catch (const std::exception &e) {
