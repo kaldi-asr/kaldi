@@ -277,10 +277,13 @@ class CudaDecoder {
 
   void SetOutputFrameShiftInSeconds(BaseFloat f) { frame_shift_seconds_ = f; }
 
+  // here's how we get the partial hypotheses... Need to wait until we
+  // can do this for thread safety.
   void GetPartialHypothesis(ChannelId ichannel, PartialHypothesis **out) {
     KALDI_ASSERT(generate_partial_hypotheses_);
+    WaitForPartialHypotheses();
     // No need to lock, all ops on h_all_channels_partial_hypotheses_out_ are
-    // done before returning InitDecoding or AdvanceDecoding
+    // done after calling WaitForPartialHypotheses()
     *out = &h_all_channels_partial_hypotheses_out_[ichannel];
   }
 
@@ -492,6 +495,7 @@ class CudaDecoder {
   // before returning
   void WaitForPartialHypotheses();
 
+  void LaunchPartialHypotheses();
   // Takes care of preparing the data for ComputeH2HCopies
   // and check whether we can use the threadpool or we have to do the work
   // on the current thread
@@ -780,13 +784,16 @@ class CudaDecoder {
   CostType *h_acoustic_cost_concat_tmp_;
   InfoToken *h_extra_prev_tokens_concat_tmp_;
   // Offsets used in MoveConcatenatedCopyToVector
+  // offsets, so size is nlanes_ + 1!
   std::vector<int32> h_main_q_end_lane_offsets_;
   std::vector<int32> h_emitting_main_q_end_lane_offsets_;
   std::vector<int32> h_n_extra_prev_tokens_lane_offsets_;
   // Index of the best index for the last frame. Used by endpointing/partial
   // results
 
+  // indexed by lanes
   std::vector<BestPathTracebackHead> h_best_path_traceback_head_;
+  // indexed by channels
   std::vector<BestPathTracebackHead>
       h_all_channels_prev_best_path_traceback_head_;
   // Partial path so far on a given channel

@@ -32,7 +32,7 @@
 namespace kaldi {
 namespace cuda_decoder {
 
-constexpr double kSleepForWorkAvailable = 1e-3;
+constexpr double kSleepForWorkAvailable = 1e-4;
 constexpr double kSleepForWorkerAvailable = 1e-3;
 
 struct ThreadPoolLightTask {
@@ -98,6 +98,7 @@ class ThreadPoolLightWorker final {
   void Work() {
 #ifdef __linux__
     nvtxNameOsThread(syscall(SYS_gettid), "threadpool");
+    pthread_setname_np(pthread_self(), "threadpool");
 #endif
     while (run_thread_) {
       bool got_task = queue_.TryPop(&curr_task_);
@@ -114,6 +115,7 @@ class ThreadPoolLightWorker final {
         (curr_task_.func_ptr)(curr_task_.obj_ptr, curr_task_.arg1,
                               curr_task_.arg2);
       } else {
+        // std::this_thread::yield();
         Sleep(kSleepForWorkAvailable);  // TODO
       }
     }
