@@ -40,6 +40,8 @@
 #include "nnet3/nnet-optimize.h"
 #include "online2/online-nnet2-feature-pipeline.h"
 
+#include "cudadecoder/thread-pool-cia.h"
+
 namespace kaldi {
 namespace cuda_decoder {
 
@@ -165,7 +167,7 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
 
     int num_batching_copy_threads = config_.num_batching_copy_threads;
     if (num_batching_copy_threads > 0) {
-        batching_copy_thread_pool_ = std::make_unique<ThreadPoolLight>(num_batching_copy_threads);
+        batching_copy_thread_pool_ = std::make_unique<work_stealing_thread_pool>(num_batching_copy_threads);
     }
 
     Initialize(decode_fst);
@@ -519,7 +521,7 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
   // destructor blocks until the thread pool is drained of work items.
   std::unique_ptr<ThreadPoolLight> thread_pool_;
 
-  std::unique_ptr<ThreadPoolLight> batching_copy_thread_pool_;
+  std::unique_ptr<work_stealing_thread_pool> batching_copy_thread_pool_;
 
   // The decoder owns thread(s) that reconstruct lattices transferred from the
   // device in a compacted form as arrays with offsets instead of pointers.

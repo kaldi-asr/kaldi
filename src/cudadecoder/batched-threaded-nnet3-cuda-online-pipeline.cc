@@ -264,7 +264,7 @@ void BatchedThreadedNnet3CudaOnlinePipeline::CompactWavesToMatrix(
 
     for (size_t i = 0; i < wave_samples.size(); i += batch_size) {
 
-      auto task = [i, this, &wave_samples, &m, &cv, &tasks_remaining, &batch_size](void *ignore1, uint64_t ignore2, void *ignore3) {
+      auto task = [i, this, &wave_samples, &m, &cv, &tasks_remaining, &batch_size]() {
         nvtxRangePush("CompactWavesToMatrix task");
         for (size_t j = i; j < std::min(i + batch_size, wave_samples.size()); ++j) {
           const SubVector<BaseFloat> &src = wave_samples[j];
@@ -281,7 +281,7 @@ void BatchedThreadedNnet3CudaOnlinePipeline::CompactWavesToMatrix(
         }
         nvtxRangePop();
       };
-      batching_copy_thread_pool_->Push({task, nullptr, 0, nullptr});
+      batching_copy_thread_pool_->submit(task);
     }
 
     // wait for all threads to finish
