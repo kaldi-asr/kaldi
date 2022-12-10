@@ -83,7 +83,9 @@ CudaDecoder::CudaDecoder(const CudaFst &fst, const CudaDecoderConfig &config,
   CU_SAFE_CALL(cudaStreamCreate(&compute_st_));
   // Copies D2H of tokens for storage on host are done on
   // copy_st_, in parallel with compute_st_
-  CU_SAFE_CALL(cudaStreamCreate(&copy_st_));
+  int least_priority, greatest_priority;
+  CU_SAFE_CALL(cudaDeviceGetStreamPriorityRange(&least_priority, &greatest_priority));
+  CU_SAFE_CALL(cudaStreamCreateWithPriority(&copy_st_, cudaStreamDefault, greatest_priority));
   // For all the allocating/initializing process
   // We create a special channel
   // containing the exact state a channel should have when starting a new
@@ -433,6 +435,8 @@ void CudaDecoder::ComputeInitialChannel() {
 }
 
 void CudaDecoder::InitDecoding(const std::vector<ChannelId> &channels) {
+  WaitForH2HCopies();
+  WaitForPartialHypotheses();
   // Cloning the init_channel_id_ channel into all channels in the
   // channels vec
   const int nlanes_used = channels.size();
@@ -460,7 +464,6 @@ void CudaDecoder::InitDecoding(const std::vector<ChannelId> &channels) {
     std::lock_guard<std::mutex> lk(n_init_decoding_h2h_task_not_done_mutex_);
     n_init_decoding_h2h_task_not_done_ += channels.size();
   }
-  WaitForPartialHypotheses(); // good
   for (ChannelId ichannel : channels) {
     ChannelCounters &channel_counters = h_channels_counters_[ichannel];
     channel_counters.prev_main_q_narcs_and_end =
@@ -845,12 +848,18 @@ void CudaDecoder::AdvanceDecoding(
   // Setting the loglikelihoods pointers for that frame
   std::vector<ChannelId> channels;  // TODO
   channels.reserve(lanes_assignements.size());
-  for (LaneId ilane = 0; ilane < lanes_assignements.size(); ++ilane) {
-    ChannelId ichannel = lanes_assignements[ilane].first;
+  std::vector<std::pair<ChannelId, const BaseFloat *>> lanes_assignments_copy(lanes_assignements);
+  // sorting this makes lanes2channels_todo_ sorted as well. Since
+  // contiguous chunks of lanes2channels_todo_ are assigned to
+  // separate worker threads, this sorting speeds up CPU work by
+  // increasing cache data locality.
+  std::sort(lanes_assignments_copy.begin(), lanes_assignments_copy.end(), [](auto&& a, auto&& b){return a.first < b.first;});
+  for (LaneId ilane = 0; ilane < lanes_assignments_copy.size(); ++ilane) {
+    ChannelId ichannel = lanes_assignments_copy[ilane].first;
     channels.push_back(ichannel);
     channel_to_compute_[ilane] = ichannel;
     h_lanes_counters_.lane(ilane)->loglikelihoods =
-        lanes_assignements[ilane].second;
+        lanes_assignments_copy[ilane].second;
   }
   // Make sure that InitDecoding() has completed.
   CU_SAFE_CALL(cudaStreamSynchronize(compute_st_));
@@ -871,9 +880,6 @@ void CudaDecoder::AdvanceDecoding(
   ResetForFrameAndEstimateCutoffKernel(
       KaldiCudaDecoderNumBlocks(1, nlanes_used_), KALDI_CUDA_DECODER_1D_BLOCK,
       compute_st_, *h_device_params_, *h_kernel_params_);
-  // Reset max active status. If necessary, ApplyMaxActiveAndReduceBeam
-  // will switch it back on
-  compute_max_active_ = false;
 
   // Processing emitting arcs. We've done the preprocess stage at the end
   // of the previous frame
@@ -943,11 +949,10 @@ void CudaDecoder::AdvanceDecoding(
 // waiting here... Should use condition variable, right?
 void CudaDecoder::WaitForPartialHypotheses() {
   if (!generate_partial_hypotheses_) return;
-  while (n_partial_traceback_threads_not_done_
-             .load(std::memory_order_acquire) > 0) {
-      // this is bad
-    Sleep(200e-6);
-  }
+  std::unique_lock<std::mutex> lk(n_partial_traceback_threads_not_done_mutex_);
+  n_partial_traceback_threads_not_done_cv_.wait(lk, [this]{
+      return n_partial_traceback_threads_not_done_ == 0;}
+  );
 }
 
 void CudaDecoder::CheckOverflow() {
@@ -1837,34 +1842,28 @@ void CudaDecoder::CheckStaticAsserts() {
 
 void CudaDecoder::LaunchPartialHypotheses() {
   if (partial_traceback_) {
-    // performance killer. Need to wait until WaitForH2HCopies() is
-    // done in each individual launched thread, not in this main
-    // thread.
-    // the other issue is that the thread worker sleep time is too large.
-    n_partial_traceback_threads_todo_.store(nlanes_used_ - 1);
-    // necessary because the todo_ variable can reach 0 when the last
-    // one still isn't done. Ugh.
-
-    // I assign to this in one thread, but then use a different
-    // thread... Is that a problem?
-    n_partial_traceback_threads_not_done_.store(thread_pool_ ? nlanes_used_ : 1);
-
     auto nlanes_used = nlanes_used_;
+    const size_t num_tasks = thread_pool_->num_workers();
 
-    auto launch = [this, nlanes_used]() {
+    {
+      std::lock_guard<std::mutex> lk(n_partial_traceback_threads_not_done_mutex_);
+      KALDI_ASSERT(n_partial_traceback_threads_not_done_ == 0);
+      n_partial_traceback_threads_not_done_ = thread_pool_ ? num_tasks : 1;
+    }
+
+    auto launch = [this, nlanes_used, num_tasks]() {
       WaitForInitDecodingH2HCopies();
       WaitForH2HCopies();
 
-    for (std::size_t i  = 0; i < nlanes_used; ++i) {
-      thread_pool_->Push(ThreadPoolLightTask{
-        [this](void *a0, uint64_t a1, void *a2) {
-          nvtxRangePush("PartialHypothesis");
-          // I wait for these, so why am I getting an error? Should I lock just for safety?
-          int ilane;
-          if ((ilane = n_partial_traceback_threads_todo_.fetch_sub(1)) >= 0) {
-            // ERROR!!! Need to keep the previous value of lanes2channels_todo_
+      const size_t batch_size =
+      KALDI_CUDA_DECODER_DIV_ROUND_UP(nlanes_used,
+                                      num_tasks);
+      for (size_t i = 0; i < num_tasks; i += 1) {
+        auto task = [this, nlanes_used, batch_size, i, num_tasks]() {
+          for (size_t ilane = i * batch_size;
+               ilane < std::min(size_t((i + 1) * batch_size), size_t(nlanes_used));
+               ++ilane) {
             int32 ichannel = lanes2channels_todo_[ilane];
-            // std::lock_guard<std::mutex> channel_lk(channel_lock_[ichannel]);
             GeneratePartialPath(ilane, ichannel);
             if (generate_partial_hypotheses_) {
               std::stack<std::pair<int, PartialPathArc *>> traceback_buffer;
@@ -1876,14 +1875,20 @@ void CudaDecoder::LaunchPartialHypotheses() {
             h_all_channels_prev_best_path_traceback_head_[ichannel] =
               h_best_path_traceback_head_[ilane];
           }
-          n_partial_traceback_threads_not_done_.fetch_sub(1, std::memory_order_release);
-          nvtxRangePop();
-        }, nullptr, uint64_t(0), nullptr});
-    }
+          {
+            std::lock_guard<std::mutex> lk(n_partial_traceback_threads_not_done_mutex_);
+            --n_partial_traceback_threads_not_done_;
+            KALDI_ASSERT(n_partial_traceback_threads_not_done_ < num_tasks);
+            KALDI_ASSERT(n_partial_traceback_threads_not_done_ >= 0);
+            if (n_partial_traceback_threads_not_done_ == 0) {
+              n_partial_traceback_threads_not_done_cv_.notify_all();
+            }
+          }
+        };
+        thread_pool_->submit(task);
+      }
     };
-
-    std::thread t(launch);
-    t.detach();
+    thread_pool_->submit(launch);
   }
 }
 
@@ -2080,7 +2085,6 @@ void CudaDecoder::ComputeH2HCopies() {
   // Waiting for the D2H copies. This is threadsafe
   // Step 1: acoustic costs
   CU_SAFE_CALL(cudaEventSynchronize(d2h_copy_acoustic_evt_));
-  nvtxRangePush("acoustic copy");
   while ((ilane = n_acoustic_h2h_copies_todo_.fetch_sub(1)) >= 0) {
     int32 ichannel = lanes2channels_todo_[ilane];
     // Lock Channel
@@ -2097,10 +2101,8 @@ void CudaDecoder::ComputeH2HCopies() {
     auto &vec = h_all_tokens_acoustic_cost_[ichannel];
     vec.insert(vec.end(), ntokens_nonemitting, 0.0f);
   }
-  nvtxRangePop();
   // Step 2: infotoken
   CU_SAFE_CALL(cudaEventSynchronize(d2h_copy_infotoken_evt_));
-  nvtxRangePush("infotoken copy");
   while ((ilane = n_infotoken_h2h_copies_todo_.fetch_sub(1)) >= 0) {
     int32 ichannel = lanes2channels_todo_[ilane];
     // Lock Channel
@@ -2108,12 +2110,10 @@ void CudaDecoder::ComputeH2HCopies() {
     MoveConcatenatedCopyToVector(ilane, ichannel, h_main_q_end_lane_offsets_,
                                  h_infotoken_concat_, &h_all_tokens_info_);
   }
-  nvtxRangePop();
   // Step 3:
   // - extra prev tokens
   // - partial path and endpointing
   CU_SAFE_CALL(cudaEventSynchronize(d2h_copy_extra_prev_tokens_evt_));
-  nvtxRangePush("extra prev tokens copy");
   while ((ilane = n_extra_prev_tokens_h2h_copies_todo_.fetch_sub(1)) >= 0) {
     int32 ichannel = lanes2channels_todo_[ilane];
     // Lock Channel
@@ -2126,7 +2126,6 @@ void CudaDecoder::ComputeH2HCopies() {
         h_extra_and_acoustic_cost_concat_,
         &h_all_tokens_extra_prev_tokens_extra_and_acoustic_cost_);
   }
-  nvtxRangePop();
   // If we're the last cpu thread to complete the current tasks, notify
   // the main thread
   bool all_done;
@@ -2139,7 +2138,7 @@ void CudaDecoder::ComputeH2HCopies() {
   }
 }
 
-void CudaDecoder::SetThreadPoolAndStartCPUWorkers(ThreadPoolLight *thread_pool,
+void CudaDecoder::SetThreadPoolAndStartCPUWorkers(futures_thread_pool *thread_pool,
                                                   int32 nworkers) {
   KALDI_ASSERT(nworkers > 0);
   n_threads_used_ = nworkers;

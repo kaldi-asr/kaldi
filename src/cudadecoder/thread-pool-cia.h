@@ -1,11 +1,39 @@
+// cudadecoder/thread-pool-cia.h
+//
+// Copyright (c) 2022, NVIDIA CORPORATION.  All rights reserved.
+// Daniel Galvez
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+// This code was modified from Chapter 10 of C++ Concurrency in
+// Action, which offers its code under the Boost License.
+
 #pragma once
 
+#include <cassert>
 #include <future>
 #include <memory>
 #include <thread>
 #include <type_traits>
 #include <queue>
 #include <vector>
+
+#ifdef __linux__
+#include <nvToolsExt.h>
+#include <sys/syscall.h>
+#include <unistd.h>
+#endif // __linux__
+
 
 namespace kaldi {
 
@@ -29,14 +57,23 @@ private:
   mutable std::mutex mut;
   std::queue<T> data_queue;
   std::condition_variable data_cond;
+  std::atomic<bool> done;
 public:
-  threadsafe_queue() {}
-  threadsafe_queue(const threadsafe_queue& other) {
-    std::lock_guard<std::mutex> lk(other.mut);
-    // does not work if T is function_wrapper
-    data_queue = other.data_queue;
-  }
+  threadsafe_queue(): done(false) {}
   threadsafe_queue& operator=(const threadsafe_queue&) = delete;
+
+  void mark_done() {
+    std::lock_guard<std::mutex> lk(mut);
+    done = true;
+    data_cond.notify_all();
+  }
+
+  ~threadsafe_queue() {
+    if (!done) {
+      assert(false && "Must set to done to true before destroying threadsafe_queue.");
+    }
+  }
+
   template<class U = T>
   typename std::enable_if<std::is_same<T,U>::value && std::is_move_assignable<T>::value, void>::type
   push(T new_value) {
@@ -53,13 +90,35 @@ public:
     data_queue.push(new_value);
     data_cond.notify_one();
   }
-  void wait_and_pop(T& value)
+  template<class U = T>
+  typename std::enable_if<std::is_same<T,U>::value && std::is_move_assignable<T>::value, bool>::type
+  wait_and_pop(T& value)
   {
     std::unique_lock<std::mutex> lk(mut);
-    data_cond.wait(lk, [this]{return !data_queue.empty();});
-    value = data_queue.front();
-    data_queue.pop();
+    data_cond.wait(lk, [this]{return !data_queue.empty() || done;});
+    if (!data_queue.empty()) {
+      value = std::move(data_queue.front());
+      data_queue.pop();
+      return true;
+    } else {
+      return false;
+    }
   }
+  template<class U = T>
+  typename std::enable_if<std::is_same<T,U>::value && std::is_copy_assignable<T>::value && !std::is_move_assignable<T>::value, bool>::type
+  wait_and_pop(T& value)
+  {
+    std::unique_lock<std::mutex> lk(mut);
+    data_cond.wait(lk, [this]{return !data_queue.empty() || done;});
+    if (!data_queue.empty()) {
+      value = data_queue.front();
+      data_queue.pop();
+      return true;
+    } else {
+      return false;
+    }
+  }
+  // TODO: return null pointer if done. TODO: Add move assign overload.
   std::unique_ptr<T> wait_and_pop() {
     std::unique_lock<std::mutex> lk(mut);
     data_cond.wait(lk, [this]{return !data_queue.empty();});
@@ -200,13 +259,21 @@ class futures_thread_pool {
   join_threads joiner;
 public:
   void worker_thread() {
+    #ifdef __linux__
+    nvtxNameOsThread(syscall(SYS_gettid), "threadpool");
+    pthread_setname_np(pthread_self(), "threadpool");
+    #endif
     while (!done) {
       function_wrapper task;
-      if (work_queue.try_pop(task)) {
+      bool success = work_queue.wait_and_pop(task);
+      if (success) {
         task();
-      } else {
-        std::this_thread::yield();
       }
+      // if (work_queue.try_pop(task)) {
+      //   task();
+      // } else {
+      //   std::this_thread::yield();
+      // }
     }
   }
   futures_thread_pool(const unsigned int num_threads): done(false), joiner(threads) {
@@ -221,6 +288,7 @@ public:
   }
 
   ~futures_thread_pool() {
+    work_queue.mark_done();
     done = true;
   }
 
@@ -233,6 +301,10 @@ public:
     std::future<result_type> res(task.get_future());
     work_queue.push(std::move(task));
     return res;
+  }
+
+  size_t num_workers() const {
+    return threads.size();
   }
 };
 
@@ -371,6 +443,12 @@ public:
   void worker_thread(unsigned int my_index_) {
     my_index = my_index_;
     local_work_queue = queues[my_index].get();
+
+    #ifdef __linux__
+    nvtxNameOsThread(syscall(SYS_gettid), "threadpool");
+    pthread_setname_np(pthread_self(), "threadpool");
+    #endif
+
     while(!done) {
       run_pending_task();
     }

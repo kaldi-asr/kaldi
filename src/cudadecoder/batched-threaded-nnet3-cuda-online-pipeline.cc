@@ -330,9 +330,7 @@ void BatchedThreadedNnet3CudaOnlinePipeline::ComputeCPUFeatureExtraction(
   n_compute_features_not_done_.store(channels.size());
 
   for (size_t i = 0; i < channels.size(); ++i) {
-    thread_pool_->Push(
-        {&BatchedThreadedNnet3CudaOnlinePipeline::ComputeOneFeatureWrapper,
-         this, i, 0});  // second argument "0" is not used
+    thread_pool_->submit(std::bind(&BatchedThreadedNnet3CudaOnlinePipeline::ComputeOneFeature, this, i));
   }
 
   while (n_compute_features_not_done_.load(std::memory_order_acquire))
@@ -611,9 +609,7 @@ void BatchedThreadedNnet3CudaOnlinePipeline::RunLatticeCallbacks(
       // If q is not empty, it means we already have a task in the threadpool
       // for that channel it is important to run those task in FIFO order if
       // empty, run a new task
-      thread_pool_->Push(
-          {&BatchedThreadedNnet3CudaOnlinePipeline::FinalizeDecodingWrapper,
-           this, ichannel, /* ignored */ nullptr});
+      thread_pool_->submit(std::bind(&BatchedThreadedNnet3CudaOnlinePipeline::FinalizeDecoding, this, ichannel));
     }
   }
 }

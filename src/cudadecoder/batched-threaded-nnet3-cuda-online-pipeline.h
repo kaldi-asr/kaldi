@@ -163,11 +163,11 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
     config_.compute_opts.CheckAndFixConfigs(am_nnet_->GetNnet().Modulus());
     config_.CheckAndFixConfigs();
     int num_worker_threads = config_.num_worker_threads;
-    thread_pool_ = std::make_unique<ThreadPoolLight>(num_worker_threads);
+    thread_pool_ = std::make_unique<futures_thread_pool>(num_worker_threads);
 
     int num_batching_copy_threads = config_.num_batching_copy_threads;
     if (num_batching_copy_threads > 0) {
-        batching_copy_thread_pool_ = std::make_unique<work_stealing_thread_pool>(num_batching_copy_threads);
+        batching_copy_thread_pool_ = std::make_unique<futures_thread_pool>(num_batching_copy_threads);
     }
 
     Initialize(decode_fst);
@@ -322,12 +322,6 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
   // Used when features are computed on the host (CPU) on pool threads.
   void ComputeOneFeature(int element);
 
-  static void ComputeOneFeatureWrapper(void *obj, uint64_t element,
-                                       void *ignored) {
-    static_cast<BatchedThreadedNnet3CudaOnlinePipeline *>(obj)
-        ->ComputeOneFeature(element);
-  }
-
   void RunNnet3(const std::vector<int> &channels,
                 const std::vector<BaseFloat *> &d_features,
                 const int feature_stride,
@@ -360,14 +354,6 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
   // the threadpool
   // it will call the utterance's callback when done
   void FinalizeDecoding(int32 ichannel);
-
-  // static wrapper for thread pool
-  static void FinalizeDecodingWrapper(void *obj, uint64_t ichannel64,
-                                      void *ignored) {
-    int32 ichannel = static_cast<int32>(ichannel64);
-    static_cast<BatchedThreadedNnet3CudaOnlinePipeline *>(obj)
-        ->FinalizeDecoding(ichannel);
-  }
 
   //
   // Internal structs
@@ -519,9 +505,9 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
 
     // The thread pool receives data from device and post-processes it. This class
   // destructor blocks until the thread pool is drained of work items.
-  std::unique_ptr<ThreadPoolLight> thread_pool_;
+  std::unique_ptr<futures_thread_pool> thread_pool_;
 
-  std::unique_ptr<work_stealing_thread_pool> batching_copy_thread_pool_;
+  std::unique_ptr<futures_thread_pool> batching_copy_thread_pool_;
 
   // The decoder owns thread(s) that reconstruct lattices transferred from the
   // device in a compacted form as arrays with offsets instead of pointers.

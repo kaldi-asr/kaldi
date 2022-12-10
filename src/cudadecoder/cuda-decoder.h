@@ -42,7 +42,7 @@
 #include "cudadecoder/cuda-decodable-itf.h"
 #include "cudadecoder/cuda-decoder-common.h"
 #include "cudadecoder/cuda-fst.h"
-#include "cudadecoder/thread-pool-light.h"
+#include "cudadecoder/thread-pool-cia.h"
 #include "fst/symbol-table.h"
 #include "online2/online-endpoint.h"
 
@@ -333,7 +333,7 @@ class CudaDecoder {
   // InitDecodingH2HCopies For recurrent CPU work, such as
   // ComputeH2HCopies, we will use dedicated CPU threads We will launch
   // nworkers of those threads
-  void SetThreadPoolAndStartCPUWorkers(ThreadPoolLight *thread_pool,
+  void SetThreadPoolAndStartCPUWorkers(futures_thread_pool *thread_pool,
                                        int32 nworkers);
 
   // Used to generate partial results
@@ -813,7 +813,6 @@ class CudaDecoder {
   std::vector<bool> has_reached_final_;
   std::vector<std::vector<std::pair<int32, CostType>>>
       list_finals_token_idx_and_cost_;
-  bool compute_max_active_;
   cudaEvent_t nnet3_done_evt_;
   cudaEvent_t d2h_copy_acoustic_evt_;
   cudaEvent_t d2h_copy_infotoken_evt_;
@@ -868,7 +867,7 @@ class CudaDecoder {
   // read comments associated with must_replay_frame in GetRawLattice to
   // understand what it does
   CostType extra_cost_min_delta_;
-  ThreadPoolLight *thread_pool_;
+  futures_thread_pool *thread_pool_;
   std::vector<std::thread> cpu_dedicated_threads_;
   int32 n_threads_used_;
   std::vector<ChannelId> lanes2channels_todo_;
@@ -888,8 +887,9 @@ class CudaDecoder {
   //TODO(hugovbraun): unused: std::atomic<bool> active_wait_;
 
   // Used for sync on partial hypotheses tasks
-  std::atomic<std::int32_t> n_partial_traceback_threads_todo_;
-  std::atomic<std::int32_t> n_partial_traceback_threads_not_done_;
+  std::int32_t n_partial_traceback_threads_not_done_;
+  std::mutex n_partial_traceback_threads_not_done_mutex_;
+  std::condition_variable n_partial_traceback_threads_not_done_cv_;
 
   // Set to false in destructor to stop threads.
   volatile bool h2h_threads_running_;
