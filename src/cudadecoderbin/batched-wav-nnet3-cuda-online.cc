@@ -309,6 +309,16 @@ int main(int argc, char *argv[]) {
 
     KALDI_LOG << "Latency stats:";
     PrintLatencyStats(latencies);
+
+    double total_latency = std::accumulate(latencies.begin(), latencies.end(), 0.0);
+    auto sum_op = [](double accum, const auto& a){
+      return accum + a->Duration();
+    };
+    double total_duration = opts.niterations * std::accumulate(all_wav.begin(), all_wav.end(),
+                                                               0.0, sum_op);
+    double rtf_x = total_duration / total_latency;
+    KALDI_LOG << "RTFx:" << rtf_x;
+
     delete word_syms;
 
     if (clat_writer) clat_writer->Close();
