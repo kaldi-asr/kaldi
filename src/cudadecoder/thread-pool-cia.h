@@ -58,6 +58,7 @@ private:
   std::queue<T> data_queue;
   std::condition_variable data_cond;
   std::atomic<bool> done;
+
 public:
   threadsafe_queue(): done(false) {}
   threadsafe_queue& operator=(const threadsafe_queue&) = delete;
@@ -235,6 +236,7 @@ class function_wrapper {
     impl_type(F&& f_): f(std::move(f_)) {}
     void call() { f(); }
   };
+
 public:
   template<typename F>
   function_wrapper(F&& f): impl(new impl_type<F>(std::move(f))) {}
@@ -257,6 +259,7 @@ class futures_thread_pool {
   threadsafe_queue<function_wrapper> work_queue;
   std::vector<std::thread> threads;
   join_threads joiner;
+
 public:
   void worker_thread() {
     #ifdef __linux__
@@ -374,6 +377,7 @@ private:
   typedef function_wrapper data_type;
   std::deque<data_type> the_queue;
   mutable std::mutex the_mutex;
+
 public:
   work_stealing_queue() {}
   work_stealing_queue(const work_stealing_queue& other) = delete;
@@ -439,6 +443,7 @@ class work_stealing_thread_pool {
     }
     return false;
   }
+
 public:
   void worker_thread(unsigned int my_index_) {
     my_index = my_index_;

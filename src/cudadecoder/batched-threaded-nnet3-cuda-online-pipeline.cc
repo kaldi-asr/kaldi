@@ -263,7 +263,6 @@ void BatchedThreadedNnet3CudaOnlinePipeline::CompactWavesToMatrix(
     std::atomic_init(&tasks_remaining, KALDI_CUDA_DECODER_DIV_ROUND_UP(wave_samples.size(), batch_size));
 
     for (size_t i = 0; i < wave_samples.size(); i += batch_size) {
-
       auto task = [i, this, &wave_samples, &m, &cv, &tasks_remaining, &batch_size]() {
         nvtxRangePush("CompactWavesToMatrix task");
         for (size_t j = i; j < std::min(i + batch_size, wave_samples.size()); ++j) {
