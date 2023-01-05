@@ -283,6 +283,7 @@ Either your CUDA is too new or too old."
       GCC_VER=$($CXX -dumpversion)
       GCC_VER_NUM=$(echo $GCC_VER | sed 's/\./ /g' | xargs printf "%d%02d%02d")
       case $CUDA_VERSION in
+        # Update this list by consulting https://gist.github.com/ax3l/9489132
         # Disabling CUDA 7 and CUDA 8 because we now use C++14 to compile CUDA
         # code. It is still possible to use those cuda versions by switching
         # back to C++11 in src/makefiles/cuda_64bit.mk and use CUB <= 1.8.0.
@@ -317,7 +318,13 @@ Either your CUDA is too new or too old."
         11_*)
           MIN_UNSUPPORTED_GCC_VER="12.0"
           MIN_UNSUPPORTED_GCC_VER_NUM=120000
-          ;;
+          CUSOLVER=true
+        ;;
+        12_*)
+          MIN_UNSUPPORTED_GCC_VER="12.2"
+          MIN_UNSUPPORTED_GCC_VER_NUM=122000
+          CUSOLVER=true
+        ;;
         *)
           failure "Unsupported CUDA version ${CUDA_VERSION}.
 Please open an issue at https://github.com/kaldi-asr/kaldi/issues and include\
@@ -345,6 +352,7 @@ Please open an issue at https://github.com/kaldi-asr/kaldi/issues and include\
             10_*) CUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_70,code=sm_70 -gencode arch=compute_75,code=sm_75" ;;
             11_0) CUDA_ARCH="-gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_70,code=sm_70 -gencode arch=compute_75,code=sm_75 -gencode arch=compute_80,code=sm_80" ;;
             11_*) CUDA_ARCH="-gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_70,code=sm_70 -gencode arch=compute_75,code=sm_75 -gencode arch=compute_80,code=sm_80 -gencode arch=compute_86,code=sm_86" ;;
+            12_*) CUDA_ARCH="-gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_70,code=sm_70 -gencode arch=compute_75,code=sm_75 -gencode arch=compute_80,code=sm_80 -gencode arch=compute_86,code=sm_86 -gencode arch=compute_90,code=sm_90" ;;
             *) failure \
                  "Unsupported CUDA version ${CUDA_VERSION}. Please open an" \
                  "issue at https://github.com/kaldi-asr/kaldi/issues and" \
