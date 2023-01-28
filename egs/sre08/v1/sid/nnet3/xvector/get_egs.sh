@@ -24,9 +24,9 @@ cmd=run.pl
 # $min_frames_per_eg and $max_frames_per_eg.
 min_frames_per_chunk=50
 max_frames_per_chunk=300
-frames_per_iter=10000000 # target number of frames per archive.
+frames_per_iter=100000 #10000000 # target number of frames per archive.
 
-frames_per_iter_diagnostic=100000 # have this many frames per archive for
+frames_per_iter_diagnostic=10000 #100000 # have this many frames per archive for
                                    # the archives used for diagnostics.
 
 num_diagnostic_archives=3  # we want to test the training likelihoods
@@ -34,15 +34,15 @@ num_diagnostic_archives=3  # we want to test the training likelihoods
                            # how many archives we evaluate on.
 
 
-compress=true   # set this to false to disable compression (e.g. if you want to see whether
+compress=false #true   # set this to false to disable compression (e.g. if you want to see whether
                 # results are affected).
 
 num_heldout_utts=100     # number of utterances held out for training subset
 
 num_repeats=1 # number of times each speaker repeats per archive
 
-stage=0
-nj=6         # This should be set to the maximum number of jobs you are
+stage=3
+nj=8         # This should be set to the maximum number of jobs you are
              # comfortable to run in parallel; you can increase it if your disk
              # speed is greater and you have more machines.
 
@@ -171,6 +171,9 @@ if [ $stage -le 2 ]; then
       --utt2len-filename=$dir/temp/utt2num_frames.train_subset \
       --utt2int-filename=$dir/temp/utt2int.train_subset --egs-dir=$dir  || exit 1
 
+fi
+
+if [ $stage -le 2 ]; then
   echo "$0: Allocating validation examples"
   $cmd $dir/log/allocate_examples_valid.log \
     sid/nnet3/xvector/allocate_egs.py \

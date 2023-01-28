@@ -1,0 +1,212 @@
+Only in .: README.txt
+diff -ru /home/apt2141/git/kaldi_original/kaldi/egs/ami/s5c/cmd.sh ./cmd.sh
+--- /home/apt2141/git/kaldi_original/kaldi/egs/ami/s5c/cmd.sh	2022-05-08 20:01:18.877615118 +0000
++++ ./cmd.sh	2022-05-08 19:16:13.885246620 +0000
+@@ -10,6 +10,6 @@
+ # conf/queue.conf in http://kaldi-asr.org/doc/queue.html for more information,
+ # or search for the string 'default_config' in utils/queue.pl or utils/slurm.pl.
+ 
+-export train_cmd="queue.pl --mem 4G"
+-export decode_cmd="queue.pl --mem 4G"
++export train_cmd="run.pl --mem 4G"
++export decode_cmd="run.pl --mem 4G"
+ 
+diff -ru /home/apt2141/git/kaldi_original/kaldi/egs/ami/s5c/diarization/score_cossim.sh ./diarization/score_cossim.sh
+--- /home/apt2141/git/kaldi_original/kaldi/egs/ami/s5c/diarization/score_cossim.sh	2022-05-08 20:01:18.949615994 +0000
++++ ./diarization/score_cossim.sh	2022-05-08 19:16:14.025246342 +0000
+@@ -68,7 +68,7 @@
+ if [ $stage -le 0 ]; then
+   echo "$0: scoring xvectors"
+   $cmd JOB=1:$nj $dir/log/cossim_scoring.JOB.log \
+-      python diarization/calc_cossim_scores.py \
++      python3 diarization/calc_cossim_scores.py \
+       ark:$sdata/JOB/spk2utt "$feats" - \|\
+       copy-feats ark,t:- ark,scp:$dir/scores.JOB.ark,$dir/scores.JOB.scp || exit 1;
+ fi
+Only in .: egs_ami_s5c_apt2141.diff
+Only in ./local: MANIFEST.TXT
+diff -ru /home/apt2141/git/kaldi_original/kaldi/egs/ami/s5c/local/ami_download.sh ./local/ami_download.sh
+--- /home/apt2141/git/kaldi_original/kaldi/egs/ami/s5c/local/ami_download.sh	2022-05-08 20:01:18.869615021 +0000
++++ ./local/ami_download.sh	2022-05-08 19:16:13.869246652 +0000
+@@ -51,13 +51,17 @@
+ 
+ #download waves
+ 
+-cat local/split_train.orig local/split_eval.orig local/split_dev.orig > $wdir/ami_meet_ids.flist
+-
+ wgetfile=$wdir/wget_$mic.sh
+ 
+-# TODO fix this with Pawel, files don't exist anymore,
+-manifest="wget --continue -O $adir/MANIFEST.TXT http://groups.inf.ed.ac.uk/ami/download/temp/amiBuild-04237-Sun-Jun-15-2014.manifest.txt"
+-license="wget --continue -O $adir/LICENCE.TXT http://groups.inf.ed.ac.uk/ami/download/temp/Creative-Commons-Attribution-NonCommercial-ShareAlike-2.5.txt"
++cp local/MANIFEST.TXT $adir/MANIFEST.TXT
++manifest=$adir/MANIFEST.TXT
++#manifest="wget --continue -O $adir/MANIFEST.TXT https://groups.inf.ed.ac.uk/ami/download/temp/amiBuild-1372-Thu-Apr-28-2022.manifest.txt"
++license="wget --continue -O $adir/LICENSE.TXT http://groups.inf.ed.ac.uk/ami/corpus/license.shtml"
++
++# Parse the manifest file, and separate recordings into train, dev, and eval sets
++# python3 local/split_manifest.py $adir/MANIFEST.TXT
++
++cat local/split_train.orig local/split_eval.orig local/split_dev.orig > $wdir/ami_meet_ids.flist
+ 
+ echo "#!/usr/bin/env bash" > $wgetfile
+ echo $manifest >> $wgetfile
+@@ -85,23 +89,6 @@
+ echo "Look at $wdir/log/download_ami_$mic.log for progress"
+ $wgetfile &> $wdir/log/download_ami_$mic.log
+ 
+-# Do rough check if #wavs is as expected, it will fail anyway in data prep stage if it isn't,
+-if [ "$mic" == "ihm" ]; then
+-  num_files=$(find $adir -iname *Headset* | wc -l)
+-  if [ $num_files -ne 687 ]; then
+-    echo "Warning: Found $num_files headset wavs but expected 687. Check $wdir/log/download_ami_$mic.log for details."
+-    exit 1;
+-  fi
+-else
+-  num_files=$(find $adir -iname *Array1* | wc -l)
+-  if [[ $num_files -lt 1352 && "$mic" == "mdm" ]]; then
+-    echo "Warning: Found $num_files distant Array1 waves but expected 1352 for mdm. Check $wdir/log/download_ami_$mic.log for details."
+-    exit 1;
+-  elif [[ $num_files -lt 169 && "$mic" == "sdm" ]]; then
+-    echo "Warning: Found $num_files distant Array1 waves but expected 169 for sdm. Check $wdir/log/download_ami_$mic.log for details."
+-    exit 1;
+-  fi
+-fi
+ 
+ echo "Downloads of AMI corpus completed succesfully. License can be found under $adir/LICENCE.TXT"
+ exit 0;
+diff -ru /home/apt2141/git/kaldi_original/kaldi/egs/ami/s5c/local/nnet3/xvector/run_xvector.sh ./local/nnet3/xvector/run_xvector.sh
+--- /home/apt2141/git/kaldi_original/kaldi/egs/ami/s5c/local/nnet3/xvector/run_xvector.sh	2022-05-08 20:01:18.877615118 +0000
++++ ./local/nnet3/xvector/run_xvector.sh	2022-05-08 19:16:13.885246620 +0000
+@@ -54,19 +54,18 @@
+ if [ $stage -le 6 ]; then
+   echo "$0: Getting neural network training egs";
+   # dump egs.
+-  if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $egs_dir/storage ]; then
+-    utils/create_split_dir.pl \
+-     /export/b{03,04,05,06}/$USER/kaldi-data/egs/callhome_diarization/v2/xvector-$(date +'%m_%d_%H_%M')/$egs_dir/storage $egs_dir/storage
+-  fi
++  # frame per iter original 1000000000
++  # frame per iter diagnostic original 500000
++  # num repeat original 1
+   sid/nnet3/xvector/get_egs.sh --cmd "$train_cmd" \
+     --nj 8 \
+     --stage 0 \
+-    --frames-per-iter 1000000000 \
+-    --frames-per-iter-diagnostic 500000 \
++    --frames-per-iter 100000 \
++    --frames-per-iter-diagnostic 10000 \
+     --min-frames-per-chunk 200 \
+     --max-frames-per-chunk 400 \
+     --num-diagnostic-archives 3 \
+-    --num-repeats 40 \
++    --num-repeats 10 \
+     "$data" $egs_dir
+ fi
+ 
+diff -ru /home/apt2141/git/kaldi_original/kaldi/egs/ami/s5c/local/nnet3/xvector/tuning/run_xvector_1a.sh ./local/nnet3/xvector/tuning/run_xvector_1a.sh
+--- /home/apt2141/git/kaldi_original/kaldi/egs/ami/s5c/local/nnet3/xvector/tuning/run_xvector_1a.sh	2022-05-08 20:01:18.877615118 +0000
++++ ./local/nnet3/xvector/tuning/run_xvector_1a.sh	2022-05-08 19:16:13.885246620 +0000
+@@ -54,19 +54,18 @@
+ if [ $stage -le 6 ]; then
+   echo "$0: Getting neural network training egs";
+   # dump egs.
+-  if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $egs_dir/storage ]; then
+-    utils/create_split_dir.pl \
+-     /export/b{03,04,05,06}/$USER/kaldi-data/egs/callhome_diarization/v2/xvector-$(date +'%m_%d_%H_%M')/$egs_dir/storage $egs_dir/storage
+-  fi
++  # frame per iter original 1000000000
++  # frame per iter diagnostic original 500000
++  # num repeat original 1
+   sid/nnet3/xvector/get_egs.sh --cmd "$train_cmd" \
+     --nj 8 \
+     --stage 0 \
+-    --frames-per-iter 1000000000 \
+-    --frames-per-iter-diagnostic 500000 \
++    --frames-per-iter 100000 \
++    --frames-per-iter-diagnostic 10000 \
+     --min-frames-per-chunk 200 \
+     --max-frames-per-chunk 400 \
+     --num-diagnostic-archives 3 \
+-    --num-repeats 40 \
++    --num-repeats 10 \
+     "$data" $egs_dir
+ fi
+ 
+diff -ru /home/apt2141/git/kaldi_original/kaldi/egs/ami/s5c/local/prepare_data.py ./local/prepare_data.py
+--- /home/apt2141/git/kaldi_original/kaldi/egs/ami/s5c/local/prepare_data.py	2022-05-08 20:01:18.877615118 +0000
++++ ./local/prepare_data.py	2022-05-08 19:16:13.885246620 +0000
+@@ -20,7 +20,7 @@
+ 
+ def find_audios(wav_path, file_list):
+     # Get all wav file names from audio directory
+-    command = 'find %s -name "*Mix-Headset.wav"' % (wav_path)
++    command = 'find %s -name "*.wav"' % (wav_path)
+     wavs = subprocess.check_output(command, shell=True).decode('utf-8').splitlines()
+     keys = [ os.path.splitext(os.path.basename(wav))[0] for wav in wavs ]
+     data = {'key': keys, 'file_path': wavs}
+@@ -28,6 +28,8 @@
+ 
+     # Filter list to keep only those in annotations (for the specific data split)
+     file_names_str = "|".join(file_list)
++    print(file_names_str)
++    print(df_wav)
+     df_wav = df_wav.loc[df_wav['key'].str.contains(file_names_str)].sort_values('key')
+     return df_wav
+ 
+Only in ./local: split_dev.orig
+Only in ./local: split_eval.orig
+Only in ./local: split_manifest.py
+Only in ./local: split_train.orig
+diff -ru /home/apt2141/git/kaldi_original/kaldi/egs/ami/s5c/run.sh ./run.sh
+--- /home/apt2141/git/kaldi_original/kaldi/egs/ami/s5c/run.sh	2022-05-08 20:01:18.877615118 +0000
++++ ./run.sh	2022-05-08 19:16:13.885246620 +0000
+@@ -20,12 +20,14 @@
+ set -euo pipefail
+ mfccdir=`pwd`/mfcc
+ 
+-stage=0
++stage=7
+ overlap_stage=0
+ diarizer_stage=0
+-nj=50
++nj=10
+ decode_nj=15
+ 
++export mic=ihm
++
+ model_dir=exp/xvector_nnet_1a
+ 
+ train_set=train
+@@ -37,11 +39,6 @@
+ 
+ # Path where AMI gets downloaded (or where locally available):
+ AMI_DIR=$PWD/wav_db # Default,
+-case $(hostname -d) in
+-  fit.vutbr.cz) AMI_DIR=/mnt/matylda5/iveselyk/KALDI_AMI_WAV ;; # BUT,
+-  clsp.jhu.edu) AMI_DIR=/export/corpora5/amicorpus ;; # JHU,
+-  cstr.ed.ac.uk) AMI_DIR= ;; # Edinburgh,
+-esac
+ 
+ # Download AMI corpus, You need around 130GB of free space to get whole data
+ if [ $stage -le 1 ]; then
+@@ -87,13 +84,16 @@
+     steps/make_mfcc.sh --mfcc-config conf/mfcc_hires.conf --nj $nj --cmd "$train_cmd" data/$dataset
+     steps/compute_cmvn_stats.sh data/$dataset
+     utils/fix_data_dir.sh data/$dataset
++    echo "FEATURES COMPLETE FOR DATASET"
+   done
+ fi
+ 
+ if [ $stage -le 4 ]; then
+   echo "$0: preparing a AMI training data to train PLDA model"
+-  local/nnet3/xvector/prepare_feats.sh --nj $nj --cmd "$train_cmd" \
+-    data/train data/plda_train exp/plda_train_cmn
++  #local/nnet3/xvector/prepare_feats.sh --nj $nj --cmd "$train_cmd" \
++  #  data/train data/plda_train exp/plda_train_cmn
++  local/nnet3/xvector/run_xvector.sh --stage $stage --train-stage -1 \
++    --data data/plda_train
+ fi
+ 
+ if [ $stage -le 5 ]; then
+Only in .: sid
