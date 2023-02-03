@@ -3,7 +3,7 @@
 # Apache 2.0.
 #
 # This recipe performs diarization for the mix-headset data in the
-# AMI dataset. The x-vector extractor we use is trained on VoxCeleb v2 
+# AMI dataset. The x-vector extractor we use is trained on VoxCeleb v2
 # corpus with simulated RIRs. We use oracle SAD in this recipe.
 # This recipe demonstrates the following:
 # 1. Diarization using x-vector and clustering (AHC, VBx, spectral)
@@ -38,7 +38,7 @@ diarizer_type=spectral  # must be one of (ahc, spectral, vbx)
 # Path where AMI gets downloaded (or where locally available):
 AMI_DIR=$PWD/wav_db # Default,
 case $(hostname -d) in
-  fit.vutbr.cz) AMI_DIR=/mnt/matylda5/iveselyk/KALDI_AMI_WAV ;; # BUT,
+  fit.vutbr.cz) AMI_DIR=/mnt/matylda2/data/AMI_KALDI_DOWNLOAD ;; # BUT,
   clsp.jhu.edu) AMI_DIR=/export/corpora5/amicorpus ;; # JHU,
   cstr.ed.ac.uk) AMI_DIR= ;; # Edinburgh,
 esac
@@ -57,7 +57,7 @@ if [ $stage -le 1 ]; then
   local/ami_download.sh $mic $AMI_DIR
 fi
 
-# Prepare data directories. 
+# Prepare data directories.
 if [ $stage -le 2 ]; then
   # Download the data split and references from BUT's AMI setup
   if ! [ -d AMI-diarization-setup ]; then
@@ -120,7 +120,7 @@ if [ $stage -le 6 ]; then
      transform-vec $model_dir/xvectors_plda_train/transform.mat ark:- ark:- |\
       ivector-normalize-length ark:-  ark:- |" \
     $model_dir/xvectors_plda_train/plda || exit 1;
-  
+
   cp $model_dir/xvectors_plda_train/plda $model_dir/
   cp $model_dir/xvectors_plda_train/transform.mat $model_dir/
   cp $model_dir/xvectors_plda_train/mean.vec $model_dir/
