@@ -24,4 +24,4 @@ ${KALDI_ROOT}/src/sgmmbin:\
 ${KALDI_ROOT}/src/tfrnnlmbin:\
 ${KALDI_ROOT}/src/cudadecoderbin:\
 ${KALDI_ROOT}/src/cudafeatbin:\
-$PATH
+"$PATH"
