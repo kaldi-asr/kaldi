@@ -318,6 +318,10 @@ Either your CUDA is too new or too old."
           MIN_UNSUPPORTED_GCC_VER="12.0"
           MIN_UNSUPPORTED_GCC_VER_NUM=120000
           ;;
+        12_*)
+          MIN_UNSUPPORTED_GCC_VER="12.2.1"
+          MIN_UNSUPPORTED_GCC_VER_NUM=120201
+          ;;
         *)
           failure "Unsupported CUDA version ${CUDA_VERSION}.
 Please open an issue at https://github.com/kaldi-asr/kaldi/issues and include\
@@ -345,6 +349,7 @@ Please open an issue at https://github.com/kaldi-asr/kaldi/issues and include\
             10_*) CUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_70,code=sm_70 -gencode arch=compute_75,code=sm_75" ;;
             11_0) CUDA_ARCH="-gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_70,code=sm_70 -gencode arch=compute_75,code=sm_75 -gencode arch=compute_80,code=sm_80" ;;
             11_*) CUDA_ARCH="-gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_70,code=sm_70 -gencode arch=compute_75,code=sm_75 -gencode arch=compute_80,code=sm_80 -gencode arch=compute_86,code=sm_86" ;;
+            12_*) CUDA_ARCH="-gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_70,code=sm_70 -gencode arch=compute_75,code=sm_75 -gencode arch=compute_80,code=sm_80 -gencode arch=compute_86,code=sm_86 -gencode arch=compute_87,code=sm_87 -gencode arch=compute_89,code=sm_89 -gencode arch=compute_90,code=sm_90 -gencode arch=compute_90a,code=sm_90a" ;;
             *) failure \
                  "Unsupported CUDA version ${CUDA_VERSION}. Please open an" \
                  "issue at https://github.com/kaldi-asr/kaldi/issues and" \
