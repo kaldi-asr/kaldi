@@ -75,7 +75,7 @@ bool ClusterLattice(CompactLattice *clat,
   unordered_map<StateId, std::vector<Interval> >::iterator iter;
   for (iter = head.begin(); iter != head.end(); ++iter) {
     // For this ilabel, sort all the arcs on time, from first to last.
-    sort(iter->second.begin(), iter->second.end(), CompareInterval);
+    std::sort(iter->second.begin(), iter->second.end(), CompareInterval);
     std::vector<Interval> tmp;
     tmp.push_back(iter->second[0]);
     for (int32 i = 1; i < iter->second.size(); i++) {
