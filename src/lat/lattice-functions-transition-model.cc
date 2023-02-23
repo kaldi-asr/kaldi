@@ -248,13 +248,13 @@ bool TestWordAlignedLattice(const WordAlignLatticeLexiconInfo &lexicon_info,
   int32 num_paths = 5, seed = Rand(), max_path_length = -1;
   BaseFloat delta = 0.2; // some lattices have large costs -> use large delta.
 
-  FLAGS_v = GetVerboseLevel(); // set the OpenFst verbose level to the Kaldi
+  FST_FLAGS_v = GetVerboseLevel(); // set the OpenFst verbose level to the Kaldi
                                // verbose level.
   if (!RandEquivalent(clat, aligned_clat, num_paths, delta, seed, max_path_length)) {
     KALDI_WARN << "Equivalence test failed during lattice alignment.";
     return false;
   }
-  FLAGS_v = 0;
+  FST_FLAGS_v = 0;
 
   return (num_err == 0);
 }
