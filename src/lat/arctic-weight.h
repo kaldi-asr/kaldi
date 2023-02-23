@@ -50,7 +50,7 @@ class ArcticWeightTpl : public FloatWeightTpl<T> {
 
   static const std::string &Type() {
     static const std::string type = std::string("arctic") +
-        FloatWeightTpl<T>::GetPrecisionString();
+        std::string(FloatWeightTpl<T>::GetPrecisionString());
     return type;
   }
 
