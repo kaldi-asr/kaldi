@@ -374,12 +374,12 @@ void GetSymbols(const SymbolTable &symtab,
                 std::vector<I> *syms_out) {
   KALDI_ASSERT(syms_out != NULL);
   syms_out->clear();
-  for (SymbolTableIterator iter(symtab);
-      !iter.Done();
-      iter.Next()) {
-    if (include_eps || iter.Value() != 0) {
-      syms_out->push_back(iter.Value());
-      KALDI_ASSERT(syms_out->back() == iter.Value());  // an integer-range thing.
+  for (SymbolTable::iterator iter = symtab.begin();
+      iter != symtab.end();
+      ++iter) {
+    if (include_eps || iter->Label() != 0) {
+      syms_out->push_back(iter->Label());
+      KALDI_ASSERT(syms_out->back() == iter->Label());  // an integer-range thing.
     }
   }
 }
