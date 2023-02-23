@@ -270,7 +270,7 @@ void ConvertFstToLattice(
   fst::CacheOptions cache_opts(true, num_states_cache);
   fst::ArcMapFstOptions mapfst_opts(cache_opts);
   StdToLatticeMapper<Real> mapper;
-  MapFst<StdArc, ArcTpl<LatticeWeightTpl<Real> >,
+  ArcMapFst<StdArc, ArcTpl<LatticeWeightTpl<Real> >,
          StdToLatticeMapper<Real> > map_fst(ifst, mapper, mapfst_opts);
   *ofst = map_fst;
 }

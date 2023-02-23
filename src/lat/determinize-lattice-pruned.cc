@@ -1499,7 +1499,7 @@ bool DeterminizeLatticePhonePrunedWrapper(
   }
   ILabelCompare<kaldi::LatticeArc> ilabel_comp;
   ArcSort(ifst, ilabel_comp);
-  ans = DeterminizeLatticePhonePruned<kaldi::LatticeWeight, kaldi::int32>(
+  ans = DeterminizeLatticePhonePruned<kaldi::LatticeWeight, int32>(
       trans_model, ifst, beam, ofst, opts);
   Connect(ofst);
   return ans;
@@ -1523,7 +1523,7 @@ bool DeterminizeLatticePruned<kaldi::LatticeWeight>(
     DeterminizeLatticePrunedOptions opts);
 
 template
-bool DeterminizeLatticePhonePruned<kaldi::LatticeWeight, kaldi::int32>(
+bool DeterminizeLatticePhonePruned<kaldi::LatticeWeight, int32>(
     const kaldi::TransitionInformation &trans_model,
     const ExpandedFst<kaldi::LatticeArc> &ifst,
     double prune,
@@ -1531,7 +1531,7 @@ bool DeterminizeLatticePhonePruned<kaldi::LatticeWeight, kaldi::int32>(
     DeterminizeLatticePhonePrunedOptions opts);
 
 template
-bool DeterminizeLatticePhonePruned<kaldi::LatticeWeight, kaldi::int32>(
+bool DeterminizeLatticePhonePruned<kaldi::LatticeWeight, int32>(
     const kaldi::TransitionInformation &trans_model,
     MutableFst<kaldi::LatticeArc> *ifst,
     double prune,
