@@ -99,7 +99,7 @@ void ReadFstKaldi(std::istream &is, bool binary,
     fst->DeleteStates();
     string line;
     size_t nline = 0;
-    string separator = FLAGS_fst_field_separator + "\r\n";
+    string separator = FST_FLAGS_fst_field_separator + "\r\n";
     while (std::getline(is, line)) {
       nline++;
       vector<string> col;
