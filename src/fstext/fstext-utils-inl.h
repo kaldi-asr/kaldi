@@ -163,7 +163,7 @@ void RemoveSomeInputSymbols(const std::vector<I> &to_remove,
                             MutableFst<Arc> *fst) {
   KALDI_ASSERT_IS_INTEGER_TYPE(I);
   RemoveSomeInputSymbolsMapper<Arc, I> mapper(to_remove);
-  Map(fst, mapper);
+  ArcMap(fst, mapper);
 }
 
 template<class Arc, class I>
