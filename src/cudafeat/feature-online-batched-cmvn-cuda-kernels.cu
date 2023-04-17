@@ -24,16 +24,12 @@ __host__ __device__ inline float2 operator-(const float2 &a, const float2 &b) {
   retval.y = a.y - b.y;
   return retval;
 }
+
 __host__ __device__ inline float2 operator+(const float2 &a, const float2 &b) {
   float2 retval;
   retval.x = a.x + b.x;
   retval.y = a.y + b.y;
   return retval;
-}
-
-__device__ inline void atomicAdd(float2 *addr, float2 val) {
-  atomicAdd(reinterpret_cast<float *>(addr), val.x);
-  atomicAdd(reinterpret_cast<float *>(addr) + 1, val.y);
 }
 
 __device__ inline void operator+=(float2 &a, float2 &b) {
