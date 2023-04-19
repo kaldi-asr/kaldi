@@ -140,6 +140,8 @@ endif()
 if(MSVC)
     # Added in source, but we actually should do it in build script, whatever...
     # add_definitions(-DWIN32_LEAN_AND_MEAN=1)
+    
+    add_compile_definitions(NOMINMAX)
 
     add_compile_options(/permissive- /FS /wd4819 /EHsc /bigobj)
 
