@@ -231,7 +231,7 @@ class CuMatrixBase {
   bool ApproxEqual(const CuMatrixBase<Real> &other, float tol = 0.01) const;
 
   /// Get size of matrix in bytes
-  MatrixIndexT SizeInBytes() const { return num_rows_*stride_*sizeof(Real); }
+  size_t SizeInBytes() const { return static_cast<size_t>(num_rows_)*static_cast<size_t>(stride_)*sizeof(Real); }
 
   // Copy functions.  These do not resize.
   template<typename OtherReal>
@@ -670,13 +670,13 @@ class CuMatrixBase {
   inline const CuSubVector<Real> Row(MatrixIndexT i) const {
     KALDI_ASSERT(static_cast<UnsignedMatrixIndexT>(i) <
                  static_cast<UnsignedMatrixIndexT>(num_rows_));
-    return CuSubVector<Real>(data_ + (i * stride_), NumCols());
+    return CuSubVector<Real>(data_ + (static_cast<size_t>(i) * static_cast<size_t>(stride_)), NumCols());
   }
 
   inline CuSubVector<Real> Row(MatrixIndexT i) {
     KALDI_ASSERT(static_cast<UnsignedMatrixIndexT>(i) <
                  static_cast<UnsignedMatrixIndexT>(num_rows_));
-    return CuSubVector<Real>(data_ + (i * stride_), NumCols());
+    return CuSubVector<Real>(data_ + (static_cast<size_t>(i) * static_cast<size_t>(stride_)), NumCols());
   }
 
   inline CuValue<Real> operator() (MatrixIndexT r, MatrixIndexT c) {
@@ -684,7 +684,7 @@ class CuMatrixBase {
                           static_cast<UnsignedMatrixIndexT>(num_rows_) &&
                           static_cast<UnsignedMatrixIndexT>(c) <
                           static_cast<UnsignedMatrixIndexT>(num_cols_));
-    return CuValue<Real>(data_ + r * stride_ + c);
+    return CuValue<Real>(data_ + static_cast<size_t>(r) * static_cast<size_t>(stride_) + c);
   }
 
   inline Real operator() (MatrixIndexT r, MatrixIndexT c) const {
@@ -692,7 +692,7 @@ class CuMatrixBase {
                           static_cast<UnsignedMatrixIndexT>(num_rows_) &&
                           static_cast<UnsignedMatrixIndexT>(c) <
                           static_cast<UnsignedMatrixIndexT>(num_cols_));
-    return CuValue<Real>(data_ + r * stride_ + c);  // will be casted to Real.
+    return CuValue<Real>(data_ + static_cast<size_t>(r) * static_cast<size_t>(stride_) + c);  // will be casted to Real.
   }
 
   Real Sum() const;
@@ -737,10 +737,10 @@ class CuMatrixBase {
 
   /// Get raw row pointer (const).  Warning: may return a pointer to GPU memory.  Use at
   /// your own risk.
-  inline const Real* RowData(MatrixIndexT r) const { return data_ + r * stride_; }
+  inline const Real* RowData(MatrixIndexT r) const { return data_ + static_cast<size_t>(r) * static_cast<size_t>(stride_); }
   /// Get raw row pointer.  Warning: may return a pointer to GPU memory.  Use at
   /// your own risk.
-  inline Real* RowData(MatrixIndexT r) { return data_ + r * stride_; }
+  inline Real* RowData(MatrixIndexT r) { return data_ + static_cast<size_t>(r) * static_cast<size_t>(stride_); }
   /// Return data pointer (const).  Warning: may return a pointer to GPU memory.
   /// Use at your own risk.
   inline const Real *Data() const { return data_; }
