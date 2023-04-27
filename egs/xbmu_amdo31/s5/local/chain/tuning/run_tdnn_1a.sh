@@ -27,7 +27,7 @@ common_egs_dir=
 xent_regularize=0.1
 
 # End configuration section.
-echo "$0 $@"  # Print the command line for logging
+echo "$0 $*"  # Print the command line for logging
 
 . ./cmd.sh
 . ./path.sh

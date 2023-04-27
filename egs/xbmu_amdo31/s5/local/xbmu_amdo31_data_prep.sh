@@ -33,7 +33,7 @@ fi
 echo $tibetan_audio_dir
 # find wav audio file for train, dev and test resp.
 find $tibetan_audio_dir -iname "*.wav" > $tmp_dir/wav.flist
-n=`cat $tmp_dir/wav.flist | wc -l`
+n=$(wc -l < "$tmp_dir/wav.flist")
 [ $n -ne 22630 ] && \
   echo Warning: expected 141925 data data files, found $n
 
@@ -49,13 +49,13 @@ for dir in $train_dir $dev_dir $test_dir; do
   sed -e 's/\.wav//' $dir/wav.flist | awk -F '/' '{print $NF}'  > $dir/utt.list
   sed -e 's/\.wav//' $dir/wav.flist | awk -F '/' '{i=NF-1;printf("%s %s\n",$NF,$i)}'> $dir/utt2spk_all
   rm -f $dir/transcripts1.txt
-  cat $dir/utt.list |while read line
+  while read -r line
   do
-      line1=`echo $line |cut -d "-" -f 2`
-      line2=`grep -w $line1  $tibetan_text |cut -d " " -f 2-`
+      line1=$(echo "$line" | cut -d '-' -f 2)
+      line2=$(grep -w $line1  $tibetan_text |cut -d " " -f 2-)
       text=$line" "$line2
       echo $text >>$dir/transcripts1.txt
-  done
+  done < "$dir/utt.list"
   paste -d' ' $dir/utt.list $dir/wav.flist > $dir/wav.scp_all
   utils/filter_scp.pl -f 1 $dir/utt.list $dir/transcripts1.txt > $dir/transcripts.txt
   awk '{print $1}' $dir/transcripts.txt > $dir/utt.list

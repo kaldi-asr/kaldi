@@ -19,7 +19,7 @@ done
 dir=data/local/lm
 mkdir -p $dir
 
-kaldi_lm=`which train_lm.sh`
+kaldi_lm=$(command -v train_lm.sh)
 if [ -z $kaldi_lm ]; then
   echo "$0: train_lm.sh is not found. That might mean it's not installed"
   echo "$0: or it is not added to PATH"

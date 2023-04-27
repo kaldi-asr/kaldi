@@ -105,7 +105,7 @@ if [ $stage -le 9 ]; then
   # this version of the decoding treats each utterance separately
   # without carrying forward speaker information.
   for decode_set in dev test; do
-    num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
+    num_jobs=$(cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l)
     decode_dir=${dir}/decode_$decode_set
     steps/nnet3/decode.sh --nj $num_jobs --cmd "$decode_cmd" \
        --online-ivector-dir exp/nnet3/ivectors_${decode_set} \
