@@ -122,7 +122,7 @@ if [ $stage -le 11 ]; then
   # previous utterances of the same speaker.
   for decode_set in dev test; do
     # num_jobs=`cat data/${decode_set}_hires_online/utt2spk|cut -d' ' -f2|sort -u|wc -l`
-    num_jobs=$(cat "data/${decode_set}_hires_online/utt2spk" | cut -d' ' -f2 | sort -u | wc -l)
+    num_jobs=$(< "data/${decode_set}_hires_online/utt2spk" cut -d' ' -f2 | sort -u | wc -l)
     decode_dir=${dir}_online/decode_$decode_set
     steps/online/nnet3/decode.sh --nj $num_jobs --cmd "$decode_cmd" \
        --config conf/decode.config \
@@ -135,7 +135,7 @@ if [ $stage -le 12 ]; then
   # without carrying forward speaker information.
   for decode_set in dev test; do
     # num_jobs=`cat data/${decode_set}_hires_online/utt2spk|cut -d' ' -f2|sort -u|wc -l`
-    num_jobs=$(cat "data/${decode_set}_hires_online/utt2spk" | cut -d' ' -f2 | sort -u | wc -l)
+    num_jobs=$(< "data/${decode_set}_hires_online/utt2spk" cut -d' ' -f2 | sort -u | wc -l)
     decode_dir=${dir}_online/decode_${decode_set}_per_utt
     steps/online/nnet3/decode.sh --nj $num_jobs --cmd "$decode_cmd" \
        --config conf/decode.config --per-utt true \
