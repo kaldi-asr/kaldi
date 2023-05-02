@@ -1,6 +1,6 @@
 # In the results below, "tgsmall" is the pruned 3-gram LM, which is used for lattice generation.
 # The following language models are then used for rescoring:
-# a) tgmed- slightly less pruned 3-gram LM  
+# a) tgmed- slightly less pruned 3-gram LM
 # b) tglarge- the full, non-pruned 3-gram LM
 # c) fglarge- non-pruned 4-gram LM
 #
@@ -8,7 +8,7 @@
 # whereas "dev-other" and "test-other" sets contain more challenging speech
 
 ### SAT GMM model trained on the "train-clean-100" set (100 hours "clean" speech)
-### for test in dev_clean test_clean dev_other test_other; do for lm in fglarge tglarge tgmed tgsmall; do grep WER exp/tri4b/decode_${lm}_${test}/wer* | best_wer.sh; done; echo; done
+### for test in dev_clean test_clean dev_other test_other; do for lm in fglarge tglarge tgmed tgsmall; do grep WER exp/tri4b/decode_${lm}_${test}/wer* | utils/best_wer.sh; done; echo; done
 %WER 8.20 [ 4459 / 54402, 695 ins, 427 del, 3337 sub ] exp/tri4b/decode_fglarge_dev_clean/wer_14_0.5
 %WER 8.60 [ 4677 / 54402, 763 ins, 399 del, 3515 sub ] exp/tri4b/decode_tglarge_dev_clean/wer_16_0.0
 %WER 10.39 [ 5655 / 54402, 711 ins, 648 del, 4296 sub ] exp/tri4b/decode_tgmed_dev_clean/wer_16_0.0
@@ -31,7 +31,7 @@
 
 
 ### SAT GMM model trained on the combined "train-clean-100" + "train-clean-360" set (460 hours "clean" speech)
-### for test in dev_clean test_clean dev_other test_other; do for lm in fglarge tglarge tgmed tgsmall; do grep WER exp/tri5b/decode_${lm}_${test}/wer* | best_wer.sh; done; echo; done
+### for test in dev_clean test_clean dev_other test_other; do for lm in fglarge tglarge tgmed tgsmall; do grep WER exp/tri5b/decode_${lm}_${test}/wer* | utils/best_wer.sh; done; echo; done
 %WER 7.05 [ 3835 / 54402, 588 ins, 370 del, 2877 sub ] exp/tri5b/decode_fglarge_dev_clean/wer_15_0.5
 %WER 7.49 [ 4077 / 54402, 623 ins, 376 del, 3078 sub ] exp/tri5b/decode_tglarge_dev_clean/wer_14_0.5
 %WER 9.38 [ 5104 / 54402, 701 ins, 533 del, 3870 sub ] exp/tri5b/decode_tgmed_dev_clean/wer_15_0.0
@@ -54,7 +54,7 @@
 
 
 ### SAT GMM model trained on the combined "train-clean-100" + "train-clean-360" + "train-other-500" set (960 hours)
-### for test in dev_clean test_clean dev_other test_other; do for lm in fglarge tglarge tgmed tgsmall; do grep WER exp/tri6b/decode_${lm}_${test}/wer* | best_wer.sh; done; echo; done
+### for test in dev_clean test_clean dev_other test_other; do for lm in fglarge tglarge tgmed tgsmall; do grep WER exp/tri6b/decode_${lm}_${test}/wer* | utils/best_wer.sh; done; echo; done
 %WER 7.02 [ 3819 / 54402, 516 ins, 424 del, 2879 sub ] exp/tri6b/decode_fglarge_dev_clean/wer_14_1.0
 %WER 7.33 [ 3988 / 54402, 506 ins, 468 del, 3014 sub ] exp/tri6b/decode_tglarge_dev_clean/wer_15_1.0
 %WER 9.23 [ 5024 / 54402, 744 ins, 481 del, 3799 sub ] exp/tri6b/decode_tgmed_dev_clean/wer_13_0.0
@@ -337,7 +337,7 @@
 %WER 4.39 [ 2387 / 54402, 377 ins, 199 del, 1811 sub ] exp/nnet2_online/nnet_ms_a_smbr_0.000005/decode_epoch3_dev_clean_tglarge/wer_14
 %WER 5.36 [ 2918 / 54402, 328 ins, 338 del, 2252 sub ] exp/nnet2_online/nnet_ms_a_smbr_0.000005/decode_epoch3_dev_clean_tgmed/wer_17
 %WER 6.08 [ 3305 / 54402, 369 ins, 396 del, 2540 sub ] exp/nnet2_online/nnet_ms_a_smbr_0.000005/decode_epoch3_dev_clean_tgsmall/wer_15
-%WER 4.40 [ 2395 / 54402, 375 ins, 200 del, 1820 sub ] exp/nnet2_online/nnet_ms_a_smbr_0.000005/decode_epoch4_dev_clean_tglarge/wer_14 
+%WER 4.40 [ 2395 / 54402, 375 ins, 200 del, 1820 sub ] exp/nnet2_online/nnet_ms_a_smbr_0.000005/decode_epoch4_dev_clean_tglarge/wer_14
 %WER 5.35 [ 2909 / 54402, 328 ins, 339 del, 2242 sub ] exp/nnet2_online/nnet_ms_a_smbr_0.000005/decode_epoch4_dev_clean_tgmed/wer_17
 %WER 6.05 [ 3291 / 54402, 384 ins, 381 del, 2526 sub ] exp/nnet2_online/nnet_ms_a_smbr_0.000005/decode_epoch4_dev_clean_tgsmall/wer_14
 %WER 13.45 [ 6850 / 50948, 808 ins, 876 del, 5166 sub ] exp/nnet2_online/nnet_ms_a_smbr_0.000005/decode_epoch0_dev_other_tglarge/wer_15
@@ -423,7 +423,7 @@
 %WER 17.64 [ 9231 / 52343, 764 ins, 1662 del, 6805 sub ] exp/nnet2_online/nnet_ms_a_online/decode_pp_test_other_tgsmall_utt_offline/wer_14
 
 # Results with nnet3 tdnn
-# local/nnet3/run_tdnn.sh
+# local/nnet3/run_tdnn.sh (with old configs, now moved to local/nnet3/tuning/run_tdnn_1a.sh)
 # (4 epoch training on speed-perturbed data)
 # num_params=19.3M
 %WER 4.43 [ 2410 / 54402, 306 ins, 278 del, 1826 sub ] exp/nnet3/tdnn_sp/decode_dev_clean_fglarge/wer_13_1.0
@@ -444,7 +444,7 @@
 %WER 16.29 [ 8528 / 52343, 828 ins, 1320 del, 6380 sub ] exp/nnet3/tdnn_sp/decode_test_other_tgsmall/wer_14_0.0
 
 # Results with nnet3 tdnn
-# local/nnet3/run_tdnn.sh
+# local/nnet3/run_tdnn.sh (with old configs, now moved to local/nnet3/tuning/run_tdnn_1a.sh)
 # (4 epoch training on speed-perturbed and volumn-perturbed "cleaned" data)
 # num_params=19.3M, average training time=68.8s per job(on Tesla K80), real-time factor=1.23161
 # for x in exp/nnet3_cleaned/tdnn_sp/decode_*; do grep WER $x/wer_* | utils/best_wer.sh ; done
@@ -464,7 +464,6 @@
 %WER 12.52 [ 6551 / 52343, 786 ins, 825 del, 4940 sub ] exp/nnet3_cleaned/tdnn_sp/decode_test_other_tglarge/wer_13_0.5
 %WER 14.78 [ 7737 / 52343, 807 ins, 1115 del, 5815 sub ] exp/nnet3_cleaned/tdnn_sp/decode_test_other_tgmed/wer_15_0.0
 %WER 16.28 [ 8521 / 52343, 843 ins, 1258 del, 6420 sub ] exp/nnet3_cleaned/tdnn_sp/decode_test_other_tgsmall/wer_14_0.0
-
 
 # Results with nnet3 tdnn+sMBR
 # local/nnet3/run_tdnn_discriminative.sh

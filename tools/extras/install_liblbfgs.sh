@@ -1,9 +1,17 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 VER=1.10
-if [ ! -f liblbfgs$VER.tar.gz ]; then
-  wget https://danielpovey.com/files/liblbfgs-1.10.tar.gz
-  ## wget https://github.com/downloads/chokkan/liblbfgs/liblbfgs-$VER.tar.gz
+
+WGET=${WGET:-wget}
+
+if [ ! -f liblbfgs-$VER.tar.gz ]; then
+  if [ -d "$DOWNLOAD_DIR" ]; then
+    cp -p "$DOWNLOAD_DIR/liblbfgs-$VER.tar.gz" . || exit 1
+  else
+    # only 1.10 supported
+    $WGET https://danielpovey.com/files/liblbfgs-$VER.tar.gz || exit 1
+    # $WGET https://github.com/downloads/chokkan/liblbfgs/liblbfgs-$VER.tar.gz || exit 1
+  fi
 fi
 
 tar -xzf liblbfgs-$VER.tar.gz

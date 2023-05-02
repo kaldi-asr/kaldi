@@ -5,3 +5,4 @@ export PATH=$PWD/utils/:$KALDI_ROOT/tools/openfst/bin:$KALDI_ROOT/tools/sph2pipe
 if [ -f $KALDI_ROOT/tools/env.sh ]; then . $KALDI_ROOT/tools/env.sh; fi
 export PATH=$KALDI_ROOT/tools/sctk/bin:$PATH
 export LC_ALL=C
+export PYTHONUNBUFFERED=1

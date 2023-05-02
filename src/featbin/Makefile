@@ -17,7 +17,7 @@ BINFILES = add-deltas add-deltas-sdc append-post-to-feats \
            process-kaldi-pitch-feats process-pitch-feats \
            select-feats shift-feats splice-feats subsample-feats \
            subset-feats transform-feats wav-copy wav-reverberate \
-           wav-to-duration
+           wav-to-duration multiply-vectors paste-vectors 
 
 OBJFILES =
 
@@ -25,7 +25,7 @@ TESTFILES =
 
 ADDLIBS = ../hmm/kaldi-hmm.a ../feat/kaldi-feat.a \
           ../transform/kaldi-transform.a ../gmm/kaldi-gmm.a \
-          ../tree/kaldi-tree.a ../util/kaldi-util.a \
-          ../matrix/kaldi-matrix.a ../base/kaldi-base.a
+          ../tree/kaldi-tree.a ../util/kaldi-util.a ../matrix/kaldi-matrix.a \
+          ../base/kaldi-base.a 
 
 include ../makefiles/default_rules.mk

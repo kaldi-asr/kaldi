@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 
 steps/align_raw_fmllr.sh --nj 10 --cmd "$train_cmd" --use-graphs true \

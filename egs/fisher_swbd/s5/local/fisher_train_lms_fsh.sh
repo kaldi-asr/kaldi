@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 
 # To be run from one directory above this script.
@@ -31,7 +31,7 @@ export PATH=$PATH:`pwd`/../../../tools/kaldi_lm
    echo Downloading and installing the kaldi_lm tools
    if [ ! -f kaldi_lm.tar.gz ]; then
      wget http://www.danielpovey.com/files/kaldi/kaldi_lm.tar.gz ||
-     wget http://merlin.fit.vutbr.cz/kaldi/kaldi_lm.tar.gz || exit 1;
+     wget -c http://merlin.fit.vutbr.cz/kaldi/kaldi_lm.tar.gz || exit 1;
    fi
    tar -xvzf kaldi_lm.tar.gz || exit 1;
    cd kaldi_lm

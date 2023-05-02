@@ -60,13 +60,13 @@ def get_args():
     args.speed_perturb = True if args.speed_perturb == 'true' else False
     return args
 
-class Utterance:
+class Utterance(object):
     """ This class represents a Kaldi utterance
         in a data directory like data/train
     """
 
     def __init__(self, uid, wavefile, speaker, transcription, dur):
-        self.wavefile = (wavefile if wavefile.rstrip().endswith('|') else
+        self.wavefile = (wavefile if wavefile.rstrip(" \t\r\n").endswith('|') else
                          'cat {} |'.format(wavefile))
         self.speaker = speaker
         self.transcription = transcription
@@ -130,7 +130,7 @@ def read_kaldi_mapfile(path):
     m = {}
     with open(path, 'r', encoding='latin-1') as f:
         for line in f:
-            line = line.strip()
+            line = line.strip(" \t\r\n")
             sp_pos = line.find(' ')
             key = line[:sp_pos]
             val = line[sp_pos+1:]
@@ -321,7 +321,7 @@ def main():
                 "Coverage rate: {}%".format(start_dur, end_dur,
                                       100.0 - args.coverage_factor * 2))
     logger.info("There will be {} unique allowed lengths "
-                "for the utterances.".format(int(math.log(end_dur / start_dur) /
+                "for the utterances.".format(int(math.log(end_dur / start_dur)/
                                                  math.log(args.factor))))
 
     allowed_durations = find_allowed_durations(start_dur, end_dur, args)

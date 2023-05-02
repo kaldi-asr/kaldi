@@ -6,6 +6,7 @@
 
 # we're using python 3.x style print but want it to work in python 2.x,
 from __future__ import print_function
+from collections import defaultdict
 import argparse
 import sys
 
@@ -21,15 +22,15 @@ class StrToBoolAction(argparse.Action):
             raise Exception("Unknown value {0} for --{1}".format(values, self.dest))
 
 def GetArgs():
-    parser = argparse.ArgumentParser(description = "Converts pronunciation statistics (from phone level decoding) "
-                                     "into a lexicon for lexicon learning. We prune the pronunciations "
+    parser = argparse.ArgumentParser(description = "Converts pronunciation statistics (from phonetic decoding or g2p) "
+                                     "into a lexicon for. We prune the pronunciations "
                                      "based on a provided stats file, and optionally filter out entries which are present "
                                      "in a filter lexicon.",
                                      epilog = "e.g. steps/dict/prons_to_lexicon.py --min-prob=0.4 \\"
                                      "--filter-lexicon=exp/tri3_lex_0.4_work/phone_decode/filter_lexicon.txt \\"
                                      "exp/tri3_lex_0.4_work/phone_decode/prons.txt \\"
                                      "exp/tri3_lex_0.4_work/lexicon_phone_decoding.txt"
-                                     "See steps/dict/learn_lexicon.sh for examples in detail.")
+                                     "See steps/dict/learn_lexicon_greedy.sh for examples in detail.")
 
     parser.add_argument("--set-sum-to-one", type = str, default = False,
                         action = StrToBoolAction, choices = ["true", "false"],
@@ -39,6 +40,8 @@ def GetArgs():
                         action = StrToBoolAction, choices = ["true", "false"],
                         help = "If normalize lexicon such that the max "
                         "probability is 1.")
+    parser.add_argument("--top-N", type = int, default = 0,
+                        help = "If non-zero, we just take the top N pronunciations (according to stats/pron-probs) for each word.")
     parser.add_argument("--min-prob", type = float, default = 0.1,
                         help = "Remove pronunciation with probabilities less "
                         "than this value after normalization.")
@@ -46,8 +49,7 @@ def GetArgs():
                         help = "Exclude entries in this filter lexicon from the output lexicon."
                         "each line must be <word> <phones>")
     parser.add_argument("stats_file", metavar='<stats-file>', type = str,
-                        help = "Input file containing pronunciation statistics, representing how many times "
-                        "each word-pronunciation appear in the phonetic decoding results."
+                        help = "Input lexicon file containing pronunciation statistics/probs in the first column."
                         "each line must be <counts> <word> <phones>")
     parser.add_argument("out_lexicon", metavar='<out-lexicon>', type = str,
                         help = "Output lexicon.")
@@ -150,6 +152,18 @@ def NormalizeLexicon(lexicon, set_max_to_one = True,
             prob = 0
         lexicon[entry] = prob
 
+def TakeTopN(lexicon, top_N):
+    lexicon_reshaped = defaultdict(list) 
+    lexicon_pruned = {}
+    for entry, prob in lexicon.iteritems():
+        lexicon_reshaped[entry[0]].append([entry[1], prob])
+    for word in lexicon_reshaped:
+        prons = lexicon_reshaped[word]
+        sorted_prons = sorted(prons, reverse=True, key=lambda prons: prons[1])
+        for i in range(len(sorted_prons)):
+            if i >= top_N:
+                lexicon[(word, sorted_prons[i][0])] = 0
+        
 def WriteLexicon(args, lexicon, filter_lexicon):
     words = set()
     num_removed = 0
@@ -179,10 +193,15 @@ def Main():
     word_probs = ConvertWordCountsToProbs(args, lexicon, word_count)
 
     lexicon = ConvertWordProbsToLexicon(word_probs)
-    filter_lexicon = ReadLexicon(args.filter_lexicon_handle)
-    NormalizeLexicon(lexicon, set_max_to_one = args.set_max_to_one,
-                     set_sum_to_one = args.set_sum_to_one,
-                     min_prob = args.min_prob)
+    filter_lexicon = set()
+    if args.filter_lexicon is not '':
+        filter_lexicon = ReadLexicon(args.filter_lexicon_handle)
+    if args.top_N > 0:
+        TakeTopN(lexicon, args.top_N)
+    else:
+        NormalizeLexicon(lexicon, set_max_to_one = args.set_max_to_one,
+                         set_sum_to_one = args.set_sum_to_one,
+                         min_prob = args.min_prob)
     WriteLexicon(args, lexicon, filter_lexicon)
     args.out_lexicon_handle.close()
 

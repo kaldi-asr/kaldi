@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2016  Vincent Nguyen
 #           2016  Johns Hopkins University (author: Daniel Povey)
@@ -6,20 +6,19 @@
 #           2017  Hossein Hadian
 # Apache 2.0
 #
-# This script trains a LM on the MADCAT training transcriptions.
+# This script trains a LM on the training transcriptions.
 # It is based on the example scripts distributed with PocoLM
 
 # It will check if pocolm is installed and if not will proceed with installation
 
 set -e
 stage=0
-
+dir=data/local/local_lm
+order=6
 echo "$0 $@"  # Print the command line for logging
 . ./utils/parse_options.sh || exit 1;
 
-dir=data/local/local_lm
 lm_dir=${dir}/data
-segments=data/train/segmented_words
 
 
 mkdir -p $dir
@@ -43,12 +42,10 @@ bypass_metaparam_optim_opt=
 # These example numbers of metaparameters is for 4-gram model (with min-counts)
 # running with train_lm.py.
 # The dev perplexity should be close to the non-bypassed model.
-#bypass_metaparam_optim_opt=
 # Note: to use these example parameters, you may need to remove the .done files
 # to make sure the make_lm_dir.py be called and tain only 3-gram model
 #for order in 3; do
 #rm -f ${lm_dir}/${num_word}_${order}.pocolm/.done
-
 if [ $stage -le 0 ]; then
   mkdir -p ${dir}/data
   mkdir -p ${dir}/data/text
@@ -65,7 +62,13 @@ if [ $stage -le 0 ]; then
 
   # use the training data as an additional data source.
   # we can later fold the dev data into this.
-  cat data/train/text | cut -d " " -f 2- >  ${dir}/data/text/madcat.txt
+  cat data/train/text | cut -d " " -f 2- >  ${dir}/data/text/train.txt
+
+  if [ -d "data/local/gigawordcorpus/arb_gw_5/data" ]; then
+    cat data/local/gigawordcorpus/arb_gw_5/data/nhr_arb_combined.txt | \
+      utils/lang/bpe/prepend_words.py | utils/lang/bpe/apply_bpe.py -c data/local/bpe.txt \
+      | sed 's/@@//g' > ${dir}/data/text/corpus_text.txt
+  fi
 
   # for reporting perplexities, we'll use the "real" dev set.
   # (the validation data is used as ${dir}/data/text/dev.txt to work
@@ -75,11 +78,9 @@ if [ $stage -le 0 ]; then
   cut -d " " -f 2-  < data/test/text  > ${dir}/data/real_dev_set.txt
 
   # get the wordlist from MADCAT text
-  cat ${dir}/data/text/madcat.txt | tr '[:space:]' '[\n*]' | grep -v "^\s*$" | sort | uniq -c | sort -bnr > ${dir}/data/word_count
+  cat ${dir}/data/text/{train,corpus_text}.txt | tr '[:space:]' '[\n*]' | grep -v "^\s*$" | sort | uniq -c | sort -bnr > ${dir}/data/word_count
   cat ${dir}/data/word_count | awk '{print $2}' > ${dir}/data/wordlist
 fi
-
-order=3
 
 if [ $stage -le 1 ]; then
   # decide on the vocabulary.
@@ -88,7 +89,7 @@ if [ $stage -le 1 ]; then
   # Note: if you have more than one order, use a certain amount of words as the
   # vocab and want to restrict max memory for 'sort',
   echo "$0: training the unpruned LM"
-  min_counts='train=2 madcat=1'
+  min_counts='corpus_text=2 train=1'
   wordlist=${dir}/data/wordlist
 
   lm_name="`basename ${wordlist}`_${order}"
@@ -96,13 +97,34 @@ if [ $stage -le 1 ]; then
     lm_name+="_`echo ${min_counts} | tr -s "[:blank:]" "_" | tr "=" "-"`"
   fi
   unpruned_lm_dir=${lm_dir}/${lm_name}.pocolm
-  train_lm.py  --wordlist=${wordlist} --num-splits=5 --warm-start-ratio=1 \
+  train_lm.py  --wordlist=${wordlist} --num-splits=20 --warm-start-ratio=20 \
                --limit-unk-history=true \
                ${bypass_metaparam_optim_opt} \
                ${dir}/data/text ${order} ${lm_dir}/work ${unpruned_lm_dir}
 
   get_data_prob.py ${dir}/data/real_dev_set.txt ${unpruned_lm_dir} 2>&1 | grep -F '[perplexity'
-
   mkdir -p ${dir}/data/arpa
   format_arpa_lm.py ${unpruned_lm_dir} | gzip -c > ${dir}/data/arpa/${order}gram_unpruned.arpa.gz
+fi
+
+if [ $stage -le 2 ]; then
+  echo "$0: pruning the LM (to larger size)"
+  # Using 20 million n-grams for a big LM for rescoring purposes.
+  size=20000000
+  prune_lm_dir.py --target-num-ngrams=$size --initial-threshold=0.02 ${unpruned_lm_dir} ${dir}/data/lm_${order}_prune_big
+
+  get_data_prob.py ${dir}/data/real_dev_set.txt ${dir}/data/lm_${order}_prune_big 2>&1 | grep -F '[perplexity'
+  mkdir -p ${dir}/data/arpa
+  format_arpa_lm.py ${dir}/data/lm_${order}_prune_big | gzip -c > ${dir}/data/arpa/${order}gram_big.arpa.gz
+fi
+
+if [ $stage -le 3 ]; then
+  echo "$0: pruning the LM (to smaller size)"
+  # Using 10 million n-grams for a smaller LM for graph building.  Prune from the
+  # bigger-pruned LM, it'll be faster.
+  size=10000000
+  prune_lm_dir.py --target-num-ngrams=$size ${dir}/data/lm_${order}_prune_big ${dir}/data/lm_${order}_prune_small
+
+  get_data_prob.py ${dir}/data/real_dev_set.txt ${dir}/data/lm_${order}_prune_small 2>&1 | grep -F '[perplexity'
+  format_arpa_lm.py ${dir}/data/lm_${order}_prune_small | gzip -c > ${dir}/data/arpa/${order}gram_small.arpa.gz
 fi

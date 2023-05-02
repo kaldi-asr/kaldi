@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # data location
 PWD=`pwd`
@@ -39,3 +39,4 @@ max_active=14000
 
 # Size of chunks are queued in "online" interface
 batch_size=4560
+export PYTHONUNBUFFERED=1

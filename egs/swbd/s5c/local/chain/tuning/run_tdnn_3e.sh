@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _3e is as _3d, but increasing the --num-jesus-blocks from 100 (the default)
 # to 200 in order to reduce computation in the Jesus layer.

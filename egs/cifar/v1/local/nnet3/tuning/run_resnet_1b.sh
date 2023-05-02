@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 1b is as 1a but using more epochs: 100 instead of 60.
 # This helps a bit.

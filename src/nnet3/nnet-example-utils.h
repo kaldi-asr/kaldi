@@ -1,6 +1,7 @@
 // nnet3/nnet-example-utils.h
 
 // Copyright    2015  Johns Hopkins University (author: Daniel Povey)
+// Copyright    2020  Idiap Research Institute (author: Srikanth Madikeri)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -134,7 +135,7 @@ struct ExampleGenerationConfig {
                 "closest multiple of --frame-subsampling-factor.  As a special case, "
                 "--num-frames=-1 means 'don't do any splitting'.");
     po->Register("num-frames-overlap", &num_frames_overlap, "Number of frames of "
-                 "overlap between adjacent eamples (applies to chunks of size "
+                 "overlap between adjacent samples (applies to chunks of size "
                  "equal to the primary [first-listed] --num-frames value... "
                  "will be adjusted for different-sized chunks).  Advisory; "
                  "will not be exactly enforced.");
@@ -325,12 +326,15 @@ public:
   std::string measure_output_frames;  // for back-compatibility, not used.
   std::string minibatch_size;
   std::string discard_partial_minibatches;   // for back-compatibility, not used.
+  bool multilingual_eg; // add language information as a Query (e.g. ?lang=query) to the merged egs's name
 
   ExampleMergingConfig(const char *default_minibatch_size = "256"):
       compress(false),
       measure_output_frames("deprecated"),
       minibatch_size(default_minibatch_size),
-      discard_partial_minibatches("deprecated") { }
+      discard_partial_minibatches("deprecated"),
+      multilingual_eg(false)
+      { }
 
   void Register(OptionsItf *po) {
     po->Register("compress", &compress, "If true, compress the output examples "
@@ -354,6 +358,10 @@ public:
                  "--minibatch-size=128=64:128,256/256=32:64,128.  Egs are given "
                  "minibatch-sizes based on the specified eg-size closest to "
                  "their actual size.");
+    po->Register("multilingual-eg", &multilingual_eg,
+                "Appends language name to the merged egs. Used only by chain2 recipes for now."
+                "For example, when merging examples with output-langName we would want to add "
+                "?lang=langName");
   }
 
 

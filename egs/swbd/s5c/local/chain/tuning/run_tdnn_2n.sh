@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _2n is as _2m, but using the combine-data script to ensure that we don't have
 # very short segments (this can cause an excessive amount of either missing or

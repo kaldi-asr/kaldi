@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # this script is used for comparing decoding results between systems.
 # e.g. local/chain/compare_wer_general.sh exp/chain_cleaned/tdnn_{c,d}_sp
@@ -55,7 +55,7 @@ for n in 0 1 2 3; do
    for x in $*; do
      set_names $x  # sets $dirname and $epoch_infix
      decode_names=(dev${epoch_infix} dev${epoch_infix}_rescore test${epoch_infix} test${epoch_infix}_rescore)
-     wer=$(grep Sum $dirname/decode_${decode_names[$n]}/score*/*ys | utils/best_wer.sh | awk '{print $2}')
+     wer=$(grep WER $dirname/decode_${decode_names[$n]}/wer_* | utils/best_wer.sh | awk '{print $2}')
      printf "% 10s" $wer
    done
    echo
@@ -64,7 +64,7 @@ for n in 0 1 2 3; do
      for x in $*; do
        set_names $x  # sets $dirname and $epoch_infix
        decode_names=(dev${epoch_infix} dev${epoch_infix}_rescore test${epoch_infix} test${epoch_infix}_rescore)
-       wer=$(grep Sum $dirname/decode_looped_${decode_names[$n]}/score*/*ys | utils/best_wer.sh | awk '{print $2}')
+       wer=$(grep WER $dirname/decode_looped_${decode_names[$n]}/wer_* | utils/best_wer.sh | awk '{print $2}')
        printf "% 10s" $wer
      done
      echo

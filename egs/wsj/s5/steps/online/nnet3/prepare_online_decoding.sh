@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2014  Johns Hopkins University (Author: Daniel Povey)
 # Apache 2.0
@@ -10,10 +10,18 @@ add_pitch=false
 mfcc_config=conf/mfcc.conf # you can override any of these you need to override.
 plp_config=conf/plp.conf
 fbank_config=conf/fbank.conf
+
 # online_pitch_config is the config file for both pitch extraction and
 # post-processing; we combine them into one because during training this
 # is given to the program compute-and-process-kaldi-pitch-feats.
 online_pitch_config=conf/online_pitch.conf
+
+# online_cmvn_config can be used both for nn-features and i-vector features.
+# If the file $dir/online_cmvn exists, it is used for both feature streams.
+# If $dir/online_cmvn does not exist, the config file is used only for normalizing
+# the input of ubm in i-vector extractor, the rest of the system is without online-cmvn.
+# The $dir/online_cmvn 'flag' file is created when training with online-cmvn.
+online_cmvn_config=conf/online_cmvn.conf
 
 # Below are some options that affect the iVectors, and should probably
 # match those used in extract_ivectors_online.sh.
@@ -29,6 +37,9 @@ max_count=100   # This max-count of 100 can make iVectors more consistent for
                 # after posterior-scaling, so assuming the posterior-scale is
                 # 0.1, --max-count 100 starts having effect after 1000 frames,
                 # or 10 seconds of data.
+ivector_period=10 # Number of frames for which the i-vector stays the same
+                  # (use same value as from local/nnet3/run_ivector_common.sh).
+
 iter=final
 # End configuration.
 
@@ -74,6 +85,11 @@ if [ ! -z "$iedir" ]; then
   for f in final.{mat,ie,dubm} splice_opts global_cmvn.stats online_cmvn.conf; do
     [ ! -f $iedir/$f ] && echo "$0: no such file $iedir/$f" && exit 1;
   done
+  if $add_pitch; then
+    iedim=`matrix-dim $iedir/final.mat | awk '{print $1}'`
+    amdim=`nnet3-am-info $srcdir/${iter}.mdl | grep "input-dim:" | awk '{print $2}'`
+    [ $(($amdim-$iedim)) -eq 0 ] && echo "$0: remove pitch from the input of ivector extractor" && exit 1;
+  fi
 fi
 
 
@@ -90,6 +106,7 @@ cp $srcdir/tree $dir/ || exit 1;
 if [ -f $srcdir/frame_subsampling_factor ]; then
   cp $srcdir/frame_subsampling_factor $dir/
 fi
+
 
 if [ ! -z "$iedir" ]; then
   mkdir -p $dir/ivector_extractor/
@@ -131,13 +148,23 @@ case "$feature_type" in
     echo "Unknown feature type $feature_type"
 esac
 
-
+cp $online_cmvn_config $dir/conf/online_cmvn.conf || exit 1;
 
 if [ ! -z "$iedir" ]; then
   ieconf=$dir/conf/ivector_extractor.conf
   echo -n >$ieconf
   echo "--ivector-extraction-config=$ieconf" >>$conf
-  cp $iedir/online_cmvn.conf $dir/conf/online_cmvn.conf || exit 1;
+
+  # make sure that the online_cmvn config for i-extractor is same
+  # as the one passed in with '--online_cmvn_config'
+  ivec_cmvn_config=$iedir/online_cmvn.conf
+  if ! $(cmp --silent $online_cmvn_config $ivec_cmvn_config); then
+    echo "Error, configs must be the same:
+      \$online_cmvn_config=$online_cmvn_config
+      \$ivec_cmvn_config=$ivec_cmvn_config"
+    exit 1;
+  fi
+
   # the next line puts each option from splice_opts on its own line in the config.
   for x in $(cat $iedir/splice_opts); do echo "$x"; done > $dir/conf/splice.conf
   echo "--splice-config=$dir/conf/splice.conf" >>$ieconf
@@ -151,6 +178,12 @@ if [ ! -z "$iedir" ]; then
   echo "--posterior-scale=$posterior_scale" >>$ieconf # this is currently the default in the scripts.
   echo "--max-remembered-frames=1000" >>$ieconf # the default
   echo "--max-count=$max_count" >>$ieconf
+  echo "--ivector-period=$ivector_period" >>$ieconf
+  # activate online-cmvn for the i-extractor, not only the ubm,
+  if [ -f $srcdir/online_cmvn ]; then
+    cp $iedir/online_cmvn_iextractor $dir/ivector_extractor/ || exit 1
+    echo "--online-cmvn-iextractor=true" >>$ieconf
+  fi
 fi
 
 if $add_pitch; then
@@ -167,4 +200,13 @@ fi
 
 silphonelist=`cat $lang/phones/silence.csl` || exit 1;
 echo "--endpoint.silence-phones=$silphonelist" >>$conf
+
+# activate the online-cmvn in nnet input features,
+if [ -f $srcdir/online_cmvn ]; then
+  cp $srcdir/online_cmvn $dir/
+  cp $srcdir/global_cmvn.stats $dir/
+  echo "--cmvn-config=$dir/conf/online_cmvn.conf" >>$conf
+  echo "--global-cmvn-stats=$dir/global_cmvn.stats" >>$conf
+fi
+
 echo "$0: created config file $conf"

@@ -1,0 +1,23 @@
+11c11
+< clear all;
+---
+> function score_SimData(download_from_ldc,senhroot,pesqdir,compute_pesq)
+26,27c26,27
+< srmrdir = 'SRMRtoolbox-ReverbChallenge';
+< % pesqdir = '/directory/where/pesq/executable/is/stored';
+---
+> srmrdir = 'SRMRToolbox';
+> addpath(genpath('SRMRToolbox/libs'));
+36d35
+< senhroot = '../output/SimData';
+39c38
+< if exist('pesqdir', 'var')
+---
+> if exist('pesqdir', 'var') && compute_pesq~=0
+471c470,472
+< fclose(fid);
+\ No newline at end of file
+---
+> fclose(fid);
+> 
+> end

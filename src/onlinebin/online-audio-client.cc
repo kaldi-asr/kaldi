@@ -85,7 +85,7 @@ int main(int argc, char** argv) {
 
     int32 client_desc = socket(AF_INET, SOCK_STREAM, 0);
     if (client_desc == -1) {
-      std::cerr << "ERROR: couldn't create socket!" << std::endl;
+      std::cerr << "ERROR: couldn't create socket!\n";
       return -1;
     }
 
@@ -96,8 +96,8 @@ int main(int argc, char** argv) {
     if (addr == INADDR_NONE) {
       hp = gethostbyname(server_addr_str.c_str());
       if (hp == NULL) {
-        std::cerr << "ERROR: couldn't resolve host string: " << server_addr_str
-                  << std::endl;
+        std::cerr << "ERROR: couldn't resolve host string: "
+                  << server_addr_str << '\n';
         close(client_desc);
         return -1;
       }
@@ -110,13 +110,13 @@ int main(int argc, char** argv) {
     server.sin_family = AF_INET;
     server.sin_port = htons(server_port);
     if (::connect(client_desc, (struct sockaddr*) &server, sizeof(server))) {
-      std::cerr << "ERROR: couldn't connect to server!" << std::endl;
+      std::cerr << "ERROR: couldn't connect to server!\n";
       close(client_desc);
       return -1;
     }
 
     KALDI_VLOG(2) << "Connected to KALDI server at host " << server_addr_str
-        << " port " << server_port << std::endl;
+        << " port " << server_port;
 
     char* pack_buffer = new char[packet_size];
 
@@ -124,7 +124,7 @@ int main(int argc, char** argv) {
     for (; !reader.Done(); reader.Next()) {
       std::string wav_key = reader.Key();
 
-      KALDI_VLOG(2) << "File: " << wav_key << std::endl;
+      KALDI_VLOG(2) << "File: " << wav_key;
 
       const WaveData &wav_data = reader.Value();
 
@@ -257,8 +257,7 @@ int main(int argc, char** argv) {
 
       {
         float speed = total_input_dur / total_reco_dur;
-        KALDI_VLOG(2) << "Recognized (" << speed << "xRT): " << reco_output
-            << std::endl;
+        KALDI_VLOG(2) << "Recognized (" << speed << "xRT): " << reco_output;
       }
 
       if (htk) {
@@ -266,7 +265,8 @@ int main(int argc, char** argv) {
         std::ofstream htk_file(name.c_str());
         for (size_t i = 0; i < results.size(); i++)
           htk_file << (int) (results[i].start * 10000000) << " "
-              << (int) (results[i].end * 10000000) << " " << results[i].word << std::endl;
+                   << (int) (results[i].end * 10000000) << " "
+                   << results[i].word << "\n";
         htk_file.close();
       }
 
@@ -309,12 +309,13 @@ int main(int argc, char** argv) {
         std::string name = wav_key + ".vtt";
         std::ofstream vtt_file(name.c_str());
 
-        vtt_file << "WEBVTT FILE" << std::endl << std::endl;
+        vtt_file << "WEBVTT FILE\n\n";
 
         for (size_t i = 0; i < subtitles.size(); i++)
-          vtt_file << (i + 1) << std::endl << TimeToTimecode(subtitles[i].start)
-              << " --> " << TimeToTimecode(subtitles[i].end) << std::endl
-              << subtitles[i].word << std::endl << std::endl;
+          vtt_file << (i + 1) << "\n"
+                   << TimeToTimecode(subtitles[i].start) << " --> "
+                   << TimeToTimecode(subtitles[i].end) << "\n"
+                   << subtitles[i].word << "\n\n";
 
         vtt_file.close();
       }

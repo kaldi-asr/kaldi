@@ -32,18 +32,23 @@
     ( echo 3; echo 4 ) > disambig.list
     fstmakecontextfst --read-disambig-syms=disambig.list <(grep -v '#' phones.txt)  5 ilabels.int > C.fst
     fstmakecontextsyms phones.txt ilabels.int > context_syms.txt
+    fstprint  --isymbols=context_syms.txt --osymbols=phones.txt C.fst > C.txt
+
     fstrandgen C.fst | fstprint --isymbols=context_syms.txt --osymbols=phones.txt
 
     Example output:
-0   1   #0        #0
-1   2   #-1       a
-2   3   <eps>/a/a a
-3   4   a/a/a     a
-4   5   #0        #0
-5   6   a/a/b     b
-6   7   a/b/<eps> #$
-7   8   #1        #1
-8
+
+  fstrandgen C.fst | fstprint --isymbols=context_syms.txt --osymbols=phones.txt
+0	1	#-1	b
+1	2	<eps>/b/<eps>	#$
+2	3	#1	#1
+3	4	#0	#0
+4	5	#0	#0
+5	6	#0	#0
+6	7	#0	#0
+7	8	#0	#0
+8	9	#1	#1
+9
 */
 
 

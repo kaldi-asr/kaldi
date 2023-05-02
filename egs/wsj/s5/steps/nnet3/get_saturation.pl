@@ -74,6 +74,14 @@ while (<STDIN>) {
     if (! $ok) {
       print STDERR "Could not parse at least one of the avg-deriv values in the following info line: $_";
     }
+  } elsif (m/type=.*GruNonlinearityComponent/) {
+    if (m/deriv-avg=[^m]+mean=([^,]+),/) {
+      $num_nonlinearities += 1;
+      my $this_saturation = 1.0 - ($1 / 1.0);
+      $total_saturation += $this_saturation;
+    } else {
+      print STDERR "$0: could not make sense of line (no deriv-avg?): $_";
+    }
   }
 }
 

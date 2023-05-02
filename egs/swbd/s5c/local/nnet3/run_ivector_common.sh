@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 . ./cmd.sh
 set -e
@@ -37,8 +37,8 @@ if $speed_perturb; then
     steps/align_fmllr.sh --nj 100 --cmd "$train_cmd" \
       data/${train_set}_sp data/lang exp/tri4 exp/tri4_ali_nodup_sp
   fi
-  train_set=${train_set}_sp
 fi
+train_set=${train_set}_sp
 
 if [ $stage -le 3 ]; then
   mfccdir=mfcc_hires

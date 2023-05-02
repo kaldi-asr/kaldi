@@ -578,9 +578,95 @@ void OnlineIvectorEstimationStats::AccStats(
       quadratic_term_.AddToDiag(prior_scale_change);
     }
   }
-
   num_frames_ += tot_weight;
 }
+
+
+// This is used in OnlineIvectorEstimationStats::AccStats().
+struct GaussInfo {
+  // total weight for this Gaussian.
+  BaseFloat tot_weight;
+  // vector of pairs of (frame-index, weight for this Gaussian)
+  std::vector<std::pair<int32, BaseFloat> > frame_weights;
+  GaussInfo(): tot_weight(0.0) { }
+};
+
+static void ConvertPostToGaussInfo(
+    const std::vector<std::vector<std::pair<int32, BaseFloat> > > &gauss_post,
+    std::unordered_map<int32, GaussInfo> *gauss_info) {
+  int32 num_frames = gauss_post.size();
+  for (int32 t = 0; t < num_frames; t++) {
+    const std::vector<std::pair<int32, BaseFloat> > &this_post = gauss_post[t];
+    auto iter = this_post.begin(), end = this_post.end();
+    for (; iter != end; ++iter) {
+      int32 gauss_idx = iter->first;
+      GaussInfo &info = (*gauss_info)[gauss_idx];
+      BaseFloat weight = iter->second;
+      info.tot_weight += weight;
+      info.frame_weights.push_back(std::pair<int32, BaseFloat>(t, weight));
+    }
+  }
+}
+
+void OnlineIvectorEstimationStats::AccStats(
+    const IvectorExtractor &extractor,
+    const MatrixBase<BaseFloat> &features,
+    const std::vector<std::vector<std::pair<int32, BaseFloat> > > &gauss_post) {
+  KALDI_ASSERT(extractor.IvectorDim() == this->IvectorDim());
+  KALDI_ASSERT(!extractor.IvectorDependentWeights());
+
+  int32 feat_dim = features.NumCols();
+  std::unordered_map<int32, GaussInfo> gauss_info;
+  ConvertPostToGaussInfo(gauss_post, &gauss_info);
+
+  Vector<double> weighted_feats(feat_dim, kUndefined);
+  double tot_weight = 0.0;
+  int32 ivector_dim = this->IvectorDim(),
+      quadratic_term_dim = (ivector_dim * (ivector_dim + 1)) / 2;
+  SubVector<double> quadratic_term_vec(quadratic_term_.Data(),
+                                       quadratic_term_dim);
+
+  std::unordered_map<int32, GaussInfo>::const_iterator
+      iter = gauss_info.begin(), end = gauss_info.end();
+  for (; iter != end; ++iter) {
+    int32 gauss_idx = iter->first;
+    const GaussInfo &info = iter->second;
+
+    weighted_feats.SetZero();
+    std::vector<std::pair<int32, BaseFloat> >::const_iterator
+        f_iter = info.frame_weights.begin(), f_end = info.frame_weights.end();
+    for (; f_iter != f_end; ++f_iter) {
+      int32 t = f_iter->first;
+      BaseFloat weight = f_iter->second;
+      weighted_feats.AddVec(weight, features.Row(t));
+    }
+    BaseFloat this_tot_weight = info.tot_weight;
+
+    linear_term_.AddMatVec(1.0, extractor.Sigma_inv_M_[gauss_idx], kTrans,
+                           weighted_feats, 1.0);
+    SubVector<double> U_g(extractor.U_, gauss_idx);
+    quadratic_term_vec.AddVec(this_tot_weight, U_g);
+    tot_weight += this_tot_weight;
+  }
+  if (max_count_ > 0.0) {
+    // see comments in header RE max_count for explanation.  It relates to
+    // prior scaling when the count exceeds max_count_
+    double old_num_frames = num_frames_,
+        new_num_frames = num_frames_ + tot_weight;
+    double old_prior_scale = std::max(old_num_frames, max_count_) / max_count_,
+        new_prior_scale = std::max(new_num_frames, max_count_) / max_count_;
+    // The prior_scales are the inverses of the scales we would put on the stats
+    // if we were implementing this by scaling the stats.  Instead we
+    // scale the prior term.
+    double prior_scale_change = new_prior_scale - old_prior_scale;
+    if (prior_scale_change != 0.0) {
+      linear_term_(0) += prior_offset_ * prior_scale_change;
+      quadratic_term_.AddToDiag(prior_scale_change);
+    }
+  }
+  num_frames_ += tot_weight;
+}
+
 
 void OnlineIvectorEstimationStats::Scale(double scale) {
   KALDI_ASSERT(scale >= 0.0 && scale <= 1.0);

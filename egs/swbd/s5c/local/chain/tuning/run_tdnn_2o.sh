@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _2o is as _2m, but going back to our original 2-state topology, which it turns
 # out that I never tested to WER.

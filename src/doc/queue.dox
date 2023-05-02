@@ -245,7 +245,7 @@ option allow_k20=true
 option allow_k20=false -l 'hostname=!g01*&!g02*&!b06*'
 \endverbatim
 We then set the relevant <tt>$cmd</tt> variable to the value
-<tt>queue.pl -config conf/no_k20.conf --allow-k20 false</tt>.
+<tt>queue.pl --config conf/no_k20.conf --allow-k20 false</tt>.
 Note that a simpler way to have done this would have been
 to simply edit the <tt>command</tt> line in the config file to read
 \verbatim

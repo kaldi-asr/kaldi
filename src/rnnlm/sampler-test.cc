@@ -17,10 +17,11 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 #include "base/kaldi-math.h"
-#include <limits>
-#include <numeric>
 #include "rnnlm/sampler.h"
 #include "util/stl-utils.h"
+#include <limits>
+#include <numeric>
+#include <random>
 
 namespace kaldi {
 namespace rnnlm {
@@ -56,6 +57,9 @@ bool NormalizedSquaredDiffLessThanThreshold(
 
 void UnitTestSampleWithoutReplacement() {
   int32 num_tries = 50;
+  std::random_device rd;
+  std::mt19937 g(rd());
+
   for (int32 t = 0; t < num_tries; t++) {
     std::vector<double> prob;
     int32 num_elements = RandInt(1, 100);
@@ -71,7 +75,7 @@ void UnitTestSampleWithoutReplacement() {
     }
     int32 total_ceil = std::ceil(total);
     prob[num_elements - 1] =  total_ceil - total;
-    std::random_shuffle(prob.begin(), prob.end());
+    std::shuffle(prob.begin(), prob.end(), g);
 
     std::vector<double> sample_total(prob.size());
     size_t l = 0;

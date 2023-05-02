@@ -1,0 +1,111 @@
+#!/bin/bash
+
+#for part in train_l; do
+#  for testset in dev test_net test_meeting test_aishell1; do
+#    for model in mono tri1a tri1b tri2a tri3a tri3b 1a 1b 1c 1d; do
+#      grep WER exp/$part/$model/decode_$testset/scoring_kaldi/best_cer
+#      grep WER exp/$part/chain_cleaned/cnn_tdnn_${model}_sp/decode_${testset}_rnnlm/scoring_kaldi/best_cer
+#    done
+#  done
+#done
+
+# GMM model trained on "train_s" dataset
+%WER 64.63 [ 212208 / 328341, 4623 ins, 34363 del, 173222 sub ] exp/train_s/mono/decode_dev/cer_7_0.5
+%WER 41.22 [ 135341 / 328341, 4831 ins, 20064 del, 110446 sub ] exp/train_s/tri1a/decode_dev/cer_9_0.5
+%WER 38.58 [ 126661 / 328341, 4797 ins, 19021 del, 102843 sub ] exp/train_s/tri1b/decode_dev/cer_10_0.5
+%WER 33.44 [ 109802 / 328341, 4245 ins, 17674 del, 87883 sub ] exp/train_s/tri2a/decode_dev/cer_10_0.5
+%WER 32.61 [ 107082 / 328341, 4278 ins, 17269 del, 85535 sub ] exp/train_s/tri3a/decode_dev/cer_10_0.5
+%WER 32.23 [ 105811 / 328341, 4295 ins, 17348 del, 84168 sub ] exp/train_s/tri3b/decode_dev/cer_10_1.0
+
+%WER 73.82 [ 305897 / 414409, 6551 ins, 61355 del, 237991 sub ] exp/train_s/mono/decode_test_net/cer_6_0.5
+%WER 54.12 [ 224283 / 414409, 7416 ins, 41925 del, 174942 sub ] exp/train_s/tri1a/decode_test_net/cer_8_0.0
+%WER 51.68 [ 214182 / 414409, 7105 ins, 40864 del, 166213 sub ] exp/train_s/tri1b/decode_test_net/cer_8_0.5
+%WER 46.48 [ 192598 / 414409, 6324 ins, 41208 del, 145066 sub ] exp/train_s/tri2a/decode_test_net/cer_9_0.0
+%WER 45.31 [ 187763 / 414409, 6026 ins, 41045 del, 140692 sub ] exp/train_s/tri3a/decode_test_net/cer_9_0.0
+%WER 45.06 [ 186716 / 414409, 6580 ins, 40458 del, 139678 sub ] exp/train_s/tri3b/decode_test_net/cer_9_0.0
+
+
+%WER 93.37 [ 205753 / 220360, 1100 ins, 93906 del, 110747 sub ] exp/train_s/mono/decode_test_meeting/cer_3_1.0
+%WER 84.03 [ 185167 / 220360, 1854 ins, 81426 del, 101887 sub ] exp/train_s/tri1a/decode_test_meeting/cer_6_1.0
+%WER 83.06 [ 183027 / 220360, 2121 ins, 78520 del, 102386 sub ] exp/train_s/tri1b/decode_test_meeting/cer_6_1.0
+%WER 79.25 [ 174642 / 220360, 2251 ins, 75982 del, 96409 sub ] exp/train_s/tri2a/decode_test_meeting/cer_6_1.0
+%WER 79.15 [ 174410 / 220360, 2210 ins, 78861 del, 93339 sub ] exp/train_s/tri3a/decode_test_meeting/cer_5_1.0
+%WER 78.79 [ 173629 / 220360, 2466 ins, 76857 del, 94306 sub ] exp/train_s/tri3b/decode_test_meeting/cer_5_1.0
+
+# DNN model trained on "train_s" dataset with 4 epochs(1c) and 10 epochs(1d)
+%WER 13.28 [ 43599 / 328341, 2197 ins, 10108 del, 31294 sub ] exp/train_s/chain_cleaned/cnn_tdnn_1c_sp/decode_dev_rnnlm/cer_8_0.0
+%WER 11.70 [ 38425 / 328341, 2145 ins, 8988 del, 27292 sub ] exp/train_s/chain_cleaned/cnn_tdnn_1d_sp/decode_dev_rnnlm/cer_8_0.0
+
+%WER 20.35 [ 84329 / 414409, 3023 ins, 21600 del, 59706 sub ] exp/train_s/chain_cleaned/cnn_tdnn_1c_sp/decode_test_net_rnnlm/cer_8_0.0
+%WER 17.43 [ 72230 / 414409, 2616 ins, 20376 del, 49238 sub ] exp/train_s/chain_cleaned/cnn_tdnn_1d_sp/decode_test_net_rnnlm/cer_9_0.0
+
+%WER 45.06 [ 99301 / 220360, 2011 ins, 46770 del, 50520 sub ] exp/train_s/chain_cleaned/cnn_tdnn_1c_sp/decode_test_meeting_rnnlm/cer_6_0.0
+%WER 37.27 [ 82129 / 220360, 2032 ins, 36563 del, 43534 sub ] exp/train_s/chain_cleaned/cnn_tdnn_1d_sp/decode_test_meeting_rnnlm/cer_7_0.0
+
+%WER 8.73 [ 9151 / 104765, 427 ins, 784 del, 7940 sub ] exp/train_s/chain_cleaned/cnn_tdnn_1c_sp/decode_test_aishell1_rnnlm/cer_9_0.5
+%WER 7.66 [ 8029 / 104765, 459 ins, 767 del, 6803 sub ] exp/train_s/chain_cleaned/cnn_tdnn_1d_sp/decode_test_aishell1_rnnlm/cer_10_0.0
+
+# GMM model trained on "train_m" dataset
+%WER 67.25 [ 220817 / 328341, 4778 ins, 36049 del, 179990 sub ] exp/train_m/mono/decode_dev/cer_7_0.5
+%WER 41.10 [ 134934 / 328341, 4925 ins, 20022 del, 109987 sub ] exp/train_m/tri1a/decode_dev/cer_9_0.5
+%WER 38.28 [ 125676 / 328341, 4904 ins, 19116 del, 101656 sub ] exp/train_m/tri1b/decode_dev/cer_10_0.5
+%WER 32.36 [ 106238 / 328341, 4682 ins, 16246 del, 85310 sub ] exp/train_m/tri2a/decode_dev/cer_9_0.5
+%WER 31.24 [ 102564 / 328341, 4247 ins, 16735 del, 81582 sub ] exp/train_m/tri3a/decode_dev/cer_10_0.5
+%WER 29.91 [ 98212 / 328341, 4483 ins, 15431 del, 78298 sub ] exp/train_m/tri3b/decode_dev/cer_10_0.5
+
+%WER 76.58 [ 317351 / 414409, 6960 ins, 63259 del, 247132 sub ] exp/train_m/mono/decode_test_net/cer_7_0.0
+%WER 54.04 [ 223962 / 414409, 7483 ins, 41451 del, 175028 sub ] exp/train_m/tri1a/decode_test_net/cer_8_0.0
+%WER 51.33 [ 212729 / 414409, 7345 ins, 41089 del, 164295 sub ] exp/train_m/tri1b/decode_test_net/cer_9_0.0
+%WER 45.57 [ 188862 / 414409, 6243 ins, 40543 del, 142076 sub ] exp/train_m/tri2a/decode_test_net/cer_9_0.0
+%WER 44.04 [ 182488 / 414409, 6126 ins, 40500 del, 135862 sub ] exp/train_m/tri3a/decode_test_net/cer_9_0.0
+%WER 42.75 [ 177165 / 414409, 6496 ins, 38199 del, 132470 sub ] exp/train_m/tri3b/decode_test_net/cer_8_0.5
+
+%WER 93.13 [ 205227 / 220360, 1154 ins, 94004 del, 110069 sub ] exp/train_m/mono/decode_test_meeting/cer_4_1.0
+%WER 83.54 [ 184095 / 220360, 1911 ins, 83017 del, 99167 sub ] exp/train_m/tri1a/decode_test_meeting/cer_6_1.0
+%WER 82.37 [ 181518 / 220360, 2061 ins, 81027 del, 98430 sub ] exp/train_m/tri1b/decode_test_meeting/cer_6_1.0
+%WER 78.99 [ 174063 / 220360, 2093 ins, 80921 del, 91049 sub ] exp/train_m/tri2a/decode_test_meeting/cer_6_1.0
+%WER 79.45 [ 175072 / 220360, 2171 ins, 84058 del, 88843 sub ] exp/train_m/tri3a/decode_test_meeting/cer_5_1.0
+%WER 78.65 [ 173307 / 220360, 2432 ins, 80967 del, 89908 sub ] exp/train_m/tri3b/decode_test_meeting/cer_5_1.0
+
+# DNN model trained on "train_m" dataset
+%WER 9.81 [ 32223 / 328341, 2071 ins, 9072 del, 21080 sub ] exp/train_m/chain_cleaned/cnn_tdnn_1c_sp/decode_dev_rnnlm/cer_8_0.0
+%WER 14.19 [ 58824 / 414409, 2739 ins, 15110 del, 40975 sub ] exp/train_m/chain_cleaned/cnn_tdnn_1c_sp/decode_test_net_rnnlm/cer_8_0.0
+%WER 28.22 [ 62178 / 220360, 2256 ins, 26453 del, 33469 sub ] exp/train_m/chain_cleaned/cnn_tdnn_1c_sp/decode_test_meeting_rnnlm/cer_7_0.0
+%WER 5.93 [ 6217 / 104765, 317 ins, 542 del, 5358 sub ] exp/train_m/chain_cleaned/cnn_tdnn_1c_sp/decode_test_aishell1_rnnlm/cer_10_0.0
+
+# GMM model trained on "train_l" dataset
+%WER 70.87 [ 232694 / 328341, 4723 ins, 39336 del, 188635 sub ] exp/train_l/mono/decode_dev/cer_8_0.5
+%WER 41.02 [ 134678 / 328341, 5131 ins, 20003 del, 109544 sub ] exp/train_l/tri1a/decode_dev/cer_9_0.5
+%WER 37.94 [ 124557 / 328341, 4802 ins, 19239 del, 100516 sub ] exp/train_l/tri1b/decode_dev/cer_10_0.5
+%WER 32.21 [ 105757 / 328341, 4143 ins, 17475 del, 84139 sub ] exp/train_l/tri2a/decode_dev/cer_10_0.5
+%WER 31.00 [ 101795 / 328341, 4521 ins, 15858 del, 81416 sub ] exp/train_l/tri3a/decode_dev/cer_9_0.5
+%WER 29.62 [ 97271 / 328341, 4505 ins, 15765 del, 77001 sub ] exp/train_l/tri3b/decode_dev/cer_10_1.0
+
+%WER 79.54 [ 329635 / 414409, 7714 ins, 61459 del, 260462 sub ] exp/train_l/mono/decode_test_net/cer_7_0.0
+%WER 54.07 [ 224090 / 414409, 7677 ins, 41520 del, 174893 sub ] exp/train_l/tri1a/decode_test_net/cer_8_0.0
+%WER 51.10 [ 211745 / 414409, 7229 ins, 40413 del, 164103 sub ] exp/train_l/tri1b/decode_test_net/cer_8_0.5
+%WER 45.46 [ 188382 / 414409, 6299 ins, 40447 del, 141636 sub ] exp/train_l/tri2a/decode_test_net/cer_9_0.0
+%WER 44.01 [ 182394 / 414409, 6798 ins, 38434 del, 137162 sub ] exp/train_l/tri3a/decode_test_net/cer_8_0.0
+%WER 42.57 [ 176416 / 414409, 6446 ins, 38199 del, 131771 sub ] exp/train_l/tri3b/decode_test_net/cer_8_0.5
+
+%WER 93.76 [ 206601 / 220360, 1354 ins, 86016 del, 119231 sub ] exp/train_l/mono/decode_test_meeting/cer_5_0.5
+%WER 83.78 [ 184618 / 220360, 2014 ins, 80637 del, 101967 sub ] exp/train_l/tri1a/decode_test_meeting/cer_6_1.0
+%WER 82.89 [ 182659 / 220360, 2276 ins, 79925 del, 100458 sub ] exp/train_l/tri1b/decode_test_meeting/cer_6_1.0
+%WER 79.19 [ 174503 / 220360, 2277 ins, 81784 del, 90442 sub ] exp/train_l/tri2a/decode_test_meeting/cer_6_1.0
+%WER 79.43 [ 175039 / 220360, 2281 ins, 84042 del, 88716 sub ] exp/train_l/tri3a/decode_test_meeting/cer_5_0.5
+%WER 78.91 [ 173876 / 220360, 2414 ins, 82553 del, 88909 sub ] exp/train_l/tri3b/decode_test_meeting/cer_5_1.0
+
+# DNN model trained on "train_l" dataset: 1a(without SpecAug and Ivector), 1b(with SpecAug), 1c(with SpecAug and Ivector)
+%WER 9.40 [ 30871 / 328341, 2078 ins, 9113 del, 19680 sub ] exp/train_l/chain_cleaned/cnn_tdnn_1a_sp/decode_dev_rnnlm/cer_8_0.0
+%WER 9.31 [ 30555 / 328341, 2325 ins, 7836 del, 20394 sub ] exp/train_l/chain_cleaned/cnn_tdnn_1b_sp/decode_dev_rnnlm/cer_7_0.0
+%WER 9.07 [ 29777 / 328341, 2340 ins, 7822 del, 19615 sub ] exp/train_l/chain_cleaned/cnn_tdnn_1c_sp/decode_dev_rnnlm/cer_7_0.0
+
+%WER 13.33 [ 55261 / 414409, 2577 ins, 15192 del, 37492 sub ] exp/train_l/chain_cleaned/cnn_tdnn_1a_sp/decode_test_net_rnnlm/cer_9_0.0
+%WER 13.38 [ 55443 / 414409, 2883 ins, 13857 del, 38703 sub ] exp/train_l/chain_cleaned/cnn_tdnn_1b_sp/decode_test_net_rnnlm/cer_8_0.0
+%WER 12.83 [ 53149 / 414409, 2897 ins, 13210 del, 37042 sub ] exp/train_l/chain_cleaned/cnn_tdnn_1c_sp/decode_test_net_rnnlm/cer_8_0.0
+
+%WER 29.90 [ 65888 / 220360, 1935 ins, 30870 del, 33083 sub ] exp/train_l/chain_cleaned/cnn_tdnn_1a_sp/decode_test_meeting_rnnlm/cer_7_0.0
+%WER 29.05 [ 64016 / 220360, 2184 ins, 28412 del, 33420 sub ] exp/train_l/chain_cleaned/cnn_tdnn_1b_sp/decode_test_meeting_rnnlm/cer_7_0.0
+%WER 24.72 [ 54477 / 220360, 2154 ins, 23169 del, 29154 sub ] exp/train_l/chain_cleaned/cnn_tdnn_1c_sp/decode_test_meeting_rnnlm/cer_7_0.0
+
+%WER 5.41 [ 5672 / 104765, 294 ins, 453 del, 4925 sub ] exp/train_l/chain_cleaned/cnn_tdnn_1c_sp/decode_test_aishell1_rnnlm/cer_10_0.0

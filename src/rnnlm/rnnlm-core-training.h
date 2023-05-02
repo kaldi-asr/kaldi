@@ -58,7 +58,7 @@ struct RnnlmCoreTrainerOptions {
   void Register(OptionsItf *opts) {
     opts->Register("momentum", &momentum, "Momentum constant to apply during "
                    "training (help stabilize update).  e.g. 0.9.  Note: we "
-                   "automatically multiply the learning rate by (1-momenum) "
+                   "automatically multiply the learning rate by (1-momentum) "
                    "so that the 'effective' learning rate is the same as "
                    "before (because momentum would normally increase the "
                    "effective learning rate by 1/(1-momentum))");
@@ -188,6 +188,10 @@ class RnnlmCoreTrainer {
   // Prints out the max-change stats (if nonzero): the percentage of time that
   // per-component max-change and global max-change were enforced.
   void PrintMaxChangeStats() const;
+
+
+  // Calls ConsolidateMemory() on nnet_ and delta_nnet_.
+  void ConsolidateMemory();
 
   ~RnnlmCoreTrainer();
  private:

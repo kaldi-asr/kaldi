@@ -60,10 +60,13 @@ int main(int argc, char *argv[]) {
       }
       for (size_t i = 1; i < po.NumArgs(); i++) {
         bool b;
-        kaldi::InitKaldiInputStream(inputs[i-1]->Stream(), &b);
-        bool add = true;
-        stats.Read(inputs[i-1]->Stream(), b, add);
-        delete inputs[i-1];
+        if (kaldi::InitKaldiInputStream(inputs[i-1]->Stream(), &b)) {
+          bool add = true;
+          stats.Read(inputs[i-1]->Stream(), b, add);
+          delete inputs[i-1];
+        } else {
+          KALDI_ERR << "Malformed input file " << po.GetArg(i);
+        }
       }
     } else {
       for (int32 i = 1; i < po.NumArgs(); i++) {

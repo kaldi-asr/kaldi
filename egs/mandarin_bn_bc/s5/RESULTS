@@ -1,0 +1,15 @@
+# In the results below, "large_test" is the pruned 4-gram LM, which is used for
+# lattice generation.
+
+# Results with nnet3 tdnn+chain model
+# local/chain/run_tdnn.sh
+# (4 epoch training on speed-perturbed and volum-perturbed "cleaned" data and left-biphone model)
+# num_params=20.7 M
+%CER 8.83 [ 7901 / 89515, 929 ins, 1738 del, 5234 sub ] exp/chain_cleanup/tdnn_1d_sp/decode_dev_large_test/cer_9_0.0
+%CER 9.03 [ 17749 / 196659, 3770 ins, 3988 del, 9991 sub ] exp/chain_cleanup/tdnn_1d_sp/decode_eval_large_test/cer_10_0.0
+
+# Results with RNNLM rescoring of tdnn+chain model
+%CER 8.49 [ 7600 / 89515, 863 ins, 1805 del, 4932 sub ] exp/chain_cleanup/tdnn_1d_sp/decode_dev_large_test_rnnlm_1a_nbest_rescore/cer_8_0.0
+%CER 8.47 [ 7585 / 89515, 783 ins, 2027 del, 4775 sub ] exp/chain_cleanup/tdnn_1d_sp/decode_dev_large_test_rnnlm_1a_rescore/cer_9_0.0
+%CER 8.82 [ 17342 / 196659, 3891 ins, 3809 del, 9642 sub ] exp/chain_cleanup/tdnn_1d_sp/decode_eval_large_test_rnnlm_1a_nbest_rescore/cer_8_0.0
+%CER 8.72 [ 17142 / 196659, 3876 ins, 3766 del, 9500 sub ] exp/chain_cleanup/tdnn_1d_sp/decode_eval_large_test_rnnlm_1a_rescore/cer_9_0.0

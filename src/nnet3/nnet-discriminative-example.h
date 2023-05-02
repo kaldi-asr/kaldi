@@ -167,8 +167,8 @@ struct NnetDiscriminativeExampleStructureCompare {
   MergeExamples() routine while avoiding having to rewrite code.
 */
 void MergeDiscriminativeExamples(
-    std::vector<NnetDiscriminativeExample> *input,
     bool compress,
+    std::vector<NnetDiscriminativeExample> *input,
     NnetDiscriminativeExample *output);
 
 // called from MergeDiscriminativeExamples, this function merges the Supervision
@@ -219,7 +219,7 @@ typedef RandomAccessTableReader<KaldiObjectHolder<NnetDiscriminativeExample > > 
 /// This function returns the 'size' of a discriminative example as defined for
 /// purposes of merging egs, which is defined as the largest number of Indexes
 /// in any of the inputs or outputs of the example.
-int32 GetDiscriminativeNnetExampleSize(const NnetDiscriminativeExample &a);
+int32 GetNnetDiscriminativeExampleSize(const NnetDiscriminativeExample &a);
 
 
 /// This class is responsible for arranging examples in groups that have the

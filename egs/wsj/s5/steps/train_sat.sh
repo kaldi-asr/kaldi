@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 
 
@@ -276,4 +276,3 @@ steps/info/gmm_dir_info.pl $dir
 echo "$0: done training SAT system in $dir"
 
 exit 0
-

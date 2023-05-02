@@ -7,6 +7,8 @@
 """ This is a module with methods which will be used by scripts for training of
 deep neural network acoustic model with chain objective.
 """
+from __future__ import division
+from __future__ import print_function
 
 import logging
 import math
@@ -126,7 +128,8 @@ def train_new_models(dir, iter, srand, num_jobs,
                      shuffle_buffer_size, num_chunk_per_minibatch_str,
                      frame_subsampling_factor, run_opts, train_opts,
                      backstitch_training_scale=0.0, backstitch_training_interval=1,
-                     use_multitask_egs=False):
+                     use_multitask_egs=False,
+                     chain_opts=''):
     """
     Called from train_one_iteration(), this method trains new models
     with 'num_jobs' jobs, and
@@ -160,14 +163,14 @@ def train_new_models(dir, iter, srand, num_jobs,
     # than normal minibatch size, and people may get confused thinking it's
     # slower for iteration 0 because of the verbose option.
     verbose_opt = ("--verbose=1" if iter % 20 == 0 and iter > 0 else "")
-
     for job in range(1, num_jobs+1):
+
         # k is a zero-based index that we will derive the other indexes from.
         k = num_archives_processed + job - 1
         # work out the 1-based archive index.
         archive_index = (k % num_archives) + 1
         # previous : frame_shift = (k/num_archives) % frame_subsampling_factor
-        frame_shift = ((archive_index + k/num_archives)
+        frame_shift = ((archive_index + k//num_archives)
                        % frame_subsampling_factor)
 
         multitask_egs_opts = common_train_lib.get_multitask_egs_opts(
@@ -181,7 +184,6 @@ def train_new_models(dir, iter, srand, num_jobs,
                           if iter > 0 else "") +
                          (" --write-cache={0}/cache.{1}".format(dir, iter + 1)
                           if job == 1 else ""))
-
         thread = common_lib.background_command(
             """{command} {train_queue_opt} {dir}/log/train.{iter}.{job}.log \
                     nnet3-chain-train {parallel_train_opts} {verbose_opt} \
@@ -193,7 +195,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                     --max-param-change={max_param_change} \
                     --backstitch-training-scale={backstitch_training_scale} \
                     --backstitch-training-interval={backstitch_training_interval} \
-                    --l2-regularize-factor={l2_regularize_factor} {train_opts} \
+                    --l2-regularize-factor={l2_regularize_factor} {train_opts} {chain_opts} \
                     --srand={srand} \
                     "{raw_model}" {dir}/den.fst \
                     "ark,bg:nnet3-chain-copy-egs {multitask_egs_opts} \
@@ -210,7 +212,7 @@ def train_new_models(dir, iter, srand, num_jobs,
                         deriv_time_opts=" ".join(deriv_time_opts),
                         app_deriv_wts=apply_deriv_weights,
                         fr_shft=frame_shift, l2=l2_regularize,
-                        train_opts=train_opts,
+                        train_opts=train_opts,chain_opts=chain_opts,
                         xent_reg=xent_regularize, leaky=leaky_hmm_coefficient,
                         cache_io_opts=cache_io_opts,
                         parallel_train_opts=run_opts.parallel_train_opts,
@@ -243,7 +245,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                         leaky_hmm_coefficient,
                         momentum, max_param_change, shuffle_buffer_size,
                         frame_subsampling_factor,
-                        run_opts, dropout_edit_string="", train_opts="",
+                        run_opts, dropout_edit_string="", train_opts="", chain_opts="",
                         backstitch_training_scale=0.0, backstitch_training_interval=1,
                         use_multitask_egs=False):
     """ Called from steps/nnet3/chain/train.py for one iteration for
@@ -276,7 +278,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
         dir=dir, iter=iter, egs_dir=egs_dir,
         l2_regularize=l2_regularize, xent_regularize=xent_regularize,
         leaky_hmm_coefficient=leaky_hmm_coefficient, run_opts=run_opts,
-        use_multitask_egs=use_multitask_egs)
+        use_multitask_egs=use_multitask_egs, chain_opts=chain_opts)
 
     if iter > 0:
         # Runs in the background
@@ -318,7 +320,7 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                      shuffle_buffer_size=shuffle_buffer_size,
                      num_chunk_per_minibatch_str=cur_num_chunk_per_minibatch_str,
                      frame_subsampling_factor=frame_subsampling_factor,
-                     run_opts=run_opts, train_opts=train_opts,
+                     run_opts=run_opts, train_opts=train_opts,chain_opts=chain_opts,
                      # linearly increase backstitch_training_scale during the
                      # first few iterations (hard-coded as 15)
                      backstitch_training_scale=(backstitch_training_scale *
@@ -413,8 +415,7 @@ def compute_preconditioning_matrix(dir, egs_dir, num_lda_jobs, run_opts,
                     rand_prune=rand_prune))
 
     # the above command would have generated dir/{1..num_lda_jobs}.lda_stats
-    lda_stat_files = list(map(lambda x: '{0}/{1}.lda_stats'.format(dir, x),
-                              range(1, num_lda_jobs + 1)))
+    lda_stat_files = ['{0}/{1}.lda_stats'.format(dir, x) for x in range(1, num_lda_jobs + 1)]
 
     common_lib.execute_command(
         """{command} {dir}/log/sum_transform_stats.log \
@@ -471,7 +472,8 @@ def prepare_initial_acoustic_model(dir, run_opts, srand=-1, input_model=None):
 def compute_train_cv_probabilities(dir, iter, egs_dir, l2_regularize,
                                    xent_regularize, leaky_hmm_coefficient,
                                    run_opts,
-                                   use_multitask_egs=False):
+                                   use_multitask_egs=False,
+                                   chain_opts=""):
     model = '{0}/{1}.mdl'.format(dir, iter)
     scp_or_ark = "scp" if use_multitask_egs else "ark"
     egs_suffix = ".scp" if use_multitask_egs else ".cegs"
@@ -481,10 +483,9 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, l2_regularize,
                              egs_prefix="valid_diagnostic.",
                              use_multitask_egs=use_multitask_egs)
 
-
     common_lib.background_command(
         """{command} {dir}/log/compute_prob_valid.{iter}.log \
-                nnet3-chain-compute-prob --l2-regularize={l2} \
+                nnet3-chain-compute-prob --l2-regularize={l2} {chain_opts} \
                 --leaky-hmm-coefficient={leaky} --xent-regularize={xent_reg} \
                 {model} {dir}/den.fst \
                 "ark,bg:nnet3-chain-copy-egs {multitask_egs_opts} {scp_or_ark}:{egs_dir}/valid_diagnostic{egs_suffix} \
@@ -494,7 +495,7 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, l2_regularize,
                    xent_reg=xent_regularize,
                    egs_dir=egs_dir,
                    multitask_egs_opts=multitask_egs_opts,
-                   scp_or_ark=scp_or_ark, egs_suffix=egs_suffix))
+                   scp_or_ark=scp_or_ark, egs_suffix=egs_suffix, chain_opts=chain_opts))
 
     multitask_egs_opts = common_train_lib.get_multitask_egs_opts(
                              egs_dir,
@@ -503,7 +504,7 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, l2_regularize,
 
     common_lib.background_command(
         """{command} {dir}/log/compute_prob_train.{iter}.log \
-                nnet3-chain-compute-prob --l2-regularize={l2} \
+                nnet3-chain-compute-prob --l2-regularize={l2} {chain_opts} \
                 --leaky-hmm-coefficient={leaky} --xent-regularize={xent_reg} \
                 {model} {dir}/den.fst \
                 "ark,bg:nnet3-chain-copy-egs {multitask_egs_opts} {scp_or_ark}:{egs_dir}/train_diagnostic{egs_suffix} \
@@ -513,7 +514,7 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, l2_regularize,
                    xent_reg=xent_regularize,
                    egs_dir=egs_dir,
                    multitask_egs_opts=multitask_egs_opts,
-                   scp_or_ark=scp_or_ark, egs_suffix=egs_suffix))
+                   scp_or_ark=scp_or_ark, egs_suffix=egs_suffix, chain_opts=chain_opts))
 
 
 def compute_progress(dir, iter, run_opts):

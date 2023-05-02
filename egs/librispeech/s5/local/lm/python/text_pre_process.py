@@ -20,13 +20,13 @@ import nltk
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Pre-process a book's text")
-    parser.add_argument("--in-encoding", type=str, default="utf-8",
+    parser.add_argument("--in-encoding", default="utf-8",
                         help="Encoding to use when reading the input text")
-    parser.add_argument("--out-encoding", type=str, default="ascii",
+    parser.add_argument("--out-encoding", default="ascii",
                         help="Encoding to use when writing the output text")
-    parser.add_argument('--sent-end-marker', type=str, default="DOTDOTDOT")
-    parser.add_argument("in_text", type=str, help="Input text")
-    parser.add_argument("out_text", type=str, help="Output text")
+    parser.add_argument('--sent-end-marker', default="DOTDOTDOT")
+    parser.add_argument("in_text", help="Input text")
+    parser.add_argument("out_text", help="Output text")
     return parser.parse_args()
 
 # http://rosettacode.org/wiki/Roman_numerals/Decode#Python

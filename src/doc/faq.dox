@@ -1,0 +1,536 @@
+// doc/faq.dox
+
+
+// Copyright 2013  Johns Hopkins University (author: Guoguo Chen)
+
+// See ../../COPYING for clarification regarding multiple authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//  http://www.apache.org/licenses/LICENSE-2.0
+
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+namespace kaldi {
+
+/**
+  \page faq  Frequently Asked Questions
+
+  \section faq_intro    Introduction
+
+
+  This page contains the answers to some miscellaneous frequently asked
+  questions from the mailing lists. This should not be your primary way of
+  finding such answers: the mailing lists and github contain many more
+  discussions, and a web search may be the easiest way to find answers.
+  
+  \section kaldi_name_and_logo About the name and logo of Kaldi
+  According to legend, Kaldi was the Ethiopian goatherder who discovered the coffee plant. The name was chosen by sponsors of this project because they drank a lot of coffee that time (in 2009 according to <a href="https://groups.google.com/forum/#!topic/kaldi-help/J2F3y6KOejY"> Ondrej Glembek </a>). 
+  Then the logo symbolizes those guys working on a speech project (the microphone in the logo) while drinking coffee (the coffee bean in the logo). There are some <a href=https://groups.google.com/forum/#!topic/kaldi-help/DmbFnaDi7Co>dissenting opinion</a> about the logo, they suggest we should use more awesome logo. Generally, we would like to change logo if someone comes up with a well-designed new logo.  
+
+  \section how_to_check_version How to check the Kaldi version?  
+  Refer to version.h.
+  
+  \section reading_materials_for_beginners Reading materials for beginners in speech recognition.  
+  We notice that there are more and more beginners in speech recognition starting using Kaldi as their first toolkit for speech recognition. For those guys, we recommend them first to read these basic materials to get started:
+  - HTK book (at least reading the Tutorial Overview part)
+  - The Application of Hidden Markov Models in Speech Recognition
+  - Speech Recognition with Weighted Finite-State Transducers for WSFT
+  - A Bit of Progress in Language Modeling (Extended Version)
+  
+  For those who may want a "Kaldi Book" with tutorial on theory and implementation like what HTK Book does, we would generally just say sorry. As Dan explains in this <a href=https://groups.google.com/forum/#!topic/kaldi-help/3LBSzmploC0> post</a>, the field of speech recognition is moving so fast that we need to implement too many things in Kaldi and have no time to write such a book.
+  
+  \section free_data_to_train_model Free dataset to get started
+  If you have not bought any LDC license, there are also some free dataset for you to get started, that is, Librispeech, Tedlium and AMI. 
+
+  \section about_timit About TIMIT
+  There are many people asked questions about TIMIT on mailing lists, as Dan says in this <a href=https://groups.google.com/forum/#!topic/kaldi-help/YUbX_XUkFCw> post</a>, generally we'll suggest you do not use TIMIT. 
+  
+  \section windows_asr_toolkit Windows ASR toolkit based on Kaldi
+  <a href=https://ai-toolkit.blogspot.com/p/voicebridge.html> VoiceBridge</a> is a ASR toolkit which is designed for windows developers and based on Kaldi. Currently it only supports GMM-based ASR but it will be updated with more models added as the author declared <a href=https://groups.google.com/forum/#!topic/kaldi-help/-CBE3qoXyeU> here</a>. 
+  Of course, if anyone create or know any other windows ASR toolkit based on Kaldi, please feel free to let us know and we will add it in this section. 
+
+  \section python_wrapper_for_kaldi Python wrapper for Kaldi
+  There are a few Python wrappers for Kaldi including:
+  - <a href=https://github.com/pykaldi/pykaldi> PyKaldi </a>
+  - <a href=https://github.com/jzlianglu/pykaldi2> PyKaldi2 </a>
+  - <a href=https://github.com/mravanelli/pytorch-kaldi> PyTorch-Kaldi </a>
+  - <a href=https://github.com/gooofy/py-kaldi-asr> py-kaldi-asr</a>: just for nnet3 online decoder
+  
+  People may wonder why TensorFlow or PyTorch isn't used in Kaldi DNN setup. It is mainly a historical reason as Dan explained <a href=https://groups.google.com/forum/#!topic/kaldi-help/DO_m3KwXr70> here</a>. A good news is that a PyTorch-integrated version of Kaldi that Dan declared <a href=https://groups.google.com/forum/#!topic/kaldi-help/ueXh-xvzZxo>here</a> is already in the planning stage. Dan may announce it when it's ready.
+  
+  \section docker_for_kaldi Docker for Kaldi
+  Kaldi offers two set of images: CPU-based images and GPU-based images, please see <a href=https://github.com/kaldi-asr/kaldi/tree/master/docker> here</a>.
+  
+  \section kaldi_for_android Kaldi for Android
+  A guide for compiling Kaldi for Android with the corresponding Dockerfile can be found <a href=http://jcsilva.github.io/2017/03/18/compile-kaldi-android/>here</a>. Note that this build is just based on Ubuntu and does not continue to update for new version of NDK, so if you build Kaldi for Android on different computing platform or using different toolchain (e.g. CMake instead of ndk-build in this post), please let us know. 
+  
+  \section naming_conventions_of_tool Naming conventions of common tools in Kaldi
+  There are many tools in Kaldi following simple and consistent naming conventions. Three typical frequently used tools with self-explanatory names are: 
+  - <b>copy-* (or *-copy)</b>: e.g. copy-matrix, copy-feats, copy-feats-to-htk, copy-tree, copy-transition-model, copy-posts, wav-copy, gmm-copy, sgmm2-copy, nnet3-copy, lattice-copy.  
+  - <b>*-info</b>: e.g. tree-info, hmm-info, gmm-info, am-info, nnet3-am-info, nnet3-info.
+  - <b>*-to*</b>: e.g. feat-to-dim, feat-to-len, ali-to-phones, ali-to-post, lattice-to-nbest, lattice-to-post, nbest-to-lattice.
+  
+  We strongly suggest you search first in your build output directory to find tools you need before seeking help from others in mailing lists. Here I'll just give some example usages which are asked in the mailing lists.
+  
+  \verbatim
+  copy-feats ark:data/raw_mfcc.ark ark,t:data/mfcc.txt  # copy binary feature archive to text archive format
+  \endverbatim
+  
+  \verbatim
+  cat feats_with_range.scp
+  utt_id_1 raw_mfcc.1.ark:9[0:2,0:5]
+  utt_id_2 raw_mfcc.1.ark:16965[0:3]
+  
+  # copy ranges of feature archive to stdout with text archive format
+  copy-feats scp:feats_with_range.scp ark,t:- 
+  \endverbatim
+  
+  \verbatim
+  cat cmvn.scp
+  speaker_id_1 data/cmvn_test.ark:4
+  speaker_id_2 data/cmvn_test.ark:247
+  speaker_id_3 data/cmvn_test.ark:490
+  speaker_id_4 data/cmvn_test.ark:733
+  speaker_id_5 data/cmvn_test.ark:976
+  
+  # copy specific speaker's cmvn vector to stdout with text format
+  copy-feats --binary=false $(grep speaker_id_2 cmvn.scp | awk '{print $2}') -    
+  \endverbatim
+  
+  \verbatim
+  # copy GMM model to text format
+  gmm-copy --binary=false final.mdl final_text.mdl  
+  \endverbatim
+  
+  \verbatim
+  hmm-info final.mdl
+  number of phones 351
+  number of pdfs 3400
+  number of transition-ids 47952
+  number of transition-states 23916
+  \endverbatim
+  
+  \verbatim
+  nnet3-am-info final.mdl | head
+  input-dim: 40
+  ivector-dim: 100
+  num-pdfs: 2856
+  prior-dimension: 0
+  # Nnet info follows.
+  left-context: 29
+  right-context: 29
+  num-parameters: 8355408
+  modulus: 1
+  input-node name=ivector dim=100
+  input-node name=input dim=40
+  component-node name=idct component=idct input=input input-dim=40 output-dim=40
+  \endverbatim
+  
+  \verbatim
+  # write utterance length in frames to stdout with text archive format
+  feat-to-len scp:feats.scp ark,t:- | head  
+  \endverbatim
+
+  \section some_useful_script_for_data_processing Some useful scripts for data preparation and processing
+  Besides tools mentioned above, there are also some useful scripts in Kaldi in the directory of "steps" and "utils". Here we will list some frequently used scripts in data preparation and processing and leave other important scripts to be illustrated in the corresponding sections below.
+  
+  \verbatim
+  steps/combine_ali_dirs.sh              # combine alignment directories
+  steps/combine_lat_dirs.sh              # combine lattice directories
+  
+  # create lattices for the aug dirs by copying the lattices of original train dir
+  steps/copy_lat_dir.sh 
+  # create alignments for the aug dirs by copying the alignments of original train dir  
+  steps/copy_ali_dir.sh                 
+  
+  steps/cleanup/split_long_utterance.sh  # truncate the long audio into smaller overlapping segments
+  
+  # perform segmentation of the input data based on the transcription
+  # and outputs segmented data along with the corresponding aligned transcription
+  steps/cleanup/segment_long_utterances[_nnet3].sh                                                     
+  \endverbatim
+  
+  \verbatim
+  # copy train/test data directory to another directory, 
+  # possibly adding a specified prefix or a suffix to the utterance and/or speaker names
+  utils/copy_data_dir.sh
+  
+  # combine the data from multiple source directories into a single destination directory
+  utils/combine_data.sh 
+  # split data-dir to multiple subsets according to num-to-split or speaker numbers
+  utils/split_data.sh
+  # split scp file up with an approximately equal number of lines in each output file 
+  utils/split_scp.pl
+  # create a subset of train/test data with different options, consisting of some specified number of utterances 
+  utils/subset_data_dir.sh
+
+  # filter a scp file by list of utterance-ids
+  utils/filter_scp.pl
+  
+  utils/int2sym.pl   # map from integers to symbols (e.g. word-ids to transcript)
+  utils/sym2int.pl   # map from symbols to integers
+  # like ./sym2int.pl, but a bit more general in that it doesn't assume the things being mapped to are single tokens
+  utils/apply_map.pl 
+  
+  utils/utt2spk_to_spk2utt.pl   # convert an utt2spk file to a spk2utt file
+  utils/spk2utt_to_utt2spk.pl   # convert a spk2utt file to an utt2spk file
+
+  \endverbatim
+  
+  \verbatim
+  # get file 'utt2dur' which maps from utterance to the duration of the utterance in seconds
+  utils/data/get_utt2dur.sh
+  # get file 'reco2durr' which maps from recording to the duration of the recording in seconds 
+  utils/data/get_reco2dur.sh
+  
+  # copy the data directory and modify it to use the recording-id as the speaker 
+  utils/data/modify_speaker_info_to_recording.sh
+  
+  # remove excess utterances once they appear more than a specified number of times with the same transcription
+  utils/data/remove_dup_utts.sh
+  
+  # create a new subsegmented output directory from an existing data-dir with 'segments' file
+  utils/data/subsegment_data_dir.sh
+  
+  # do the standard 3-way speed perturbing of a data directory (it operates on the wav.scp).
+  utils/data/perturb_data_dir_speed_3way.sh
+  # generate the files which are used for perturbing the speed of the original data
+  utils/perturb_data_dir_speed.sh
+  
+  \endverbatim
+  
+  \section indeterminacy_in_feature_extraction Indeterminacy in feature extraction
+  Uses may notice that there is tiny difference when they run two rounds of feature extraction including MFCC, Fbank and PLP. This is because the random signal-level ‘dithering’ used in the extraction process to prevent zeros in the filterbank energy computation. The corresponding code is 'Dither' function in file feature-window.cc. For those who want deterministic result, just set 
+  \verbatim
+  --dither=0 and --energy-floor=1
+  \endverbatim
+  or do srand(0) at the start of program. 
+  BTW, we really do NOT think the determinism is worth considering, users should measure WER instead of the output of feature extraction. For more discussions, please refer to:
+  - <a href=https://groups.google.com/forum/#!topic/kaldi-help/fQS3VmQ0eCA> MFCC feature extraction </a>
+  - <a href=https://groups.google.com/forum/#!topic/kaldi-help/LOD4A7Z9hYY> mfcc features significantly different if run more than once </a>
+  
+  \section faq_candidates Below are FAQ candidates (with some TODOs) from the mailing lists, we will update these candidates to make them more readable.
+
+ 1. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/zMK8pnHJmHE> How to interpret the final.mdl </a> </b>
+	- interpret final.mdl with an example
+	- how to extract info from final.mdl (am-info and other tools)
+	- related questions:
+	    - <a href="https://groups.google.com/forum/#!topic/kaldi-help/nHgOS-7Hfb0"> number of (tri-phone) classes from Kaldi </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/ZM9mnRNdIAc> how to get pdf number and transition state number </a>
+
+2. <b> WFST  </b>
+	- related questions:
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/T-X8fp-839M> FST visualization </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/-C_XipM18Os> FST format </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/ialNoCbuB-w> arpa to fst</a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/NUW9ornQHzo> fst to carpa </a>
+
+4. <b> Lattice </b>
+	- list lattice related tools with example: nbest-to-linear, linear-to-1best, etc.
+	- list alignment related tools with example: ali-to-phones, ali-to-post, etc.
+	- related questions:
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/GHBb-3nrBLo> About lattice-to-post </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/82bbwMLIVAI> Convert pdf alignments to word alignments </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/8nDW_mYGRG8> Size of lattice generated by decoder </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/EFDSnKKASsU> How convert CompactLattice to Lattice </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/KPiGjVQ9v6A> Documentation for output format for lattice-to-post </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/APrZQNaF-S4> Query on converting phoneme lattice to word lattice </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/iBgeXN4diSY> the difference between posteriors calculated by forward-backward and lattice-to-post </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/RlH_noG1FRw> Help: split phone-level force alignments to word-level alignments </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/KNCJ6zbuA3U> phone alignment </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/8IFJBI3bJjM> how to get word alignment per-frame using prons-to-wordali </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/QCxBC818UCA> Forced alignment </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/Ie40bOzpU6E> alignment to word_level/phone_level with ctm </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/-hWk12QfSBE> How to understand the results of lat1.gz? </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/6pS5F5pPZAU> Viewing Lattice file (for example: lat.1.gz) </a>
+
+5. <b> CTM </b>
+	- related questions:
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/FqHdUBAzxoU> How to get phone boundary from decoded sequence? </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/tc7cKjCqPPI> How can I get phoneme-level and word-level segmentation during online recognition </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/vFea4w7XJJA> How to pipe the recognized transcriptions </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/6KaTh53vQfU> how to view phone lattice </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/4Fi3d3Ep8Ks> Empty Utterance at Decoding and CTM </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/xivVTSBZO3E> Print Lattice in text form </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/Fye4gkL51T0> Trying to get time stamps of testing data at the word level </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/usSg2a6Kn3o> Word timings of nnet3 decoding </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/oTVYGg-5zOo> how to output the timestamp of the predicted transcript using online2-wav-nnet3-latgen-faster? </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/GLetxqL9wMM> Generating phonemes from lattice </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/raRNZNCopfk> how to get lattice file to show words rather than numbers </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/cUTG5KYykF0> CTM from transcript file and audio file </a>
+	    - - <a href=https://groups.google.com/forum/#!topic/kaldi-help/g36HqAEC9lI> How to get timestamps while decoding with mfcc feature? </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/6FjW0tWPjFI> How to get the phones from recognition </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/5nfBCim6Ptw> Getting a CTM file of the phone alignment of the training data </a>
+		- <a href=https://groups.google.com/forum/#!topic/kaldi-help/lbo9IRSqXgk> ctm file with words, times and confidences for each n-best paths </a>
+		- <a href=https://groups.google.com/forum/#!topic/kaldi-help/PPlvG_Vfmto> Phone level output </a>
+
+9. <b> Resume training </b>
+	- related questions:
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/iS6Rx2Pl7Ug> Stop and resume DNN training </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/1lg6NcwamOs> How to resume a LSTM training ? </a>
+
+10. <b> GOP (goodness of pronunciation) and confidence score in Kaldi </b>
+	- related questions:
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/WeZGDRUKWlo> Confidence scores in Kaldi </a> 
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/q58KAFbKqeo> confidence of the decoding results </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/yi9hyWxTPQQ> How to extract likelihood score (or confidence score) from force-alignment </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/g_hqxScLRo4> How to get additional information as confidance score ? </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/CtJmgOuGag0> add confidence measure into aligning process </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/92okJBP4CC8> Convert word lattice to phone and ctm format with scores </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/UJrphc7HMFQ> How to get DNN-HMM likehood for a phoneme segment </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/OzjyFL3K_NY> ASR decoding confidence scores (sentence and word) from lattice </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/Gc14xjmSymI> chain model frame-level senone posteriors </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/8N-bzymJRhw> How to use kaldi for phoneme error detection on non-native English </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/qEI47vdZRf0> Is there any command can estimate the confidence score for each utterance using lattice? </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/dpYYiqU1i2U> Pronunciation assessment with KALDI </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/JsqCQIgVFb4> Confidences for edges in lattice </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/4enr5jJrz3I> implementation of GOP with Kaldi </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/JUKZB2e3YXM> Why the log-likelihoods calculated during force-alignment are positive? </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/14h_O922XaE> how can we calculate the posterior probabilities of phone according to force alignment </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/IxOVRauRDw4> how can I get sentence confidence and word-to-word confidences for every path in nbest from compact lattice </a>
+
+11. <b> Decision tree </b>
+	- related questions:
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/k9q6B2N4WqE> How can view decision tree more efficiently </a>
+
+12. <b> --Transition-scale, --self-loop-scale, --acoustic-scale, lm-weight </b>
+	- related questions:
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/3hHxdi48IQ4> --transition-scale and --self-loop-scale </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/bs9Pc4yEah8> Conceptual question regarding acoustic scale and LMWT </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/Uod-4Zl-Xyk> Online Decoding for chain-tdnn </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/JG56KPCB-v4> LM-weight for lattice rescoring </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/Av9iyMpXDnw> How to tune the acwt and lmwt when changing to a new task </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/cXX7y3Hvf3w> Acoustic and language model costs in Kaldi </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/CqlTY_8Tw0Q> Lattice scaling </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/75T1YJUWQr0> acoustic and language model weight for lattice-to-nbest </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/9DZK95yTWl4> Why LM weight is used only after decode completes? </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/B0nbUl3_a1I> Why the acwt shoud be set as 0.1 when the last logsoftmax layer is removed? </a>
+
+13. <b> Interaction between Kaldi and HTK </b>
+	- Feature level (copy-feats-to-htk, etc)
+	- Model Level (they are primarily different, with further explanation)
+	- releated questions:
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/7nGWu8A-LAs> using copy-feats-to-htk </a>
+
+14. <b> The effect of Beam </b>
+	- related questions:
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/VW_hBCdM_lE> How does beam value in forced alignment affect the performance? </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/EPjBhweN2A4> what does the "beam" mean in the decode model? </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/gY8e5dVh6uM> Decoding Beam vs Lattice Generation Beam </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/9txwWq-nWLY> improve decoding time </a>
+
+15. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/L6ZBsYaAExE> Nnet-align-compiled used too much memory? </a> </b>
+
+17. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/7AxZqD69vvY> Getting acoustic scores on state level in decoding </a> </b>
+	- related questions:
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/d7ZjCLveU8c> How do I get nnet3 computed matrix (scores) from online-wav-nnet3-latgen-faster </a>
+
+18. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/jnkXeHVASo0> Mandarin: Pitch vs No Pitch </a> </b>
+
+19. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/6FADEVV7Rt4> Is it possible to run kaldi on AMD gpu? Is a opencl port available? </a> </b>
+
+20. <b> Rescore </b>
+	- related questions:
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/dImbnLTKZu0> How to generate lattice for large LM? </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/jDG5CmAy_3w> How to accelerate the rescoring </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/LsfPUwHj3d8> Kaldi with Huge LM </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/DddJe3_d5wY> what does rescoring mean?? </a>
+		- <a href=https://groups.google.com/forum/#!topic/kaldi-help/LNJrE93J3UI> Use the same n-gram to do the lattice rescore but lost accuracy </a>
+		- <a href=https://groups.google.com/forum/#!topic/kaldi-help/sZQ4LE9J6ig> worse result on lattice rescoring </a>
+		- <a href=https://groups.google.com/forum/#!topic/kaldi-help/bWoq7vcRCvw> please help, can i do the lattice-rescore with a big lm trained by different and larger corpus </a>
+
+22. <b> Thread safe in Kaldi </b>
+	- related questions
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/x1Vozgv9HSI> is kaldi thread safe ? </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/HjraFqQFSnI> MfccComputer is not thread-safe? </a>
+
+24. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/qVT1EziyqpI> Lexicon free Text recognition </a> </b>
+
+25. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/xs4wSKSK3vk> Decoding .wav files </a> </b>
+
+26. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/3o8JKY17tcE> How to remove the silence modeling during training and testing </a> </b>
+
+28. <b> Examples for different task </b>
+	- related questions:
+	    -  <a href=https://groups.google.com/forum/#!topic/kaldi-help/5TDgpcWQhos> There are no examples of identifying music and speech </a> 
+	    -  <a href=https://groups.google.com/forum/#!topic/kaldi-help/yNDN58ekbZ0> Is Kaldi an appropriate tool for making a speech-vs-music classifier? </a>
+	    -  <a href=https://groups.google.com/forum/#!topic/kaldi-help/X297IbfWIlw> gender and accent recognition in Kaldi </a>
+
+29. <b> Model (update) in Kaldi </b>
+	- related questions:
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/VVmKJeRlPzY> How could I find papers corresponding exactly to the implementation of models such as tdnn,lstm,tdnn_lstm in kaldi </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/JFt7TtA6I1w> what is the best neural networks implementation in kaldi ? </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/QYRKeQWotJE> max pooling for nnet3 </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/PRhpfPDGmis> The performance of LSTM, LSTMP and GRU </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/ExJxr1vsJUU> L2 penalty nnet3 </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/ZfFj1ELQJ84> ResNets </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/fFyLnlYTHBY> CNN for raw speech </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/hb8eQnRXWhs> Comparison of the different Kaldi models </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/feljuy056Jc> So is there any proof paper for TDNN as the state-of-the-art? </a>
+
+30. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/SgCK63GdJRc> The use of !SIL word in the lexicon </a> </b>
+
+31. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/_Ij6L4uORBE> Problem when do alignment </a> </b>
+
+32. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/vioP5AhdzSg> Why is there a disambiguation symbol in L_disambig.fst after optional silence? </a> </b>
+
+35. <b> RNNLM </b>
+	- related questions:
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/fd_RQT15NpU> How can I use a RNNLM to get a final result of a WER </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/e-YnbBNNrkw> How to calculate the perplexity using RNNLM? </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/hBzx3vql3AM> rescore the lattices using rnnlm's trained with PyTorch </a> 
+
+36. <b> Run nnet3 without ivectors </b>
+	- related questions:
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/9bMpka993g8> Are there available recipes for training nnet3 models but without i-vectors </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/8TkWpz-yGk8> run_tdnn.sh without ivectors </a>
+
+37. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/0e-byMXyXOs> Which is a best starting point to learn online decoding </a> </b>
+
+38. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/-II4S8YsefA> How to print partial result in online2-wav-nnet3-latgen-faster </a>  </b>
+
+39. <b> Data preprocessing and augmentation </b>
+	- related questions:
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/sDi46bW-Bq8> Differences in the volume of the audio input </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/n1kezANCvrs> speed and volume perturbation trick in Kaldi </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/ohBkUGe9Dj4> data augmentation by speech coding conversion </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/AOelHpfbOZc> is there some method to remove noise at the begining of the decoding utterance </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/BaXSEJGFip4> How to remove bad transcriptions more efficiently? </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/jiff9IstTmg> Split the long audio file into utterances </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/J90ilujJYYY> Audio super resolution </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/L9XW7P96zIU> Data augmentation </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/LACiyggRIe4> to get segment wav file </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/T4VbMhX0skA> ram requirements for long duration utterances </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/q0feUFsAf1w> Noise Reduction </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/CEAEpZvkC70> While cutting off the beginning silence of a wav, the decode result changed a lot (get better!) </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/lF6lZe5WBbY> which kind of audio format is possible in kaldi? </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/b7bbZyow2XA> in tdnn and mono, Does the audio have a maximum duration limit? </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/dRzaIdgGFYs> Error in data preparation </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/n8es2XWVkec> utt2spk is not in sorted order or has duplicates </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/36lxCfa2Us8> long audio alignment </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/dwwb020B398> Train ASR model without time alignment information </a>
+
+40. <b> Speaker diarization </b>
+	- related questions:
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/tBdy2y4v6Tw> Diarization and WER </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/XOConkLKKcQ> Speech Activate Detection (SAD) for Diarization </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/BYfnUtDc94E> Speaker diarization with x-vector </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/ATl5b6CclDk> is there a recipe of speaker diarization with i-vector? </a> 
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/VfB00bNScek> Speaker diarisation in Kaldi </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/_8ZRao2PlFs> Speech Diariztion with Kaldi tutorial </a>
+
+41. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/wr_4KDb1fus> How to specify GPU for chain model training </a> </b>
+
+42. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/sztmblIYZsU> How to do the Latency control training in kaldi ? </a> </b>
+
+43. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/axOTLOlNZ_4> What's the meaning of content of nnet3's config? </a> </b>
+
+44. <b> Keyword spotting </b>
+	- related questions:
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/P_DdBW7mxj0> kaldi for key word spotting in live audio </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/Xwd1naCxs4I> keyword sporting in continuous speech </a>
+
+45. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/BPZKi9YhwOw> Kaldi supported gpus </a> </b>
+
+47. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/faZtacN7CrU> Optimizing model load time? </a> </b>
+
+48. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/iIvV81L77Dk> DNN input feature</a> </b>
+	- related questions:
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/nCGEX6YqNZ8> training a DNN with 2 sets of features </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/Cwydlqkk-ZY> Does online2-wav-nnet3-latgen-faster support delta feature? </a>
+
+49. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/JiROILMYh44> Is there any trick to accelerate the nnet-compute? </a> </b>
+	- related questions:
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/-ODc_2vKOH0> How to know each component's computation time </a>
+
+50. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/hYfzRxlvw78> Reading *.ark files from bash or python </a> </b>
+
+51. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/gWJoQWMS818> What is meant by WER and SER? </a> </b>
+
+52. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/ZNokBc2mb34> Training DNN over LDA+MLLT system </a> </b>
+
+53. <b> End-to-End SR </b>
+	- related questions:
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/RoWbg11_t6s> End-to-end speech recognition </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/flchZuDr8w0> Are there any plans to support the LSTM-CTC in Kaldi? </a>
+
+54. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/fDrqHbus4Cs> Kaldi already supports SVD. Can you give me an example of how to use SVD in LSTMP network? </a> </b>
+
+55. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/ojCeMK-ByC8> Decoding a built graph without grammar </a> </b>
+
+56. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/x8xEd65J0bM> Why is mfcc used in tdnn，but not fbank? </a> </b>
+	- related questions:
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/zKIMYRh1xLo> MFCC or FBANK </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/_7hB74HKhC4> MFCC vs FBANK for chain models ? </a>
+
+57. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/OtyxFqnvYsQ> What's the maximum amount of data used with kaldi for training acoustic models </a> </b>
+
+58. <b> Ivector </b>
+	- related questions:
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/iaYsHKoBVjs> Corpus recommendation for testing speaker adaptation </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/MhGbi5gEoM0> Confusion about Online I-vector Extraction with Kaldi </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/98sXUraTJjU> Implementation details of i-vector in kaldi </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/M8IE0FebwT0> Looking for a simple explanation of why ivectors are used in speech recognition? </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/mr-OUG-2VKQ> What is the significance of ivectors? </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/g485uCjF6Is> Ivector </a>
+
+59. <b> CMVN, VTLN, FMLLR adaptation </b>
+	- related question:
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/3OIzO0ETG38> CMVN, VTLN and other techniques to improve recognition? </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/AD3ze1HOov0> nnet3 + cmvn </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/SjUtIb5EIpw> Noise Robustness Issue in KALDI </a>
+	    - <a href=https://groups.google.com/forum/#!msg/kaldi-help/D94JWOO5hi4/kBrZPHuMAAAJ> Acoustic features for a model without speaker info </a> 
+
+60. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/RL72hAkMM88> What causes too many words delete？ </a> </b>
+
+61. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/Z-iLS01_EVo> Kaldi linear Model Combination or Model Merging </a> </b>
+
+62. <b> OCR </b>
+	- related questions:
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/d2INsls923M> End to end for OCR </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/GZklbkF6BLo> Decoding - Handwriting Recognition </a>
+
+63. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/rAfu9TKJJYI> Robustness of ASR </a> </b>
+
+64. <b> <a href=https://groups.google.com/g/kaldi-help/c/u41TT0uIVlc/m/t7bnhTYwBAAJ> Python3 vs. Python2.7 in Kaldi scripts </a> </b>
+
+67. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/s7zq30ckaEM> Adapt speaker recognition model </a> </b>
+
+68. <b> Teacher-student model in Kaldi </b>
+	- related questions:
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/HVSx5JH8MhM> Teacher-Student implementation in kaldi by Vimal Monohar </a>
+	    -  <a href=https://groups.google.com/forum/#!topic/kaldi-help/HfSAAIADdBs> Distillation framework in kaldi </a> 
+
+69. <b> Language model </b>
+	- related questions:
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/d1KIOgREd84> The right way of adding new words to existing ngram LM. </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/l2VMlgcjTw4> How to delete word's path form HCLG.fst </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/DTFxysLc6qA> Add penalty in the grammar </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/Kkr2pvX3PE8> How to run kaldi with limited dictionary </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/g7HiIxlQp7o> Run without Language Model </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/IIRb5L_zRew> LM scores from n-gram </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/X8k9UCz-SKA> Extend Kaldi ASR to new words </a>
+	    - <a href=https://groups.google.com/forum/#!topic/kaldi-help/vXBQgdaTxZc> How to create G.fst file for isolated word recognition? </a>
+
+70. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/LjOq37fg05E> Real time time decoding force last audio data decoding </a> </b>
+
+71. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/IXelzRxGnPo> QR Decomposition within Kaldi </a> </b>
+
+72. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/4FAIw9PQ31s> Is the word_boundary.int necessary for online-audio-server-decode-faster </a> </b>
+
+73. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/zxm6hiG1wwI> Is WER a lexcion error or a character error when training kaldi Mandarin speech recognition model? </a> </b>
+
+74. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/ecmv0Mipwy0> What is word_boundary file and how can I create this? </a> </b>
+
+75. <b> <a href=https://groups.google.com/forum/#!topic/kaldi-help/nbeO5I6JnpU> Different results from lattice-align-words and lattice-mbr-decode </a> </b>
+
+*/
+}

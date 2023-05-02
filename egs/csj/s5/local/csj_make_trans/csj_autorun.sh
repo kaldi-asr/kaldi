@@ -61,7 +61,7 @@ if [ ! -e $outd/.done_make_trans ];then
                 mkdir -p $outd/$vol/$id
 
                 case "$csjv" in
-                    "usb" ) TPATH="$resource/${SDB}$vol" ; WPATH="$resource/$WAV" ;;
+                    "usb" ) TPATH="$resource/${SDB}$vol" ; WPATH="$resource/${WAV}$vol" ;;
                     "dvd" ) TPATH="$resource/$vol/$id"   ; WPATH="$resource/$vol/$id" ;;
                     "merl" ) TPATH="$resource/$vol/$SDB" ; WPATH="$resource/$vol/$WAV" ;;
                 esac

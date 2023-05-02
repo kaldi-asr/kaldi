@@ -54,7 +54,8 @@
  Sandeep Boda, Sandeep Reddy and Haihua Xu (who helped with coding, code cleanup
  and documentation); we were visited by Michael Riley (who helped us to understand
  OpenFst and gave some lectures on FSTs), and would like to acknowledge the help of
- Honza Cernocky (for allowing us to have the workshop and helping to organize it),
+ Honza Cernocky (for negotiating the venue and some support for the workshop from
+ the Faculty of Information Technology of BUT and helping to organize it),
  Renata Kohlova (administration), and Tomas Kasparek (system administration).
  It is possible that this list of contributors contains
  oversights; any important omissions are unlikely to be intentional.
@@ -62,13 +63,16 @@
  A lot of code was written during the summer of 2010 but we still did not have a
  complete working system.  Some of the participants of the 2010 workshop
  continued working to complete the toolkit and get a working set of training scripts.
- The code was released on May 14th, 2011.
+ The code was released on May 14th, 2011, and presented to public at ICASSP 2011 
+ in Prague,
+ <a href="https://www.superlectures.com/icassp2011/category.php?lang=en&id=131">
+ see the recordings</a>.
 
  Since the initial release, Kaldi has been maintained and developed to a large
  extent by Daniel Povey, working at Microsoft Research until early 2012 and
  since then at Johns Hopkins University; but also with major contributions by
  others: notably Karel Vesely, who developed the neural-net training framework,
- and Arnab Ghoshal, who co-ordinated the acoustic modeling work early on; but
+ and Arnab Ghoshal, who coordinated the acoustic modeling work early on; but
  also other major contributors whom we do not name here because it is too hard
  to determine where to cut off the list; and a long tail of minor contributors;
  the total number of people who have contributed code or scripts or patches is

@@ -605,7 +605,7 @@ void UnitTestSumGroupComponent() {
 
 
 void UnitTestDctComponent() {
-  int32 m = 1 + Rand() % 4, n = 1 + Rand() % 4,
+  int32 m = 3 + Rand() % 4, n = 3 + Rand() % 4,
   dct_dim = m, dim = m * n;
   bool reorder = (Rand() % 2 == 0);
   {
@@ -615,12 +615,6 @@ void UnitTestDctComponent() {
   }
   {
     const char *str = "dim=10 dct-dim=5 reorder=true";
-    DctComponent component;
-    component.InitFromString(str);
-    UnitTestGenericComponentInternal(component);
-  }
-  {
-    const char *str = "dim=10 dct-dim=5 reorder=true dct-keep-dim=1";
     DctComponent component;
     component.InitFromString(str);
     UnitTestGenericComponentInternal(component);

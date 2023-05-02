@@ -33,7 +33,7 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Determinize lattices, keeping only the best path (sequence of\n"
         "acoustic states) for each input-symbol sequence. This version does\n"
-        "phone inertion when doing a first pass determinization, it then\n"
+        "phone insertion when doing a first pass determinization, it then\n"
         "removes the inserted symbols and does a second pass determinization.\n"
         "It also does pruning as part of the determinization algorithm, which\n"
         "is more efficient and prevents blowup.\n"

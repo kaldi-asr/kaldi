@@ -58,6 +58,7 @@ def get_ngram_stats(old_lm_lines):
 
 def find_and_replace_unks(old_lm_lines, max_ngrams, skip_rows):
     ngram_diffs = defaultdict(int)
+    whitespace_pattern = re.compile("[ \t]+")
     unk_pattern = re.compile(
         "[0-9.-]+(?:[\s\\t]\S+){1,3}[\s\\t]" + args.oov_dict_entry +
         "[\s\\t](?!-[0-9]+\.[0-9]+).*")
@@ -70,12 +71,16 @@ def find_and_replace_unks(old_lm_lines, max_ngrams, skip_rows):
     new_lm_lines = old_lm_lines[:skip_rows]
 
     for i in range(skip_rows, len(old_lm_lines)):
-            line = old_lm_lines[i].strip()
+            line = old_lm_lines[i].strip(" \t\r\n")
 
             if "\{}-grams:".format(3) in line:
                 passed_2grams = True
             if "\{}-grams:".format(max_ngrams) in line:
                 last_ngram = True
+
+            for i in range(max_ngrams):
+                if "\{}-grams:".format(i+1) in line:
+                    ngram = i+1
 
             # remove any n-gram states of the form: foo <unk> -> X
             # that is, any n-grams of order > 2 where <unk>
@@ -85,7 +90,6 @@ def find_and_replace_unks(old_lm_lines, max_ngrams, skip_rows):
             if passed_2grams:
                 g_unk = unk_pattern.search(line)
                 if g_unk:
-                    ngram = len(g_unk.group(0).split()) - 1
                     ngram_diffs[ngram] = ngram_diffs[ngram] - 1
                     unk_row_count += 1
                     continue
@@ -98,7 +102,7 @@ def find_and_replace_unks(old_lm_lines, max_ngrams, skip_rows):
             if not last_ngram:
                 g_backoff = backoff_pattern.search(line)
                 if g_backoff:
-                    updated_row = g_backoff.group(0).split()[:-1]
+                    updated_row = whitespace_pattern.split(g_backoff.group(0))[:-1]
                     updated_row = updated_row[0] + \
                         "\t" + " ".join(updated_row[1:]) + "\n"
                     new_lm_lines.append(updated_row)

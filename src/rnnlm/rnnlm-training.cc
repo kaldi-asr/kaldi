@@ -34,7 +34,6 @@ RnnlmTrainer::RnnlmTrainer(bool train_embedding,
                            nnet3::Nnet *rnnlm):
     train_embedding_(train_embedding),
     core_config_(core_config),
-    embedding_config_(embedding_config),
     objective_config_(objective_config),
     rnnlm_(rnnlm),
     core_trainer_(NULL),
@@ -110,6 +109,9 @@ void RnnlmTrainer::Train(RnnlmExample *minibatch) {
   active_word_features_trans_.Swap(&active_word_features_trans);
 
   TrainInternal();
+
+  if (num_minibatches_processed_ == 1)
+    core_trainer_->ConsolidateMemory();
 }
 
 

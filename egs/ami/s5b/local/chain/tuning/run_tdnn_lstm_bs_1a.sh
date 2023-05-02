@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # same as tdnn_lstm_1o but use backstitch training.
 # Also num-epochs and l2-regularize are tuned for best performance.
@@ -180,7 +180,7 @@ if [ $stage -le 15 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
 
   num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
-  learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+  learning_rate_factor=$(echo "print (0.5/$xent_regularize)" | python)
   tdnn_opts="l2-regularize=0.003"
   lstm_opts="l2-regularize=0.005"
   output_opts="l2-regularize=0.001"

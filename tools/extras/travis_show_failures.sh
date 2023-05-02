@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This script is called upon a test failure under Travis CI to report the
 # failure context. It prints a header followed by the last 200 lines of every

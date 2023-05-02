@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _4a is as _3s, but using narrower splice-indexes in the first layer.
 # WER is maybe a fraction worse than 3s (see below); final train prob is

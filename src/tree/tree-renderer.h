@@ -23,7 +23,6 @@
 #include "base/kaldi-common.h"
 #include "tree/event-map.h"
 #include "util/common-utils.h"
-#include "hmm/transition-model.h"
 #include "fst/fstlib.h"
 
 namespace kaldi {

@@ -1,6 +1,7 @@
 // nnet3/nnet-chain-example.h
 
 // Copyright      2015  Johns Hopkins University (author: Daniel Povey)
+// Copyright      2020  Idiap Research Institute (author: Srikanth Madikeri)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -225,7 +226,7 @@ typedef RandomAccessTableReader<KaldiObjectHolder<NnetChainExample > > RandomAcc
 /// This function returns the 'size' of a chain example as defined for purposes
 /// of merging egs, which is defined as the largest number of Indexes in any of
 /// the inputs or outputs of the example.
-int32 GetChainNnetExampleSize(const NnetChainExample &a);
+int32 GetNnetChainExampleSize(const NnetChainExample &a);
 
 
 /// This class is responsible for arranging examples in groups that have the
@@ -274,6 +275,13 @@ MapType eg_to_egs_;
 };
 
 
+bool ParseFromQueryString(const std::string &string,
+                          const std::string &key_name,
+                          std::string *value);
+
+bool ParseFromQueryString(const std::string &string,
+                          const std::string &key_name,
+                          BaseFloat *value);
 
 } // namespace nnet3
 } // namespace kaldi

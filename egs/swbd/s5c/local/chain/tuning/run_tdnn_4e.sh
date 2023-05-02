@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _4e is as _4c, but adding the option --l2-regularize 0.0001.
 # big improvement- about 0.7% WER abs.  Considering the non-l2 part of the objf, the

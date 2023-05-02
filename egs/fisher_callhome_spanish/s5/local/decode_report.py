@@ -7,6 +7,7 @@
 # This script is specific to my partitions and needs to be made more general
 # or modified
 
+from __future__ import print_function
 import subprocess
 import os
 
@@ -46,8 +47,8 @@ def get_best_wer(decode_dir):
     best_iteration = 0
     best_wer = 100.0
     for i in range(16):
-        if os.path.isfile(decode_dir + "/wer_" + str(i)):
-            result = subprocess.check_output("tail -n 3 " + decode_dir + "/wer_" + str(i), shell=True)
+        if os.path.isfile("{}/wer_{}".format(decode_dir, i)):
+            result = subprocess.check_output("tail -n 3 {}/wer_{}".format(decode_dir, i), shell=True)
             wer_string = result.split("\n")[0]
             wer_details = wer_string.split(' ')
             # Get max WER
@@ -58,8 +59,8 @@ def get_best_wer(decode_dir):
     return best_iteration, best_wer
 
 for decode_dir in decode_directories[:6]:
-    print decode_dir
-    print get_best_wer(decode_dir)
+    print(decode_dir)
+    print(get_best_wer(decode_dir))
 
 # Separate processing for bMMI stuff
 best_wer = 100.0
@@ -73,8 +74,8 @@ for decode_dir in decode_directories[6:10]:
         best_dir = decode_dir
         best_iteration = iteration
 
-print best_dir
-print (best_iteration, best_wer)
+print(best_dir)
+print((best_iteration, best_wer))
 
 best_wer = 100.0
 best_dir = ""
@@ -87,8 +88,8 @@ for decode_dir in decode_directories[10:14]:
         best_dir = decode_dir
         best_iteration = iteration
 
-print best_dir
-print (best_iteration, best_wer)
+print(best_dir)
+print((best_iteration, best_wer))
 
 best_wer = 100.0
 best_dir = ""
@@ -101,8 +102,8 @@ for decode_dir in decode_directories[14:18]:
         best_dir = decode_dir
         best_iteration = iteration
 
-print best_dir
-print (best_iteration, best_wer)
+print(best_dir)
+print((best_iteration, best_wer))
 
 best_wer = 100.0
 best_dir = ""
@@ -115,8 +116,8 @@ for decode_dir in decode_directories[18:22]:
         best_dir = decode_dir
         best_iteration = iteration
 
-print best_dir
-print (best_iteration, best_wer)
+print(best_dir)
+print((best_iteration, best_wer))
 
 best_wer = 100.0
 best_dir = ""
@@ -129,8 +130,8 @@ for decode_dir in decode_directories[22:26]:
         best_dir = decode_dir
         best_iteration = iteration
 
-print best_dir
-print (best_iteration, best_wer)
+print(best_dir)
+print((best_iteration, best_wer))
 
 best_wer = 100.0
 best_dir = ""
@@ -143,5 +144,5 @@ for decode_dir in decode_directories[26:]:
         best_dir = decode_dir
         best_iteration = iteration
 
-print best_dir
-print (best_iteration, best_wer)
+print(best_dir)
+print((best_iteration, best_wer))

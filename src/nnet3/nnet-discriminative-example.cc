@@ -23,7 +23,7 @@
 
 namespace kaldi {
 namespace nnet3 {
-
+using std::string;
 
 void NnetDiscriminativeSupervision::Write(std::ostream &os, bool binary) const {
   CheckDim();

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 current_path=`pwd`
 current_dir=`basename "$current_path"`
@@ -13,25 +13,49 @@ if [ ! -d liblbfgs-1.10 ]; then
     bash extras/install_liblbfgs.sh || exit 1
 fi
 
-# http://www.speech.sri.com/projects/srilm/download.html
-if [ ! -f srilm.tgz ]; then
-  echo This script cannot install SRILM in a completely automatic
-  echo way because you need to put your address in a download form.
-  echo Please download SRILM from http://www.speech.sri.com/projects/srilm/download.html
-  echo put it in ./srilm.tgz, then run this script.
-  exit 1
-fi
-
-! which gawk 2>/dev/null && \
+! command -v gawk > /dev/null && \
    echo "GNU awk is not installed so SRILM will probably not work correctly: refusing to install" && exit 1;
+
+if [ ! -f srilm.tgz ] && [ ! -f srilm.tar.gz ] && [ ! -d srilm ]; then
+  if [ $# -ne 3 ]; then
+      echo "SRILM download requires some information about you"
+      echo
+      echo "Usage: $0 <name> <organization> <email>"
+      exit 1
+  fi
+
+  srilm_url="http://www.speech.sri.com/projects/srilm/srilm_download.php"
+  post_data="WWW_file=srilm-1.7.3.tar.gz&WWW_name=$1&WWW_org=$2&WWW_email=$3"
+
+  if ! wget --post-data "$post_data" -O ./srilm.tar.gz "$srilm_url"; then
+      echo 'There was a problem downloading the file.'
+      echo 'Check your internet connection and try again.'
+      exit 1
+  fi
+
+  if [ ! -s srilm.tar.gz ]; then
+      echo 'The file is empty. There was a problem downloading the file.'
+      exit 1
+  fi
+fi
 
 mkdir -p srilm
 cd srilm
-tar -xvzf ../srilm.tgz
 
-major=`awk -F. '{ print $1 }' RELEASE`
-minor=`awk -F. '{ print $2 }' RELEASE`
-micro=`awk -F. '{ print $3 }' RELEASE`
+if [ -f ../srilm.tgz ]; then
+    tar -xvzf ../srilm.tgz || exit 1 # Old SRILM format
+elif [ -f ../srilm.tar.gz ]; then
+    tar -xvzf ../srilm.tar.gz || exit 1 # Changed format type from tgz to tar.gz
+fi
+
+if [ ! -f RELEASE ]; then
+    echo 'The file RELEASE does not exist. There was a problem extracting.'
+    exit 1
+fi
+
+major=`gawk -F. '{ print $1 }' RELEASE`
+minor=`gawk -F. '{ print $2 }' RELEASE`
+micro=`gawk -F. '{ print $3 }' RELEASE`
 
 if [ $major -le 1 ] && [ $minor -le 7 ] && [ $micro -le 1 ]; then
   echo "Detected version 1.7.1 or earlier. Applying patch."
@@ -41,8 +65,9 @@ fi
 # set the SRILM variable in the top-level Makefile to this directory.
 cp Makefile tmpf
 
-cat tmpf | awk -v pwd=`pwd` '/SRILM =/{printf("SRILM = %s\n", pwd); next;} {print;}' \
-  > Makefile || exit 1;
+cat tmpf | gawk -v pwd=`pwd` '/SRILM =/{printf("SRILM = %s\n", pwd); next;} {print;}' \
+  > Makefile || exit 1
+rm tmpf
 
 mtype=`sbin/machine-type`
 
@@ -55,9 +80,7 @@ grep ADDITIONAL_LDFLAGS common/Makefile.machine.$mtype | \
     sed 's|$| -L$(SRILM)/../liblbfgs-1.10/lib/ -Wl,-rpath -Wl,$(SRILM)/../liblbfgs-1.10/lib/|' \
     >> common/Makefile.machine.$mtype
 
-
-
-make || exit 1
+make || exit
 
 cd ..
 (
@@ -83,4 +106,3 @@ cd ..
 
 echo >&2 "Installation of SRILM finished successfully"
 echo >&2 "Please source the tools/env.sh in your path.sh to enable it"
-

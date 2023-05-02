@@ -1,13 +1,13 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This script is based on run_tdnn_7p.sh in swbd chain recipe.
 
 # Results
 # local/chain/compare_wer.sh --online exp/chain/tdnn_7h_chain_2b_sp
 # Model                tdnn_7h_chain_2b_sp
-# WER(%)                    23.67
-# WER(%)[online]            23.69
-# WER(%)[per-utt]           24.67
+# CER(%)                    23.67
+# CER(%)[online]            23.69
+# CER(%)[per-utt]           24.67
 # Final train prob        -0.0895
 # Final valid prob        -0.1251
 # Final train prob (xent)   -1.3628
@@ -109,7 +109,7 @@ if [ $stage -le 12 ]; then
   ivector_dim=$(feat-to-dim scp:exp/nnet3/ivectors_${train_set}/ivector_online.scp -)
   feat_dim=$(feat-to-dim scp:data/${train_set}_hires/feats.scp -)
   num_targets=$(tree-info $treedir/tree |grep num-pdfs|awk '{print $2}')
-  learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+  learning_rate_factor=$(echo "print (0.5/$xent_regularize)" | python)
   opts="l2-regularize=0.004 dropout-proportion=0.0 dropout-per-dim=true dropout-per-dim-continuous=true"
   linear_opts="orthonormal-constraint=-1.0 l2-regularize=0.004"
   output_opts="l2-regularize=0.002"

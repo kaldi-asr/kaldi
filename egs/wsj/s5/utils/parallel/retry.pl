@@ -94,7 +94,6 @@ for (my $n = 1; $n <= $num_tries; $n++) {
       # Later on we might want to figure out which array jobs failed
       # and have to be rerun, but for now we just die.
       print STDERR "$0: job failed and log file $log_file does not exist (array job?).\n";
-      exit($return_status)
     } else {
       rename($log_file, $log_file . ".bak");
       print STDERR "$0: job failed; renaming log file to ${log_file}.bak and rerunning\n";

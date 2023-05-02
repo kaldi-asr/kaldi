@@ -1,0 +1,7 @@
+# Reference:
+# #   https://github.com/codefactor-io/shellcheck-config
+# #   https://github.com/koalaman/shellcheck/wiki/Checks
+ignored:
+-SC2181
+-SC2145
+

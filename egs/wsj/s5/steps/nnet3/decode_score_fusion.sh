@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2018        Tien-Hong Lo
 
@@ -38,7 +38,7 @@ extra_right_context=0
 extra_left_context_initial=-1
 extra_right_context_final=-1
 online_ivector_dir=
-frame_subsampling_factor=1
+frame_subsampling_factor=
 frames_per_chunk=150
 average=true
 
@@ -76,10 +76,10 @@ write_compact=true   # If set to false, then writes the lattice in non-compact f
 
 if [ $# -lt 5 ]; then
   echo "Usage: $0 [options] <data-dir> <graph-dir> <nnet3-dir> <nnet3-dir2> [<nnet3-dir3> ... ] <output-dir>"
-  echo "e.g.:   local/socal/score_fusion.sh --nj 8 \\"
-  echo "--online-ivector-dir exp/nnet3/ivectors_test_eval92 \\"
-  echo "    data/test_eval92_hires exp/nnet3/tdnn/graph exp/nnet3/tdnn/output exp/nnet3/tdnn1/output .. \\"
-  echo "    exp/nnet3/tdnn_comb/decode_dev"
+  echo "e.g.:   steps/nnet3/decode_score_fusion.sh --nj 8 \\"
+  echo "    --online-ivector-dir exp/nnet3/ivectors_test \\"
+  echo "    data/test_hires exp/nnet3/tdnn/graph exp/nnet3/tdnn/output exp/nnet3/tdnn1/output .. \\"
+  echo "    exp/nnet3/tdnn_comb/decode_test"
   echo "main options (for others, see top of script file)"
   echo "  --config <config-file>                   # config containing options"
   echo "  --nj <nj>                                # number of parallel jobs"
@@ -110,14 +110,27 @@ if [ ! -z "$online_ivector_dir" ]; then
     ivector_opts="--online-ivectors=scp:$online_ivector_dir/ivector_online.scp --online-ivector-period=$ivector_period"
 fi
 
+# assign frame_subsampling_factor automatically if empty
+if [ -z $frame_subsampling_factor ]; then
+   frame_subsampling_factor=`cat ${model_dirs[0]}/frame_subsampling_factor` || exit 1;
+fi
+
+# check if standard chain system or not.
+if [ $frame_subsampling_factor -eq 3 ]; then
+   if [ $acwt != 1.0 ] || [ $post_decode_acwt != 10.0 ]; then
+     echo -e '\n\n'
+     echo "$0 WARNING: In standard chain system, acwt = 1.0, post_decode_acwt = 10.0"
+     echo "$0 WARNING: Your acwt = $acwt, post_decode_acwt = $post_decode_acwt"
+     echo "$0 WARNING: This is OK if you know what you are doing."
+     echo -e '\n\n'
+   fi
+fi
+
 frame_subsampling_opt=
 if [ $frame_subsampling_factor -ne 1 ]; then
   # e.g. for 'chain' systems
   frame_subsampling_opt="--frame-subsampling-factor=$frame_subsampling_factor"
 fi
-
-# convert $dir to absolute pathname
-fdir=`perl -e '($dir,$pwd)= @ARGV; if($dir!~m:^/:) { $dir = "$pwd/$dir"; } print $dir; ' $dir ${PWD}`
 
 # Possibly use multi-threaded decoder
 thread_string=
@@ -143,11 +156,13 @@ for i in `seq 0 $[num_sys-1]`; do
   
   # check that they have the same frame-subsampling-factor
   if [ $frame_subsampling_factor -ne `cat $srcdir/frame_subsampling_factor` ]; then
-    echo "$0 frame_subsampling_factor must be the same."
+    echo "$0 frame_subsampling_factor must be the same.\\"
+    echo "Default:$frame_subsampling_factor \\"
+    echo "In $srcdir:`cat $srcdir/frame_subsampling_factor`"
     exit 0;
   fi
   
-    for f in $data/feats.scp $model $extra_files; do
+  for f in $data/feats.scp $model $extra_files; do
     [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
   done
 
@@ -231,9 +246,9 @@ fi
 
 if [ $stage -le 0 ]; then  
   $cmd --num-threads $num_threads JOB=1:$nj $dir/log/decode.JOB.log \
-    matrix-sum --average=$average "${models[@]}" ark:- \| \
-	latgen-faster-mapped$thread_string --lattice-beam=$lattice_beam --acoustic-scale=$acwt --allow-partial=true \
-	 --minimize=$minimize --max-active=$max_active --min-active=$min_active --beam=$beam \
+     matrix-sum --average=$average "${models[@]}" ark:- \| \
+     latgen-faster-mapped$thread_string --lattice-beam=$lattice_beam --acoustic-scale=$acwt --allow-partial=true \
+     --minimize=$minimize --max-active=$max_active --min-active=$min_active --beam=$beam \
      --word-symbol-table=$graphdir/words.txt ${extra_opts} "$model" \
      $graphdir/HCLG.fst ark:- "$lat_wspecifier"
 fi
@@ -259,4 +274,3 @@ fi
 
 
 exit 0
-

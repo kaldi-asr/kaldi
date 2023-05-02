@@ -20,7 +20,6 @@
 
 
 #include "lat/phone-align-lattice.h"
-#include "hmm/transition-model.h"
 #include "util/stl-utils.h"
 
 namespace kaldi {
@@ -58,7 +57,7 @@ class LatticePhoneAligner {
     /// wrong so don't trust the output too fully.
     /// Note: the "next_state" of the arc will not be set, you have to do that
     /// yourself.
-    bool OutputPhoneArc(const TransitionModel &tmodel,
+    bool OutputPhoneArc(const TransitionInformation &tmodel,
                         const PhoneAlignLatticeOptions &opts,
                         CompactLatticeArc *arc_out,
                         bool *error);
@@ -67,7 +66,7 @@ class LatticePhoneAligner {
     /// the arc won't have any transition-ids on it.  This is intended to fix
     /// a particular pathology where too many words were pending and we had
     /// blowup.
-    bool OutputWordArc(const TransitionModel &tmodel,
+    bool OutputWordArc(const TransitionInformation &tmodel,
                        const PhoneAlignLatticeOptions &opts,
                        CompactLatticeArc *arc_out,
                        bool *error);
@@ -91,7 +90,7 @@ class LatticePhoneAligner {
     /// will consist of partial words, and this will only
     /// happen for lattices that were somehow broken, i.e.
     /// had not reached the final state.
-    void OutputArcForce(const TransitionModel &tmodel,
+    void OutputArcForce(const TransitionInformation &tmodel,
                         const PhoneAlignLatticeOptions &opts,
                         CompactLatticeArc *arc_out,
                         bool *error);
@@ -176,6 +175,8 @@ class LatticePhoneAligner {
       // have returned false or we wouldn't have been called, so we have to
       // force it out.
       CompactLatticeArc lat_arc;
+      // Note: the next call will change the computation-state of the tuple,
+      // so it becomes a different tuple.
       tuple.comp_state.OutputArcForce(tmodel_, opts_, &lat_arc, &error_);
       lat_arc.nextstate = GetStateForTuple(tuple, true); // true == add to queue.
       // The final-prob stuff will get called again from ProcessQueueElement().
@@ -201,12 +202,13 @@ class LatticePhoneAligner {
     // epsilon-sequencing rules encoded by the filters in
     // composition.
     CompactLatticeArc lat_arc;
-    Tuple tuple2(tuple); // temp
     if (tuple.comp_state.OutputPhoneArc(tmodel_, opts_, &lat_arc, &error_) ||
         tuple.comp_state.OutputWordArc(tmodel_, opts_, &lat_arc, &error_)) {
-      // note: this function changes the tuple (when it returns true).
-      lat_arc.nextstate = GetStateForTuple(tuple, true); // true == add to queue,
-      // if not already present.
+      // note: the functions OutputPhoneArc() and OutputWordArc() change the
+      // tuple (when they return true).
+      lat_arc.nextstate = GetStateForTuple(tuple, true); // true == add to
+                                                         // queue, if not
+                                                         // already present.
       KALDI_ASSERT(output_state != lat_arc.nextstate);
       lat_out_->AddArc(output_state, lat_arc);
     } else {
@@ -220,7 +222,7 @@ class LatticePhoneAligner {
         // ... since we did CreateSuperFinal.
         ProcessFinal(tuple, output_state);
       }
-      // Now process the arcs.  Note: final-state shouldn't have any arcs.
+      // Now process the arcs.  Note: final-states shouldn't have any arcs.
       for(fst::ArcIterator<CompactLattice> aiter(lat_, tuple.input_state);
           !aiter.Done(); aiter.Next()) {
         const CompactLatticeArc &arc = aiter.Value();
@@ -242,7 +244,7 @@ class LatticePhoneAligner {
   }
 
   LatticePhoneAligner(const CompactLattice &lat,
-                      const TransitionModel &tmodel,
+                      const TransitionInformation &tmodel,
                       const PhoneAlignLatticeOptions &opts,
                      CompactLattice *lat_out):
       lat_(lat), tmodel_(tmodel), opts_(opts), lat_out_(lat_out),
@@ -280,7 +282,7 @@ class LatticePhoneAligner {
   }
 
   CompactLattice lat_;
-  const TransitionModel &tmodel_;
+  const TransitionInformation &tmodel_;
   const PhoneAlignLatticeOptions &opts_;
   CompactLattice *lat_out_;
 
@@ -290,7 +292,7 @@ class LatticePhoneAligner {
 };
 
 bool LatticePhoneAligner::ComputationState::OutputPhoneArc(
-    const TransitionModel &tmodel,
+    const TransitionInformation &tmodel,
     const PhoneAlignLatticeOptions &opts,
     CompactLatticeArc *arc_out,
     bool *error) {
@@ -340,7 +342,7 @@ bool LatticePhoneAligner::ComputationState::OutputPhoneArc(
 }
 
 bool LatticePhoneAligner::ComputationState::OutputWordArc(
-    const TransitionModel &tmodel,
+    const TransitionInformation &tmodel,
     const PhoneAlignLatticeOptions &opts,
     CompactLatticeArc *arc_out,
     bool *error) {
@@ -359,7 +361,7 @@ bool LatticePhoneAligner::ComputationState::OutputWordArc(
 
 
 void LatticePhoneAligner::ComputationState::OutputArcForce(
-    const TransitionModel &tmodel,
+    const TransitionInformation &tmodel,
     const PhoneAlignLatticeOptions &opts,
     CompactLatticeArc *arc_out,
     bool *error) {
@@ -369,7 +371,7 @@ void LatticePhoneAligner::ComputationState::OutputArcForce(
   // although it might not be obvious from superficially checking
   // the code.  IsEmpty() would be true if we had transition_ids_.empty()
   // and opts.replace_output_symbols, so we would already die by assertion;
-  // in fact, this function would neve be called.
+  // in fact, this function would never be called.
 
   if (!transition_ids_.empty()) { // Do some checking here.
     int32 tid = transition_ids_[0];
@@ -408,7 +410,7 @@ void LatticePhoneAligner::ComputationState::OutputArcForce(
 }
 
 bool PhoneAlignLattice(const CompactLattice &lat,
-                       const TransitionModel &tmodel,
+                       const TransitionInformation &tmodel,
                        const PhoneAlignLatticeOptions &opts,
                        CompactLattice *lat_out) {
   LatticePhoneAligner aligner(lat, tmodel, opts, lat_out);

@@ -1,0 +1,14 @@
+11c11
+< clear all;
+---
+> function score_RealData(download_from_ldc,senhroot)
+26c26,27
+< srmrdir = 'SRMRtoolbox-ReverbChallenge';
+---
+> srmrdir = 'SRMRToolbox';
+> addpath(genpath('SRMRToolbox/libs'));
+32d32
+< senhroot = '../output/RealData';
+129a130,131
+> 
+> end

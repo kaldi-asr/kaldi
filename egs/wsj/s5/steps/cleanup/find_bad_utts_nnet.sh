@@ -1,13 +1,13 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2012-2014  Johns Hopkins University (Author: Daniel Povey)
-#           2016       Api.ai (Author: Ilya Platonov)      
+#           2016       Api.ai (Author: Ilya Platonov)
 # Apache 2.0
 #
 # Tweaked version of find_bad_utts.sh to work with nnet2 and nnet3(supports chain models) non-ivector models.
 # This script uses nnet-info and nnet3-am-info to determine type of nnet (nnet2 or nnet3).
 # Use --acoustic-scale=1.0 for chain models.
 #
-# Begin configuration section.  
+# Begin configuration section.
 nj=8
 cmd=run.pl
 use_graphs=false
@@ -17,11 +17,12 @@ acoustic_scale=0.1
 beam=15.0
 lattice_beam=8.0
 max_active=750
-transform_dir=  # directory to find fMLLR transforms in.
 top_n_words=100 # Number of common words that we compile into each graph (most frequent
                 # in $lang/text.
 stage=-1
 cleanup=true
+online_ivector_dir=
+num_threads=1         # Only valid for nnet3 models.
 # End configuration options.
 
 echo "$0 $@"  # Print the command line for logging
@@ -45,8 +46,14 @@ lang=$2
 srcdir=$3
 dir=$4
 
+extra_files=
+if [ ! -z "$online_ivector_dir" ]; then
+  steps/nnet2/check_ivectors_compatible.sh $srcdir $online_ivector_dir || exit 1
+  extra_files="$online_ivector_dir/ivector_online.scp $online_ivector_dir/ivector_period"
+fi
+
 for f in $data/text $lang/oov.int $srcdir/tree $srcdir/final.mdl \
-    $lang/L_disambig.fst $lang/phones/disambig.int; do
+    $lang/L_disambig.fst $lang/phones/disambig.int $extra_files; do
   [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1;
 done
 
@@ -66,8 +73,14 @@ cp $srcdir/{tree,final.mdl} $dir || exit 1;
 utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt || exit 1;
 cp $lang/phones.txt $dir || exit 1;
 
+thread_string=
+if [ $num_threads -gt 1 ]; then
+  thread_string="-parallel --num-threads=$num_threads"
+  queue_opt="--num-threads $num_threads"
+fi
+
 #checking type of nnet
-if nnet-info 1>/dev/null 2>/dev/null $srcdir/final.mdl; then 
+if nnet-info 1>/dev/null 2>/dev/null $srcdir/final.mdl; then
   nnet_type="nnet";
   latgen_cmd="nnet-latgen-faster";
 elif nnet3-am-info 1>/dev/null 2>/dev/null $srcdir/final.mdl; then
@@ -80,13 +93,18 @@ elif nnet3-am-info 1>/dev/null 2>/dev/null $srcdir/final.mdl; then
   if [ "$frame_subsamping_factor" != "1" ]; then
     nnet3_opt="--frame-subsampling-factor=$frame_subsampling_factor";
   fi
-  latgen_cmd="nnet3-latgen-faster $nnet3_opt";
+  latgen_cmd="nnet3-latgen-faster$thread_string $nnet3_opt";
 else
   echo "Unsupported type of nnet for $srcdir/final.mdl";
-fi 
+fi
 
 echo "nnet type is $nnet_type";
 
+
+if [ ! -z "$online_ivector_dir" ]; then
+  ivector_period=$(cat $online_ivector_dir/ivector_period) || exit 1;
+  ivector_opts="--online-ivectors=scp:$online_ivector_dir/ivector_online.scp --online-ivector-period=$ivector_period"
+fi
 
 if [ $stage -le 0 ]; then
   utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt <$data/text | \
@@ -108,12 +126,12 @@ if [ $stage -le 1 ]; then
 
   rm $dir/edits.*.txt $dir/aligned_ref.*.txt 2>/dev/null
 
-  $cmd JOB=1:$nj $dir/log/decode.JOB.log \
+  $cmd $queue_opt JOB=1:$nj $dir/log/decode.JOB.log \
     utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt $sdata/JOB/text \| \
     steps/cleanup/make_utterance_fsts.pl $dir/top_words.int \| \
     compile-train-graphs-fsts $scale_opts --read-disambig-syms=$lang/phones/disambig.int \
      $dir/tree $dir/final.mdl $lang/L_disambig.fst ark:- ark:- \| \
-    $latgen_cmd --acoustic-scale=$acoustic_scale --beam=$beam \
+    $latgen_cmd $ivector_opts --acoustic-scale=$acoustic_scale --beam=$beam \
       --max-active=$max_active --lattice-beam=$lattice_beam \
       --word-symbol-table=$lang/words.txt \
      $dir/final.mdl ark:- "$feats" ark:- \| \
@@ -150,7 +168,7 @@ if [ $stage -le 2 ]; then
   # <utterance-id>   <number of errors>  <reference-length>  <decoded-output>   <reference>
   # with the fields separated by tabs, e.g.
   # adg04_sr009_trn 1 	12	 SHOW THE GRIDLEY+S TRACK IN BRIGHT ORANGE WITH HORNE+S IN DIM RED AT	 SHOW THE GRIDLEY+S TRACK IN BRIGHT ORANGE WITH HORNE+S IN DIM RED
-  
+
   paste $dir/edits.txt \
       <(awk '{print $2}' $dir/length.txt) \
       <(awk '{$1="";print;}' <$dir/aligned_ref.txt) \
@@ -168,7 +186,7 @@ if [ $stage -le 3 ]; then
   ###
   # These stats migh help people figure out what is wrong with the data
   # a)human-friendly and machine-parsable alignment in the file per_utt_details.txt
-  # b)evaluation of per-speaker performance to possibly find speakers with 
+  # b)evaluation of per-speaker performance to possibly find speakers with
   #   distinctive accents/speech disorders and similar
   # c)Global analysis on (Ins/Del/Sub) operation, which might be used to figure
   #   out if there is systematic issue with lexicon, pronunciation or phonetic confusability
@@ -185,4 +203,3 @@ if [ $stage -le 3 ]; then
     sort -i -b -k1,1 -k4,4nr -k2,2 -k3,3 > $dir/analysis/ops_details.txt
 
 fi
-

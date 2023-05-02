@@ -26,6 +26,7 @@
 #include "nnet3/nnet-compute.h"
 #include "nnet3/nnet-optimize.h"
 #include "nnet3/nnet-example-utils.h"
+#include "nnet3/nnet-utils.h"
 
 namespace kaldi {
 namespace nnet3 {
@@ -74,7 +75,7 @@ struct NnetTrainerOptions {
                    "over the entire model (change will be clipped to this value)");
     opts->Register("momentum", &momentum, "Momentum constant to apply during "
                    "training (help stabilize update).  e.g. 0.9.  Note: we "
-                   "automatically multiply the learning rate by (1-momenum) "
+                   "automatically multiply the learning rate by (1-momentum) "
                    "so that the 'effective' learning rate is the same as "
                    "before (because momentum would normally increase the "
                    "effective learning rate by 1/(1-momentum))");
@@ -92,12 +93,12 @@ struct NnetTrainerOptions {
                    "model we write out has batchnorm stats that are fairly fresh.");
     opts->Register("backstitch-training-scale", &backstitch_training_scale,
                    "backstitch training factor. "
-                   "if 0 then in the normal training mode. It is referred as "
+                   "if 0 then in the normal training mode. It is referred to as "
                    "'\\alpha' in our publications.");
     opts->Register("backstitch-training-interval",
                    &backstitch_training_interval,
                    "do backstitch training with the specified interval of "
-                   "minibatches. It is referred as 'n' in our publications.");
+                   "minibatches. It is referred to as 'n' in our publications.");
     opts->Register("read-cache", &read_cache, "The location from which to read "
                    "the cached computation.");
     opts->Register("write-cache", &write_cache, "The location to which to write "
@@ -187,10 +188,6 @@ class NnetTrainer {
   // Prints out the final stats, and return true if there was a nonzero count.
   bool PrintTotalStats() const;
 
-  // Prints out the max-change stats (if nonzero): the percentage of time that
-  // per-component max-change and global max-change were enforced.
-  void PrintMaxChangeStats() const;
-
   ~NnetTrainer();
  private:
   // The internal function for doing one step of conventional SGD training.
@@ -220,8 +217,7 @@ class NnetTrainer {
   int32 num_minibatches_processed_;
 
   // stats for max-change.
-  std::vector<int32> num_max_change_per_component_applied_;
-  int32 num_max_change_global_applied_;
+  MaxChangeStats max_change_stats_;
 
   unordered_map<std::string, ObjectiveFunctionInfo, StringHasher> objf_info_;
 

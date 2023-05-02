@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _3n is as _3d (a non-recurrent setup), but using the more recent scripts that support
 # recurrence, with improvements to the learning of the jesus layers.

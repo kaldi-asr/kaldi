@@ -26,14 +26,14 @@ Created on Jan 18, 2013
 import codecs
 import os
 
-class Session:
+class Session(object):
     
     delimit = ">-<"
         
     def __init__(self, topfolder, splfile):
         self.filestem = splfile.split(".")[0]
         self.source = topfolder+ "/" +splfile
-        splhandle = codecs.open(self.source, "r", "latin-1")
+        splhandle = codecs.open(self.source, "r", "utf8")
         
         self.set_system_vars(splhandle)
         self.set_channel_vars(splhandle)
@@ -151,7 +151,7 @@ class Session:
                 pass
             
     def create_filename(self, uid, file_ending):
-        return self.filestem+ "." +self.speaker_id+ "." +str(uid)+ "." +file_ending
+        return "{}.{}.{}.{}".format(self.filestem, self.speaker_id, uid, file_ending)
         
     def wavpath(self, topfolder):
         prefix, suffix = topfolder.rsplit('/data/', 1)

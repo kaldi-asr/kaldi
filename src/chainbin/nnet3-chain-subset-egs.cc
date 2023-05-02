@@ -21,6 +21,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "nnet3/nnet-chain-example.h"
+#include <random>
 
 int main(int argc, char *argv[]) {
   try {
@@ -49,7 +50,7 @@ int main(int argc, char *argv[]) {
 
     po.Read(argc, argv);
 
-    srand(srand_seed);
+    std::mt19937 g(srand_seed);
 
     if (po.NumArgs() != 2) {
       po.PrintUsage();
@@ -81,7 +82,7 @@ int main(int argc, char *argv[]) {
       }
     }
     if (randomize_order)
-      std::random_shuffle(egs.begin(), egs.end());
+      std::shuffle(egs.begin(), egs.end(), g);
 
     NnetChainExampleWriter writer(examples_wspecifier);
     for (size_t i = 0; i < egs.size(); i++) {

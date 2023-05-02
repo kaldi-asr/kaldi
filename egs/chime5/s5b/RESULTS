@@ -1,0 +1,33 @@
+
+# tri2
+%WER 76.40 [ 44985 / 58881, 3496 ins, 17652 del, 23837 sub ] exp/tri2/decode_dev_worn/wer_13_1.0
+%WER 93.56 [ 55091 / 58881, 2132 ins, 35555 del, 17404 sub ] exp/tri2/decode_dev_beamformit_ref/wer_17_1.0
+
+# tri3
+%WER 72.81 [ 42869 / 58881, 3629 ins, 15998 del, 23242 sub ] exp/tri3/decode_dev_worn/wer_15_1.0
+%WER 91.73 [ 54013 / 58881, 3519 ins, 27098 del, 23396 sub ] exp/tri3/decode_dev_beamformit_ref/wer_17_1.0
+
+# nnet3 tdnn+chain
+%WER 47.91 [ 28212 / 58881, 2843 ins, 8957 del, 16412 sub ] exp/chain_train_worn_u100k_cleaned/tdnn1a_sp/decode_dev_worn/wer_9_0.0
+%WER 81.28 [ 47859 / 58881, 4210 ins, 27511 del, 16138 sub ] exp/chain_train_worn_u100k_cleaned/tdnn1a_sp/decode_dev_beamformit_ref/wer_9_0.5
+
+# result with the challenge submission format (July 9, 2018)
+# before the fix of speaker ID across arrays
+session S02 room DINING: #words 8288, #errors 6593, wer 79.54 %
+session S02 room KITCHEN: #words 12696, #errors 11096, wer 87.39 %
+session S02 room LIVING: #words 15460, #errors 12219, wer 79.03 %
+session S09 room DINING: #words 5766, #errors 4651, wer 80.66 %
+session S09 room KITCHEN: #words 8911, #errors 7277, wer 81.66 %
+session S09 room LIVING: #words 7760, #errors 6023, wer 77.61 %
+overall: #words 58881, #errors 47859, wer 81.28 %
+
+# result with the challenge submission format (July 9, 2018)
+# after the fix of speaker ID across arrays
+==== development set ====
+session S02 room DINING: #words 8288, #errors 6556, wer 79.10 %
+session S02 room KITCHEN: #words 12696, #errors 11096, wer 87.39 %
+session S02 room LIVING: #words 15460, #errors 12182, wer 78.79 %
+session S09 room DINING: #words 5766, #errors 4648, wer 80.61 %
+session S09 room KITCHEN: #words 8911, #errors 7277, wer 81.66 %
+session S09 room LIVING: #words 7760, #errors 6022, wer 77.60 %
+overall: #words 58881, #errors 47781, wer 81.14 %

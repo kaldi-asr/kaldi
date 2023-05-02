@@ -20,6 +20,7 @@
 #include "nnet2/nnet-compute-discriminative.h"
 #include "hmm/posterior.h"
 #include "lat/lattice-functions.h"
+#include "lat/lattice-functions-transition-model.h"
 
 namespace kaldi {
 namespace nnet2 {

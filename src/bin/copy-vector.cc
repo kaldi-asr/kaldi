@@ -93,7 +93,7 @@ int main(int argc, char *argv[]) {
           Vector<BaseFloat> vec(reader.Value());
           if (change_dim >= 0) vec.Resize(change_dim, kCopyData);
           if (scale != 1.0) vec.Scale(scale);
-          writer.Write(reader.Key(), reader.Value());
+          writer.Write(reader.Key(), vec);
         }
         KALDI_LOG << "Copied " << num_done << " vectors, setting dim to "
                   << change_dim << " scaled by " << scale;

@@ -1,5 +1,8 @@
 # ATLAS specific Linux configuration
 
+ifndef DEBUG_LEVEL
+$(error DEBUG_LEVEL not defined.)
+endif
 ifndef DOUBLE_PRECISION
 $(error DOUBLE_PRECISION not defined.)
 endif
@@ -16,16 +19,23 @@ ifndef ATLASLIBS
 $(error ATLASLIBS not defined.)
 endif
 
-CXXFLAGS = -std=c++11 -I.. -I$(OPENFSTINC) $(EXTRA_CXXFLAGS) \
+CXXFLAGS = -std=c++14 -I.. -isystem $(OPENFSTINC) -O1 $(EXTRA_CXXFLAGS) \
            -Wall -Wno-sign-compare -Wno-unused-local-typedefs \
            -Wno-deprecated-declarations -Winit-self \
            -DKALDI_DOUBLEPRECISION=$(DOUBLE_PRECISION) \
            -DHAVE_EXECINFO_H=1 -DHAVE_CXXABI_H -DHAVE_ATLAS -I$(ATLASINC) \
            -msse -msse2 -pthread \
-           -g # -O0 -DKALDI_PARANOID
+           -g
 
 ifeq ($(KALDI_FLAVOR), dynamic)
 CXXFLAGS += -fPIC
+endif
+
+ifeq ($(DEBUG_LEVEL), 0)
+CXXFLAGS += -DNDEBUG
+endif
+ifeq ($(DEBUG_LEVEL), 2)
+CXXFLAGS += -O0 -DKALDI_PARANOID
 endif
 
 # Compiler specific flags

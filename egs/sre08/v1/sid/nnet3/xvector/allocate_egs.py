@@ -65,6 +65,7 @@
 
 # We're using python 3.x style print but want it to work in python 2.x.
 from __future__ import print_function
+from __future__ import division
 import re, os, argparse, sys, math, warnings, random
 
 def get_args():
@@ -174,7 +175,7 @@ def get_labels(utt2int_filename):
 
 # this function returns a random integer utterance index, limited to utterances
 # above a minimum length in frames, with probability proportional to its length.
-def get_random_utt(spkr, spk2utt, min_length):
+def get_random_utt(spkr, spk2utt):
     this_utts = spk2utt[spkr]
     this_num_utts = len(this_utts)
     i = random.randint(0, this_num_utts-1)
@@ -196,7 +197,7 @@ def deterministic_chunk_length(archive_id, num_archives, min_frames_per_chunk, m
   elif num_archives == 1:
     return int(max_frames_per_chunk);
   else:
-    return int(math.pow(float(max_frames_per_chunk) /
+    return int(math.pow(float(max_frames_per_chunk)/
                      min_frames_per_chunk, float(archive_id) /
                      (num_archives-1)) * min_frames_per_chunk + 0.5)
 
@@ -247,7 +248,7 @@ def main():
             length = deterministic_chunk_length(archive_index, args.num_archives, args.min_frames_per_chunk, args.max_frames_per_chunk);
         print("{0} {1}".format(archive_index + 1, length), file=info_f)
         archive_chunk_lengths.append(length)
-        this_num_egs = int((args.frames_per_iter / length) + 1)
+        this_num_egs = int(float(args.frames_per_iter) / length + 1)
         this_egs = [ ] # A 2-tuple of the form (utt-id, start-frame)
         spkrs = args.num_repeats * list(spk2utt.keys())
         random.shuffle(spkrs)
@@ -256,8 +257,10 @@ def main():
                 print("Ran out of speakers for archive {0}".format(archive_index + 1))
                 break
             spkr = spkrs.pop()
-            utt = get_random_utt(spkr, spk2utt, length)
-            utt_len = utt2len[utt]
+            utt_len = 0
+            while utt_len < length:
+                utt = get_random_utt(spkr, spk2utt)
+                utt_len = utt2len[utt]
             offset = get_random_offset(utt_len, length)
             this_egs.append( (utt, offset) )
         all_egs.append(this_egs)

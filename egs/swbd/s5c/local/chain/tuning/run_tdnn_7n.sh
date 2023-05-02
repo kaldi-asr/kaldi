@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 
 # 7n is a kind of factorized TDNN, with skip connections.  We have to write
@@ -119,7 +119,7 @@ if [ $stage -le 12 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
 
   num_targets=$(tree-info $treedir/tree |grep num-pdfs|awk '{print $2}')
-  learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+  learning_rate_factor=$(echo "print (0.5/$xent_regularize)" | python)
   opts="l2-regularize=0.002"
   linear_opts="orthonormal-constraint=1.0"
   output_opts="l2-regularize=0.0005 bottleneck-dim=256"

@@ -28,7 +28,7 @@ OnlineNaturalGradient::OnlineNaturalGradient():
     rank_(40), update_period_(1), num_samples_history_(2000.0),
     num_minibatches_history_(0.0), alpha_(4.0),
     epsilon_(1.0e-10), delta_(5.0e-04), frozen_(false), t_(0),
-    self_debug_(false) { }
+    self_debug_(false), rho_t_(-1.0e+10) { }
 
 
 /**
@@ -119,14 +119,14 @@ void OnlineNaturalGradient::InitDefault(int32 D) {
   t_ = 0;
 }
 
-void OnlineNaturalGradient::Init(const CuMatrixBase<BaseFloat> &R0) {
-  int32 D = R0.NumCols();
+void OnlineNaturalGradient::Init(const CuMatrixBase<BaseFloat> &X0) {
+  int32 D = X0.NumCols();
   // for locking reasons it's better to use a different object.
   OnlineNaturalGradient this_copy(*this);
   this_copy.InitDefault(D);
   this_copy.t_ = 1;  // Prevent recursion to Init() again.
 
-  CuMatrix<BaseFloat> R0_copy(R0.NumRows(), R0.NumCols(), kUndefined);
+  CuMatrix<BaseFloat> X0_copy(X0.NumRows(), X0.NumCols(), kUndefined);
   // 'num_iters' is number of iterations with the same data from a pseudorandom
   // start.  this is a faster way of starting than doing eigenvalue
   // decomposition.
@@ -134,11 +134,11 @@ void OnlineNaturalGradient::Init(const CuMatrixBase<BaseFloat> &R0) {
   // Note: we only do three iterations of initialization if we have enough data
   // that it's reasonably possible to estimate the subspace of dimension
   // this_copy.rank_.  If we don't have more than that many rows in our initial
-  // minibatch R0, we just do one iteration... this gives us almost exactly
-  // (barring small effects due to epsilon_ > 0) the row subspace of R0 after
+  // minibatch X0, we just do one iteration... this gives us almost exactly
+  // (barring small effects due to epsilon_ > 0) the row subspace of X0 after
   // one iteration anyway.
   int32 num_init_iters;
-  if (R0.NumRows() <= this_copy.rank_)
+  if (X0.NumRows() <= this_copy.rank_)
     num_init_iters = 1;
   else
     num_init_iters = 3;
@@ -147,8 +147,8 @@ void OnlineNaturalGradient::Init(const CuMatrixBase<BaseFloat> &R0) {
                                // initialize.
   for (int32 i = 0; i < num_init_iters; i++) {
     BaseFloat scale;
-    R0_copy.CopyFromMat(R0);
-    this_copy.PreconditionDirections(&R0_copy, &scale);
+    X0_copy.CopyFromMat(X0);
+    this_copy.PreconditionDirections(&X0_copy, &scale);
   }
   rank_ = this_copy.rank_;
   W_t_.Swap(&this_copy.W_t_);
@@ -159,6 +159,7 @@ void OnlineNaturalGradient::Init(const CuMatrixBase<BaseFloat> &R0) {
 void OnlineNaturalGradient::PreconditionDirections(
     CuMatrixBase<BaseFloat> *X_t,
     BaseFloat *scale) {
+  NVTX_RANGE(__func__);
   if (X_t->NumCols() == 1) {
     // If the dimension of the space equals one then our natural gradient update
     // with rescaling becomes a no-op, but the code wouldn't naturally handle it
@@ -197,7 +198,7 @@ void OnlineNaturalGradient::PreconditionDirections(
   t_ += 1;
 }
 
-void OnlineNaturalGradient::ReorthogonalizeXt1(
+void OnlineNaturalGradient::ReorthogonalizeRt1(
     const VectorBase<BaseFloat> &d_t1,
     BaseFloat rho_t1,
     CuMatrixBase<BaseFloat> *W_t1,
@@ -214,7 +215,7 @@ void OnlineNaturalGradient::ReorthogonalizeXt1(
   ComputeEt(d_t1, beta_t1, &e_t1, &sqrt_e_t1, &inv_sqrt_e_t1);
 
   temp_O->SymAddMat2(1.0, *W_t1, kNoTrans, 0.0);
-  // O_t =  E_t^{-0.5} W_t W_t^T E_t^{-0.5}
+  // O_{t+1} =  E_{t+1}^{-0.5} W_{t+1} W_{t+1}^T E_{t+1}^{-0.5}
   Matrix<BaseFloat> O_mat(*temp_O);
   SpMatrix<BaseFloat> O(O_mat, kTakeLower);
   for (int32 i = 0; i < R; i++) {
@@ -327,6 +328,7 @@ void OnlineNaturalGradient::PreconditionDirectionsInternal(
     const Vector<BaseFloat> &d_t,
     CuMatrixBase<BaseFloat> *WJKL_t,
     CuMatrixBase<BaseFloat> *X_t) {
+  NVTX_RANGE(__func__);
   int32 N = X_t->NumRows(),  // Minibatch size.
       D = X_t->NumCols(),  // Dimensions of vectors we're preconditioning
       R = rank_;  // Rank of correction to unit matrix.
@@ -439,7 +441,7 @@ void OnlineNaturalGradient::PreconditionDirectionsInternal(
     if (self_debug_) {
       KALDI_WARN << "Reorthogonalizing.";
     }
-    ReorthogonalizeXt1(d_t1,
+    ReorthogonalizeRt1(d_t1,
                        rho_t1,
                        &W_t1,
                        &J_t,
@@ -510,7 +512,7 @@ void OnlineNaturalGradient::ComputeWt1(int32 N,
   // B_t = J_t + (1-\eta)/(\eta/N) (D_t + \rho_t I) W_t
   J_t->AddDiagVecMat(1.0, w_t_coeff_gpu, W_t, kNoTrans, 1.0);
 
-  // A_t = (\eta/N) E_{t+1}^{0.5} C_t^{-0.5} U_t^T E_t^{-0.5} B_t
+  // A_t = (\eta/N) E_{t+1}^{0.5} C_t^{-0.5} U_t^T E_t^{-0.5}
   Matrix<BaseFloat> A_t(U_t, kTrans);
   for (int32 i = 0; i < R; i++) {
     BaseFloat i_factor = (eta / N) * sqrt_e_t1(i) * inv_sqrt_c_t(i);
@@ -623,6 +625,21 @@ void OnlineNaturalGradient::SetAlpha(BaseFloat alpha) {
   alpha_ = alpha;
 }
 
+void OnlineNaturalGradient::Swap(OnlineNaturalGradient *other) {
+  std::swap(rank_, other->rank_);
+  std::swap(update_period_, other->update_period_);
+  std::swap(num_samples_history_, other->num_samples_history_);
+  std::swap(num_minibatches_history_, other->num_minibatches_history_);
+  std::swap(alpha_, other->alpha_);
+  std::swap(epsilon_, other->epsilon_);
+  std::swap(delta_, other->delta_);
+  std::swap(frozen_, other->frozen_);
+  std::swap(t_, other->t_);
+  std::swap(self_debug_, other->self_debug_);
+  W_t_.Swap(&(other->W_t_));
+  std::swap(rho_t_, other->rho_t_);
+  d_t_.Swap(&(other->d_t_));
+}
 
-}
-}
+}  // namespace nnet3
+}  // namespace kaldi

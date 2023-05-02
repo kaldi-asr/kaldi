@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2014 Vassil Panayotov
 # Apache 2.0
@@ -39,10 +39,10 @@ for b in $(cat $in_list); do
   [[ -f "$in_file" ]] || { echo "WARNING: $in_file does not exists"; continue; }
   out_file=$out_root/$id/$id.txt
   mkdir -p $out_root/$id
-  $PYTHON local/lm/python/pre_filter.py $in_file /dev/stdout |\
-    $PYTHON local/lm/python/text_pre_process.py /dev/stdin /dev/stdout |\
+  python local/lm/python/pre_filter.py $in_file /dev/stdout |\
+    python local/lm/python/text_pre_process.py /dev/stdin /dev/stdout |\
     nsw_expand -format opl /dev/stdin |\
-    $PYTHON local/lm/python/text_post_process.py /dev/stdin $out_file /dev/null || exit 1
+    python local/lm/python/text_post_process.py /dev/stdin $out_file /dev/null || exit 1
   processed=$((processed + 1))
   echo "Processing of $id has finished at $(date '+%T %F') [$processed texts ready so far]"
 done

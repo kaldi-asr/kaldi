@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 1e is as 1d but making the time subsampling symmetric with the
 #   height subsampling (unfortunately this symmetry is not very visible

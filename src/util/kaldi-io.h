@@ -59,13 +59,13 @@ class InputImplBase;  // Forward decl; defined in a .cc file
 //                        Documents\\boo"
 //          (whatever the actual file-system interprets)
 // (2) Standard output:  "" or "-"
-// (3) A pipe: e.g.  "gunzip -c /tmp/abc.gz |"
+// (3) A pipe: e.g. "| gzip -c > /tmp/abc.gz"
 //
 //
 // A "rxfilename" is an extended filename for reading.  It can take four forms:
 // (1) An actual filename, whatever the file-system can read, e.g. "/my/file".
 // (2) Standard input: "" or "-"
-// (3) A pipe: e.g. "| gzip -c > /tmp/abc.gz"
+// (3) A pipe: e.g.  "gunzip -c /tmp/abc.gz |"
 // (4) An offset into a file, e.g.: "/mnt/blah/data/1.ark:24871"
 //   [these are created by the Table and TableWriter classes; I may also write
 //    a program that creates them for arbitrary files]
@@ -99,7 +99,7 @@ enum OutputType {
 ///     |.
 ///  - kFileOutput: Normal filenames
 ///  - kStandardOutput: The empty string or "-", interpreted as standard output
-///  - kPipeOutput: pipes, e.g. "gunzip -c some_file.gz |"
+///  - kPipeOutput: pipes, e.g. "| gzip -c > /tmp/abc.gz"
 OutputType ClassifyWxfilename(const std::string &wxfilename);
 
 enum InputType {
@@ -116,7 +116,7 @@ enum InputType {
 ///       with trailing |.
 ///  - kFileInput: normal filenames
 ///  - kStandardInput: the empty string or "-"
-///  - kPipeInput: e.g. "| gzip -c > blah.gz"
+///  - kPipeInput: e.g. "gunzip -c /tmp/abc.gz |"
 ///  - kOffsetFileInput: offsets into files, e.g.  /some/filename:12970
 InputType ClassifyRxfilename(const std::string &rxfilename);
 
@@ -165,7 +165,7 @@ class Output {
 
 // bool binary_in;
 // Input ki(some_filename, &binary_in);
-// MyObject.Read(ki, binary_in);
+// MyObject.Read(ki.Stream(), binary_in);
 //
 // ... more extensive example:
 //
@@ -182,7 +182,7 @@ class Output {
 // Input interprets four kinds of filenames:
 //  (1) Normal filenames
 //  (2) The empty string or "-", interpreted as standard output
-//  (3) Pipes, e.g. "| gzip -c > some_file.gz"
+//  (3) A pipe: e.g.  "gunzip -c /tmp/abc.gz |"
 //  (4) Offsets into [real] files, e.g. "/my/filename:12049"
 // The last one has no correspondence in Output.
 
@@ -264,12 +264,12 @@ template <class C> inline void WriteKaldiObject(const C &c,
 /// PrintableRxfilename turns the rxfilename into a more human-readable
 /// form for error reporting, i.e. it does quoting and escaping and
 /// replaces "" or "-" with "standard input".
-std::string PrintableRxfilename(std::string rxfilename);
+std::string PrintableRxfilename(const std::string &rxfilename);
 
-/// PrintableWxfilename turns the filename into a more human-readable
+/// PrintableWxfilename turns the wxfilename into a more human-readable
 /// form for error reporting, i.e. it does quoting and escaping and
 /// replaces "" or "-" with "standard output".
-std::string PrintableWxfilename(std::string wxfilename);
+std::string PrintableWxfilename(const std::string &wxfilename);
 
 /// @}
 

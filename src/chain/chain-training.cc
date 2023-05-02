@@ -28,6 +28,62 @@ namespace kaldi {
 namespace chain {
 
 
+/**
+   This is a rather special-purpose function which adds something to
+   the derivative in order to encourage the value to stay within
+   a specified range.  This is something we use in chain training
+   in order to encourage the nnet outputs to stay within the
+   range [-30, 30] (needed because we don't do the forward-backward
+   denominator computation in log space).
+
+   It's very similar to l2 regularization but only applied once you depart
+   the range [-limit, limit].
+
+   Basically, this function does as follows:
+
+     (*out_deriv)(i,j) +=   0                                if   -limit <= in_value(i,j) <= limit
+                            (-limit - in_value(i,j)) * scale if  in_value(i,j) < -limit
+                            (limit - in_value(i,j)) * scale  if  in_value(i,j) > limit
+   If limit were zero, this would be the same as l2 regularization with scale 'scale'.
+ */
+static void PenalizeOutOfRange(const CuMatrixBase<BaseFloat> &in_value,
+                               BaseFloat limit,
+                               BaseFloat scale,
+                               CuMatrixBase<BaseFloat> *out_deriv) {
+  KALDI_ASSERT(SameDim(in_value, *out_deriv) && limit > 0 && scale >= 0);
+  if (scale == 0)
+    return;
+#if HAVE_CUDA == 1
+  if (CuDevice::Instantiate().Enabled()) {
+    CuTimer tim;
+    dim3 dimBlock(CU2DBLOCK, CU2DBLOCK);
+    dim3 dimGrid(n_blocks(in_value.NumCols(), CU2DBLOCK),
+                 n_blocks(in_value.NumRows(), CU2DBLOCK));
+    cuda_penalize_out_of_range(dimGrid, dimBlock, limit, scale,
+                               in_value.Data(), in_value.Dim(),
+                               out_deriv->Stride(), out_deriv->Data());
+    CU_SAFE_CALL(cudaGetLastError());
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
+  } else
+#endif
+  {
+    int32 num_rows = in_value.NumRows(),
+        num_cols = in_value.NumCols();
+    for (int32 r = 0; r < num_rows; r++) {
+      const BaseFloat *in_row_data =  in_value.RowData(r);
+      BaseFloat *out_row_data = out_deriv->RowData(r);
+      for (int32 c = 0; c < num_cols; c++) {
+        BaseFloat val = in_row_data[c];
+        if (val < -limit) {
+          out_row_data[c] -= scale * (val + limit);
+        } else if (val > limit) {
+          out_row_data[c] -= scale * (val - limit);
+        }
+      }
+    }
+  }
+}
+
 
 void ComputeChainObjfAndDerivE2e(const ChainTrainingOptions &opts,
                                  const DenominatorGraph &den_graph,
@@ -38,7 +94,8 @@ void ComputeChainObjfAndDerivE2e(const ChainTrainingOptions &opts,
                                  BaseFloat *weight,
                                  CuMatrixBase<BaseFloat> *nnet_output_deriv,
                                  CuMatrix<BaseFloat> *xent_output_deriv) {
-  BaseFloat num_logprob_weighted, den_logprob_weighted;
+  NVTX_RANGE(__func__);
+  BaseFloat num_logprob_weighted, den_logprob_weighted = 0.0;
   bool denominator_ok = true;
   bool numerator_ok = true;
   *weight = supervision.weight * supervision.num_sequences *
@@ -47,7 +104,16 @@ void ComputeChainObjfAndDerivE2e(const ChainTrainingOptions &opts,
   if (nnet_output_deriv != NULL)
     nnet_output_deriv->SetZero();
 
-  { // Doing the denominator first helps to reduce the maximum
+  if (nnet_output_deriv != NULL && RandInt(0, 1) == 0) {
+    // Only do this about every other frame, for efficiency; we'll multiply the
+    // scale by 2 to compensate.  See docs for the function, for its purpose.
+    PenalizeOutOfRange(nnet_output, 30.0,
+                       2.0 * opts.out_of_range_regularize,
+                       nnet_output_deriv);
+  }
+
+  {
+    // Doing the denominator first helps to reduce the maximum
     // memory use, as we can set 'xent_deriv' to nonempty after
     // we've freed the memory in this object.
     DenominatorComputation denominator(opts, den_graph,
@@ -55,10 +121,14 @@ void ComputeChainObjfAndDerivE2e(const ChainTrainingOptions &opts,
                                        nnet_output);
 
     den_logprob_weighted = supervision.weight * denominator.Forward();
-    if (nnet_output_deriv)
-      denominator_ok = denominator.Backward(-supervision.weight,
+    if (nnet_output_deriv) {
+      float den_multiplier = 1.0;
+      den_multiplier += opts.lwf_den_scale;
+      denominator_ok = denominator.Backward(-supervision.weight * den_multiplier,
                                 nnet_output_deriv);
+    }
   }
+
 
   if (xent_output_deriv != NULL) {
     // the reason for kStrideEqualNumCols is so that we can share the memory
@@ -72,7 +142,8 @@ void ComputeChainObjfAndDerivE2e(const ChainTrainingOptions &opts,
 
 
   {
-    GenericNumeratorComputation numerator(supervision, nnet_output);
+    GenericNumeratorComputation numerator(opts.numerator_opts,
+                                          supervision, nnet_output);
     // note: supervision.weight is included as a factor in the derivative from
     // the numerator object, as well as the returned logprob.
     if (xent_output_deriv) {
@@ -88,6 +159,7 @@ void ComputeChainObjfAndDerivE2e(const ChainTrainingOptions &opts,
     }
     if (!numerator_ok)
         KALDI_WARN << "Numerator forward-backward failed.";
+    KALDI_LOG << "Numerator objf: " << num_logprob_weighted / *weight;
   }
   numerator_ok = numerator_ok &&
                  (num_logprob_weighted - num_logprob_weighted == 0);
@@ -147,6 +219,7 @@ void ComputeChainObjfAndDeriv(const ChainTrainingOptions &opts,
                               BaseFloat *weight,
                               CuMatrixBase<BaseFloat> *nnet_output_deriv,
                               CuMatrix<BaseFloat> *xent_output_deriv) {
+  NVTX_RANGE(__func__);
   if (!supervision.e2e_fsts.empty()) {
     ComputeChainObjfAndDerivE2e(opts, den_graph, supervision,
                                 nnet_output, objf, l2_term,
@@ -154,12 +227,13 @@ void ComputeChainObjfAndDeriv(const ChainTrainingOptions &opts,
     return;
   }
 
-  BaseFloat num_logprob_weighted, den_logprob_weighted;
+  BaseFloat num_logprob_weighted, den_logprob_weighted = 0.0;
   bool ok = true;
   if (nnet_output_deriv != NULL)
     nnet_output_deriv->SetZero();
 
-  { // Doing the denominator first helps to reduce the maximum
+  {
+    // Doing the denominator first helps to reduce the maximum
     // memory use, as we can set 'xent_deriv' to nonempty after
     // we've freed the memory in this object.
     DenominatorComputation denominator(opts, den_graph,
@@ -170,6 +244,14 @@ void ComputeChainObjfAndDeriv(const ChainTrainingOptions &opts,
     if (nnet_output_deriv)
       ok = denominator.Backward(-supervision.weight,
                                 nnet_output_deriv);
+  }
+
+  if (nnet_output_deriv != NULL && RandInt(0, 1) == 0) {
+    // Only do this about every other frame, for efficiency; we'll multiply the
+    // scale by 2 to compensate.  See docs for the function, for its purpose.
+    PenalizeOutOfRange(nnet_output, 30.0,
+                       2.0 * opts.out_of_range_regularize,
+                       nnet_output_deriv);
   }
 
   if (xent_output_deriv != NULL) {

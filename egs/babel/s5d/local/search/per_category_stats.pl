@@ -161,7 +161,7 @@ while (my $line=<STDIN>) {
     $score = 1.0 if $score > 1.0;
     my $q = int($score/$step_size) + 1;
     for (my $i = 0; $i < $q ; $i += 1) {
-      if ($ref_time) {
+      if ($ref_time ne "") {
         $STATS{$termid}->{corr_sweep}->[$i]  += 1;
       } else {
         $STATS{$termid}->{fa_sweep}->[$i]  += 1;

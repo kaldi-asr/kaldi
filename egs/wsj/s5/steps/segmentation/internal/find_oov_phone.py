@@ -8,6 +8,7 @@ oov.int in the input <lang> directory and the lexicon
 <lang>/phones/align_lexicon.int.
 It prints the OOV phone to stdout, if it can find a single phone
 mapping for the OOV word."""
+from __future__ import print_function
 
 import sys
 

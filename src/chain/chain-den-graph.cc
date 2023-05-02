@@ -1,6 +1,6 @@
 // chain/chain-den-graph.cc
 
-// Copyright      2015   Johns Hopkins University (author: Daniel Povey)
+// Copyright      2015-2018   Johns Hopkins University (author: Daniel Povey)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -132,7 +132,7 @@ void DenominatorGraph::SetInitialProbs(const fst::StdVectorFst &fst) {
     }
     cur_prob.Swap(&next_prob);
     next_prob.SetZero();
-    // Renormalize, beause the HMM won't sum to one even after the
+    // Renormalize, because the HMM won't sum to one even after the
     // previous normalization (due to final-probs).
     cur_prob.Scale(1.0 / cur_prob.Sum());
   }
@@ -181,7 +181,7 @@ void MapFstToPdfIdsPlusOne(const TransitionModel &trans_model,
 
 void MinimizeAcceptorNoPush(fst::StdVectorFst *fst) {
   BaseFloat delta = fst::kDelta * 10.0;  // use fairly loose delta for
-                                         // aggressive minimimization.
+                                         // aggressive minimization.
   fst::ArcMap(fst, fst::QuantizeMapper<fst::StdArc>(delta));
   fst::EncodeMapper<fst::StdArc> encoder(fst::kEncodeLabels | fst::kEncodeWeights,
                                          fst::ENCODE);
@@ -314,12 +314,19 @@ void CreateDenominatorFst(const ContextDependency &ctx_dep,
     AddSubsequentialLoop(subsequential_symbol, &phone_lm);
     fst::Project(&phone_lm, fst::PROJECT_INPUT);
   }
-  std::vector<int32> disambig_syms;  // empty list of diambiguation symbols.
-  fst::ContextFst<StdArc> cfst(subsequential_symbol, trans_model.GetPhones(),
-                               disambig_syms, ctx_dep.ContextWidth(),
-                               ctx_dep.CentralPosition());
-  StdVectorFst context_dep_lm;
-  fst::ComposeContextFst(cfst, phone_lm, &context_dep_lm);
+  std::vector<int32> disambig_syms;  // empty list of disambiguation symbols.
+
+  // inv_cfst will be expanded on the fly, as needed.
+  fst::InverseContextFst inv_cfst(subsequential_symbol,
+                                  trans_model.GetPhones(),
+                                  disambig_syms,
+                                  ctx_dep.ContextWidth(),
+                                  ctx_dep.CentralPosition());
+
+  fst::StdVectorFst context_dep_lm;
+  fst::ComposeDeterministicOnDemandInverse(phone_lm, &inv_cfst,
+                                           &context_dep_lm);
+
   // at this point, context_dep_lm will have indexes into 'ilabels' as its
   // input symbol (representing context-dependent phones), and phones on its
   // output.  We don't need the phones, so we'll project.
@@ -335,7 +342,7 @@ void CreateDenominatorFst(const ContextDependency &ctx_dep,
   // we'll use the same value in test time.  Consistency is the key here.
   h_config.transition_scale = 1.0;
 
-  StdVectorFst *h_fst = GetHTransducer(cfst.ILabelInfo(),
+  StdVectorFst *h_fst = GetHTransducer(inv_cfst.IlabelInfo(),
                                        ctx_dep,
                                        trans_model,
                                        h_config,
@@ -355,7 +362,7 @@ void CreateDenominatorFst(const ContextDependency &ctx_dep,
   AddSelfLoops(trans_model, disambig_syms_h, self_loop_scale, reorder,
                check_no_self_loops, &transition_id_fst);
   // at this point transition_id_fst will have transition-ids as its ilabels and
-  // context-dependent phones (indexes into ILabelInfo()) as its olabels.
+  // context-dependent phones (indexes into IlabelInfo()) as its olabels.
   // Discard the context-dependent phones by projecting on the input, keeping
   // only the transition-ids.
   fst::Project(&transition_id_fst, fst::PROJECT_INPUT);

@@ -10,6 +10,7 @@
 # designated length are created.
 #
 # This file is meant to be invoked from make_bn.sh.
+from __future__ import division
 import sys, os
 
 def seg_to_string(seg):
@@ -23,7 +24,7 @@ def seg_to_string(seg):
 def process_segs(raw_segs):
   segs = []
   for seg in raw_segs:
-    lower, upper = map(float, seg.rstrip().split(" "))
+    lower, upper = [float(i) for i in seg.rstrip().split(" ")]
     segs.append((lower, upper))
   return segs
 
@@ -60,8 +61,8 @@ def resegment(music, speech, other, frame_length, min_seg):
   start_frame = 0
   for i in range(1, len(frame2classes)):
     if curr_class != frame2classes[i]:
-      start = float(start_frame) / frame_length
-      end = float(i) / frame_length
+      start = float(start_frame)/frame_length
+      end = float(i)/frame_length
       if end - start > min_seg:
         if curr_class == "music":
           new_music.append((start, end))
@@ -85,32 +86,32 @@ def main():
   frames_per_sec = int(sys.argv[2])
   min_seg_length = float(sys.argv[3])
 
-  utts = open(os.path.join(out_dir, "utt_list"), 'r').readlines()
-  for line in utts:
-    speech_filename = os.path.join(out_dir, line.rstrip() + "_speech.key")
-    music_filename = os.path.join(out_dir, line.rstrip() + "_music.key")
-    other_filename = os.path.join(out_dir, line.rstrip() + "_other.key")
-    raw_speech_segs = open(speech_filename, 'r').readlines()
-    raw_music_segs = open(music_filename, 'r').readlines()
-    raw_other_segs = open(other_filename, 'r').readlines()
-    speech_segs = process_segs(raw_speech_segs)
-    music_segs = process_segs(raw_music_segs)
-    other_segs = process_segs(raw_other_segs)
-    music_segs, speech_segs = resegment(music_segs, speech_segs, other_segs, frames_per_sec, min_seg_length)
+  with open(os.path.join(out_dir, "utt_list"), 'r') as utts:
+    for line in utts:
+      speech_filename = os.path.join(out_dir, line.rstrip() + "_speech.key")
+      music_filename = os.path.join(out_dir, line.rstrip() + "_music.key")
+      other_filename = os.path.join(out_dir, line.rstrip() + "_other.key")
+      speech_fi = open(speech_filename, 'r')
+      raw_speech_segs = speech_fi.readlines()
+      speech_fi.close()
+      music_fi = open(music_filename, 'r')
+      raw_music_segs = music_fi.readlines()
+      music_fi.close()
+      other_fi = open(other_filename, 'r')
+      raw_other_segs = other_fi.readlines()
+      other_fi.close()
+      speech_segs = process_segs(raw_speech_segs)
+      music_segs = process_segs(raw_music_segs)
+      other_segs = process_segs(raw_other_segs)
+      music_segs, speech_segs = resegment(music_segs, speech_segs, other_segs, frames_per_sec, min_seg_length)
 
-    speech_output = ""
-    music_output = ""
-    for seg in music_segs:
-      music_output = music_output + seg_to_string(seg)
-    for seg in speech_segs:
-      speech_output = speech_output + seg_to_string(seg)
+      with open(speech_filename + ".refined", 'w') as speech_fi, \
+          open(music_filename + ".refined", 'w') as music_fi:
+        for seg in music_segs:
+          music_fi.write(seg_to_string(seg))
+        for seg in speech_segs:
+          speech_fi.write(seg_to_string(seg))
 
-    speech_fi = open(speech_filename + ".refined", 'w')
-    music_fi = open(music_filename + ".refined", 'w')
-    speech_fi.write(speech_output)
-    music_fi.write(music_output)
-    speech_fi.close()
-    music_fi.close()
 
 if __name__=="__main__":
   main()

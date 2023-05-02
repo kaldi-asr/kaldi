@@ -133,7 +133,7 @@ void AttentionForward(BaseFloat key_scale,
   // compute the soft-max function.  Up till this point, 'c'
   // actually contained what in attention.h we called 'b', which is
   // the input to the softmax.
-  c->ApplySoftMaxPerRow(*c);
+  c->SoftMaxPerRow(*c);
 
 
   // the part of the output that is weighted

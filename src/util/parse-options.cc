@@ -106,7 +106,8 @@ void ParseOptions::RegisterCommon(const std::string &name, T *ptr,
   NormalizeArgName(&idx);
   if (doc_map_.find(idx) != doc_map_.end())
     KALDI_WARN << "Registering option twice, ignoring second time: " << name;
-  this->RegisterSpecific(name, idx, ptr, doc, is_standard);
+  else
+    this->RegisterSpecific(name, idx, ptr, doc, is_standard);
 }
 
 // used to register standard parameters (those that are present in all of the
@@ -323,14 +324,7 @@ int ParseOptions::Read(int argc, const char *const argv[]) {
 #else
     const char *c = strrchr(argv[0], '/');
 #endif
-    if (c == NULL)
-      c = argv[0];
-    else
-      c++;
-    char *program_name = new char[strlen(c)+1];
-    strcpy(program_name, c);
-    delete [] g_program_name;
-    g_program_name = program_name;
+    SetProgramName(c == NULL ? argv[0] : c + 1);
   }
   // first pass: look for config parameter, look for priority
   for (i = 1; i < argc; i++) {
@@ -504,7 +498,7 @@ void ParseOptions::ReadConfigFile(const std::string &filename) {
 
 
 
-void ParseOptions::SplitLongArg(std::string in,
+void ParseOptions::SplitLongArg(const std::string &in,
                                 std::string *key,
                                 std::string *value,
                                 bool *has_equal_sign) {

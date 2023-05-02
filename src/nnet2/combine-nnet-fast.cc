@@ -204,7 +204,7 @@ void FastNnetCombiner::CombineNnets(const Vector<double> &scale_params,
   int32 num_nnets = nnets.size();
   KALDI_ASSERT(num_nnets >= 1);
   int32 num_uc = nnets[0].NumUpdatableComponents();
-  KALDI_ASSERT(num_nnets * nnets[0].NumUpdatableComponents());
+  KALDI_ASSERT(nnets[0].NumUpdatableComponents() >= 1);
 
 
   *dest = nnets[0];
@@ -384,7 +384,7 @@ int32 FastNnetCombiner::GetInitialModel(
   int32 num_nnets = static_cast<int32>(nnets.size());
   KALDI_ASSERT(!nnets.empty());
   int32 best_n = -1;
-  double best_objf;
+  double best_objf = -std::numeric_limits<double>::infinity();
   Vector<double> objfs(nnets.size());
   for (int32 n = 0; n < num_nnets; n++) {
     double num_frames;

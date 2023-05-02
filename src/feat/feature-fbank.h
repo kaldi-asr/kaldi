@@ -53,7 +53,7 @@ struct FbankOptions {
                  // this seems to be common for 16khz-sampled data,
                  // but for 8khz-sampled data, 15 may be better.
                  use_energy(false),
-                 energy_floor(0.0),  // not in log scale: a small value e.g. 1.0e-10
+                 energy_floor(0.0),
                  raw_energy(true),
                  htk_compat(false),
                  use_log_fbank(true),
@@ -65,7 +65,9 @@ struct FbankOptions {
     opts->Register("use-energy", &use_energy,
                    "Add an extra dimension with energy to the FBANK output.");
     opts->Register("energy-floor", &energy_floor,
-                   "Floor on energy (absolute, not relative) in FBANK computation");
+                   "Floor on energy (absolute, not relative) in FBANK computation. "
+                   "Only makes a difference if --use-energy=true; only necessary if "
+                   "--dither=0.0.  Suggested values: 0.1 or 1.0");
     opts->Register("raw-energy", &raw_energy,
                    "If true, compute energy before preemphasis and windowing");
     opts->Register("htk-compat", &htk_compat, "If true, put energy last.  "
@@ -92,7 +94,7 @@ class FbankComputer {
     return opts_.mel_opts.num_bins + (opts_.use_energy ? 1 : 0);
   }
 
-  bool NeedRawLogEnergy() { return opts_.use_energy && opts_.raw_energy; }
+  bool NeedRawLogEnergy() const { return opts_.use_energy && opts_.raw_energy; }
 
   const FrameExtractionOptions &GetFrameOptions() const {
     return opts_.frame_opts;
@@ -119,7 +121,7 @@ class FbankComputer {
      @param [out] feature  Pointer to a vector of size this->Dim(), to which
          the computed feature will be written.
   */
-  void Compute(BaseFloat signal_log_energy,
+  void Compute(BaseFloat signal_raw_log_energy,
                BaseFloat vtln_warp,
                VectorBase<BaseFloat> *signal_frame,
                VectorBase<BaseFloat> *feature);

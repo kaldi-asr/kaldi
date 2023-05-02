@@ -928,6 +928,29 @@ bool GeneralDescriptor::Normalize(GeneralDescriptor *desc) {
         std::swap(desc->value1_, child->value1_);
         std::swap(desc->value2_, child->value2_);
         changed = true;
+      } else if (child->descriptor_type_ == kSum) {
+        // Push the Scale() inside the sum expression.
+        desc->descriptors_.clear();
+        for (size_t i = 0; i < child->descriptors_.size(); i++) {
+          GeneralDescriptor *new_child =
+              new GeneralDescriptor(kScale, -1, -1, desc->alpha_);
+          new_child->descriptors_.push_back(child->descriptors_[i]);
+          desc->descriptors_.push_back(new_child);
+        }
+        desc->descriptor_type_ = kSum;
+        desc->alpha_ = 0.0;
+        child->descriptors_.clear();  // prevent them being freed.
+        delete child;
+        changed = true;
+      } else if (child->descriptor_type_ == kScale) {
+        // Combine the 'scale' expressions.
+        KALDI_ASSERT(child->descriptors_.size() == 1);
+        GeneralDescriptor *grandchild = child->descriptors_[0];
+        desc->alpha_ *= child->alpha_;
+        desc->descriptors_[0] = grandchild;
+        child->descriptors_.clear();  // prevent them being freed.
+        delete child;
+        changed = true;
       } else if (child->descriptor_type_ != kNodeName) {
         KALDI_ERR << "Unhandled case encountered when normalizing Descriptor; "
             "you can work around this by pushing Scale() inside "

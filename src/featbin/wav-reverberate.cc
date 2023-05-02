@@ -104,7 +104,7 @@ float DoReverberation(const Vector<BaseFloat> &rir, BaseFloat samp_freq,
 void AddNoise(Vector<BaseFloat> *noise, BaseFloat snr_db,
                 BaseFloat time, BaseFloat samp_freq,
                 BaseFloat signal_power, Vector<BaseFloat> *signal) {
-  float noise_power = VecVec(*noise, *noise) / noise->Dim();
+  float noise_power = VecVec(*noise, *noise) / noise->Dim() + FLT_EPSILON;
   float scale_factor = sqrt(pow(10, -snr_db / 10) * signal_power / noise_power);
   noise->Scale(scale_factor);
   KALDI_VLOG(1) << "Noise signal is being scaled with " << scale_factor
@@ -194,7 +194,7 @@ int main(int argc, char *argv[]) {
                 "A comma separated list of start times referring to the "
                 "input signal. The additive signals will be added to the "
                 "input signal starting at the offset. If the start time "
-                "exceed the length of the input signal, the addition will "
+                "exceeds the length of the input signal, the addition will "
                 "be ignored.");
     po.Register("normalize-output", &normalize_output,
                 "If true, then after reverberating and "
@@ -370,7 +370,7 @@ int main(int argc, char *argv[]) {
     }
 
     WaveData out_wave(samp_freq_input, out_matrix);
-    Output ko(output_wave_file, false);
+    Output ko(output_wave_file, true, false);
     out_wave.Write(ko.Stream());
 
     return 0;

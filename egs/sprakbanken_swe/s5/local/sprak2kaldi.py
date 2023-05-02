@@ -16,6 +16,7 @@
 # limitations under the License.
 
 '''
+from __future__ import print_function
 
 
 import sys
@@ -59,8 +60,8 @@ def create_parallel_file_list(session, sndlist, txtlist):
         if len(os.listdir(session.sessiondir)) != 0:  # Check if there are files in the directory
             global n
             n += 1
-            session.sessiondir = session.sessiondir + "_" + str(n)
-            session.speaker_id = session.speaker_id + "_" + str(n)
+            session.sessiondir = "{}_{}".format(session.sessiondir, n)
+            session.speaker_id = "{}_{}".format(session.speaker_id, n)
             os.mkdir(session.sessiondir)
             shadow = True
     else:
@@ -76,6 +77,11 @@ def create_parallel_file_list(session, sndlist, txtlist):
         if not os.path.exists(oldsound): 
             continue
 
+        # Giampiero Salvi: at least one file only has header but no samples check this
+        # 0468 sv test/Stasjon20/191299/adb_0468/speech/scr0468/20/04682001/r4680013/u0013872.wav
+        if os.stat(oldsound).st_size == 1024:
+            continue
+        
         # create file and write the transcription
         txtout = session.create_filename(recnum+1, "txt")
         txtline = os.path.join(session.sessiondir, txtout)

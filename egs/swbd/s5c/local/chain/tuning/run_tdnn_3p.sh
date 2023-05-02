@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _3p is the same as 3o, but after a code and script change so we can use
 # natural gradient for the RepeatedAffineComponent.

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 ### This script is not tested ###
 
 # This script does discriminative training on top of CE nnet3 system.

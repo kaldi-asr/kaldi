@@ -1,5 +1,5 @@
-#!/bin/bash
-
+#!/usr/bin/env bash
+ 
 . ./path.sh || exit 1;
 
 if [ $# != 2 ]; then
@@ -14,6 +14,11 @@ hkust_text_dir=$2
 train_dir=data/local/train
 dev_dir=data/local/dev
 
+# transcripts normalization and segmentation
+# needs external tools
+python2 -c "import mmseg" 2>/dev/null || {
+    echo "Python module mmseg is not found. To install it, run tools/extra/install_mmseg.sh"; exit 1; }
+    
 mkdir -p $train_dir
 mkdir -p $dev_dir
 
@@ -35,7 +40,7 @@ n=`cat $train_dir/sph.flist $dev_dir/sph.flist | wc -l`
 
 #collect all trans, convert encodings to utf-8,
 find $hkust_text_dir -iname "*.txt" | grep -i "trans/train" | xargs cat |\
-  iconv -f GBK -t utf-8 - | perl -e '
+  iconv -f GBK -t UTF-8 | perl -e '
     while (<STDIN>) {
       @A = split(" ", $_);
       if (@A <= 1) { next; }
@@ -50,7 +55,7 @@ find $hkust_text_dir -iname "*.txt" | grep -i "trans/train" | xargs cat |\
   ' | sort -k1 > $train_dir/transcripts.txt || exit 1;
 
 find $hkust_text_dir -iname "*.txt" | grep -i "trans/dev" | xargs cat |\
-  iconv -f GBK -t utf-8 - | perl -e '
+  iconv -f GBK -t UTF-8 | perl -e '
     while (<STDIN>) {
       @A = split(" ", $_);
       if (@A <= 1) { next; }
@@ -65,17 +70,13 @@ find $hkust_text_dir -iname "*.txt" | grep -i "trans/dev" | xargs cat |\
   ' | sort -k1  > $dev_dir/transcripts.txt || exit 1;
 
 #transcripts normalization and segmentation
-#(this needs external tools),
-python -c "import mmseg" 2>/dev/null || \
-  (echo "mmseg is not found. Checkout tools/extra/install_mmseg.sh" && exit 1;)
-
 cat $train_dir/transcripts.txt |\
   sed -e 's/<foreign language=\"[a-zA-Z]\+\">/ /g' |\
   sed -e 's/<\/foreign>/ /g' |\
   sed -e 's/<noise>\(.\+\)<\/noise>/\1/g' |\
   sed -e 's/((\([^)]\{0,\}\)))/\1/g' |\
   local/hkust_normalize.pl |\
-  python local/hkust_segment.py |\
+  local/hkust_segment.py |\
   awk '{if (NF > 1) print $0;}' > $train_dir/text || exit 1;
 
 cat $dev_dir/transcripts.txt |\
@@ -84,7 +85,7 @@ cat $dev_dir/transcripts.txt |\
   sed -e 's/<noise>\(.\+\)<\/noise>/\1/g' |\
   sed -e 's/((\([^)]\{0,\}\)))/\1/g' |\
   local/hkust_normalize.pl |\
-  python local/hkust_segment.py |\
+  local/hkust_segment.py |\
   awk '{if (NF > 1) print $0;}' > $dev_dir/text || exit 1;
 
 # some data is corrupted. Delete them

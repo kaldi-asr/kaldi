@@ -17,3 +17,4 @@ srilm_sub_bin=`find "$srilm_bin" -type d`
 for d in $srilm_sub_bin ; do
     export PATH=$d:$PATH
 done
+export PYTHONUNBUFFERED=1

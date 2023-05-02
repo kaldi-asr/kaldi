@@ -51,7 +51,7 @@
   The most difficult part of the installation process relates to the math library
   ATLAS; if this is not already installed as a library on your system you will
   have to compile it, and this requires that CPU throttling be turned off, which
-  may require root priveleges.  We provide scripts and detailed instructions for
+  may require root privileges.  We provide scripts and detailed instructions for
   all installation steps.  When scripts fail, read the output carefully because
   it tries to provide guidance as to how to fix problems.  Please inform us if there
   are problems at any point, however minor; see \ref other.

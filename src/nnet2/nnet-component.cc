@@ -23,6 +23,7 @@
 
 #include <iterator>
 #include <sstream>
+#include <random>
 #include "nnet2/nnet-component.h"
 #include "nnet2/nnet-precondition.h"
 #include "nnet2/nnet-precondition-online.h"
@@ -909,7 +910,7 @@ void SoftmaxComponent::Propagate(const ChunkInfo &in_info,
   // for that row, we do
   // x_i = exp(x_i) / sum_j exp(x_j).
 
-  out->ApplySoftMaxPerRow(in);
+  out->SoftMaxPerRow(in);
 
   // This floor on the output helps us deal with
   // almost-zeros in a way that doesn't lead to overflow.
@@ -956,7 +957,7 @@ void LogSoftmaxComponent::Propagate(const ChunkInfo &in_info,
 
   // Applies log softmax function to each row of the output. For each row, we do
   // x_i = x_i - log(sum_j exp(x_j))
-  out->ApplyLogSoftMaxPerRow(in);
+  out->LogSoftMaxPerRow(in);
 
   // Just to be consistent with SoftmaxComponent::Propagate()
   out->ApplyFloor(Log(1.0e-20));
@@ -2317,7 +2318,9 @@ void PermuteComponent::Init(int32 dim) {
   KALDI_ASSERT(dim > 0);
   reorder_.resize(dim);
   for (int32 i = 0; i < dim; i++) reorder_[i] = i;
-  std::random_shuffle(reorder_.begin(), reorder_.end());
+  std::random_device rd;
+  std::mt19937 g(rd());
+  std::shuffle(reorder_.begin(), reorder_.end(), g);
 }
 
 void PermuteComponent::InitFromString(std::string args) {

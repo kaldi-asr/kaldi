@@ -28,13 +28,10 @@
 #include "matrix/matrix-lib.h"
 #include "util/common-utils.h"
 #include "base/kaldi-error.h"
-#include "feat/feature-functions.h"
-#include "feat/feature-mfcc.h"
-#include "feat/feature-plp.h"
-#include "itf/online-feature-itf.h"
+#include "itf/transition-information.h"
 #include "lat/kaldi-lattice.h"
-#include "hmm/transition-model.h"
 #include "decoder/lattice-faster-online-decoder.h"
+#include "decoder/lattice-incremental-online-decoder.h"
 
 namespace kaldi {
 /// @addtogroup  onlinedecoding OnlineDecoding
@@ -101,7 +98,7 @@ struct OnlineEndpointRule {
 
   void Register(OptionsItf *opts) {
     opts->Register("must-contain-nonsilence", &must_contain_nonsilence,
-                   "If true, for this endpointing rule to apply there must"
+                   "If true, for this endpointing rule to apply there must "
                    "be nonsilence in the best-path traceback.");
     opts->Register("min-trailing-silence", &min_trailing_silence,
                    "This endpointing rule requires duration of trailing silence"
@@ -128,7 +125,7 @@ struct OnlineEndpointConfig {
                               /// that we consider as silence for purposes of
                               /// endpointing.
 
-  /// We support four rules.  We terminate decoding if ANY of these rules
+  /// We support five rules.  We terminate decoding if ANY of these rules
   /// evaluates to "true". If you want to add more rules, do it by changing this
   /// code.  If you want to disable a rule, you can set the silence-timeout for
   /// that rule to a very large number.
@@ -182,27 +179,25 @@ bool EndpointDetected(const OnlineEndpointConfig &config,
                       BaseFloat final_relative_cost);
 
 
-
-class LatticeFasterOnlineDecoder;
-
 /// returns the number of frames of trailing silence in the best-path traceback
 /// (not using final-probs).  "silence_phones" is a colon-separated list of
 /// integer id's of phones that we consider silence.  We use the the
 /// BestPathEnd() and TraceBackOneLink() functions of LatticeFasterOnlineDecoder
 /// to do this efficiently.
-int32 TrailingSilenceLength(const TransitionModel &tmodel,
+template <typename DEC>
+int32 TrailingSilenceLength(const TransitionInformation &tmodel,
                             const std::string &silence_phones,
-                            const LatticeFasterOnlineDecoder &decoder);
+                            const DEC &decoder);
 
 
 /// This is a higher-level convenience function that works out the
 /// arguments to the EndpointDetected function above, from the decoder.
+template <typename DEC>
 bool EndpointDetected(
     const OnlineEndpointConfig &config,
-    const TransitionModel &tmodel,
+    const TransitionInformation &tmodel,
     BaseFloat frame_shift_in_seconds,
-    const LatticeFasterOnlineDecoder &decoder);
-
+    const DEC &decoder);
 
 
 

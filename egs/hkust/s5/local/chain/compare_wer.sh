@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2018  Emotech LTD (Author: Xuechen Liu)
 
 # compare wer between diff. models in hkust chain directory
@@ -39,25 +39,25 @@ for x in $*; do
 done
 echo
 
-# print decode WER results
-echo -n "# WER(%)               "
+# print decode CER results
+echo -n "# CER(%)               "
 for x in $*; do
   set_names $x
-  wer=$([ -d $x ] && grep WER $x/decode/cer_* | utils/best_wer.sh | awk '{print $2}')
+  wer=$([ -d $x ] && grep CER $x/decode/cer_* | utils/best_wer.sh | awk '{print $2}')
   printf "% 10s" $wer
 done
 echo
 
-# so how about online WER?
+# so how about online CER?
 if $include_online; then
-  echo -n "# WER(%)[online]       "
+  echo -n "# CER(%)[online]       "
   for x in $*; do
     set_names $x
     wer=$(cat ${x}_online/decode/cer_* | utils/best_wer.sh | awk '{print $2}')
     printf "% 10s" $wer
   done
   echo
-  echo -n "# WER(%)[per-utt]      "
+  echo -n "# CER(%)[per-utt]      "
   for x in $*; do
     set_names $x
     wer_per_utt=$(cat ${x}_online/decode_per_utt/cer_* | utils/best_wer.sh | awk '{print $2}')

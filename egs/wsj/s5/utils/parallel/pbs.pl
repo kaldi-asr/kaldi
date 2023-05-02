@@ -11,19 +11,17 @@ use File::Basename;
 use Cwd;
 use Getopt::Long;
 
-# This is a version of the queue.pl modified so that it works under PBS 
+# This is a version of the queue.pl modified so that it works under PBS
 # The PBS is one of the several "almost compatible" queueing systems. The
 # command switches and environment variables are different, so we are adding
 # a this script. An optimal solution might probably be to make the variable
 # names and the commands configurable, as similar problems can be expected
 # with Torque, Univa... and who knows what else
 #
-# queue.pl has the same functionality as run.pl, except that
-# it runs the job in question on the queue (Sun GridEngine).
-# This version of queue.pl uses the task array functionality
-# of the grid engine.  Note: it's different from the queue.pl
-# in the s4 and earlier scripts.
-
+# pbs.pl has the same functionality as run.pl, except that
+# it runs the job in question on the queue (PBS).
+# This version of pbs.pl uses the task array functionality
+# of PBS.  
 # The script now supports configuring the queue system using a config file
 # (default in conf/pbs.conf; but can be passed specified with --config option)
 # and a set of command line options.
@@ -78,12 +76,12 @@ my $array_job = 0;
 
 sub print_usage() {
   print STDERR
-   "Usage: queue.pl [options] [JOB=1:n] log-file command-line arguments...\n" .
-   "e.g.: queue.pl foo.log echo baz\n" .
+   "Usage: pbs.pl [options] [JOB=1:n] log-file command-line arguments...\n" .
+   "e.g.: pbs.pl foo.log echo baz\n" .
    " (which will echo \"baz\", with stdout and stderr directed to foo.log)\n" .
-   "or: queue.pl -q all.q\@xyz foo.log echo bar \| sed s/bar/baz/ \n" .
+   "or: pbs.pl -q all.q\@xyz foo.log echo bar \| sed s/bar/baz/ \n" .
    " (which is an example of using a pipe; you can provide other escaped bash constructs)\n" .
-   "or: queue.pl -q all.q\@qyz JOB=1:10 foo.JOB.log echo JOB \n" .
+   "or: pbs.pl -q all.q\@qyz JOB=1:10 foo.JOB.log echo JOB \n" .
    " (which illustrates the mechanism to submit parallel jobs; note, you can use \n" .
    "  another string other than JOB)\n" .
    "Note: if you pass the \"-sync y\" option to qsub, this script will take note\n" .
@@ -113,7 +111,7 @@ for (my $x = 1; $x <= 2; $x++) { # This for-loop is to
     } else {
       my $argument = shift @ARGV;
       if ($argument =~ m/^--/) {
-        print STDERR "queue.pl: Warning: suspicious argument '$argument' to $switch; starts with '-'\n";
+        print STDERR "pbs.pl: Warning: suspicious argument '$argument' to $switch; starts with '-'\n";
       }
       if ($switch eq "-sync" && $argument =~ m/^[yY]/) {
         $sync = 1;
@@ -141,7 +139,7 @@ for (my $x = 1; $x <= 2; $x++) { # This for-loop is to
     $jobend = $3;
     shift;
     if ($jobstart > $jobend) {
-      die "queue.pl: invalid job range $ARGV[0]";
+      die "pbs.pl: invalid job range $ARGV[0]";
     }
     if ($jobstart <= 0) {
       die "run.pl: invalid job range $ARGV[0], start must be strictly positive (this is a GridEngine limitation).";
@@ -153,7 +151,7 @@ for (my $x = 1; $x <= 2; $x++) { # This for-loop is to
     $jobend = $2;
     shift;
   } elsif ($ARGV[0] =~ m/.+\=.*\:.*$/) {
-    print STDERR "queue.pl: Warning: suspicious first argument to queue.pl: $ARGV[0]\n";
+    print STDERR "pbs.pl: Warning: suspicious first argument to queue.pl: $ARGV[0]\n";
   }
 }
 
@@ -248,7 +246,7 @@ while(<CONFIG>) {
       $cli_options{$option} = $value;
     }
   } else {
-    print STDERR "queue.pl: unable to parse line '$line' in config file ($config)\n";
+    print STDERR "pbs.pl: unable to parse line '$line' in config file ($config)\n";
     exit(1);
   }
 }
@@ -256,7 +254,7 @@ while(<CONFIG>) {
 close(CONFIG);
 
 if ($read_command != 1) {
-  print STDERR "queue.pl: config file ($config) does not contain the line \"command .*\"\n";
+  print STDERR "pbs.pl: config file ($config) does not contain the line \"command .*\"\n";
   exit(1);
 }
 
@@ -271,7 +269,7 @@ for my $option (keys %cli_options) {
     $qsub_opts .= "$cli_config_options{$option} ";
   } else {
     if ($opened_config_file == 0) { $config = "default config file"; }
-    die "queue.pl: Command line option $option not described in $config (or value '$value' not allowed)\n";
+    die "pbs.pl: Command line option $option not described in $config (or value '$value' not allowed)\n";
   }
 }
 
@@ -280,7 +278,7 @@ my $logfile = shift @ARGV;
 
 if ($array_job == 1 && $logfile !~ m/$jobname/
     && $jobend > $jobstart) {
-  print STDERR "queue.pl: you are trying to run a parallel job but "
+  print STDERR "pbs.pl: you are trying to run a parallel job but "
     . "you are putting the output into just one log file ($logfile)\n";
   exit(1);
 }
@@ -289,7 +287,7 @@ if ($array_job == 1 && $logfile !~ m/$jobname/
 # Work out the command; quote escaping is done here.
 # Note: the rules for escaping stuff are worked out pretty
 # arbitrarily, based on what we want it to do.  Some things that
-# we pass as arguments to queue.pl, such as "|", we want to be
+# we pass as arguments to pbs.pl, such as "|", we want to be
 # interpreted by bash, so we don't escape them.  Other things,
 # such as archive specifiers like 'ark:gunzip -c foo.gz|', we want
 # to be passed, in quotes, to the Kaldi program.  Our heuristic
@@ -394,16 +392,16 @@ my $ret = system ($qsub_cmd);
 if ($ret != 0) {
   if ($sync && $ret == 256) { # this is the exit status when a job failed (bad exit status)
     if (defined $jobname) { $logfile =~ s/\$PBS_ARRAY_INDEX/*/g; }
-    print STDERR "queue.pl: job writing to $logfile failed\n";
+    print STDERR "pbs.pl: job writing to $logfile failed\n";
   } else {
-    print STDERR "queue.pl: error submitting jobs to queue (return status was $ret)\n";
+    print STDERR "pbs.pl: error submitting jobs to queue (return status was $ret)\n";
     print STDERR "queue log file is $queue_logfile, command was $qsub_cmd\n";
     print STDERR `tail $queue_logfile`;
   }
   exit(1);
 }
 
-my $sge_job_id;
+my $pbs_job_id;
 if (! $sync) { # We're not submitting with -sync y, so we
   # need to wait for the jobs to finish.  We wait for the
   # sync-files we "touched" in the script to exist.
@@ -415,25 +413,25 @@ if (! $sync) { # We're not submitting with -sync y, so we
       push @syncfiles, "$syncfile.$jobid";
     }
   }
-  # We will need the sge_job_id, to check that job still exists
-  { # Get the SGE job-id from the log file in q/
-    open(L, "<$queue_logfile") || die "Error opening log file $queue_logfile";
-    undef $sge_job_id;
-    while (<L>) {
-      if (m/Your job\S* (\d+)[. ].+ has been submitted/) {
-        if (defined $sge_job_id) {
+  # We will need the pbs_job_id, to check that job still exists
+  { # Get the PBS job-id from the log file in q/
+    open my $L, '<', $queue_logfile || die "Error opening log file $queue_logfile";
+    undef $pbs_job_id;
+    while (<$L>) {
+      if (/(\d+.+\.pbsserver)/) {
+        if (defined $pbs_job_id) {
           die "Error: your job was submitted more than once (see $queue_logfile)";
         } else {
-          $sge_job_id = $1;
+          $pbs_job_id = $1;
         }
       }
     }
-    close(L);
-    if (!defined $sge_job_id) {
-      die "Error: log file $queue_logfile does not specify the SGE job-id.";
+    close $L;
+    if (!defined $pbs_job_id) {
+      die "Error: log file $queue_logfile does not specify the PBS job-id.";
     }
   }
-  my $check_sge_job_ctr=1;
+  my $check_pbs_job_ctr=1;
   #
   my $wait = 0.1;
   my $counter = 0;
@@ -462,11 +460,11 @@ if (! $sync) { # We're not submitting with -sync y, so we
         }
       }
 
-      # Check that the job exists in SGE. Job can be killed if duration
+      # Check that the job exists in PBS. Job can be killed if duration
       # exceeds some hard limit, or in case of a machine shutdown.
-      if (($check_sge_job_ctr++ % 10) == 0) { # Don't run qstat too often, avoid stress on SGE.
+      if (($check_pbs_job_ctr++ % 10) == 0) { # Don't run qstat too often, avoid stress on PBS.
         if ( -f $f ) { next; }; #syncfile appeared: OK.
-        $ret = system("qstat -t $sge_job_id >/dev/null 2>/dev/null");
+        $ret = system("qstat -t $pbs_job_id >/dev/null 2>/dev/null");
         # system(...) : To get the actual exit value, shift $ret right by eight bits.
         if ($ret>>8 == 1) {     # Job does not seem to exist
           # Don't consider immediately missing job as error, first wait some
@@ -501,13 +499,13 @@ if (! $sync) { # We're not submitting with -sync y, so we
             # time elapsed between file modification and the start of this
             # program], then we assume the program really finished OK,
             # and maybe something is up with the file system.
-            print STDERR "**queue.pl: syncfile $f was not created but job seems\n" .
+            print STDERR "**pbs.pl: syncfile $f was not created but job seems\n" .
               "**to have finished OK.  Probably your file-system has problems.\n" .
               "**This is just a warning.\n";
             last;
           } else {
             chop $last_line;
-            print STDERR "queue.pl: Error, unfinished job no " .
+            print STDERR "pbs.pl: Error, unfinished job no " .
               "longer exists, log is in $logfile, last line is '$last_line', " .
               "syncfile is $f, return status of qstat was $ret\n" .
               "Possible reasons: a) Exceeded time limit? -> Use more jobs!" .
@@ -515,7 +513,7 @@ if (! $sync) { # We're not submitting with -sync y, so we
             exit(1);
           }
         } elsif ($ret != 0) {
-          print STDERR "queue.pl: Warning: qstat command returned status $ret (qstat -t $sge_job_id,$!)\n";
+          print STDERR "pbs.pl: Warning: qstat command returned status $ret (qstat -t $pbs_job_id,$!)\n";
         }
       }
     }
@@ -574,14 +572,14 @@ if ($num_failed == 0) { exit(0); }
 else { # we failed.
   if (@logfiles == 1) {
     if (defined $jobname) { $logfile =~ s/\$PBS_ARRAY_INDEX/$jobstart/g; }
-    print STDERR "queue.pl: job failed with status $status, log is in $logfile\n";
+    print STDERR "pbs.pl: job failed with status $status, log is in $logfile\n";
     if ($logfile =~ m/JOB/) {
-      print STDERR "queue.pl: probably you forgot to put JOB=1:\$nj in your script.\n";
+      print STDERR "pbs.pl: probably you forgot to put JOB=1:\$nj in your script.\n";
     }
   } else {
     if (defined $jobname) { $logfile =~ s/\$PBS_ARRAY_INDEX/*/g; }
     my $numjobs = 1 + $jobend - $jobstart;
-    print STDERR "queue.pl: $num_failed / $numjobs failed, log is in $logfile\n";
+    print STDERR "pbs.pl: $num_failed / $numjobs failed, log is in $logfile\n";
   }
   exit(1);
 }

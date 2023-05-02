@@ -24,8 +24,10 @@
 #define KALDI_ONLINE2_ONLINE_GMM_DECODABLE_H_
 
 #include "itf/online-feature-itf.h"
-#include "gmm/decodable-am-diag-gmm.h"
 #include "matrix/matrix-lib.h"
+#include "itf/decodable-itf.h"
+#include "gmm/am-diag-gmm.h"
+#include "hmm/transition-model.h"
 
 namespace kaldi {
 
@@ -37,20 +39,20 @@ class DecodableDiagGmmScaledOnline : public DecodableInterface {
                                const BaseFloat scale,
                                OnlineFeatureInterface *input_feats);
 
-  
+
   /// Returns the scaled log likelihood
   virtual BaseFloat LogLikelihood(int32 frame, int32 index);
-  
+
   virtual bool IsLastFrame(int32 frame) const;
 
-  virtual int32 NumFramesReady() const;  
-  
+  virtual int32 NumFramesReady() const;
+
   /// Indices are one-based!  This is for compatibility with OpenFst.
   virtual int32 NumIndices() const { return trans_model_.NumTransitionIds(); }
 
  private:
   void CacheFrame(int32 frame);
-  
+
   OnlineFeatureInterface *features_;
   const AmDiagGmm &ac_model_;
   BaseFloat ac_scale_;

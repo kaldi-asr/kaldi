@@ -79,7 +79,7 @@ class LatticeSimpleDecoder {
   typedef Arc::Label Label;
   typedef Arc::StateId StateId;
   typedef Arc::Weight Weight;
-  // instantiate this class onece for each thing you have to decode.
+  // instantiate this class once for each thing you have to decode.
   LatticeSimpleDecoder(const fst::Fst<fst::StdArc> &fst,
                        const LatticeSimpleDecoderConfig &config):
       fst_(fst), config_(config), num_toks_(0) { config.Check(); }

@@ -21,14 +21,16 @@
 #include "online2/online-nnet3-decoding.h"
 #include "lat/lattice-functions.h"
 #include "lat/determinize-lattice-pruned.h"
+#include "decoder/grammar-fst.h"
 
 namespace kaldi {
 
-SingleUtteranceNnet3Decoder::SingleUtteranceNnet3Decoder(
+template <typename FST>
+SingleUtteranceNnet3DecoderTpl<FST>::SingleUtteranceNnet3DecoderTpl(
     const LatticeFasterDecoderConfig &decoder_opts,
     const TransitionModel &trans_model,
     const nnet3::DecodableNnetSimpleLoopedInfo &info,
-    const fst::Fst<fst::StdArc> &fst,
+    const FST &fst,
     OnlineNnet2FeaturePipeline *features):
     decoder_opts_(decoder_opts),
     input_feature_frame_shift_in_seconds_(features->FrameShiftInSeconds()),
@@ -39,19 +41,29 @@ SingleUtteranceNnet3Decoder::SingleUtteranceNnet3Decoder(
   decoder_.InitDecoding();
 }
 
-void SingleUtteranceNnet3Decoder::AdvanceDecoding() {
+template <typename FST>
+void SingleUtteranceNnet3DecoderTpl<FST>::InitDecoding(int32 frame_offset) {
+  decoder_.InitDecoding();
+  decodable_.SetFrameOffset(frame_offset);
+}
+
+template <typename FST>
+void SingleUtteranceNnet3DecoderTpl<FST>::AdvanceDecoding() {
   decoder_.AdvanceDecoding(&decodable_);
 }
 
-void SingleUtteranceNnet3Decoder::FinalizeDecoding() {
+template <typename FST>
+void SingleUtteranceNnet3DecoderTpl<FST>::FinalizeDecoding() {
   decoder_.FinalizeDecoding();
 }
 
-int32 SingleUtteranceNnet3Decoder::NumFramesDecoded() const {
+template <typename FST>
+int32 SingleUtteranceNnet3DecoderTpl<FST>::NumFramesDecoded() const {
   return decoder_.NumFramesDecoded();
 }
 
-void SingleUtteranceNnet3Decoder::GetLattice(bool end_of_utterance,
+template <typename FST>
+void SingleUtteranceNnet3DecoderTpl<FST>::GetLattice(bool end_of_utterance,
                                              CompactLattice *clat) const {
   if (NumFramesDecoded() == 0)
     KALDI_ERR << "You cannot get a lattice if you decoded no frames.";
@@ -66,12 +78,14 @@ void SingleUtteranceNnet3Decoder::GetLattice(bool end_of_utterance,
       trans_model_, &raw_lat, lat_beam, clat, decoder_opts_.det_opts);
 }
 
-void SingleUtteranceNnet3Decoder::GetBestPath(bool end_of_utterance,
+template <typename FST>
+void SingleUtteranceNnet3DecoderTpl<FST>::GetBestPath(bool end_of_utterance,
                                               Lattice *best_path) const {
   decoder_.GetBestPath(best_path, end_of_utterance);
 }
 
-bool SingleUtteranceNnet3Decoder::EndpointDetected(
+template <typename FST>
+bool SingleUtteranceNnet3DecoderTpl<FST>::EndpointDetected(
     const OnlineEndpointConfig &config) {
   BaseFloat output_frame_shift =
       input_feature_frame_shift_in_seconds_ *
@@ -80,5 +94,10 @@ bool SingleUtteranceNnet3Decoder::EndpointDetected(
                                  output_frame_shift, decoder_);
 }
 
+
+// Instantiate the template for the types needed.
+template class SingleUtteranceNnet3DecoderTpl<fst::Fst<fst::StdArc> >;
+template class SingleUtteranceNnet3DecoderTpl<fst::ConstGrammarFst >;
+template class SingleUtteranceNnet3DecoderTpl<fst::VectorGrammarFst >;
 
 }  // namespace kaldi

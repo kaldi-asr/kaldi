@@ -289,7 +289,7 @@ void EventMap::Check(const std::vector<std::pair<EventKeyType, EventValueType> >
 // static member of EventMap.
 bool EventMap::Lookup(const EventType &event,
                       EventKeyType key, EventValueType *ans) {
-  // this assumes the the "event" array is sorted (e.g. on the KeyType value;
+  // this assumes that the "event" array is sorted (e.g. on the KeyType value;
   // just doing std::sort will do this) and has no duplicate values with the same
   // key.  call Check() to verify this.
 #ifdef KALDI_PARANOID

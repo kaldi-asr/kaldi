@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # Copyright  2018  François Hernandez
 # Apache 2.0
@@ -14,7 +14,7 @@ wget --continue http://kaldi-asr.org/models/5/tedlium_rnnlm.tgz -P exp/rnnlm_lst
 cd exp/rnnlm_lstm_tdnn_a_averaged
 tar -xvzf tedlium_rnnlm.tgz || exit 1
 rm tedlium_rnnlm.tgz
-mkdir config
+mkdir -p config
 cd ../..
 cp data/lang/words.txt exp/rnnlm_lstm_tdnn_a_averaged/config/words.txt
 echo "<brk> 152217" >> exp/rnnlm_lstm_tdnn_a_averaged/config/words.txt

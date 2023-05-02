@@ -19,6 +19,8 @@
 
 #include "decoder/decoder-wrappers.h"
 #include "decoder/faster-decoder.h"
+#include "decoder/lattice-faster-decoder.h"
+#include "decoder/grammar-fst.h"
 #include "lat/lattice-functions.h"
 
 namespace kaldi {
@@ -30,9 +32,9 @@ namespace kaldi {
 DecodeUtteranceLatticeFasterClass::DecodeUtteranceLatticeFasterClass(
     LatticeFasterDecoder *decoder,
     DecodableInterface *decodable,
-    const TransitionModel &trans_model,
+    const TransitionInformation &trans_model,
     const fst::SymbolTable *word_syms,
-    std::string utt,
+    const std::string &utt,
     BaseFloat acoustic_scale,
     bool determinize,
     bool allow_partial,
@@ -66,7 +68,7 @@ void DecodeUtteranceLatticeFasterClass::operator () () {
   success_ = true;
   using fst::VectorFst;
   if (!decoder_->Decode(decodable_)) {
-    KALDI_WARN << "Failed to decode file " << utt_;
+    KALDI_WARN << "Failed to decode utterance with id " << utt_;
     success_ = false;
   }
   if (!decoder_->ReachedFinal()) {
@@ -193,12 +195,99 @@ DecodeUtteranceLatticeFasterClass::~DecodeUtteranceLatticeFasterClass() {
   delete decodable_;
 }
 
+template <typename FST>
+bool DecodeUtteranceLatticeIncremental(
+    LatticeIncrementalDecoderTpl<FST> &decoder, // not const but is really an input.
+    DecodableInterface &decodable, // not const but is really an input.
+    const TransitionInformation &trans_model,
+    const fst::SymbolTable *word_syms,
+    std::string utt,
+    double acoustic_scale,
+    bool determinize,
+    bool allow_partial,
+    Int32VectorWriter *alignment_writer,
+    Int32VectorWriter *words_writer,
+    CompactLatticeWriter *compact_lattice_writer,
+    LatticeWriter *lattice_writer,
+    double *like_ptr) { // puts utterance's like in like_ptr on success.
+  using fst::VectorFst;
+  if (!decoder.Decode(&decodable)) {
+    KALDI_WARN << "Failed to decode utterance with id " << utt;
+    return false;
+  }
+  if (!decoder.ReachedFinal()) {
+    if (allow_partial) {
+      KALDI_WARN << "Outputting partial output for utterance " << utt
+                 << " since no final-state reached\n";
+    } else {
+      KALDI_WARN << "Not producing output for utterance " << utt
+                 << " since no final-state reached and "
+                 << "--allow-partial=false.\n";
+      return false;
+    }
+  }
+
+  // Get lattice
+  CompactLattice clat = decoder.GetLattice(decoder.NumFramesDecoded(), true);
+  if (clat.NumStates() == 0)
+    KALDI_ERR << "Unexpected problem getting lattice for utterance " << utt;
+
+  double likelihood;
+  LatticeWeight weight;
+  int32 num_frames;
+  { // First do some stuff with word-level traceback...
+    CompactLattice decoded_clat;
+    CompactLatticeShortestPath(clat, &decoded_clat);
+    Lattice decoded;
+    fst::ConvertLattice(decoded_clat, &decoded);
+
+    if (decoded.Start() == fst::kNoStateId)
+      // Shouldn't really reach this point as already checked success.
+      KALDI_ERR << "Failed to get traceback for utterance " << utt;
+
+    std::vector<int32> alignment;
+    std::vector<int32> words;
+    GetLinearSymbolSequence(decoded, &alignment, &words, &weight);
+    num_frames = alignment.size();
+    KALDI_ASSERT(num_frames == decoder.NumFramesDecoded());
+    if (words_writer->IsOpen())
+      words_writer->Write(utt, words);
+    if (alignment_writer->IsOpen())
+      alignment_writer->Write(utt, alignment);
+    if (word_syms != NULL) {
+      std::cerr << utt << ' ';
+      for (size_t i = 0; i < words.size(); i++) {
+        std::string s = word_syms->Find(words[i]);
+        if (s == "")
+          KALDI_ERR << "Word-id " << words[i] << " not in symbol table.";
+        std::cerr << s << ' ';
+      }
+      std::cerr << '\n';
+    }
+    likelihood = -(weight.Value1() + weight.Value2());
+  }
+
+  // We'll write the lattice without acoustic scaling.
+  if (acoustic_scale != 0.0)
+    fst::ScaleLattice(fst::AcousticLatticeScale(1.0 / acoustic_scale), &clat);
+  Connect(&clat);
+  compact_lattice_writer->Write(utt, clat);
+  KALDI_LOG << "Log-like per frame for utterance " << utt << " is "
+            << (likelihood / num_frames) << " over "
+            << num_frames << " frames.";
+  KALDI_VLOG(2) << "Cost for utterance " << utt << " is "
+                << weight.Value1() << " + " << weight.Value2();
+  *like_ptr = likelihood;
+  return true;
+}
+
 
 // Takes care of output.  Returns true on success.
+template <typename FST>
 bool DecodeUtteranceLatticeFaster(
-    LatticeFasterDecoder &decoder, // not const but is really an input.
+    LatticeFasterDecoderTpl<FST> &decoder, // not const but is really an input.
     DecodableInterface &decodable, // not const but is really an input.
-    const TransitionModel &trans_model,
+    const TransitionInformation &trans_model,
     const fst::SymbolTable *word_syms,
     std::string utt,
     double acoustic_scale,
@@ -212,7 +301,7 @@ bool DecodeUtteranceLatticeFaster(
   using fst::VectorFst;
 
   if (!decoder.Decode(&decodable)) {
-    KALDI_WARN << "Failed to decode file " << utt;
+    KALDI_WARN << "Failed to decode utterance with id " << utt;
     return false;
   }
   if (!decoder.ReachedFinal()) {
@@ -292,11 +381,73 @@ bool DecodeUtteranceLatticeFaster(
   return true;
 }
 
+// Instantiate the template above for the two required FST types.
+template bool DecodeUtteranceLatticeIncremental(
+    LatticeIncrementalDecoderTpl<fst::Fst<fst::StdArc> > &decoder,
+    DecodableInterface &decodable,
+    const TransitionInformation &trans_model,
+    const fst::SymbolTable *word_syms,
+    std::string utt,
+    double acoustic_scale,
+    bool determinize,
+    bool allow_partial,
+    Int32VectorWriter *alignment_writer,
+    Int32VectorWriter *words_writer,
+    CompactLatticeWriter *compact_lattice_writer,
+    LatticeWriter *lattice_writer,
+    double *like_ptr);
+
+template bool DecodeUtteranceLatticeIncremental(
+    LatticeIncrementalDecoderTpl<fst::ConstGrammarFst > &decoder,
+    DecodableInterface &decodable,
+    const TransitionInformation &trans_model,
+    const fst::SymbolTable *word_syms,
+    std::string utt,
+    double acoustic_scale,
+    bool determinize,
+    bool allow_partial,
+    Int32VectorWriter *alignment_writer,
+    Int32VectorWriter *words_writer,
+    CompactLatticeWriter *compact_lattice_writer,
+    LatticeWriter *lattice_writer,
+    double *like_ptr);
+
+template bool DecodeUtteranceLatticeFaster(
+    LatticeFasterDecoderTpl<fst::Fst<fst::StdArc> > &decoder,
+    DecodableInterface &decodable,
+    const TransitionInformation &trans_model,
+    const fst::SymbolTable *word_syms,
+    std::string utt,
+    double acoustic_scale,
+    bool determinize,
+    bool allow_partial,
+    Int32VectorWriter *alignment_writer,
+    Int32VectorWriter *words_writer,
+    CompactLatticeWriter *compact_lattice_writer,
+    LatticeWriter *lattice_writer,
+    double *like_ptr);
+
+template bool DecodeUtteranceLatticeFaster(
+    LatticeFasterDecoderTpl<fst::ConstGrammarFst > &decoder,
+    DecodableInterface &decodable,
+    const TransitionInformation &trans_model,
+    const fst::SymbolTable *word_syms,
+    std::string utt,
+    double acoustic_scale,
+    bool determinize,
+    bool allow_partial,
+    Int32VectorWriter *alignment_writer,
+    Int32VectorWriter *words_writer,
+    CompactLatticeWriter *compact_lattice_writer,
+    LatticeWriter *lattice_writer,
+    double *like_ptr);
+
+
 // Takes care of output.  Returns true on success.
 bool DecodeUtteranceLatticeSimple(
     LatticeSimpleDecoder &decoder, // not const but is really an input.
     DecodableInterface &decodable, // not const but is really an input.
-    const TransitionModel &trans_model,
+    const TransitionInformation &trans_model,
     const fst::SymbolTable *word_syms,
     std::string utt,
     double acoustic_scale,
@@ -310,7 +461,7 @@ bool DecodeUtteranceLatticeSimple(
   using fst::VectorFst;
 
   if (!decoder.Decode(&decodable)) {
-    KALDI_WARN << "Failed to decode file " << utt;
+    KALDI_WARN << "Failed to decode utterance with id " << utt;
     return false;
   }
   if (!decoder.ReachedFinal()) {
@@ -347,7 +498,7 @@ bool DecodeUtteranceLatticeSimple(
       for (size_t i = 0; i < words.size(); i++) {
         std::string s = word_syms->Find(words[i]);
         if (s == "")
-          KALDI_ERR << "Word-id " << words[i] <<" not in symbol table.";
+          KALDI_ERR << "Word-id " << words[i] << " not in symbol table.";
         std::cerr << s << ' ';
       }
       std::cerr << '\n';

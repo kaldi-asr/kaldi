@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This (1m.sh) is the same as 1j but with per-frame dropout on LSTM layer
 # It is a fast LSTM with per-frame dropout on [i, f, o] gates of the LSTM,
@@ -226,7 +226,7 @@ if [ $stage -le 15 ]; then
   echo "$0: creating neural net configs using the xconfig parser";
 
   num_targets=$(tree-info $tree_dir/tree |grep num-pdfs|awk '{print $2}')
-  learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+  learning_rate_factor=$(echo "print (0.5/$xent_regularize)" | python)
 
   lstm_opts="decay-time=20 dropout-proportion=0.0"
 

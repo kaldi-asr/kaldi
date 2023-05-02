@@ -30,6 +30,10 @@
 
 namespace fst {
 
+using std::vector;
+using std::pair;
+using std::greater;
+
 // class LatticeDeterminizerPruned is templated on the same types that
 // CompactLatticeWeight is templated on: the base weight (Weight), typically
 // LatticeWeightTpl<float> etc. but could also be e.g. TropicalWeight, and the
@@ -219,10 +223,6 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
          iter != initial_hash_.end(); ++iter)
       delete iter->first;
     { InitialSubsetHash tmp; tmp.swap(initial_hash_); }
-    for (size_t i = 0; i < output_states_.size(); i++) {
-      vector<Element> tmp;
-      tmp.swap(output_states_[i]->minimal_subset);
-    }
     { vector<char> tmp;  tmp.swap(isymbol_or_final_); }
     { // Free up the queue.  I'm not sure how to make sure all
       // the memory is really freed (no swap() function)... doesn't really
@@ -665,8 +665,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
         continue;
       if (opts_.max_loop > 0 && counter++ > opts_.max_loop) {
         KALDI_ERR << "Lattice determinization aborted since looped more than "
-                  << opts_.max_loop << " times during epsilon closure.\n";
-        throw std::runtime_error("looped more than max-arcs times in lattice determinization");
+                  << opts_.max_loop << " times during epsilon closure.";
       }
       for (ArcIterator<ExpandedFst<Arc> > aiter(*ifst_, elem.state); !aiter.Done(); aiter.Next()) {
         const Arc &arc = aiter.Value();
@@ -1031,7 +1030,7 @@ template<class Weight, class IntType> class LatticeDeterminizerPruned {
     // an empty FST.
 
     double best_cost = backward_costs_[ifst_->Start()];
-    if (best_cost == numeric_limits<double>::infinity())
+    if (best_cost == std::numeric_limits<double>::infinity())
       KALDI_WARN << "Total weight of input lattice is zero.";
     cutoff_ = best_cost + beam_;
   }
@@ -1291,7 +1290,7 @@ bool DeterminizeLatticePruned(const ExpandedFst<ArcTpl<Weight> > &ifst,
 
 template<class Weight>
 typename ArcTpl<Weight>::Label DeterminizeLatticeInsertPhones(
-    const kaldi::TransitionModel &trans_model,
+    const kaldi::TransitionInformation &trans_model,
     MutableFst<ArcTpl<Weight> > *fst) {
   // Define some types.
   typedef ArcTpl<Weight> Arc;
@@ -1316,7 +1315,7 @@ typename ArcTpl<Weight>::Label DeterminizeLatticeInsertPhones(
       // Note: the words are on the input symbol side and transition-id's are on
       // the output symbol side.
       if ((arc.olabel != 0)
-          && (trans_model.TransitionIdToHmmState(arc.olabel) == 0)
+          && (trans_model.TransitionIdIsStartOfPhone(arc.olabel))
           && (!trans_model.IsSelfLoop(arc.olabel))) {
         Label phone =
             static_cast<Label>(trans_model.TransitionIdToPhone(arc.olabel));
@@ -1388,7 +1387,7 @@ void DeterminizeLatticeDeletePhones(
 */
 template<class Weight, class IntType>
 bool DeterminizeLatticePhonePrunedFirstPass(
-    const kaldi::TransitionModel &trans_model,
+    const kaldi::TransitionInformation &trans_model,
     double beam,
     MutableFst<ArcTpl<Weight> > *fst,
     const DeterminizeLatticePrunedOptions &opts) {
@@ -1411,7 +1410,7 @@ bool DeterminizeLatticePhonePrunedFirstPass(
 // lattice might be modified.
 template<class Weight, class IntType>
 bool DeterminizeLatticePhonePruned(
-    const kaldi::TransitionModel &trans_model,
+    const kaldi::TransitionInformation &trans_model,
     MutableFst<ArcTpl<Weight> > *ifst,
     double beam,
     MutableFst<ArcTpl<CompactLatticeWeightTpl<Weight, IntType> > > *ofst,
@@ -1472,7 +1471,7 @@ bool DeterminizeLatticePhonePruned(
 // will be kept as unchanged.
 template<class Weight, class IntType>
 bool DeterminizeLatticePhonePruned(
-    const kaldi::TransitionModel &trans_model,
+    const kaldi::TransitionInformation &trans_model,
     const ExpandedFst<ArcTpl<Weight> > &ifst,
     double beam,
     MutableFst<ArcTpl<CompactLatticeWeightTpl<Weight, IntType> > > *ofst,
@@ -1483,7 +1482,7 @@ bool DeterminizeLatticePhonePruned(
 }
 
 bool DeterminizeLatticePhonePrunedWrapper(
-    const kaldi::TransitionModel &trans_model,
+    const kaldi::TransitionInformation &trans_model,
     MutableFst<kaldi::LatticeArc> *ifst,
     double beam,
     MutableFst<kaldi::CompactLatticeArc> *ofst,
@@ -1525,7 +1524,7 @@ bool DeterminizeLatticePruned<kaldi::LatticeWeight>(
 
 template
 bool DeterminizeLatticePhonePruned<kaldi::LatticeWeight, kaldi::int32>(
-    const kaldi::TransitionModel &trans_model,
+    const kaldi::TransitionInformation &trans_model,
     const ExpandedFst<kaldi::LatticeArc> &ifst,
     double prune,
     MutableFst<kaldi::CompactLatticeArc> *ofst,
@@ -1533,7 +1532,7 @@ bool DeterminizeLatticePhonePruned<kaldi::LatticeWeight, kaldi::int32>(
 
 template
 bool DeterminizeLatticePhonePruned<kaldi::LatticeWeight, kaldi::int32>(
-    const kaldi::TransitionModel &trans_model,
+    const kaldi::TransitionInformation &trans_model,
     MutableFst<kaldi::LatticeArc> *ifst,
     double prune,
     MutableFst<kaldi::CompactLatticeArc> *ofst,

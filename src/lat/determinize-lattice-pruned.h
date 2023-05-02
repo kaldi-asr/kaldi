@@ -28,7 +28,7 @@
 #include <set>
 #include <vector>
 #include "fstext/lattice-weight.h"
-#include "hmm/transition-model.h"
+#include "itf/transition-information.h"
 #include "itf/options-itf.h"
 #include "lat/kaldi-lattice.h"
 
@@ -105,8 +105,8 @@ namespace fst {
    representation" and hence the "minimal representation" will be the same.  We
    can use this to reduce compute.  Note that if two initial representations are
    different, this does not preclude the other representations from being the same.
-   
-*/   
+
+*/
 
 
 struct DeterminizeLatticePrunedOptions {
@@ -190,7 +190,7 @@ template<class Weight>
 bool DeterminizeLatticePruned(
     const ExpandedFst<ArcTpl<Weight> > &ifst,
     double prune,
-    MutableFst<ArcTpl<Weight> > *ofst, 
+    MutableFst<ArcTpl<Weight> > *ofst,
     DeterminizeLatticePrunedOptions opts = DeterminizeLatticePrunedOptions());
 
 
@@ -199,7 +199,7 @@ bool DeterminizeLatticePruned(
     (i.e. the sequences of output symbols are represented directly as strings The input
     FST must be topologically sorted in order for the algorithm to work. For efficiency
     it is recommended to sort the ilabel for the input FST as well.
-    Returns true on success, and false if it had to terminate the determinization
+    Returns true on normal success, and false if it had to terminate the determinization
     earlier than specified by the "prune" beam-- that is, if it terminated because
     of the max_mem, max_loop or max_arcs constraints in the options.
     CAUTION: if Lattice is the input, you need to Invert() before calling this,
@@ -222,7 +222,7 @@ bool DeterminizeLatticePruned(
 */
 template<class Weight>
 typename ArcTpl<Weight>::Label DeterminizeLatticeInsertPhones(
-    const kaldi::TransitionModel &trans_model,
+    const kaldi::TransitionInformation &trans_model,
     MutableFst<ArcTpl<Weight> > *fst);
 
 /** This function takes in lattices and deletes "phones" from them. The "phones"
@@ -253,7 +253,7 @@ void DeterminizeLatticeDeletePhones(
 */
 template<class Weight, class IntType>
 bool DeterminizeLatticePhonePruned(
-    const kaldi::TransitionModel &trans_model,
+    const kaldi::TransitionInformation &trans_model,
     const ExpandedFst<ArcTpl<Weight> > &ifst,
     double prune,
     MutableFst<ArcTpl<CompactLatticeWeightTpl<Weight, IntType> > > *ofst,
@@ -261,11 +261,11 @@ bool DeterminizeLatticePhonePruned(
       = DeterminizeLatticePhonePrunedOptions());
 
 /** "Destructive" version of DeterminizeLatticePhonePruned() where the input
-    lattice might be changed. 
+    lattice might be changed.
 */
 template<class Weight, class IntType>
 bool DeterminizeLatticePhonePruned(
-    const kaldi::TransitionModel &trans_model,
+    const kaldi::TransitionInformation &trans_model,
     MutableFst<ArcTpl<Weight> > *ifst,
     double prune,
     MutableFst<ArcTpl<CompactLatticeWeightTpl<Weight, IntType> > > *ofst,
@@ -282,7 +282,7 @@ bool DeterminizeLatticePhonePruned(
     code.
 */
 bool DeterminizeLatticePhonePrunedWrapper(
-    const kaldi::TransitionModel &trans_model,
+    const kaldi::TransitionInformation &trans_model,
     MutableFst<kaldi::LatticeArc> *ifst,
     double prune,
     MutableFst<kaldi::CompactLatticeArc> *ofst,

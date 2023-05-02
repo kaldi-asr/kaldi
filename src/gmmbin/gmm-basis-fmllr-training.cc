@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Estimate fMLLR basis representation. Reads a set of gradient scatter\n"
         "accumulations. Outputs basis matrices.\n"
-        "Usage: gmm-basis-fmllr-training [options] <model-in> <basis-wspecifier>"
+        "Usage: gmm-basis-fmllr-training [options] <model-in> <basis-wspecifier> "
          "<accs-in1> <accs-in2> ...\n";
 
     bool binary_write = true;
@@ -86,4 +86,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _3d is as _2y, and re-using the egs, but using --jesus-opts and
 # configs from make_jesus_configs.py.

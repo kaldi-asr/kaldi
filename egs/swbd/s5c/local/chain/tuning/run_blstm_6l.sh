@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 6l is same as 6k, but with the per-frame dropout
 # location4 as paper : http://www.danielpovey.com/files/2017_interspeech_dropout.pdf
@@ -125,7 +125,7 @@ if [ $stage -le 12 ]; then
 
   num_targets=$(tree-info $treedir/tree |grep num-pdfs|awk '{print $2}')
   [ -z $num_targets ] && { echo "$0: error getting num-targets"; exit 1; }
-  learning_rate_factor=$(echo "print 0.5/$xent_regularize" | python)
+  learning_rate_factor=$(echo "print (0.5/$xent_regularize)" | python)
 
   lstm_opts="decay-time=20 dropout-proportion=0.0"
 

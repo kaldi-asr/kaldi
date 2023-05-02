@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # _5y is as _5v, but rebalancing the network to have fewer parameters in the
 # final layer and more in the hidden parts, by reducing --final-hidden-dim from 500
