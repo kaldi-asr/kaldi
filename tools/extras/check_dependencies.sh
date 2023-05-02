@@ -113,7 +113,7 @@ if $pythonok && ! have python2; then
   echo "$0: python2.7 is installed, but the python2 binary does not exist." \
        "Creating a symlink and adding this to tools/env.sh"
   ln -s $(command -v python2.7) $PWD/python/python2
-  echo "export PATH=$PWD/python:\${PATH}" >> env.sh
+  echo "export PATH=$PWD/python:\"\${PATH}\"" >> env.sh
 fi
 
 if [[ -f $PWD/python/.use_default_python && -f $PWD/python/python ]]; then
@@ -129,7 +129,7 @@ if $pythonok && have python && [[ ! -f $PWD/python/.use_default_python ]]; then
          "empty file $PWD/python/.use_default_python and run this script again."
     mkdir -p $PWD/python
     ln -s $(command -v python2.7) $PWD/python/python
-    echo "export PATH=$PWD/python:\${PATH}" >> env.sh
+    echo "export PATH=$PWD/python:\"\${PATH}\"" >> env.sh
   fi
 fi
 )
