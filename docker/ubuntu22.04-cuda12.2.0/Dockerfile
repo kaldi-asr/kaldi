@@ -2,11 +2,7 @@ FROM nvidia/cuda:12.2.0-devel-ubuntu22.04
 LABEL maintainer="williamhilton.works@gmail.com"
 
 RUN apt update && \
-    apt install -y \
-        software-properties-common && \
-    apt-add-repository multiverse && \
-    apt update && \
-    apt install -y \
+    apt install -y --no-install-recommends \
         build-essential \
         g++ \
         make \
@@ -25,11 +21,13 @@ RUN apt update && \
         gfortran \
         patch \
         ffmpeg \
-        vim \
-        python2-dev \
-        python3-dev && \
+        vim && \
     apt update && \
-    yes | DEBIAN_FRONTEND=noninteractive apt install -yqq \
+    apt install -y --no-install-recommends\
+        software-properties-common && \
+    apt-add-repository multiverse && \
+    apt update && \
+    yes | DEBIAN_FRONTEND=noninteractive apt install -yqq --no-install-recommends\
         intel-mkl && \
     rm -rf /var/lib/apt/lists/*
 
