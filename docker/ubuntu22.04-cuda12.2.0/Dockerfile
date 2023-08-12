@@ -1,8 +1,8 @@
 FROM nvidia/cuda:12.2.0-devel-ubuntu22.04
 LABEL maintainer="williamhilton.works@gmail.com"
 
-RUN apt update && \
-    apt install -y --no-install-recommends \
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
         build-essential \
         g++ \
         make \
@@ -22,12 +22,12 @@ RUN apt update && \
         patch \
         ffmpeg \
         vim && \
-    apt update && \
-    apt install -y --no-install-recommends\
+    apt-get update && \
+    apt-get install -y --no-install-recommends\
         software-properties-common && \
     apt-add-repository multiverse && \
-    apt update && \
-    yes | DEBIAN_FRONTEND=noninteractive apt install -yqq --no-install-recommends\
+    apt-get update && \
+    yes | DEBIAN_FRONTEND=noninteractive apt-get install -yqq --no-install-recommends\
         intel-mkl && \
     rm -rf /var/lib/apt/lists/*
 
