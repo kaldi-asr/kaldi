@@ -19,7 +19,16 @@
 #define KALDI_CUDAFEAT_FEATURE_BATCHED_SPECTRAL_CUDA_H_
 
 #if HAVE_CUDA == 1
+#ifdef __IS_HIP_COMPILE__
+#if ROCM_MAJOR_VERSION < 5 || ROCM_MINOR_VERSION < 2
+#include <hipfft.h>
+#else
+#include <hipfft/hipfft.h>
+#endif
+#include "hipify.h"
+#else
 #include <cufft.h>
+#endif
 #endif
 
 #include "cudafeat/feature-spectral-cuda.h"

@@ -18,9 +18,16 @@
 #include <atomic>
 #if HAVE_CUDA == 1
 
+#ifdef __IS_HIP_COMPILE__
+#include <hip/hip_runtime.h>
+#include <hip/hip_runtime_api.h>
+#include <roctracer/roctx.h>
+#include "hipify.h"
+#else
 #include <cuda.h>
 #include <cuda_profiler_api.h>
 #include <nvToolsExt.h>
+#endif
 
 #include <sstream>
 

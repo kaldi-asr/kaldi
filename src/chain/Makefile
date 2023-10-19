@@ -10,7 +10,7 @@ TESTFILES = chain-supervision-test language-model-test
 OBJFILES = chain-supervision.o chain-numerator.o chain-den-graph.o \
           language-model.o chain-denominator.o chain-training.o \
           chain-generic-numerator.o
-ifeq ($(CUDA), true)
+ifeq ($(IS_GPU_BUILD), true)
   OBJFILES += chain-kernels.o
 endif
 
@@ -28,7 +28,26 @@ ifeq ($(CUDA), true)
 endif
 
 # Implicit rule for kernel compilation,
+ifeq ($(CUDA), true)
 %.o : %.cu
 	$(CUDATKDIR)/bin/nvcc -c $< -o $@ $(CUDA_INCLUDE) $(CUDA_FLAGS) $(CUDA_ARCH) -I../
+endif
+ifeq ($(ROCM), true)
+ifeq ($(ROCM_NEEDS_KERNEL_LAUNCH_HIPIFICATION), true)
+.PRECIOUS: %.hip
+%.hip : %.cu
+	LA='[^\(,]+\([^\)]+\)|[^,]+' ; \
+	cat $< | \
+	sed -r "s#<<<($$LA),($$LA)>>>#<<<\1,\2,0,hipStreamPerThread>>>#g" | \
+	sed -r "s#<<<($$LA),($$LA),($$LA)>>>#<<<\1,\2,\3,hipStreamPerThread>>>#g" | \
+	cat > $@
+%.o : %.hip
+	$(HIPCC) -c -x hip $< -o $@ $(ROCM_INCLUDE) $(ROCM_FLAGS) $(ROCM_ARCH_FLAGS) -I../
+else
+%.o : %.cu
+	$(HIPCC) -c -x hip $< -o $@ $(ROCM_INCLUDE) $(ROCM_FLAGS) $(ROCM_ARCH_FLAGS) -I../
+endif
+endif
+
 
 include ../makefiles/default_rules.mk

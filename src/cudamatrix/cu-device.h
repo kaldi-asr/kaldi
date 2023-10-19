@@ -28,14 +28,35 @@
 #include <string>
 #include <iostream>
 
+#ifdef __IS_HIP_COMPILE__
+#if ROCM_MAJOR_VERSION < 5 || ROCM_MINOR_VERSION < 2
+#include <hipblas.h>
+#include <hipsparse.h>
+#else
+#include <hipblas/hipblas.h>
+#include <hipsparse/hipsparse.h>
+#endif
+#include <hip/hip_runtime.h>
+#include <hip/hip_runtime_api.h>
+#include <hiprand/hiprand.h>
+#include "hipify.h"
+#else
 #include <cublas_v2.h>
 #include <cuda.h>
 #include <cuda_runtime_api.h>
 #include <curand.h>
 #include <cusparse.h>
-
+#endif
 #if CUDA_VERSION >= 9010
+#ifdef __IS_HIP_COMPILE__
+#if ROCM_MAJOR_VERSION < 5 || ROCM_MINOR_VERSION < 2
+#include <hipsolver.h>
+#else
+#include <hipsolver/hipsolver.h>
+#endif
+#else
 #include <cusolverDn.h>
+#endif
 #else
 // cusolver not supported.
 // Setting a few types to minimize compiler guards.

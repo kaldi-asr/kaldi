@@ -17,8 +17,14 @@
 
 #include "cudafeat/feature-spectral-cuda.h"
 
+#ifdef __IS_HIP_COMPILE__
+#include <roctracer/roctx.h>
+#include <hipcub/hipcub.hpp>
+#include "hipify.h"
+#else
 #include <nvToolsExt.h>
 #include <cub/cub.cuh>
+#endif
 
 #include "cudamatrix/cu-rand.h"
 

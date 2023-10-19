@@ -16,7 +16,12 @@
 // limitations under the License.
 
 #if HAVE_CUDA == 1
+#ifdef __IS_HIP_COMPILE__
+#include <hipcub/hipcub.hpp>
+#include "hipify.h"
+#else
 #include <cub/cub.cuh>
+#endif
 #include "cudafeat/feature-online-batched-ivector-cuda-kernels.h"
 #include "cudamatrix/cu-common.h"
 namespace kaldi {

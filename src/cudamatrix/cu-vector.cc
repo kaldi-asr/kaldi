@@ -22,8 +22,18 @@
 // limitations under the License.
 
 #if HAVE_CUDA == 1
+#ifdef __IS_HIP_COMPILE__
+#include <hip/hip_runtime_api.h>
+#if ROCM_MAJOR_VERSION < 5 || ROCM_MINOR_VERSION < 2
+#include <hipblas.h>
+#else
+#include <hipblas/hipblas.h>
+#endif
+#include "hipify.h"
+#else
 #include <cuda_runtime_api.h>
 #include <cublas_v2.h>
+#endif
 #endif
 
 #include "base/timer.h"

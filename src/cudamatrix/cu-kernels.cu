@@ -23,15 +23,23 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
+
 // In this file is the CUDA code of the CUDA kernels, plus the ANSI-C wrappers
 
 #include <cfloat>
 #include <limits>
 #include <math_constants.h>
+#ifdef __IS_HIP_COMPILE__
+#include <hip/hip_runtime.h>
+#include "hipify.h"
+#include "cudamatrix/cu-kernels-ansi.h"
+#include <hipcub/hipcub.hpp>
+#include <hipcub/block/block_reduce.hpp>
+#else
 #include "cudamatrix/cu-kernels-ansi.h"
 #include <cub/block/block_reduce.cuh>
 #include <cuda.h> // for CUDA_VERSION
-
+#endif //__IS_HIP_COMPILE__
 
 /***********************************************************************
  * Generic __device__ functions

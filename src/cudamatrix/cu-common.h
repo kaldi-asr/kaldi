@@ -31,11 +31,25 @@
 
 #if HAVE_CUDA
 
+#ifdef __IS_HIP_COMPILE__
+#if ROCM_MAJOR_VERSION < 5 || ROCM_MINOR_VERSION < 2
+#include <hipblas.h>
+#include <hipsparse.h>
+#else
+#include <hipblas/hipblas.h>
+#include <hipsparse/hipsparse.h>
+#endif
+#include <hip/hip_runtime_api.h>
+#include <hiprand/hiprand.h>
+#include <roctracer/roctx.h>
+#include "hipify.h"
+#else
 #include <cublas_v2.h>
 #include <cuda_runtime_api.h>
 #include <curand.h>
 #include <cusparse.h>
 #include <nvToolsExt.h>
+#endif
 
 #define CU_SAFE_CALL(fun) \
 { \

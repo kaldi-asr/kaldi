@@ -22,6 +22,10 @@
 #define KALDI_CHAIN_CHAIN_KERNELS_ANSI_H_
 #include "chain/chain-datastruct.h"
 
+#ifdef __IS_HIP_COMPILE__
+#include <hip/hip_runtime_api.h>
+#endif
+
 #if HAVE_CUDA == 1
 extern "C" {
 

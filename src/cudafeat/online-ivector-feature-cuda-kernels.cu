@@ -15,7 +15,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifdef __IS_HIP_COMPILE__
+#include <hipcub/hipcub.hpp>
+#include "hipify.h"
+#else
 #include <cub/cub.cuh>
+#endif
+
 #include "cudafeat/online-ivector-feature-cuda-kernels.h"
 #include "cudamatrix/cu-common.h"
 namespace kaldi {

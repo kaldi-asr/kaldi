@@ -15,7 +15,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifdef __IS_HIP_COMPILE__
+#include "float.h"
+#include <hipcub/hipcub.hpp>
+#include "hipify.h"
+#else
 #include <cub/cub.cuh>
+#endif
 #include "cuda-decoder-kernels.h"
 #include "cuda-decoder-kernels-utils.h"
 

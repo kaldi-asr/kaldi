@@ -17,8 +17,14 @@
 
 #include "cudafeat/feature-online-batched-spectral-cuda-kernels.h"
 
+#ifdef __IS_HIP_COMPILE__
+#include <hipcub/hipcub.hpp>
+#include <roctracer/roctx.h>
+#include "hipify.h"
+#else
 #include <cub/cub.cuh>
 #include <nvToolsExt.h>
+#endif
 
 #include "cudafeat/lane-desc.h"
 #include "cudamatrix/cu-rand.h"
