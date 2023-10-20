@@ -29,12 +29,19 @@ ROCM_INCLUDE = -I$(ROCMDIR)/hipsparse/include \
                -I$(ROCMDIR)/rocrand/include \
                -I$(ROCMDIR)/include \
                -I.. -I../hip -isystem $(OPENFSTINC)
+               
+# TODO: Consider passing __CUDA_ARCH__=800 here as it is mostly supported by ROCm.
+#       However this macro has some side effect with HIPCC that makes it assume
+#       CUDA is active and everything is device compiles.
 ROCM_FLAGS = $(ROCM_USEROCTX) -fPIC -DHAVE_CUDA=1 \
              -D__IS_HIP_COMPILE__=1 \
              -DROCM_MAJOR_VERSION=$(ROCM_MAJOR_VERSION) -DROCM_MINOR_VERSION=$(ROCM_MINOR_VERSION) \
-             -D__CUDACC_VER_MAJOR__=11 -D__CUDA_ARCH__=800 -DCUDA_VERSION=11000 \
-	           -DKALDI_DOUBLEPRECISION=$(DOUBLE_PRECISION) -std=c++14
+             -D__CUDACC_VER_MAJOR__=11 -DCUDA_VERSION=11000 \
+	         -DKALDI_DOUBLEPRECISION=$(DOUBLE_PRECISION) -std=c++14 -munsafe-fp-atomics
 
-#TODO: Consider use ROCM_LDFLAGS/ROCM_LDLIBS or generic GPU_LDFLAGS/GPU_LDLIBS in the makefiles.
+# TODO: Consider use ROCM_LDFLAGS/ROCM_LDLIBS or generic GPU_LDFLAGS/GPU_LDLIBS in the makefiles.
+# We allow the libraries we link against to have undefined symbols so as this can be build in
+# systems with no development version of these libraries (e.g. ncurses).
 CUDA_LDFLAGS += -L$(ROCMDIR)/lib -Wl,-rpath,$(ROCMDIR)/lib
-CUDA_LDLIBS += -lhipblas -lhipsparse -lhipsolver -lhiprand -lhipfft -lroctx64 -lamdhip64
+CUDA_LDLIBS += -lhipblas -lhipsparse -lhipsolver -lhiprand -lhipfft -lroctx64 -lamdhip64 -Wl,--allow-shlib-undefined 
+LDLIBS += -Wl,--allow-shlib-undefined 

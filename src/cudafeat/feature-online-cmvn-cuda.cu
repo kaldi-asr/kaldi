@@ -16,6 +16,7 @@
 // limitations under the License.
 
 #ifdef __IS_HIP_COMPILE__
+#define __CUDA_ARCH__ 800
 #include <hipcub/hipcub.hpp>
 #include "hipify.h"
 #else

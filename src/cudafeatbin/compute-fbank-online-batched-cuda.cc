@@ -16,7 +16,9 @@
 // limitations under the License.
 
 #if HAVE_CUDA == 1
+#ifndef __IS_HIP_COMPILE__
 #include <cuda_profiler_api.h>
+#endif
 #endif
 
 #include <string>

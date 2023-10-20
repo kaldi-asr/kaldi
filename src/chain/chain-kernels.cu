@@ -21,6 +21,7 @@
 #include "chain/chain-kernels-ansi.h"
 
 #ifdef __IS_HIP_COMPILE__
+#define __CUDA_ARCH__ 800
 #include <hip/hip_runtime.h>
 #endif
 

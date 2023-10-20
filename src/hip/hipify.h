@@ -148,6 +148,7 @@ inline __device__ void __syncwarp(unsigned mask=0xffffffff) {}
 #define cudaHostRegister                          hipHostRegister
 #define cudaHostRegisterDefault                   hipHostRegisterDefault
 #define cudaHostUnregister                        hipHostUnregister
+#define cudaLaunchHostFunc                        hipLaunchHostFunc
 #define cudaMalloc                                hipMalloc
 #define cudaMallocHost                            hipHostMalloc
 #define cudaMallocPitch                           hipMallocPitch
@@ -157,12 +158,16 @@ inline __device__ void __syncwarp(unsigned mask=0xffffffff) {}
 #define cudaMemcpyDeviceToDevice                  hipMemcpyDeviceToDevice
 #define cudaMemcpyDeviceToHost                    hipMemcpyDeviceToHost
 #define cudaMemcpyHostToDevice                    hipMemcpyHostToDevice
+#define cudaMemGetInfo                            hipMemGetInfo
 #define cudaMemset2DAsync                         hipMemset2DAsync
 #define cudaMemsetAsync                           hipMemsetAsync
+#define cudaProfilerStop                          hipProfilerStop
 #define cudaSetDevice                             hipSetDevice
 #define cudaStreamCreate                          hipStreamCreate
+#define cudaStreamCreateWithFlags                 hipStreamCreateWithFlags
 #define cudaStreamDestroy                         hipStreamDestroy
 #define cudaStreamLegacy                          ((hipStream_t)1)
+#define cudaStreamNonBlocking                      hipStreamNonBlocking
 #define cudaStreamPerThread                       ((hipStream_t)2)
 #define cudaStreamSynchronize                     hipStreamSynchronize
 #define cudaStreamWaitEvent                       hipStreamWaitEvent
