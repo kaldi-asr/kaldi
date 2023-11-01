@@ -571,7 +571,7 @@ void LatticeSimpleDecoder::ProcessNonemitting() {
   }
   if (queue.empty()) {
     if (!warned_) {
-      KALDI_ERR << "Error in ProcessEmitting: no surviving tokens: frame is "
+      KALDI_LOG << "Error in ProcessNonEmitting: no surviving tokens: frame is "
                 << frame;
       warned_ = true;
     }
