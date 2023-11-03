@@ -40,6 +40,8 @@
 #include "nnet3/nnet-optimize.h"
 #include "online2/online-nnet2-feature-pipeline.h"
 
+#include "cudadecoder/thread-pool-cia.h"
+
 namespace kaldi {
 namespace cuda_decoder {
 
@@ -66,7 +68,8 @@ struct BatchedThreadedNnet3CudaOnlinePipelineConfig {
         determinize_lattice(true),
         num_decoder_copy_threads(2),
         use_gpu_feature_extraction(true),
-        reset_on_endpoint(false) {}
+        reset_on_endpoint(false),
+        num_batching_copy_threads(0) {}
   void Register(OptionsItf *po) {
     po->Register("max-batch-size", &max_batch_size,
                  "The maximum execution batch size."
@@ -88,6 +91,12 @@ struct BatchedThreadedNnet3CudaOnlinePipelineConfig {
     po->Register(
         "reset-on-endpoint", &reset_on_endpoint,
         "Reset a decoder channel when endpoint detected. Do not close stream");
+    po->Register(
+        "batching-copy-threads", &num_batching_copy_threads,
+        "Number of threads to use for copying inputs on CPU into single pinned memory matrix. "
+        "0 means to just use the main thread. Recommend setting this to 8 because the memory "
+        "copy can starve the GPU of work."
+);
 
     feature_opts.Register(po);
     decoder_opts.Register(po);
@@ -101,6 +110,7 @@ struct BatchedThreadedNnet3CudaOnlinePipelineConfig {
   int num_decoder_copy_threads;
   bool use_gpu_feature_extraction;
   bool reset_on_endpoint;
+  int num_batching_copy_threads;
 
   OnlineNnet2FeaturePipelineConfig feature_opts;
   CudaDecoderConfig decoder_opts;
@@ -121,6 +131,8 @@ struct BatchedThreadedNnet3CudaOnlinePipelineConfig {
     num_worker_threads = (num_worker_threads > 0)
                              ? num_worker_threads
                              : std::thread::hardware_concurrency();
+
+    KALDI_ASSERT(num_batching_copy_threads >= 0);
   }
 };
 
@@ -150,9 +162,15 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
         word_syms_(NULL) {
     config_.compute_opts.CheckAndFixConfigs(am_nnet_->GetNnet().Modulus());
     config_.CheckAndFixConfigs();
-    Initialize(decode_fst);
     int num_worker_threads = config_.num_worker_threads;
-    thread_pool_ = std::make_unique<ThreadPoolLight>(num_worker_threads);
+    thread_pool_ = std::make_unique<futures_thread_pool>(num_worker_threads);
+
+    int num_batching_copy_threads = config_.num_batching_copy_threads;
+    if (num_batching_copy_threads > 0) {
+        batching_copy_thread_pool_ = std::make_unique<futures_thread_pool>(num_batching_copy_threads);
+    }
+
+    Initialize(decode_fst);
   }
 
   ~BatchedThreadedNnet3CudaOnlinePipeline();
@@ -304,12 +322,6 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
   // Used when features are computed on the host (CPU) on pool threads.
   void ComputeOneFeature(int element);
 
-  static void ComputeOneFeatureWrapper(void *obj, uint64_t element,
-                                       void *ignored) {
-    static_cast<BatchedThreadedNnet3CudaOnlinePipeline *>(obj)
-        ->ComputeOneFeature(element);
-  }
-
   void RunNnet3(const std::vector<int> &channels,
                 const std::vector<BaseFloat *> &d_features,
                 const int feature_stride,
@@ -342,14 +354,6 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
   // the threadpool
   // it will call the utterance's callback when done
   void FinalizeDecoding(int32 ichannel);
-
-  // static wrapper for thread pool
-  static void FinalizeDecodingWrapper(void *obj, uint64_t ichannel64,
-                                      void *ignored) {
-    int32 ichannel = static_cast<int32>(ichannel64);
-    static_cast<BatchedThreadedNnet3CudaOnlinePipeline *>(obj)
-        ->FinalizeDecoding(ichannel);
-  }
 
   //
   // Internal structs
@@ -501,7 +505,9 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
 
     // The thread pool receives data from device and post-processes it. This class
   // destructor blocks until the thread pool is drained of work items.
-  std::unique_ptr<ThreadPoolLight> thread_pool_;
+  std::unique_ptr<futures_thread_pool> thread_pool_;
+
+  std::unique_ptr<futures_thread_pool> batching_copy_thread_pool_;
 
   // The decoder owns thread(s) that reconstruct lattices transferred from the
   // device in a compacted form as arrays with offsets instead of pointers.

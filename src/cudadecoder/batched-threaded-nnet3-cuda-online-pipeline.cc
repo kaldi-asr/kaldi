@@ -240,14 +240,56 @@ bool BatchedThreadedNnet3CudaOnlinePipeline::TryInitCorrID(
 
 void BatchedThreadedNnet3CudaOnlinePipeline::CompactWavesToMatrix(
     const std::vector<SubVector<BaseFloat>> &wave_samples) {
-  for (int i = 0; i < wave_samples.size(); ++i) {
-    const SubVector<BaseFloat> &src = wave_samples[i];
-    int size = src.Dim();
-    n_samples_valid_[i] = size;
-    const BaseFloat *wave_src = src.Data();
-    BaseFloat *wave_dst = h_all_waveform_.RowData(i);
-    std::memcpy(wave_dst, wave_src, size * sizeof(BaseFloat));
+  nvtxRangePushA(__func__);
+
+  if (!batching_copy_thread_pool_) {
+    for (int i = 0; i < wave_samples.size(); ++i) {
+      const SubVector<BaseFloat> &src = wave_samples[i];
+      int size = src.Dim();
+      n_samples_valid_[i] = size;
+      const BaseFloat *wave_src = src.Data();
+      BaseFloat *wave_dst = h_all_waveform_.RowData(i);
+      std::memcpy(wave_dst, wave_src, size * sizeof(BaseFloat));
+    }
+  } else {
+    const size_t batch_size =
+      KALDI_CUDA_DECODER_DIV_ROUND_UP(wave_samples.size(),
+                                      config_.num_batching_copy_threads);
+
+    std::mutex m;
+    std::condition_variable cv;
+
+    std::atomic<size_t> tasks_remaining;
+    std::atomic_init(&tasks_remaining, KALDI_CUDA_DECODER_DIV_ROUND_UP(wave_samples.size(), batch_size));
+
+    for (size_t i = 0; i < wave_samples.size(); i += batch_size) {
+      auto task = [i, this, &wave_samples, &m, &cv, &tasks_remaining, &batch_size]() {
+        nvtxRangePush("CompactWavesToMatrix task");
+        for (size_t j = i; j < std::min(i + batch_size, wave_samples.size()); ++j) {
+          const SubVector<BaseFloat> &src = wave_samples[j];
+          int size = src.Dim();
+          n_samples_valid_[j] = size;
+          const BaseFloat *wave_src = src.Data();
+          BaseFloat *wave_dst = this->h_all_waveform_.RowData(j);
+          std::memcpy(wave_dst, wave_src, size * sizeof(BaseFloat));
+         }
+        --tasks_remaining;
+        if (tasks_remaining.load() == 0) {
+          std::lock_guard<std::mutex> lock(m);
+          cv.notify_one();
+        }
+        nvtxRangePop();
+      };
+      batching_copy_thread_pool_->submit(task);
+    }
+
+    // wait for all threads to finish
+    {
+      std::unique_lock<std::mutex> lock(m);
+      cv.wait(lock, [&tasks_remaining](){ return tasks_remaining == 0; });
+    }
   }
+  nvtxRangePop();
 }
 
 void BatchedThreadedNnet3CudaOnlinePipeline::ComputeGPUFeatureExtraction(
@@ -258,9 +300,11 @@ void BatchedThreadedNnet3CudaOnlinePipeline::ComputeGPUFeatureExtraction(
   // CopyFromMat syncs, avoiding it
   KALDI_ASSERT(d_all_waveform_.SizeInBytes() == h_all_waveform.SizeInBytes());
   // Note : we could have smaller copies using the actual channels.size()
+  nvtxRangePushA("ComputeGPUFeatureExtractioncudaMemcpyAsync");
   cudaMemcpyAsync(d_all_waveform_.Data(), h_all_waveform.Data(),
                   h_all_waveform.SizeInBytes(), cudaMemcpyHostToDevice,
                   cudaStreamPerThread);
+  nvtxRangePop();
 
   KALDI_ASSERT(channels.size() == is_last_chunk.size());
   KALDI_ASSERT(channels.size() == is_first_chunk.size());
@@ -285,9 +329,7 @@ void BatchedThreadedNnet3CudaOnlinePipeline::ComputeCPUFeatureExtraction(
   n_compute_features_not_done_.store(channels.size());
 
   for (size_t i = 0; i < channels.size(); ++i) {
-    thread_pool_->Push(
-        {&BatchedThreadedNnet3CudaOnlinePipeline::ComputeOneFeatureWrapper,
-         this, i, 0});  // second argument "0" is not used
+    thread_pool_->submit(std::bind(&BatchedThreadedNnet3CudaOnlinePipeline::ComputeOneFeature, this, i));
   }
 
   while (n_compute_features_not_done_.load(std::memory_order_acquire))
@@ -348,6 +390,7 @@ void BatchedThreadedNnet3CudaOnlinePipeline::DecodeBatch(
   ListIChannelsInBatch(corr_ids, &channels_);
 
   // Compact in h_all_waveform_ to use the main DecodeBatch version
+  // this is slow
   CompactWavesToMatrix(wave_samples);
 
   DecodeBatch(corr_ids, h_all_waveform_, n_samples_valid_, is_first_chunk,
@@ -565,9 +608,7 @@ void BatchedThreadedNnet3CudaOnlinePipeline::RunLatticeCallbacks(
       // If q is not empty, it means we already have a task in the threadpool
       // for that channel it is important to run those task in FIFO order if
       // empty, run a new task
-      thread_pool_->Push(
-          {&BatchedThreadedNnet3CudaOnlinePipeline::FinalizeDecodingWrapper,
-           this, ichannel, /* ignored */ nullptr});
+      thread_pool_->submit(std::bind(&BatchedThreadedNnet3CudaOnlinePipeline::FinalizeDecoding, this, ichannel));
     }
   }
 }
@@ -575,6 +616,7 @@ void BatchedThreadedNnet3CudaOnlinePipeline::RunLatticeCallbacks(
 void BatchedThreadedNnet3CudaOnlinePipeline::RunCallbacksAndFinalize(
     const std::vector<CorrelationID> &corr_ids,
     const std::vector<int> &channels, const std::vector<bool> &is_last_chunk) {
+  nvtxRangePushA("RunCallbacksAndFinalize");
   // Reading endpoints, figuring out is_end_of_segment_
   for (size_t i = 0; i < is_last_chunk.size(); ++i) {
     bool endpoint_detected = false;
@@ -589,6 +631,7 @@ void BatchedThreadedNnet3CudaOnlinePipeline::RunCallbacksAndFinalize(
   RunBestPathCallbacks(corr_ids, channels);
 
   RunLatticeCallbacks(corr_ids, channels, is_last_chunk);
+  nvtxRangePop();
 }
 
 void BatchedThreadedNnet3CudaOnlinePipeline::ListIChannelsInBatch(
@@ -646,7 +689,7 @@ void BatchedThreadedNnet3CudaOnlinePipeline::InitDecoding(
     }
 
     if (should_reset_decoder)
-      init_decoding_list_channels_.push_back((channels)[i]);
+      init_decoding_list_channels_.push_back(channels[i]);
   }
 
   if (!init_decoding_list_channels_.empty())
@@ -655,6 +698,7 @@ void BatchedThreadedNnet3CudaOnlinePipeline::InitDecoding(
 
 void BatchedThreadedNnet3CudaOnlinePipeline::RunDecoder(
     const std::vector<int> &channels, const std::vector<bool> &is_first_chunk) {
+  nvtxRangePushA("RunDecoder");
   if (partial_hypotheses_) {
     // We're going to have to generate the partial hypotheses
     if (word_syms_ == nullptr) {
@@ -690,6 +734,7 @@ void BatchedThreadedNnet3CudaOnlinePipeline::RunDecoder(
       (*end_points_)[i] = cuda_decoder_->EndpointDetected(ichannel);
     }
   }
+  nvtxRangePop();
 }
 
 void BatchedThreadedNnet3CudaOnlinePipeline::ReadParametersFromModel() {

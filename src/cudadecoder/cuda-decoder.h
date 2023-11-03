@@ -42,7 +42,7 @@
 #include "cudadecoder/cuda-decodable-itf.h"
 #include "cudadecoder/cuda-decoder-common.h"
 #include "cudadecoder/cuda-fst.h"
-#include "cudadecoder/thread-pool-light.h"
+#include "cudadecoder/thread-pool-cia.h"
 #include "fst/symbol-table.h"
 #include "online2/online-endpoint.h"
 
@@ -277,10 +277,13 @@ class CudaDecoder {
 
   void SetOutputFrameShiftInSeconds(BaseFloat f) { frame_shift_seconds_ = f; }
 
+  // here's how we get the partial hypotheses... Need to wait until we
+  // can do this for thread safety.
   void GetPartialHypothesis(ChannelId ichannel, PartialHypothesis **out) {
     KALDI_ASSERT(generate_partial_hypotheses_);
+    WaitForPartialHypotheses();
     // No need to lock, all ops on h_all_channels_partial_hypotheses_out_ are
-    // done before returning InitDecoding or AdvanceDecoding
+    // done after calling WaitForPartialHypotheses()
     *out = &h_all_channels_partial_hypotheses_out_[ichannel];
   }
 
@@ -330,7 +333,7 @@ class CudaDecoder {
   // InitDecodingH2HCopies For recurrent CPU work, such as
   // ComputeH2HCopies, we will use dedicated CPU threads We will launch
   // nworkers of those threads
-  void SetThreadPoolAndStartCPUWorkers(ThreadPoolLight *thread_pool,
+  void SetThreadPoolAndStartCPUWorkers(futures_thread_pool *thread_pool,
                                        int32 nworkers);
 
   // Used to generate partial results
@@ -492,6 +495,7 @@ class CudaDecoder {
   // before returning
   void WaitForPartialHypotheses();
 
+  void LaunchPartialHypotheses();
   // Takes care of preparing the data for ComputeH2HCopies
   // and check whether we can use the threadpool or we have to do the work
   // on the current thread
@@ -559,8 +563,8 @@ class CudaDecoder {
   //
   // The auxiliary queue is used to store the raw output of ExpandArcs.
   // We then prune that aux queue (and apply max-active) and move the
-  // survival tokens in the main queue. Tokens stored in the main q can
-  // then be used to generate new tokens (using ExpandArcs) We also
+  // survival tokens into the main queue. Tokens stored in the main q can
+  // then be used to generate new tokens (using ExpandArcs). We also
   // generate more information about what's in the main_q at the end of a
   // frame (in PostProcessingMainQueue)
   //
@@ -587,7 +591,7 @@ class CudaDecoder {
   //
   // The data linked with a channel contains the data of frame i we need
   // to remember to compute frame i+1. It is the list of tokens from frame
-  // i, with some additional info (ie the prefix sum of the emitting arcs
+  // i, with some additional info (i.e. the prefix sum of the emitting arcs
   // degrees from those tokens). We are only storing
   // d_main_q_state_and_cost_ as channel data because that's all we need
   // in a token to compute frame i+1. We don't need token.arc_idx or
@@ -780,13 +784,16 @@ class CudaDecoder {
   CostType *h_acoustic_cost_concat_tmp_;
   InfoToken *h_extra_prev_tokens_concat_tmp_;
   // Offsets used in MoveConcatenatedCopyToVector
+  // offsets, so size is nlanes_ + 1!
   std::vector<int32> h_main_q_end_lane_offsets_;
   std::vector<int32> h_emitting_main_q_end_lane_offsets_;
   std::vector<int32> h_n_extra_prev_tokens_lane_offsets_;
   // Index of the best index for the last frame. Used by endpointing/partial
   // results
 
+  // indexed by lanes
   std::vector<BestPathTracebackHead> h_best_path_traceback_head_;
+  // indexed by channels
   std::vector<BestPathTracebackHead>
       h_all_channels_prev_best_path_traceback_head_;
   // Partial path so far on a given channel
@@ -806,7 +813,6 @@ class CudaDecoder {
   std::vector<bool> has_reached_final_;
   std::vector<std::vector<std::pair<int32, CostType>>>
       list_finals_token_idx_and_cost_;
-  bool compute_max_active_;
   cudaEvent_t nnet3_done_evt_;
   cudaEvent_t d2h_copy_acoustic_evt_;
   cudaEvent_t d2h_copy_infotoken_evt_;
@@ -861,7 +867,7 @@ class CudaDecoder {
   // read comments associated with must_replay_frame in GetRawLattice to
   // understand what it does
   CostType extra_cost_min_delta_;
-  ThreadPoolLight *thread_pool_;
+  futures_thread_pool *thread_pool_;
   std::vector<std::thread> cpu_dedicated_threads_;
   int32 n_threads_used_;
   std::vector<ChannelId> lanes2channels_todo_;
@@ -881,8 +887,9 @@ class CudaDecoder {
   //TODO(hugovbraun): unused: std::atomic<bool> active_wait_;
 
   // Used for sync on partial hypotheses tasks
-  std::atomic<std::int32_t> n_partial_traceback_threads_todo_;
-  std::atomic<std::int32_t> n_partial_traceback_threads_not_done_;
+  std::int32_t n_partial_traceback_threads_not_done_;
+  std::mutex n_partial_traceback_threads_not_done_mutex_;
+  std::condition_variable n_partial_traceback_threads_not_done_cv_;
 
   // Set to false in destructor to stop threads.
   volatile bool h2h_threads_running_;

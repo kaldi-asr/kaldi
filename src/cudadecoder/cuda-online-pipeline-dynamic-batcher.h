@@ -70,7 +70,31 @@ class CudaOnlinePipelineDynamicBatcher {
     Batch(int max_batch_size, int max_samps_per_chunk) {
       h_all_waveform.Resize(max_batch_size, max_samps_per_chunk, kUndefined,
                             kStrideEqualNumCols);
-      // TODO use cudaHostRegister, check cudaDevAttrHostRegisterSupported
+      int device;
+      KALDI_DECODER_CUDA_API_CHECK_ERROR(cudaGetDevice(&device));
+      int supports_cudaHostRegister;
+      KALDI_DECODER_CUDA_API_CHECK_ERROR(cudaDeviceGetAttribute(&supports_cudaHostRegister, 
+                                                                cudaDevAttrHostRegisterSupported,
+                                                                device));
+      if (supports_cudaHostRegister) {
+          KALDI_DECODER_CUDA_API_CHECK_ERROR(cudaHostRegister(h_all_waveform.Data(), 
+                                                              h_all_waveform.SizeInBytes(),
+                                                              cudaHostRegisterDefault));
+      } else {
+          KALDI_WARN << "Your device does not support cudaHostRegister(). Copying data to GPU will be slow.";
+      }
+    }
+
+    ~Batch() {
+      int device;
+      CU_SAFE_CALL(cudaGetDevice(&device));
+      int supports_cudaHostRegister;
+      CU_SAFE_CALL(cudaDeviceGetAttribute(&supports_cudaHostRegister, 
+                                          cudaDevAttrHostRegisterSupported,
+                                          device));
+      if (supports_cudaHostRegister) {
+          CU_SAFE_CALL(cudaHostUnregister(h_all_waveform.Data()));
+      }
     }
 
     void Clear() {

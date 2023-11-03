@@ -74,6 +74,10 @@ int main(int argc, char *argv[]) {
     CudaOnlineBinaryOptions opts;
     if (SetUpAndReadCmdLineOptions(argc, argv, &opts) != 0) return 1;
 
+    std::unique_ptr<CompactLatticeWriter> clat_writer;
+    std::unique_ptr<Output> ctm_writer;
+    OpenOutputHandles(opts.clat_wspecifier, &clat_writer, &ctm_writer);
+
     TransitionModel trans_model;
     nnet3::AmNnetSimple am_nnet;
     fst::Fst<fst::StdArc> *decode_fst;
@@ -83,10 +87,6 @@ int main(int argc, char *argv[]) {
         opts.batched_decoder_config, *decode_fst, am_nnet, trans_model);
     delete decode_fst;
     if (word_syms) cuda_pipeline.SetSymbolTable(*word_syms);
-
-    std::unique_ptr<CompactLatticeWriter> clat_writer;
-    std::unique_ptr<Output> ctm_writer;
-    OpenOutputHandles(opts.clat_wspecifier, &clat_writer, &ctm_writer);
 
     std::mutex output_writer_m_;
     if (!opts.write_lattice) {
@@ -145,6 +145,7 @@ int main(int argc, char *argv[]) {
     std::uniform_real_distribution<> dis(0.0, 1.0);
 
     std::priority_queue<Stream> streams;
+    KALDI_DECODER_CUDA_API_CHECK_ERROR(cudaProfilerStart());
     nvtxRangePush("Global Timer");
     Timer timer;
 
@@ -308,11 +309,21 @@ int main(int argc, char *argv[]) {
 
     KALDI_LOG << "Latency stats:";
     PrintLatencyStats(latencies);
+
+    double total_latency = std::accumulate(latencies.begin(), latencies.end(), 0.0);
+    auto sum_op = [](double accum, const auto& a){
+      return accum + a->Duration();
+    };
+    double total_duration = opts.niterations * std::accumulate(all_wav.begin(), all_wav.end(),
+                                                               0.0, sum_op);
+    double rtf_x = total_duration / total_latency;
+    KALDI_LOG << "RTFx:" << rtf_x;
+
     delete word_syms;
 
     if (clat_writer) clat_writer->Close();
     cudaDeviceSynchronize();
-
+    KALDI_DECODER_CUDA_API_CHECK_ERROR(cudaProfilerStop());
     return 0;
   } catch (const std::exception &e) {
     std::cerr << e.what();

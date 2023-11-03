@@ -1538,7 +1538,7 @@ __global__ void emitting_preprocess_and_list_extra_prev_tokens_step1_kernel(
         // Token index of one of the token which the lowest token.cost for that
         // state
         uint32_t state_best_int_cost_argmin;
-	GetArgFromPackedArgminUInt64(h_val.min_and_argmin_int_cost_u64, &state_best_int_cost_argmin);
+        GetArgFromPackedArgminUInt64(h_val.min_and_argmin_int_cost_u64, &state_best_int_cost_argmin);
 
         // Checking if we're the representative of that state
         representing_state = (main_q_idx == state_best_int_cost_argmin);

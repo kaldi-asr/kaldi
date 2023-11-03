@@ -77,7 +77,7 @@ void BatchedStaticNnet3::PresetKernelParams() {
 }
 
 void BatchedStaticNnet3::Allocate() {
-  cudaEventCreate(&batch_slot_assignement_copy_evt_);
+  cudaEventCreate(&batch_slot_assignement_copy_evt_, cudaEventDisableTiming);
   d_all_context_frames_.Resize(nchannels_ * total_nnet_context_, input_dim_);
   d_batch_with_context_.Resize(
       max_batch_size_ * input_frames_per_chunk_with_context_, input_dim_);

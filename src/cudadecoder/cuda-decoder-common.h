@@ -139,8 +139,6 @@
 #define KALDI_CUDA_DECODER_BATCH_KERNEL_LOOP(i, n) \
   for (int i = blockIdx.y; i < (n); i += gridDim.y)
 
-#define KALDI_CUDA_DECODER_DIV_ROUND_UP(a, b) ((a + b - 1) / b)
-
 #define KALDI_CUDA_DECODER_1D_BLOCK 256
 #define KALDI_CUDA_DECODER_LARGEST_1D_BLOCK 1024
 #define KALDI_CUDA_DECODER_ONE_THREAD_BLOCK 1
