@@ -19,18 +19,18 @@ fi
 
 tarball=OpenBLAS-$OPENBLAS_VERSION.tar.gz
 
-rm -rf xianyi-OpenBLAS-* OpenBLAS OpenBLAS-*.tar.gz
+rm -rf OpenMathLib-OpenBLAS-* OpenBLAS OpenBLAS-*.tar.gz
 
 if [ -d "$DOWNLOAD_DIR" ]; then
   cp -p "$DOWNLOAD_DIR/$tarball" .
 else
-  url=$($WGET -qO- "https://api.github.com/repos/xianyi/OpenBLAS/releases/tags/v${OPENBLAS_VERSION}" | python -c 'import sys,json;print(json.load(sys.stdin)["tarball_url"])')
+  url=$($WGET -qO- "https://api.github.com/repos/OpenMathLib/OpenBLAS/releases/tags/v${OPENBLAS_VERSION}" | python3 -c 'import sys,json;print(json.load(sys.stdin)["tarball_url"])')
   test -n "$url"
   $WGET -t3 -nv -O $tarball "$url"
 fi
 
 tar xzf $tarball
-mv xianyi-OpenBLAS-* OpenBLAS
+mv OpenMathLib-OpenBLAS-* OpenBLAS
 
 make PREFIX=$(pwd)/OpenBLAS/install USE_LOCKING=1 USE_THREAD=0 -C OpenBLAS all install
 if [ $? -eq 0 ]; then
