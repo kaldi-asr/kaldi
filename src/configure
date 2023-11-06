@@ -295,12 +295,11 @@ function configure_rocm {
   ROCM_MINOR_VERSION=$(hipconfig -v | cut -d. -f2)
   echo "ROCM_MINOR_VERSION = $ROCM_MINOR_VERSION" >> kaldi.mk
   
-  # Enable HIP implementation for CXX compile commands. ROCm 5.2.0 onwards use 
-  # __HIP_PLATFORM_AMD__ others  __HIP_PLATFORM_HCC__
-  if [ $ROCM_MAJOR_VERSION -eq 5 ] && [ $ROCM_MINOR_VERSION -ge 2 ] || [ $ROCM_MAJOR_VERSION -gt 5 ] ; then
-    echo "CXXFLAGS += -D__HIP_PLATFORM_AMD__=1" >> kaldi.mk
-  else
-    echo "CXXFLAGS += -D__HIP_PLATFORM_HCC__=1" >> kaldi.mk
+  # Only ROCm 5.2+ is supported.
+  if [ $ROCM_MAJOR_VERSION -eq 5 ] && [ $ROCM_MINOR_VERSION -lt 2 ] || [ $ROCM_MAJOR_VERSION -lt 5 ] ; then
+    echo "\
+WARNING: ROCm $ROCM_MAJOR_VERSION.$ROCM_MINOR_VERSION found but ROCm 5.2 or above is required."
+    exit 1;
   fi
   
   # 64bit/32bit? Not Linux? We do not support cross compilation with ROCm so, 
@@ -309,16 +308,9 @@ function configure_rocm {
     cat makefiles/hip_64bit.mk >> kaldi.mk
   else
     echo "\
-WARNING: ROCM will not be used!
-         ROCM is only supported with 64-bit Linux builds."
+WARNING: ROCm will not be used!
+         ROCm is only supported with 64-bit Linux builds."
     exit 1;
-  fi
-  
-  if [ $ROCM_MAJOR_VERSION -eq 5 ] && [ $ROCM_MINOR_VERSION -ge 2 ] || [ $ROCM_MAJOR_VERSION -gt 5 ] ; then
-    echo "ROCM_FLAGS += -fgpu-default-stream=per-thread" >> kaldi.mk
-    echo "ROCM_NEEDS_KERNEL_LAUNCH_HIPIFICATION = false" >> kaldi.mk
-  else
-    echo "ROCM_NEEDS_KERNEL_LAUNCH_HIPIFICATION = true" >> kaldi.mk
   fi
 }
 

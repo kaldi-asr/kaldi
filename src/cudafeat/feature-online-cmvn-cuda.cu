@@ -27,6 +27,7 @@
 #include "cudamatrix/cu-matrix.h"
 #include "cudamatrix/cu-vector.h"
 
+// HIP builds do not required packed floating point operators definition.
 #ifndef __IS_HIP_COMPILE__
 __host__ __device__ inline float2 operator-(const float2 &a, const float2 &b) {
   float2 retval;

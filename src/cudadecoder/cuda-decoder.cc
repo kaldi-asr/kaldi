@@ -199,7 +199,7 @@ void CudaDecoder::AllocateHostData() {
       (void**)&h_extra_prev_tokens_concat_,
       nlanes_ * main_q_capacity_ * sizeof(*h_extra_prev_tokens_concat_)));
   KALDI_DECODER_CUDA_API_CHECK_ERROR(cudaMallocHost(
-	  (void**)&h_infotoken_concat_,
+	    (void**)&h_infotoken_concat_,
       nlanes_ * main_q_capacity_ * sizeof(*h_infotoken_concat_)));
   KALDI_DECODER_CUDA_API_CHECK_ERROR(
       cudaMallocHost((void**)&h_extra_and_acoustic_cost_concat_tmp_,

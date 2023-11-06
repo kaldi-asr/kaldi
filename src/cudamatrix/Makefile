@@ -34,20 +34,8 @@ ifeq ($(CUDA), true)
 endif
 
 ifeq ($(ROCM), true)
-ifeq ($(ROCM_NEEDS_KERNEL_LAUNCH_HIPIFICATION), true)
-.PRECIOUS: %.hip
-%.hip : %.cu
-	LA='[^\(,]+\([^\)]+\)|[^,]+' ; \
-	cat $< | \
-	sed -r "s#<<<($$LA),($$LA)>>>#<<<\1,\2,0,hipStreamPerThread>>>#g" | \
-	sed -r "s#<<<($$LA),($$LA),($$LA)>>>#<<<\1,\2,\3,hipStreamPerThread>>>#g" | \
-	cat > $@
-%.o : %.hip
-	$(HIPCC) -c -x hip $< -o $@ $(ROCM_INCLUDE) $(ROCM_FLAGS) $(ROCM_ARCH_FLAGS) -I../
-else
 %.o : %.cu
 	$(HIPCC) -c -x hip $< -o $@ $(ROCM_INCLUDE) $(ROCM_FLAGS) $(ROCM_ARCH_FLAGS) -I../
-endif
 endif
 
 include ../makefiles/default_rules.mk

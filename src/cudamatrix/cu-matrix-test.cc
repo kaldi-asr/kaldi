@@ -2675,19 +2675,11 @@ static void UnitTestCuMatrixSetRandn() {
 
 template <typename Real>
 static void UnitTestCuMatrixSetRandUniform() {
-
-  // if (CuDevice::Instantiate().Enabled()) {
-  //   CURAND_SAFE_CALL(curandSetPseudoRandomGeneratorSeed(GetCurandHandle(), 123456));
-  // }
-
   for (int32 i = 0; i < 2; i++) {
-    MatrixIndexT rows = 180+Rand() % 200, cols = 200+Rand() % 200;
+    MatrixIndexT rows = 180 + Rand() % 200, cols = 200 + Rand() % 200;
     CuMatrix<Real> M(rows, cols);
     M.SetRandUniform();
-    // M.SetZero();
-    // M.Add(0.5);
-    // M.SetZeroAboveDiag();
-
+    
     M.Add(-0.5); // we'll be testing the central moments, so
     // center it around zero first.
     // Got these moments from http://mathworld.wolfram.com/UniformDistribution.html
@@ -2701,16 +2693,6 @@ static void UnitTestCuMatrixSetRandUniform() {
     for (int32 pow = 1; pow < central_moments.Dim(); pow++) {
       CuMatrix<Real> Mpow(M);
       Mpow.ApplyPow(pow);
-
-      // if (CuDevice::Instantiate().Enabled()) {
-      //   CuVector<Real> col_sum(rows, kUndefined);
-      //   cuda_sum_mat_cols(rows, CU1DBLOCK, col_sum.Data(), Mpow.Data(), Mpow.Dim());
-      //   KALDI_LOG << "Sums vector is " << col_sum;
-      //   Real ans = col_sum.Sum();
-      //   KALDI_LOG << "Total sum is " << ans;
-      //   KALDI_ERR << "Stopping!";
-      // }
-
       Real observed_moment = Mpow.Sum() / (rows * cols);
       // see http://en.wikipedia.org/wiki/Normal_distribution#Moments,
       // note that mu = 0 and sigma = 1.
@@ -2723,13 +2705,11 @@ static void UnitTestCuMatrixSetRandUniform() {
           upper_bound = expected_moment + allowed_deviation;
       if (!(observed_moment >= lower_bound && observed_moment <= upper_bound)) {
         KALDI_LOG << "Random matrix is " << M;
-        //KALDI_LOG << "Random vector sum is " << col_sum;
-        KALDI_ERR << "Bad observed " << pow <<  "'th moment " << observed_moment
+                KALDI_ERR << "Bad observed " << pow <<  "'th moment " << observed_moment
                   << ", expected " << expected_moment << ", allowed range "
                   << lower_bound << " to " << upper_bound;
       }
-      KALDI_LOG << "Moment[" << pow << "] is " << observed_moment << " (" << expected_moment << ")";
-    }
+          }
   }
 }
 
@@ -3081,7 +3061,7 @@ template<typename Real> void CudaMatrixUnitTest() {
 int main() {
   SetVerboseLevel(1);
   int32 loop = 0;
-  bool test_threads = false;
+  bool test_threads = true;
   // num_threads only matters if test_threads == true.   Don't make it
   // to large, because it will affect CPU usage if you are using CPU.
   int32 num_threads = 4;

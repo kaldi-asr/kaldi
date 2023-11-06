@@ -211,7 +211,6 @@ inline __device__ void __syncwarp(unsigned mask=0xffffffff) {
 #define curandSetPseudoRandomGeneratorSeed        hiprandSetPseudoRandomGeneratorSeed
 #define curandSetStream                           hiprandSetStream
 #define curandStatus_t                            hiprandStatus_t
-#if ROCM_MAJOR_VERSION == 5 && ROCM_MINOR_VERSION >= 1 || ROCM_MAJOR_VERSION > 5
 #define cusolverDnCreate                          hipsolverDnCreate
 #define cusolverDnDestroy                         hipsolverDnDestroy
 #define cusolverDnHandle_t                        hipsolverDnHandle_t
@@ -221,17 +220,6 @@ inline __device__ void __syncwarp(unsigned mask=0xffffffff) {
 #define cusolverDnSpotrf_bufferSize               hipsolverDnSpotrf_bufferSize
 #define cusolverDnSpotrs                          hipsolverDnSpotrs
 #define cusolverDnSpotrsBatched                   hipsolverDnSpotrsBatched
-#else
-#define cusolverDnCreate                          hipsolverCreate
-#define cusolverDnDestroy                         hipsolverDestroy
-#define cusolverDnHandle_t                        hipsolverHandle_t
-#define cusolverDnSetStream                       hipsolverSetStream
-#define cusolverDnSpotrf                          hipsolverSpotrf
-#define cusolverDnSpotrfBatched                   hipsolverSpotrfBatched
-#define cusolverDnSpotrf_bufferSize               hipsolverSpotrf_bufferSize
-#define cusolverDnSpotrs                          hipsolverSpotrs
-#define cusolverDnSpotrsBatched                   hipsolverSpotrsBatched
-#endif
 #define cusparseAction_t                          hipsparseAction_t
 #define cusparseCreate                            hipsparseCreate
 #define cusparseCreateCsr                         hipsparseCreateCsr

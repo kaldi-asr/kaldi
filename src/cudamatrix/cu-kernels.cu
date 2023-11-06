@@ -27,15 +27,18 @@
 
 #include <cfloat>
 #include <limits>
-#include <math_constants.h>
 #ifdef __IS_HIP_COMPILE__
 #define __CUDA_ARCH__ 800
+#include <hip/hip_math_constants.h>
 #include <hip/hip_runtime.h>
 #include "hipify.h"
+#define CUDART_INF HIP_INF
+#define CUDART_INF_F HIP_INF_F
 #include "cudamatrix/cu-kernels-ansi.h"
 #include <hipcub/hipcub.hpp>
 #include <hipcub/block/block_reduce.hpp>
 #else
+#include <math_constants.h>
 #include "cudamatrix/cu-kernels-ansi.h"
 #include <cub/block/block_reduce.cuh>
 #include <cuda.h> // for CUDA_VERSION
@@ -2048,26 +2051,8 @@ static void _transform_reduce_mat_cols(
   for (int j = tid; j < d.cols; j += CU1DBLOCK) {
     tdata = op.Reduce(tdata, op.Transform(mat[row_start + j]));
   }
-
-  // if (tid == 0) {
-  //   for (int j = 0; j < d.cols; j += 1)
-  //     tdata = op.Reduce(tdata, op.Transform(mat[row_start + j]));
-  //   result[i] = tdata;
-    
-  // }
-  // return;
-
   sdata[tid] = tdata;
   __syncthreads();
-
-  // if (tid == 0) {
-  //   tdata = 0;
-  //   for (int j = 0; j < CU1DBLOCK; j += 1)
-  //     tdata = op.Reduce(tdata, op.Transform(sdata[j]));
-  //   result[i] = tdata;
-  // }
-
-  // return;
 
   // Tree reduce
 # pragma unroll
@@ -2076,16 +2061,6 @@ static void _transform_reduce_mat_cols(
       sdata[tid] = op.Reduce(sdata[tid], sdata[tid + shift]);
     __syncthreads();
   }
-
-  // if (tid == 0) {
-  //   tdata = 0;
-  //   for (int j = 0; j < 2*warpSize; j += 1)
-  //     tdata = op.Reduce(tdata, op.Transform(sdata[j]));
-  //   result[i] = tdata;
-  // }
-
-  // return;
-
 
   // Reduce last warp. Threads implicitly synchronized within a warp.
   for (int shift = warpSize; shift > 0; shift >>= 1) {

@@ -11,6 +11,7 @@ endif
 # Specific HIP/ROCm components should be included prior to the generic include to avoid
 # deprecation warnings.
 CXXFLAGS += $(ROCM_USEROCTX) -DHAVE_CUDA=1 \
+            -D__HIP_PLATFORM_AMD__=1 \
             -D__IS_HIP_COMPILE__=1 \
             -DROCM_MAJOR_VERSION=$(ROCM_MAJOR_VERSION) -DROCM_MINOR_VERSION=$(ROCM_MINOR_VERSION) \
             -DCUDA_VERSION=11000 \
@@ -35,9 +36,11 @@ ROCM_INCLUDE = -I$(ROCMDIR)/hipsparse/include \
 #       CUDA is active and everything is device compiles.
 ROCM_FLAGS = $(ROCM_USEROCTX) -fPIC -DHAVE_CUDA=1 \
              -D__IS_HIP_COMPILE__=1 \
+             -D__HIP_PLATFORM_AMD__=1 \
              -DROCM_MAJOR_VERSION=$(ROCM_MAJOR_VERSION) -DROCM_MINOR_VERSION=$(ROCM_MINOR_VERSION) \
              -D__CUDACC_VER_MAJOR__=11 -DCUDA_VERSION=11000 \
 	         -DKALDI_DOUBLEPRECISION=$(DOUBLE_PRECISION) -std=c++14 -munsafe-fp-atomics  \
+             -fgpu-default-stream=per-thread \
              $(EXTRA_ROCM_FLAGS)
              
 

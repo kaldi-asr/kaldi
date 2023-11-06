@@ -382,43 +382,6 @@ void BatchedIvectorExtractorCuda::ComputeIvectorsFromStats(
 
 #if CUDA_VERSION >= 9010
   int nrhs = 1;
-
-#if defined(__IS_HIP_COMPILE__) && (ROCM_MAJOR_VERSION < 5 || ROCM_MINOR_VERSION < 2)
-  // query temp buffer size
-  int L_work;
-
-  // perform factorization in batched
-  CUSOLVER_SAFE_CALL(hipsolverSpotrfBatched_bufferSize(
-        GetCusolverDnHandle(), CUBLAS_FILL_MODE_LOWER, ivector_dim_, quad_array_,
-        ivector_dim_, &L_work, num_lanes));
-  // allocate temp buffer
-  float *workspace = static_cast<float *>(
-          CuDevice::Instantiate().Malloc(L_work * sizeof(float)));
-
-  // perform factorization in batched
-  CUSOLVER_SAFE_CALL(hipsolverSpotrfBatched(
-        GetCusolverDnHandle(), CUBLAS_FILL_MODE_LOWER, ivector_dim_, quad_array_,
-        ivector_dim_, workspace, L_work, d_infoArray_, num_lanes));
-
-  int L_work2;
-
-  // perform factorization in batched
-  CUSOLVER_SAFE_CALL(hipsolverSpotrsBatched_bufferSize(
-		  GetCusolverDnHandle(), CUBLAS_FILL_MODE_LOWER, ivector_dim_, nrhs,
-		  quad_array_, ivector_dim_, ivec_array_, ivector_dim_, &L_work2, num_lanes));
-  // allocate temp buffer
-  float *workspace2 = static_cast<float *>(
-            CuDevice::Instantiate().Malloc(L_work2 * sizeof(float)));
-
-  // solve for rhs in batched
-  CUSOLVER_SAFE_CALL(hipsolverSpotrsBatched(
-      GetCusolverDnHandle(), CUBLAS_FILL_MODE_LOWER, ivector_dim_, nrhs,
-      quad_array_, ivector_dim_, ivec_array_, ivector_dim_, workspace2, L_work2, d_infoArray_,
-      num_lanes));
-
-  CuDevice::Instantiate().Free(workspace);
-  CuDevice::Instantiate().Free(workspace2);
-#else
   // perform factorization in batched
   CUSOLVER_SAFE_CALL(cusolverDnSpotrfBatched(
       GetCusolverDnHandle(), CUBLAS_FILL_MODE_LOWER, ivector_dim_, quad_array_,
@@ -429,7 +392,6 @@ void BatchedIvectorExtractorCuda::ComputeIvectorsFromStats(
       GetCusolverDnHandle(), CUBLAS_FILL_MODE_LOWER, ivector_dim_, nrhs,
       quad_array_, ivector_dim_, ivec_array_, ivector_dim_, d_infoArray_,
       num_lanes));
-#endif
 #endif
 
   // cusolver solves in place.  Ivectors are now in linear_
