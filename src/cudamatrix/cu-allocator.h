@@ -24,9 +24,10 @@
 
 #if HAVE_CUDA == 1
 #ifdef __IS_HIP_COMPILE__
-#include <hipblas/hipblas.h>
 #include <hip/hip_runtime.h>
 #include <hip/hip_runtime_api.h>
+#include <hipblas/hipblas.h>
+
 #include "hipify.h"
 #else
 #include <cublas_v2.h>

@@ -17,6 +17,7 @@
 //
 #ifdef __IS_HIP_COMPILE__
 #include <hipcub/hipcub.hpp>
+
 #include "hipify.h"
 #else
 #include <cub/cub.cuh>

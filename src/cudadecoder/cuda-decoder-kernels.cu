@@ -16,8 +16,9 @@
 // limitations under the License.
 
 #ifdef __IS_HIP_COMPILE__
-#include "float.h"
 #include <hipcub/hipcub.hpp>
+
+#include "float.h"
 #include "hipify.h"
 #else
 #include <cub/cub.cuh>

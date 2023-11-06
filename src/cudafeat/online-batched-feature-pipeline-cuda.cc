@@ -22,6 +22,7 @@
 
 #ifdef __IS_HIP_COMPILE__
 #include <roctracer/roctx.h>
+
 #include "hipify.h"
 #else
 #include <nvToolsExt.h>
@@ -100,7 +101,8 @@ OnlineBatchedFeaturePipelineCuda::OnlineBatchedFeaturePipelineCuda(
   current_samples_stash_ = new int32_t[num_channels_];
 
   // allocated pinned memory for storing channel desc
-  CU_SAFE_CALL(cudaMallocHost((void**)&h_lanes_, sizeof(LaneDesc) * max_lanes_));
+  CU_SAFE_CALL(
+      cudaMallocHost((void **)&h_lanes_, sizeof(LaneDesc) * max_lanes_));
 
   // allocate device memory
   lanes_ =

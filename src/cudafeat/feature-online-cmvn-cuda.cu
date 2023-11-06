@@ -18,6 +18,7 @@
 #ifdef __IS_HIP_COMPILE__
 #define __CUDA_ARCH__ 800
 #include <hipcub/hipcub.hpp>
+
 #include "hipify.h"
 #else
 #include <cub/cub.cuh>
@@ -189,7 +190,8 @@ void CudaOnlineCmvn::ComputeFeatures(const CuMatrixBase<BaseFloat> &feats_in,
       stats.Stride());
   CU_SAFE_CALL(cudaGetLastError());
 
-  threads = (feat_dim + GPU_WARP_SIZE - 1) / GPU_WARP_SIZE * GPU_MAX_WARPS_PER_BLOCK;  // round up to GPU_WARP_SIZE threads
+  threads = (feat_dim + GPU_WARP_SIZE - 1) / GPU_WARP_SIZE *
+            GPU_MAX_WARPS_PER_BLOCK;  // round up to GPU_WARP_SIZE threads
   if (threads > GPU_MAX_THREADS_PER_BLOCK) threads = GPU_MAX_THREADS_PER_BLOCK;
 
   const CuMatrix<float> &gstats = cmvn_state_.global_cmvn_stats;

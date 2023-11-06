@@ -21,6 +21,7 @@
 #if HAVE_CUDA == 1
 #ifdef __IS_HIP_COMPILE__
 #include <hipfft/hipfft.h>
+
 #include "hipify.h"
 #else
 #include <cufft.h>

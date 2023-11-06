@@ -25,6 +25,7 @@
 #ifdef __IS_HIP_COMPILE__
 #include <hip/hip_runtime_api.h>
 #include <roctracer/roctx.h>
+
 #include "hipify.h"
 #else
 #include <cuda_runtime_api.h>

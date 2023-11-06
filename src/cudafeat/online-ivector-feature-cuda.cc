@@ -18,6 +18,7 @@
 #if HAVE_CUDA == 1
 #ifdef __IS_HIP_COMPILE__
 #include <roctracer/roctx.h>
+
 #include "hipify.h"
 // The BLAS enumerators are used instead of the SOLVER ones.
 #ifdef CUBLAS_FILL_MODE_LOWER

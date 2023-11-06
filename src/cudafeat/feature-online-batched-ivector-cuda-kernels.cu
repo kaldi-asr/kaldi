@@ -18,6 +18,7 @@
 #if HAVE_CUDA == 1
 #ifdef __IS_HIP_COMPILE__
 #include <hipcub/hipcub.hpp>
+
 #include "hipify.h"
 #else
 #include <cub/cub.cuh>
@@ -102,8 +103,9 @@ void zero_invalid_posteriors(int32_t num_chunk_frames, int32_t num_gauss,
                              int32_t right, const LaneDesc *lanes,
                              int32_t num_lanes) {
   dim3 threads(GPU_WARP_SIZE, GPU_MAX_WARPS_PER_BLOCK);
-  dim3 blocks((num_gauss + GPU_WARP_SIZE - 1) / GPU_WARP_SIZE, 
-              (num_chunk_frames + GPU_MAX_WARPS_PER_BLOCK - 1) / GPU_MAX_WARPS_PER_BLOCK, 
+  dim3 blocks((num_gauss + GPU_WARP_SIZE - 1) / GPU_WARP_SIZE,
+              (num_chunk_frames + GPU_MAX_WARPS_PER_BLOCK - 1) /
+                  GPU_MAX_WARPS_PER_BLOCK,
               num_lanes);
 
   zero_invalid_posteriors_kernel<<<blocks, threads>>>(
@@ -217,8 +219,10 @@ void splice_features_batched(int32_t num_chunk_frames, int32_t feat_dim,
                              int32_t stridest, float *spliced_feats,
                              int32_t lds, int32_t strides,
                              const LaneDesc *lanes, int32_t num_lanes) {
-  int threads = (feat_dim + GPU_WARP_SIZE - 1) / GPU_WARP_SIZE * GPU_MAX_WARPS_PER_BLOCK;  // round up to the nearest warp size
-  if (threads > GPU_MAX_THREADS_PER_BLOCK) threads = GPU_MAX_THREADS_PER_BLOCK;       // Max block size is 1024 threads
+  int threads = (feat_dim + GPU_WARP_SIZE - 1) / GPU_WARP_SIZE *
+                GPU_MAX_WARPS_PER_BLOCK;  // round up to the nearest warp size
+  if (threads > GPU_MAX_THREADS_PER_BLOCK)
+    threads = GPU_MAX_THREADS_PER_BLOCK;  // Max block size is GPU_MAX_THREADS_PER_BLOCK threads
 
   dim3 blocks(num_chunk_frames, num_lanes);
 
@@ -314,8 +318,8 @@ void stash_feats(int32_t chunk_size, const float *feats, int32_t feat_dim,
     // is less than stash size
 
     KALDI_ASSERT(stash_size <= GPU_WARP_SIZE);
-    // This only works if stash size is <= GPU_WARP_SIZE as we rely on __syncthreads()
-    // to avoid read/write hazards when reading/writing in-place
+    // This only works if stash size is <= GPU_WARP_SIZE as we rely on
+    // __syncthreads() to avoid read/write hazards when reading/writing in-place
     dim3 threads(GPU_WARP_SIZE, GPU_MAX_WARPS_PER_BLOCK);
     dim3 blocks(num_lanes);
 
@@ -325,9 +329,11 @@ void stash_feats(int32_t chunk_size, const float *feats, int32_t feat_dim,
   }
 
   {
-    int threads =
-        (feat_dim + GPU_WARP_SIZE - 1) / GPU_WARP_SIZE * GPU_MAX_WARPS_PER_BLOCK;       // round up to the nearest warp size
-    if (threads > GPU_MAX_THREADS_PER_BLOCK) threads = GPU_MAX_THREADS_PER_BLOCK;  // Max block size is GPU_MAX_THREADS_PER_BLOCK threads
+    int threads = (feat_dim + GPU_WARP_SIZE - 1) / GPU_WARP_SIZE *
+                  GPU_MAX_WARPS_PER_BLOCK;  // round up to the nearest warp size
+    if (threads > GPU_MAX_THREADS_PER_BLOCK)
+      threads = GPU_MAX_THREADS_PER_BLOCK;  // Max block size is
+                                            // GPU_MAX_THREADS_PER_BLOCK threads
     dim3 blocks(stash_size, num_lanes);
 
     // Then we need to copy feats from source into stash
@@ -510,7 +516,8 @@ void batched_convert_sp_to_dense(int n, float *A_sp, int32_t strides, float *A,
                                  int32_t lda, int32_t stridea,
                                  const LaneDesc *lanes, int32_t num_lanes) {
   dim3 threads(GPU_WARP_SIZE, GPU_MAX_WARPS_PER_BLOCK);
-  int block = (n + GPU_WARP_SIZE - 1) / GPU_WARP_SIZE;  // blocks in x and y dimensions
+  int block =
+      (n + GPU_WARP_SIZE - 1) / GPU_WARP_SIZE;  // blocks in x and y dimensions
   dim3 blocks(block, block, num_lanes);
 
   batched_convert_sp_to_dense_kernel<<<blocks, threads>>>(

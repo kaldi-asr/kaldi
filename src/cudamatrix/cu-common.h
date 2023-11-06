@@ -32,11 +32,12 @@
 #if HAVE_CUDA
 
 #ifdef __IS_HIP_COMPILE__
-#include <hipblas/hipblas.h>
-#include <hipsparse/hipsparse.h>
 #include <hip/hip_runtime_api.h>
+#include <hipblas/hipblas.h>
 #include <hiprand/hiprand.h>
+#include <hipsparse/hipsparse.h>
 #include <roctracer/roctx.h>
+
 #include "hipify.h"
 #else
 #include <cublas_v2.h>
