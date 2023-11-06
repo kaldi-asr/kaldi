@@ -249,8 +249,12 @@ void CuDevice::SelectGpuId(std::string use_gpu) {
     return;
   } else {
     // Suggest to use compute exclusive mode
+  #ifdef __IS_HIP_COMPILE__
+    KALDI_WARN << "Not in compute-exclusive mode.";
+  #else 
     KALDI_WARN << "Not in compute-exclusive mode.  Suggestion: use "
         "'nvidia-smi -c 3' to set compute exclusive mode";
+  #endif
     // We want to choose the device more carefully, so release the CUDA context.
     e = cudaDeviceReset();
     if (e != cudaSuccess) {

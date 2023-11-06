@@ -639,7 +639,10 @@ void CuVectorBase<Real>::AddDiagMatMat(Real alpha, const CuMatrixBase<Real> &M,
                                   N.Data(), N.Stride(), beta, data_);
       } else {
         // Case 2: diag(M'*N) == sum(M.*N, 1)
-        // 16x16 or 8x32 2D block for coalesced memory access.
+        // (2*CU1DBLOCK/GPU_WARP_SIZE)xGPU_WARP_SIZE/2
+        // or
+        // (CU1DBLOCK/GPU_WARP_SIZE)xGPU_WARP_SIZE
+        // 2D block for coalesced memory access.
         // Grid shape is designed as follows,
         // 1. for small matrices, use 1D grid with only 1 row of 16x16 block,
         //    to avoid multiple kernel launch;
@@ -647,11 +650,11 @@ void CuVectorBase<Real>::AddDiagMatMat(Real alpha, const CuMatrixBase<Real> &M,
         //    use 1- or 2-D grid so that the grid contains
         //    at least and not much larger than 'kOptNumBlocks' blocks
         //    to fully utilize the GPU;
-        const int32 warpSize = 32;
+        const int32 warpSize = GPU_WARP_SIZE;
         const int32 kOptNumBlocks = 512;
         const int32 tile_dim =
             (N.NumRows() < 4096 && N.NumCols() < kOptNumBlocks * warpSize) ?
-                16 : 32;
+                GPU_WARP_SIZE/2 : GPU_WARP_SIZE;
         dim3 dimBlock(tile_dim, CU1DBLOCK / tile_dim);
         dim3 dimGrid(n_blocks(N.NumCols(), dimBlock.x),
                      n_blocks(N.NumRows(), dimBlock.y));
@@ -678,7 +681,7 @@ void CuVectorBase<Real>::AddDiagMatMat(Real alpha, const CuMatrixBase<Real> &M,
         // One block per 'tile_dim' columns of N.
         // 1D grid expands along the row of N.
         int tile_dim =
-            sizeof(Real) == sizeof(float) && N.NumCols() >= 2048 ? 32 : 16;
+            sizeof(Real) == sizeof(float) && N.NumCols() >= 2048 ? GPU_WARP_SIZE : GPU_WARP_SIZE/2;
         dim3 dimBlock(tile_dim, CU1DBLOCK / tile_dim);
         dim3 dimGrid(n_blocks(N.NumCols(), tile_dim));
         cuda_add_diag_mat_mat_MN(dimGrid, dimBlock, alpha, M.Data(), M.Stride(),
@@ -687,7 +690,7 @@ void CuVectorBase<Real>::AddDiagMatMat(Real alpha, const CuMatrixBase<Real> &M,
         // Case 4: diag(M'*N') == sum(N'.*M, 1)
         // Same kernel and config as case 3 except M and N are swapped.
         int tile_dim =
-            sizeof(Real) == sizeof(float) && N.NumCols() >= 2048 ? 32 : 16;
+            sizeof(Real) == sizeof(float) && N.NumCols() >= 2048 ? GPU_WARP_SIZE : GPU_WARP_SIZE/2;
         dim3 dimBlock(tile_dim, CU1DBLOCK / tile_dim);
         dim3 dimGrid(n_blocks(M.NumCols(), tile_dim));
         cuda_add_diag_mat_mat_MN(dimGrid, dimBlock, alpha, N.Data(), N.Stride(),

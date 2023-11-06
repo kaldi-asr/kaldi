@@ -2,7 +2,19 @@
 #define __HIPIFY_H__
 
 #ifdef __HIPCC__
-inline __device__ void __syncwarp(unsigned mask=0xffffffff) {}
+inline __device__ void __syncwarp(unsigned mask=0xffffffff) {
+    // On CDNA hardware wave-fronts (warps) execute always in
+    // lock step. Though it might still be important to signal
+    // that the compiler can't reorder code around certain code 
+    // sections that rely on data sharing mecanisms like LDS 
+    // (shared memory). So this implements a No-op but is seen
+    // by the compiler as having side effects. 
+    __asm__("s_nop 0");
+
+    // A saffest option, arguably less performant would be to use:
+    // __asm__("s_waitcnt lgkmcnt(0)"); Í
+    // to explicitly do a memory fence. 
+}
 // AMDGCN only support this rounding mode.
 #define __fdiv_rd __fdiv_rn
 #else
@@ -153,7 +165,16 @@ inline __device__ void __syncwarp(unsigned mask=0xffffffff) {}
 #define cudaMallocHost                            hipHostMalloc
 #define cudaMallocPitch                           hipMallocPitch
 #define cudaMemcpy                                hipMemcpy
-#define cudaMemcpy2DAsync                         hipMemcpy2DAsync
+// hipMemcpy2DAsync has a disparity to its CUDA counterpart for zero-sized 
+// copies, which should be canceled by ROCm 5.7.1+. Then the following would
+// be sufficient:
+// #define cudaMemcpy2DAsync hipMemcpy2DAsync
+#define cudaMemcpy2DAsync(a,b,c,d,width,height,e,f) \
+    [&]() -> hipError_t { \
+        if (width && height) \
+            return hipMemcpy2DAsync(a,b,c,d,width,height,e,f); \
+        return hipSuccess; \
+    }()
 #define cudaMemcpyAsync                           hipMemcpyAsync
 #define cudaMemcpyDeviceToDevice                  hipMemcpyDeviceToDevice
 #define cudaMemcpyDeviceToHost                    hipMemcpyDeviceToHost
@@ -166,8 +187,7 @@ inline __device__ void __syncwarp(unsigned mask=0xffffffff) {}
 #define cudaStreamCreate                          hipStreamCreate
 #define cudaStreamCreateWithFlags                 hipStreamCreateWithFlags
 #define cudaStreamDestroy                         hipStreamDestroy
-#define cudaStreamLegacy                          ((hipStream_t)1)
-#define cudaStreamNonBlocking                      hipStreamNonBlocking
+#define cudaStreamNonBlocking                     hipStreamNonBlocking
 #define cudaStreamPerThread                       ((hipStream_t)2)
 #define cudaStreamSynchronize                     hipStreamSynchronize
 #define cudaStreamWaitEvent                       hipStreamWaitEvent
@@ -243,6 +263,13 @@ inline __device__ void __syncwarp(unsigned mask=0xffffffff) {}
 //
 #define cub hipcub
 
+//
+// Callback qualifier
+//
+#define CUDART_CB
 
+#define GPU_WARP_SIZE 64
+#define GPU_MAX_THREADS_PER_BLOCK 1024
+#define GPU_MAX_WARPS_PER_BLOCK (GPU_MAX_THREADS_PER_BLOCK/GPU_WARP_SIZE)
 #endif //__HIPIFY_H__
 

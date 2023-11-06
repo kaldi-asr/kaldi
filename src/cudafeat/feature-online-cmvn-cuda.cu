@@ -188,8 +188,8 @@ void CudaOnlineCmvn::ComputeFeatures(const CuMatrixBase<BaseFloat> &feats_in,
       stats.Stride());
   CU_SAFE_CALL(cudaGetLastError());
 
-  threads = (feat_dim + 31) / 32 * 32;  // round up to 32 threads
-  if (threads > 1024) threads = 1024;
+  threads = (feat_dim + GPU_WARP_SIZE - 1) / GPU_WARP_SIZE * GPU_MAX_WARPS_PER_BLOCK;  // round up to GPU_WARP_SIZE threads
+  if (threads > GPU_MAX_THREADS_PER_BLOCK) threads = GPU_MAX_THREADS_PER_BLOCK;
 
   const CuMatrix<float> &gstats = cmvn_state_.global_cmvn_stats;
   const CuMatrix<float> &sstats = cmvn_state_.speaker_cmvn_stats;

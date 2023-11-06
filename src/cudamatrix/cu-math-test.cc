@@ -214,9 +214,9 @@ void UnitTestLstmNonlinearity() {
   for (int32 loop = 0; loop < 10; loop++) {
 
     // problem dimensions.
-    int32 num_rows = RandInt(5, 20),
-          cell_dim = RandInt(2, 200),
-        dropout_dim = (RandInt(0, 1) == 0 ? 0 : 3);
+    int32 num_rows = RandInt(5, 20), //16
+          cell_dim = RandInt(2, 200), //45
+        dropout_dim = (RandInt(0, 1) == 0 ? 0 : 3); //3
 
     // Pick the (input or params block), and output block, for which we'll
     // spot-check the derivative values.  This will give us test failures
@@ -231,7 +231,6 @@ void UnitTestLstmNonlinearity() {
       test_input = -1;
     else
       test_params = -1;
-
 
     CuMatrix<BaseFloat> input(num_rows, cell_dim * 5 + dropout_dim),
         params(3, cell_dim),
@@ -277,11 +276,11 @@ void UnitTestLstmNonlinearity() {
     for (int32 i = 0; i < test_dim; i++) {
       CuMatrix<BaseFloat> delta_input(num_rows, 5 * cell_dim + dropout_dim),
           delta_params(3, cell_dim);
-      if (test_input >= 0) {
+      if (test_input >= 0) { // -1
         delta_input.ColRange(test_input * cell_dim, cell_dim).SetRandn();
         delta_input.Scale(delta);
       }
-      if (test_params >= 0) {
+      if (test_params >= 0) { // 0
         delta_params.Row(test_params).SetRandn();
         delta_params.Scale(delta);
       }
