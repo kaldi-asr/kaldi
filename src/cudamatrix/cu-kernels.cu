@@ -2135,8 +2135,8 @@ static void _group_transform_reduce(
     __syncthreads();
 
     // tree-reduce to 2x warpSize elements per group
-#   pragma unroll
     int shift = threads_per_group / 2;
+#   pragma unroll
     for (; shift > warpSize; shift >>= 1) {
       if (threadIdx.x < shift) {
         sreduction[tid] = op.Reduce(sreduction[tid], sreduction[tid + shift]);
