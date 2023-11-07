@@ -45,6 +45,10 @@
 #include <curand.h>
 #include <cusparse.h>
 #include <nvToolsExt.h>
+
+#define GPU_WARP_SIZE 32
+#define GPU_MAX_THREADS_PER_BLOCK 1024
+#define GPU_MAX_WARPS_PER_BLOCK (GPU_MAX_THREADS_PER_BLOCK / GPU_WARP_SIZE)
 #endif
 
 #define CU_SAFE_CALL(fun) \

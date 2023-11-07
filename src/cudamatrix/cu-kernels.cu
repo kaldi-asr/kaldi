@@ -39,6 +39,7 @@
 #include "hipify.h"
 #else
 #include <math_constants.h>
+#include "cudamatrix/cu-common.h"
 #include "cudamatrix/cu-kernels-ansi.h"
 #include <cub/block/block_reduce.cuh>
 #include <cuda.h> // for CUDA_VERSION
