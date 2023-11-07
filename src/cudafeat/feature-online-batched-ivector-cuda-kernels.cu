@@ -222,7 +222,8 @@ void splice_features_batched(int32_t num_chunk_frames, int32_t feat_dim,
   int threads = (feat_dim + GPU_WARP_SIZE - 1) / GPU_WARP_SIZE *
                 GPU_MAX_WARPS_PER_BLOCK;  // round up to the nearest warp size
   if (threads > GPU_MAX_THREADS_PER_BLOCK)
-    threads = GPU_MAX_THREADS_PER_BLOCK;  // Max block size is GPU_MAX_THREADS_PER_BLOCK threads
+    threads = GPU_MAX_THREADS_PER_BLOCK;  // Max block size is
+                                          // GPU_MAX_THREADS_PER_BLOCK threads
 
   dim3 blocks(num_chunk_frames, num_lanes);
 

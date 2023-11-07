@@ -32,11 +32,11 @@
 #include <hip/hip_math_constants.h>
 #include <hip/hip_runtime.h>
 
-#include "hipify.h"
 #include <hipcub/block/block_reduce.hpp>
 #include <hipcub/hipcub.hpp>
 
 #include "cudamatrix/cu-kernels-ansi.h"
+#include "hipify.h"
 #else
 #include <math_constants.h>
 #include "cudamatrix/cu-kernels-ansi.h"

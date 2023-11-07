@@ -275,7 +275,7 @@ inline __device__ void __syncwarp(unsigned mask = 0xffffffff) {
 #define CUDART_INF_F HIP_INF_F
 
 //
-// GPU static hardware characteristics. 
+// GPU static hardware characteristics.
 //
 #define GPU_WARP_SIZE 64
 #define GPU_MAX_THREADS_PER_BLOCK 1024
