@@ -32,8 +32,8 @@
 #include <hip/hip_math_constants.h>
 #include <hip/hip_runtime.h>
 
-#include <hipcub/block/block_reduce.hpp>
 #include <hipcub/hipcub.hpp>
+#include <hipcub/block/block_reduce.hpp>
 
 #include "cudamatrix/cu-kernels-ansi.h"
 #include "hipify.h"
