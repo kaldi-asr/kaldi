@@ -3,8 +3,14 @@ all:
 EXTRA_CXXFLAGS = -Wno-sign-compare
 include ../kaldi.mk
 
+ifeq ($(CUDA), true)
 LDFLAGS += $(CUDA_LDFLAGS)
 LDLIBS += $(CUDA_LDLIBS)
+endif
+ifeq ($(ROCM), true)
+LDFLAGS += $(ROCM_LDFLAGS)
+LDLIBS += $(ROCM_LDLIBS)
+endif
 
 BINFILES = nnet3-init nnet3-info nnet3-get-egs nnet3-copy-egs nnet3-subset-egs \
    nnet3-shuffle-egs nnet3-acc-lda-stats nnet3-merge-egs \

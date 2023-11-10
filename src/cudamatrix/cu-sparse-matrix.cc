@@ -22,8 +22,15 @@
 
 
 #if HAVE_CUDA == 1
+#ifdef __IS_HIP_COMPILE__
+#include <hip/hip_runtime_api.h>
+#include <hipblas/hipblas.h>
+
+#include "hipify.h"
+#else
 #include <cuda_runtime_api.h>
 #include <cublas_v2.h>
+#endif
 #endif
 
 #include <utility>
@@ -138,7 +145,7 @@ void CuSparseMatrix<Real>::SelectRows(const CuArray<int32> &row_indexes,
     // We use warpSize threads per row to access only the nnz elements.
     // Every CU1DBLOCK/warpSize rows share one thread block.
     // 1D grid to cover all selected rows.
-    const int warpSize = 32;
+    const int warpSize = GPU_WARP_SIZE;
     dim3 dimBlock(warpSize, CU1DBLOCK / warpSize);
     dim3 dimGrid(n_blocks(row_indexes.Dim(), dimBlock.y));
 
@@ -571,7 +578,7 @@ Real TraceMatSmat(const CuMatrixBase<Real> &A,
     // We use warpSize threads per row to access only the nnz elements.
     // Every CU1DBLOCK/warpSize rows share one thread block.
     // 1D grid to cover all rows of B.
-    const int warpSize = 32;
+    const int warpSize = GPU_WARP_SIZE;
     dim3 dimBlock(warpSize, CU1DBLOCK / warpSize);
     dim3 dimGrid(n_blocks(B.NumRows(), dimBlock.y));
 
@@ -661,7 +668,7 @@ void CuSparseMatrix<Real>::CopyToMat(CuMatrixBase<OtherReal> *M,
     // We use warpSize threads per row to access only the nnz elements.
     // Every CU1DBLOCK/warpSize rows share one thread block.
     // 1D grid to cover all rows.
-    const int warpSize = 32;
+    const int warpSize = GPU_WARP_SIZE;
     dim3 dimBlock(warpSize, CU1DBLOCK / warpSize);
     dim3 dimGrid(n_blocks(NumRows(), dimBlock.y));
 

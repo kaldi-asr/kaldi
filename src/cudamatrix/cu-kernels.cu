@@ -27,11 +27,23 @@
 
 #include <cfloat>
 #include <limits>
+#ifdef __IS_HIP_COMPILE__
+#define __CUDA_ARCH__ 800
+#include <hip/hip_math_constants.h>
+#include <hip/hip_runtime.h>
+
+#include <hipcub/hipcub.hpp>
+#include <hipcub/block/block_reduce.hpp>
+
+#include "cudamatrix/cu-kernels-ansi.h"
+#include "hipify.h"
+#else
 #include <math_constants.h>
+#include "cudamatrix/cu-common.h"
 #include "cudamatrix/cu-kernels-ansi.h"
 #include <cub/block/block_reduce.cuh>
 #include <cuda.h> // for CUDA_VERSION
-
+#endif            //__IS_HIP_COMPILE__
 
 /***********************************************************************
  * Generic __device__ functions
@@ -1110,8 +1122,8 @@ void trace_mat_mat_trans_atomic(Real *d_result,
                                 cudaStream_t stream) {
   // Assuming *d_result is set to zero already
 
-  constexpr int THREADS_X = 32;
-  constexpr int THREADS_Y = 16;
+  constexpr int THREADS_X = GPU_WARP_SIZE;
+  constexpr int THREADS_Y = GPU_MAX_WARPS_PER_BLOCK / 2;
 
   dim3 thrds(THREADS_X, THREADS_Y);
 
@@ -1168,6 +1180,7 @@ static void _trace_mat_mat_trans(const Real* A, const Real* B, MatrixDim dA,
 #   pragma unroll
     for (int shift = warpSize; shift > 0; shift >>= 1) {
       ssum[tid] += ssum[tid + shift];
+      __syncwarp();
     }
   }
 
@@ -2098,8 +2111,8 @@ static void _group_transform_reduce(
     __syncthreads();
 
     // tree-reduce to 2x warpSize elements per group
-#   pragma unroll
     int shift = threads_per_group / 2;
+#pragma unroll
     for (; shift > warpSize; shift >>= 1) {
       if (threadIdx.x < shift) {
         sreduction[tid] = op.Reduce(sreduction[tid], sreduction[tid + shift]);
@@ -3997,9 +4010,9 @@ struct  BatchedMatrixCopyDesc {
   MatrixCopyDesc<Real> batch[MAX_BATCH_SIZE];
 };
 
-// launched with a block size of 32x32 (32 rows, 32 cols per CTA)
-// grid dim x,y expands to fill out average in x/y across batches
-// grid dim.z is batch
+// launched with a block size of GPU_MAX_WARPS_PER_BLOCKxGPU_WARP_SIZE
+// (GPU_MAX_WARPS_PER_BLOCK rows, GPU_WARP_SIZE cols per CTA) grid dim x,y
+// expands to fill out average in x/y across batches grid dim.z is batch
 template<typename Real>
 __global__ 
 void _cuda_batch_copy_mats(BatchedMatrixCopyDesc<Real> batch_desc) {
@@ -4378,7 +4391,7 @@ void cudaF_trace_mat_mat_trans(const float* A, const float* B,
 
 void cudaF_trace_mat_mat(dim3 Gr, dim3 Bl, const float* A, const float* B,
                          MatrixDim dA, int B_stride, float* value) {
-  _trace_mat_mat<32> <<<Gr,Bl>>>(A,B,dA,B_stride,value);
+  _trace_mat_mat<GPU_WARP_SIZE><<<Gr, Bl>>>(A, B, dA, B_stride, value);
 }
 
 void cudaF_add_diag_mat_mat_MNT(int Gr, int Bl, const float alpha,
@@ -4399,6 +4412,11 @@ void cudaF_add_diag_mat_mat_MTN(dim3 Gr, dim3 Bl, const float alpha,
   } else if (Bl.x == 32) {
     _add_diag_mat_mat_MTN<32> <<<Gr, Bl>>>(alpha, M, stride_M, N, dim_N, beta,
                                            v, stride_v);
+#ifdef __IS_HIP_COMPILE__
+  } else if (Bl.x == 64) {
+    _add_diag_mat_mat_MTN<64>
+        <<<Gr, Bl>>>(alpha, M, stride_M, N, dim_N, beta, v, stride_v);
+#endif
   }
 }
 
@@ -4409,7 +4427,11 @@ void cudaF_add_diag_mat_mat_MN(dim3 Gr, dim3 Bl, const float alpha,
   if (Bl.x == 16) {
     _add_diag_mat_mat_MN<16> <<<Gr,Bl>>>(alpha,M,stride_M,N,dim_N,beta,v);
   } else if (Bl.x==32) {
-    _add_diag_mat_mat_MN<32><<<Gr,Bl>>>(alpha,M,stride_M,N,dim_N,beta,v);
+    _add_diag_mat_mat_MN<32><<<Gr, Bl>>>(alpha, M, stride_M, N, dim_N, beta, v);
+#ifdef __IS_HIP_COMPILE__
+  } else if (Bl.x == 64) {
+    _add_diag_mat_mat_MN<64><<<Gr, Bl>>>(alpha, M, stride_M, N, dim_N, beta, v);
+#endif
   }
 }
 
@@ -5084,7 +5106,7 @@ void cudaD_trace_mat_mat_trans(const double* A,
 
 void cudaD_trace_mat_mat(dim3 Gr, dim3 Bl, const double* A, const double* B,
                          MatrixDim dA, int B_stride, double* value) {
-  _trace_mat_mat<32> <<<Gr,Bl>>>(A,B,dA,B_stride,value);
+  _trace_mat_mat<GPU_WARP_SIZE><<<Gr, Bl>>>(A, B, dA, B_stride, value);
 }
 
 void cudaD_add_diag_mat_mat_MNT(int Gr, int Bl, const double alpha,
@@ -5105,6 +5127,11 @@ void cudaD_add_diag_mat_mat_MTN(dim3 Gr, dim3 Bl, const double alpha,
   } else if (Bl.x == 32) {
     _add_diag_mat_mat_MTN<32> <<<Gr, Bl>>>(alpha, M, stride_M, N, dim_N, beta,
                                            v, stride_v);
+#ifdef __IS_HIP_COMPILE__
+  } else if (Bl.x == 64) {
+    _add_diag_mat_mat_MTN<64>
+        <<<Gr, Bl>>>(alpha, M, stride_M, N, dim_N, beta, v, stride_v);
+#endif
   }
 }
 
@@ -5115,7 +5142,11 @@ void cudaD_add_diag_mat_mat_MN(dim3 Gr, dim3 Bl, const double alpha,
   if (Bl.x == 16) {
     _add_diag_mat_mat_MN<16> <<<Gr,Bl>>>(alpha,M,stride_M,N,dim_N,beta,v);
   } else if (Bl.x==32) {
-    _add_diag_mat_mat_MN<32><<<Gr,Bl>>>(alpha,M,stride_M,N,dim_N,beta,v);
+    _add_diag_mat_mat_MN<32><<<Gr, Bl>>>(alpha, M, stride_M, N, dim_N, beta, v);
+#ifdef __IS_HIP_COMPILE__
+  } else if (Bl.x == 64) {
+    _add_diag_mat_mat_MN<64><<<Gr, Bl>>>(alpha, M, stride_M, N, dim_N, beta, v);
+#endif
   }
 }
 
@@ -5486,25 +5517,25 @@ void cuda_copy_from_mat_dd(dim3 Gr, dim3 Bl, double *mat_out,
 void cuda_copy_from_mat_df_trans(dim3 Gr, dim3 Bl, double* mat_out,
                                  const float* mat_in, MatrixDim d_out,
                                  MatrixDim d_in) {
-  _copy_from_mat_trans<32> <<<Gr,Bl>>>(mat_out,mat_in,d_out,d_in);
+  _copy_from_mat_trans<GPU_WARP_SIZE><<<Gr, Bl>>>(mat_out, mat_in, d_out, d_in);
 }
 
 void cuda_copy_from_mat_ff_trans(dim3 Gr, dim3 Bl, float* mat_out,
                                  const float* mat_in, MatrixDim d_out,
                                  MatrixDim d_in) {
-  _copy_from_mat_trans<32> <<<Gr,Bl>>>(mat_out,mat_in,d_out,d_in);
+  _copy_from_mat_trans<GPU_WARP_SIZE><<<Gr, Bl>>>(mat_out, mat_in, d_out, d_in);
 }
 
 void cuda_copy_from_mat_fd_trans(dim3 Gr, dim3 Bl, float *mat_out,
                                  const double* mat_in, MatrixDim d_out,
                                  MatrixDim d_in) {
-  _copy_from_mat_trans<32> <<<Gr,Bl>>>(mat_out,mat_in,d_out,d_in);
+  _copy_from_mat_trans<GPU_WARP_SIZE><<<Gr, Bl>>>(mat_out, mat_in, d_out, d_in);
 }
 
 void cuda_copy_from_mat_dd_trans(dim3 Gr, dim3 Bl, double *mat_out,
                                  const double* mat_in, MatrixDim d_out,
                                  MatrixDim d_in) {
-  _copy_from_mat_trans<32> <<<Gr,Bl>>>(mat_out,mat_in,d_out,d_in);
+  _copy_from_mat_trans<GPU_WARP_SIZE><<<Gr, Bl>>>(mat_out, mat_in, d_out, d_in);
 }
 
 void cuda_copy_from_smat_ff(dim3 Gr, dim3 Bl, float* mat, MatrixDim mat_dim,
@@ -5800,7 +5831,15 @@ void cuda_uncompress_int16(dim3 Gr, dim3 Bl, BaseFloat *dest,
 // Launches a kernel that does nothing, explicitly using the legacy default stream;
 // this will synchronize all threads without blocking.
 void cuda_legacy_noop() {
+#ifdef __IS_HIP_COMPILE__
+  // HIP doesn't currently support cudaStreamLegacy stream so we force the
+  // implementation to use the legacy (not per-thread) API to get similar
+  // semantics.
+  auto k = reinterpret_cast<void*>(_noop_kernel);
+  hipExtLaunchKernel(k, dim3(1), dim3(1), nullptr, 0, 0, 0, 0, 0);
+#else
   _noop_kernel<<<1, 1, 0, cudaStreamLegacy>>>();
+#endif
 }
 
 void cudaF_mat_copy_range_clamped(
@@ -5810,8 +5849,10 @@ void cudaF_mat_copy_range_clamped(
    float *dst, int32_t ldd) {
 
   int32_t num_rows =  row_end - row_start;
-  dim3 threads(32,32);
-  dim3 blocks((num_cols+31)/32,(num_rows+31)/32);
+  dim3 threads(GPU_WARP_SIZE, GPU_MAX_WARPS_PER_BLOCK);
+  dim3 blocks(
+      (num_cols + GPU_WARP_SIZE - 1) / GPU_WARP_SIZE,
+      (num_rows + GPU_MAX_WARPS_PER_BLOCK - 1) / GPU_MAX_WARPS_PER_BLOCK);
 
   _cuda_mat_copy_range_clamped<float><<<blocks,threads>>>(row_start, row_end, num_cols,
       src, lds, clamp_low, clamp_high, dst, ldd);
@@ -5824,8 +5865,10 @@ void cudaD_mat_copy_range_clamped(
    double *dst, int32_t ldd) {
 
   int32_t num_rows =  row_end - row_start;
-  dim3 threads(32,32);
-  dim3 blocks((num_cols+31)/32,(num_rows+31)/32);
+  dim3 threads(GPU_WARP_SIZE, GPU_MAX_WARPS_PER_BLOCK);
+  dim3 blocks(
+      (num_cols + GPU_WARP_SIZE - 1) / GPU_WARP_SIZE,
+      (num_rows + GPU_MAX_WARPS_PER_BLOCK - 1) / GPU_MAX_WARPS_PER_BLOCK);
 
   _cuda_mat_copy_range_clamped<double><<<blocks,threads>>>(row_start, row_end, num_cols,
       src, lds, clamp_low, clamp_high, dst, ldd);
@@ -5834,8 +5877,7 @@ void cudaD_mat_copy_range_clamped(
 void cudaF_batched_copy_mats(int32_t num_mats, int32_t *num_rows,
     int32_t *num_cols, const float **inputs, int32_t *ldi, float **outputs,
     int32_t *ldo) {
-
-  dim3 threads(32,32);
+  dim3 threads(GPU_WARP_SIZE, GPU_MAX_WARPS_PER_BLOCK);
   int32_t total_rows=0, total_cols=0;
   
   BatchedMatrixCopyDesc<float> batch_desc; 
@@ -5861,9 +5903,10 @@ void cudaF_batched_copy_mats(int32_t num_mats, int32_t *num_rows,
       // compute average number of rows/cols across batch
       int32_t rows = ceilf(total_rows / (float)MAX_BATCH_SIZE);
       int32_t cols = ceilf(total_cols / (float)MAX_BATCH_SIZE);
-      dim3 blocks((cols + 31) / 32,
-                  (rows + 31) / 32, 
-                  MAX_BATCH_SIZE);
+      dim3 blocks(
+          (cols + GPU_WARP_SIZE - 1) / GPU_WARP_SIZE,
+          (rows + GPU_MAX_WARPS_PER_BLOCK - 1) / GPU_MAX_WARPS_PER_BLOCK,
+          MAX_BATCH_SIZE);
 
       // no memcpy needed here.  Memory will be passed down directly
       // through paramter passing and live in constant memory
@@ -5883,10 +5926,11 @@ void cudaF_batched_copy_mats(int32_t num_mats, int32_t *num_rows,
       // compute average number of rows/cols across batch
       int32_t rows = ceilf(total_rows / (float)remaining);
       int32_t cols = ceilf(total_cols / (float)remaining);
-      
-      dim3 blocks((cols + 31) / 32,
-                  (rows + 31) / 32, 
-                  remaining);
+
+      dim3 blocks(
+          (cols + GPU_WARP_SIZE - 1) / GPU_WARP_SIZE,
+          (rows + GPU_MAX_WARPS_PER_BLOCK - 1) / GPU_MAX_WARPS_PER_BLOCK,
+          remaining);
 
       // no memcpy needed here.  Memory will be passed down directly
       // through paramter passing and live in constant memory
@@ -5899,8 +5943,7 @@ void cudaF_batched_copy_mats(int32_t num_mats, int32_t *num_rows,
 void cudaD_batched_copy_mats(int32_t num_mats, int32_t *num_rows,
     int32_t *num_cols, const double **inputs, int32_t *ldi, double **outputs,
     int32_t *ldo) {
-
-  dim3 threads(32,32);
+  dim3 threads(GPU_WARP_SIZE, GPU_MAX_WARPS_PER_BLOCK);
   int32_t total_rows=0, total_cols=0;
   
   BatchedMatrixCopyDesc<double> batch_desc; 
@@ -5926,9 +5969,10 @@ void cudaD_batched_copy_mats(int32_t num_mats, int32_t *num_rows,
       // compute average number of rows/cols across batch
       int32_t rows = ceilf(total_rows / (float)MAX_BATCH_SIZE);
       int32_t cols = ceilf(total_cols / (float)MAX_BATCH_SIZE);
-      dim3 blocks((cols + 31) / 32,
-                  (rows + 31) / 32, 
-                  MAX_BATCH_SIZE);
+      dim3 blocks(
+          (cols + GPU_WARP_SIZE - 1) / GPU_WARP_SIZE,
+          (rows + GPU_MAX_WARPS_PER_BLOCK - 1) / GPU_MAX_WARPS_PER_BLOCK,
+          MAX_BATCH_SIZE);
 
       // no memcpy needed here.  Memory will be passed down directly
       // through paramter passing and live in constant memory
@@ -5949,10 +5993,11 @@ void cudaD_batched_copy_mats(int32_t num_mats, int32_t *num_rows,
       int32_t rows = ceilf(total_rows / (float)remaining);
       int32_t cols = ceilf(total_cols / (float)remaining);
 
-      dim3 blocks((cols + 31) / 32,
-                  (rows + 31) / 32, 
-                  remaining);
-      
+      dim3 blocks(
+          (cols + GPU_WARP_SIZE - 1) / GPU_WARP_SIZE,
+          (rows + GPU_MAX_WARPS_PER_BLOCK - 1) / GPU_MAX_WARPS_PER_BLOCK,
+          remaining);
+
       // no memcpy needed here.  Memory will be passed down directly
       // through paramter passing and live in constant memory
 

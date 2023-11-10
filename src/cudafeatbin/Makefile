@@ -3,12 +3,14 @@ all: ;
 EXTRA_CXXFLAGS = -Wno-sign-compare
 include ../kaldi.mk
 
-ifeq ($(CUDA), true)
+ifeq ($(IS_GPU_BUILD), true)
 ifeq ($(WITH_CUDADECODER), true)
 
 # Make sure we have CUDA_ARCH from kaldi.mk,
-ifndef CUDA_ARCH
-  $(error CUDA_ARCH is undefined, run 'src/configure')
+ifeq ($(CUDA), true)
+  ifndef CUDA_ARCH
+    $(error CUDA_ARCH is undefined, run 'src/configure')
+  endif
 endif
 
 LDFLAGS += $(CUDA_LDFLAGS)

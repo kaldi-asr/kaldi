@@ -15,6 +15,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifdef __IS_HIP_COMPILE__
+#include "hipify.h"
+// The BLAS enumerators are used instead of the SOLVER ones.
+#ifdef CUBLAS_FILL_MODE_LOWER
+#undef CUBLAS_FILL_MODE_LOWER
+#endif
+#define CUBLAS_FILL_MODE_LOWER HIPSOLVER_FILL_MODE_LOWER
+#ifdef CUDA_R_32F
+#undef CUDA_R_32F
+#endif
+#define CUDA_R_32F HIPBLAS_R_32F
+#endif
+
 #include "cudafeat/feature-online-batched-ivector-cuda.h"
 #include "cudafeat/feature-online-batched-ivector-cuda-kernels.h"
 
