@@ -438,11 +438,9 @@ class CompactLatticeWeightTpl {
   CompactLatticeWeightTpl(const WeightType &w, const std::vector<IntType> &s):
       weight_(w), string_(s) { }
 
-  CompactLatticeWeightTpl &operator=(const CompactLatticeWeightTpl<WeightType, IntType> &w) {
-    weight_ = w.weight_;
-    string_ = w.string_;
-    return *this;
-  }
+  CompactLatticeWeightTpl(const CompactLatticeWeightTpl &compactLatticeWeightTpl) = default;
+
+  CompactLatticeWeightTpl &operator=(const CompactLatticeWeightTpl &w) = default;
 
   const W &Weight() const { return weight_; }
 

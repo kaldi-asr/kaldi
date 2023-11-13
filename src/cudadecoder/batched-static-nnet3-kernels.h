@@ -17,7 +17,13 @@
 
 #if HAVE_CUDA == 1
 
+#ifdef __IS_HIP_COMPILE__
+#include <hip/hip_runtime_api.h>
+
+#include "hipify.h"
+#else
 #include <cuda_runtime_api.h>
+#endif
 #include "base/kaldi-types.h"
 
 #ifndef KALDI_CUDA_DECODER_BATCHED_STATIC_NNET3_KERNELS_H_

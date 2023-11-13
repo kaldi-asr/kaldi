@@ -2705,7 +2705,7 @@ static void UnitTestCuMatrixSetRandUniform() {
           upper_bound = expected_moment + allowed_deviation;
       if (!(observed_moment >= lower_bound && observed_moment <= upper_bound)) {
         KALDI_LOG << "Random matrix is " << M;
-        KALDI_ERR << "Bad observed " << pow <<  "'th moment " << observed_moment
+        KALDI_ERR << "Bad observed " << pow << "'th moment " << observed_moment
                   << ", expected " << expected_moment << ", allowed range "
                   << lower_bound << " to " << upper_bound;
       }

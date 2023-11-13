@@ -34,6 +34,12 @@ SUBDIRS += $(CUDADECODER)
 endif
 endif
 
+ifeq ($(ROCM), true)
+ifeq ($(WITH_CUDADECODER), true)
+SUBDIRS += $(CUDADECODER)
+endif
+endif
+
 SUBDIRS_LIB = $(filter-out %bin, $(SUBDIRS))
 SUBDIRS_BIN = $(filter     %bin, $(SUBDIRS))
 
