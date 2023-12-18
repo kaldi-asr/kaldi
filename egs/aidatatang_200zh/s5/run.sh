@@ -19,9 +19,8 @@
 . ./path.sh
 
 
-# corpus directory and download URL
 data=/export/a05/xna/data
-data_url=xxx  #download_url
+data_url=xxx  
 
 # Obtain the database
 #[ -d $data ] || mkdir -p $data || exit 1;
