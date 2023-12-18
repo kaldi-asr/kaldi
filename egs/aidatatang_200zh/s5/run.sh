@@ -21,7 +21,7 @@
 
 # corpus directory and download URL
 data=/export/a05/xna/data
-data_url=www.openslr.org/resources/62
+data_url=xxx  #download_url
 
 # Obtain the database
 #[ -d $data ] || mkdir -p $data || exit 1;
