@@ -19,8 +19,9 @@
 . ./path.sh
 
 
+#corpus directory
 data=/export/a05/xna/data
-data_url=xxx  
+data_url=www.openslr.org/resources/62 
 
 # Obtain the database
 #[ -d $data ] || mkdir -p $data || exit 1;
