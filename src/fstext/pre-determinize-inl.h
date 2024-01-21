@@ -411,8 +411,6 @@ void PreDeterminize(MutableFst<Arc> *fst,
   std::vector<bool> d_vec(max_state+1, false);  // "done vector".  Purely for debugging.
 
 
-  size_t num_extra_det_states = 0;
-
   // (D)(v)
   while (Q.size() != 0) {
 
@@ -491,7 +489,6 @@ void PreDeterminize(MutableFst<Arc> *fst,
                 assert(m_map.count(this_pr.first) == 0);
                 m_map[this_pr.first] = k;
                 k++;
-                num_extra_det_states++;
               }
             } else {  // Create the set V_t.
               V_t.insert(this_pr.second);

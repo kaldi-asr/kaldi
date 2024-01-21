@@ -49,7 +49,7 @@ int32 TypeOneUsage(const ParseOptions &po,
   }
 
   int32 n_utts = 0, n_total_matrices = 0,
-      n_success = 0, n_missing = 0, n_other_errors = 0;
+      n_success = 0, n_missing = 0;
 
   for (; !matrix_reader1.Done(); matrix_reader1.Next()) {
     std::string key = matrix_reader1.Key();
@@ -78,7 +78,6 @@ int32 TypeOneUsage(const ParseOptions &po,
                      << matrix_in_fns[i] << " vs " << matrix_out.NumRows()
                      << " by " << matrix_out.NumCols()
                      << " primary matrix, rspecifier:" << matrix_in_fn1;
-          n_other_errors++;
         }
       } else {
         KALDI_WARN << "No matrix found for utterance " << key << " for "
@@ -124,7 +123,7 @@ int32 TypeOneUsageAverage(const ParseOptions &po) {
   }
 
   int32 n_utts = 0, n_total_matrices = 0,
-      n_success = 0, n_missing = 0, n_other_errors = 0;
+      n_success = 0, n_missing = 0;
 
   for (; !matrix_reader1.Done(); matrix_reader1.Next()) {
     std::string key = matrix_reader1.Key();
@@ -151,7 +150,6 @@ int32 TypeOneUsageAverage(const ParseOptions &po) {
                      << matrix_in_fns[i] << " vs " << matrix_out.NumRows()
                      << " by " << matrix_out.NumCols()
                      << " primary matrix, rspecifier:" << matrix_in_fn1;
-          n_other_errors++;
         }
       } else {
         KALDI_WARN << "No matrix found for utterance " << key << " for "

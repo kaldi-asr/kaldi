@@ -139,12 +139,10 @@ void test_flags_driven_update(const DiagGmm &gmm,
 
   // now both models gmm_all_update, gmm_all_update have the same params updated
   // compute loglike for models for check
-  double loglike0 = 0.0;
   double loglike1 = 0.0;
   double loglike2 = 0.0;
   for (int32 i = 0; i < feats.NumRows(); i++) {
-    loglike0 += static_cast<double>(
-      gmm.LogLikelihood(feats.Row(i)));
+    gmm.LogLikelihood(feats.Row(i));
     loglike1 += static_cast<double>(
       gmm_all_update.LogLikelihood(feats.Row(i)));
     loglike2 += static_cast<double>(
@@ -366,9 +364,8 @@ UnitTestEstimateDiagGmm() {
     est_gmm.Resize(gmm->NumGauss(),
       gmm->Dim(), flags_all);
     est_gmm.SetZero(flags_all);
-    float loglike = 0.0;
     for (size_t i = 0; i < counter; i++) {
-      loglike += est_gmm.AccumulateFromDiag(*gmm, feats.Row(i), 1.0F);
+      est_gmm.AccumulateFromDiag(*gmm, feats.Row(i), 1.0F);
     }
     test_io(*gmm, est_gmm, false, feats);  // ASCII mode
     test_io(*gmm, est_gmm, true, feats);   // Binary mode

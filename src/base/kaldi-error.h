@@ -185,12 +185,12 @@ private:
 #define KALDI_ASSERT(cond)                                                     \
   do {                                                                         \
     if (cond)                                                                  \
-      (void)0;                                                                 \
+      (void)(cond);                                                            \
     else                                                                       \
       ::kaldi::KaldiAssertFailure_(__func__, __FILE__, __LINE__, #cond);       \
   } while (0)
 #else
-#define KALDI_ASSERT(cond) (void)0
+#define KALDI_ASSERT(cond) (void)(cond)
 #endif
 
 // Some more expensive asserts only checked if this defined.
@@ -198,12 +198,12 @@ private:
 #define KALDI_PARANOID_ASSERT(cond)                                            \
   do {                                                                         \
     if (cond)                                                                  \
-      (void)0;                                                                 \
+      (void)(cond);                                                            \
     else                                                                       \
       ::kaldi::KaldiAssertFailure_(__func__, __FILE__, __LINE__, #cond);       \
   } while (0)
 #else
-#define KALDI_PARANOID_ASSERT(cond) (void)0
+#define KALDI_PARANOID_ASSERT(cond) (void)(cond)
 #endif
 
 /***** THIRD-PARTY LOG-HANDLER *****/

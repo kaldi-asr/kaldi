@@ -52,7 +52,7 @@ int32 TypeOneUsage(const ParseOptions &po) {
   }
 
   int32 n_utts = 0, n_total_vectors = 0,
-      n_success = 0, n_missing = 0, n_other_errors = 0;
+      n_success = 0, n_missing = 0;
 
   for (; !vector_reader1.Done(); vector_reader1.Next()) {
     std::string key = vector_reader1.Key();
@@ -75,7 +75,6 @@ int32 TypeOneUsage(const ParseOptions &po) {
                      << "system " << (i + 2) << ", rspecifier: "
                      << vector_in_fns[i] << " vs " << vector_out.Dim()
                      << " primary vector, rspecifier:" << vector_in_fn1;
-          n_other_errors++;
         }
       } else {
         KALDI_WARN << "No vector found for utterance " << key << " for "
