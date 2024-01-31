@@ -538,7 +538,6 @@ EventMap *SplitDecisionTree(const EventMap &input_map,
                             BaseFloat *obj_impr_out,
                             BaseFloat *smallest_split_change_out) {
   KALDI_ASSERT(num_leaves != NULL && *num_leaves > 0);  // can't be 0 or input_map would be empty.
-  int32 num_empty_leaves = 0;
   BaseFloat like_impr = 0.0;
   BaseFloat smallest_split_change = 1.0e+20;
   std::vector<DecisionTreeSplitter*> builders;
@@ -550,7 +549,6 @@ EventMap *SplitDecisionTree(const EventMap &input_map,
     builders.resize(split_stats.size());  // size == #leaves.
     for (size_t i = 0;i < split_stats.size();i++) {
       EventAnswerType leaf = static_cast<EventAnswerType>(i);
-      if (split_stats[i].size() == 0) num_empty_leaves++;
       builders[i] = new DecisionTreeSplitter(leaf, split_stats[i], q_opts);
     }
   }

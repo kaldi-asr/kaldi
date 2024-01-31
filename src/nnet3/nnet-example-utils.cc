@@ -673,11 +673,9 @@ void UtteranceSplitter::InitSplits(std::vector<std::vector<int32> > *splits) con
         vec.push_back(config_.num_frames[i]);
       if (j > 0)
         vec.push_back(config_.num_frames[j]);
-      int32 n = 0;
       while (DefaultDurationOfSplit(vec) <= default_duration_ceiling) {
         if (!vec.empty()) // Don't allow the empty vector as a split.
           splits_set.insert(vec);
-        n++;
         vec.push_back(primary_length);
         std::sort(vec.begin(), vec.end());
       }

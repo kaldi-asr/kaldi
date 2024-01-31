@@ -68,7 +68,7 @@ int main(int argc, char *argv[]) {
     SequentialCompactLatticeReader compact_lattice_reader(lats_rspecifier);
     CompactLatticeWriter compact_lattice_writer(lats_wspecifier); 
 
-    int32 n_done = 0, n_err = 0;
+    int32 n_done = 0;
     int64 n_arcs_in = 0, n_arcs_out = 0,
         n_states_in = 0, n_states_out = 0;
 
@@ -86,7 +86,6 @@ int main(int argc, char *argv[]) {
       CompactLattice pruned_clat(clat);
       if (!PruneLattice(beam, &pruned_clat)) {
         KALDI_WARN << "Error pruning lattice for utterance " << key;
-        n_err++;
       }
       int64 pruned_narcs = NumArcs(pruned_clat),          
           pruned_nstates = pruned_clat.NumStates();
