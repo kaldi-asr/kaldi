@@ -75,7 +75,7 @@ bool ClusterLattice(CompactLattice *clat,
   unordered_map<StateId, std::vector<Interval> >::iterator iter;
   for (iter = head.begin(); iter != head.end(); ++iter) {
     // For this ilabel, sort all the arcs on time, from first to last.
-    sort(iter->second.begin(), iter->second.end(), CompareInterval);
+    std::sort(iter->second.begin(), iter->second.end(), CompareInterval);
     std::vector<Interval> tmp;
     tmp.push_back(iter->second[0]);
     for (int32 i = 1; i < iter->second.size(); i++) {
@@ -175,7 +175,7 @@ bool CreateFactorTransducer(const CompactLattice &clat,
 
   // Now we map the CompactLattice to VectorFst<KwsProductArc>. We drop the
   // alignment information and only keep the negated log-probs
-  Map(clat, factor_transducer, CompactLatticeToKwsProductFstMapper());
+  ArcMap(clat, factor_transducer, CompactLatticeToKwsProductFstMapper());
 
   // Now do the weight pushing manually on the CompactLattice format. Note that
   // the alphas and betas in Kaldi are stored as the log-probs, not the negated
@@ -366,7 +366,7 @@ void MaybeDoSanityCheck(const KwsProductFst &product_transducer) {
   if (GetVerboseLevel() < 2) return;
   KwsLexicographicFst index_transducer;
 
-  Map(product_transducer,
+  ArcMap(product_transducer,
       &index_transducer,
       KwsProductFstToKwsLexicographicFstMapper());
 
