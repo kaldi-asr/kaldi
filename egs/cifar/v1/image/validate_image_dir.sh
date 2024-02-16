@@ -7,11 +7,15 @@
 if [ $# != 1 ]; then
   echo "Usage: $0 <image-dir-to-validate>"
   echo "e.g.: $0 data/cifar10_train"
+  echo "$0 data/train --is-square-image false"
 fi
 
-dir=$1
-
 [ -e ./path.sh ] && . ./path.sh
+
+dir=$1
+is_square_image=true
+shift
+. parse_options.sh || exit 1
 
 if [ ! -d $dir ]; then
   echo "$0: directory $dir does not exist."
@@ -42,25 +46,25 @@ if ! [[ $[$num_cols%$num_channels] == 0 ]]; then
   exit 1
 fi
 
-num_rows=$(head -n 1 $dir/images.scp | feat-to-len $paf scp:- ark,t:- | awk '{print $2}')
-
-height=$[$num_cols/$num_channels]
-
-echo "$0: images are width=$num_rows by height=$height, with $num_channels channels (colors)."
-
 if ! cmp <(awk '{print $1}' $dir/images.scp) <(awk '{print $1}' $dir/labels.txt); then
   echo "$0: expected the first fields of $dir/images.scp and $dir/labels.txt to match up."
   exit 1;
 fi
 
-if ! [[ $num_cols -eq $(tail -n 1 $dir/images.scp | feat-to-dim $paf scp:- -) ]]; then
-  echo "$0: the number of columns in the image matrices is not consistent."
-  exit 1
-fi
+if $is_square_image; then
+  num_rows=$(head -n 1 $dir/images.scp | feat-to-len $paf scp:- ark,t:- | awk '{print $2}')
+  height=$[$num_cols/$num_channels]
+  echo "$0: images are width=$num_rows by height=$height, with $num_channels channels (colors)."
 
-if ! [[ $num_rows -eq $(tail -n 1 $dir/images.scp | feat-to-len $paf scp:- ark,t:- | awk '{print $2}') ]]; then
-  echo "$0: the number of rows in the image matrices is not consistent."
-  exit 1
+  if ! [[ $num_cols -eq $(tail -n 1 $dir/images.scp | feat-to-dim $paf scp:- -) ]]; then
+    echo "$0: the number of columns in the image matrices is not consistent."
+    exit 1
+  fi
+
+  if ! [[ $num_rows -eq $(tail -n 1 $dir/images.scp | feat-to-len $paf scp:- ark,t:- | awk '{print $2}') ]]; then
+    echo "$0: the number of rows in the image matrices is not consistent."
+    exit 1
+  fi
 fi
 
 # Note: we don't require images.scp and labels.txt to be sorted, but they
