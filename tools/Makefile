@@ -121,6 +121,8 @@ sclite sctk_made: sctk/.compiled
 
 sctk/.compiled: sctk
 	rm -f sctk/.compiled
+	sed -i -e '2s/^/#include <unistd.h>\n/' sctk/src/sclite/align.c
+	sed -i -e '99s/^/int TEXT_set_lang_prof(char *lprof);\n/' sctk/src/sclite/text.h
 	$(SCTK_MKENV) $(MAKE) -C sctk config
 	$(SCTK_MKENV) $(MAKE) -C sctk all doc
 	$(MAKE) -C sctk install
