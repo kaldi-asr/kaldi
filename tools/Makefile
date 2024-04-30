@@ -165,6 +165,11 @@ sph2pipe_v$(SPH2PIPE_VERSION)/Makefile: sph2pipe-$(SPH2PIPE_VERSION).tar.gz
 	rm -rf sph2pipe_v*
 	tar -xmzf sph2pipe-$(SPH2PIPE_VERSION).tar.gz
 	mv sph2pipe-$(SPH2PIPE_VERSION) sph2pipe_v$(SPH2PIPE_VERSION)
+	# Workaround for macOS bug <rdar://problem/19363342>
+	if [ `uname` = "Darwin" ]; then \
+		sed -i -e "s/#define _XOPEN_SOURCE 500/#define _XOPEN_SOURCE 600/g" sph2pipe_v$(SPH2PIPE_VERSION)/sph2pipe.c ; \
+		sed -i -e "s/#define _XOPEN_SOURCE 500/#define _XOPEN_SOURCE 600/g" sph2pipe_v$(SPH2PIPE_VERSION)/file_headers.c ; \
+	fi
 
 sph2pipe-$(SPH2PIPE_VERSION).tar.gz:
 	if [ -d "$(DOWNLOAD_DIR)" ]; then \
