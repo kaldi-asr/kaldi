@@ -17,15 +17,15 @@ fi
    echo "GNU awk is not installed so SRILM will probably not work correctly: refusing to install" && exit 1;
 
 if [ ! -f srilm.tgz ] && [ ! -f srilm.tar.gz ] && [ ! -d srilm ]; then
-  if [ $# -ne 3 ]; then
+  if [ $# -ne 4 ]; then
       echo "SRILM download requires some information about you"
       echo
-      echo "Usage: $0 <name> <organization> <email>"
+      echo "Usage: $0 <name> <organization> <email> <address>"
       exit 1
   fi
 
-  srilm_url="http://www.speech.sri.com/projects/srilm/srilm_download.php"
-  post_data="WWW_file=srilm-1.7.3.tar.gz&WWW_name=$1&WWW_org=$2&WWW_email=$3"
+  srilm_url="http://www.speech.sri.com/projects/srilm/srilm_download2.php"
+  post_data="file=1.7.3&name=$1&org=$2&email=$3&address=$4&license=on"
 
   if ! wget --post-data "$post_data" -O ./srilm.tar.gz "$srilm_url"; then
       echo 'There was a problem downloading the file.'
