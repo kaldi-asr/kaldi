@@ -347,7 +347,7 @@ int main(int argc, char *argv[]) {
                                             // not configurable for now.
     exclude_names.push_back(std::string("ivector"));
 
-    int64 num_read = 0, num_written = 0, num_err = 0;
+    int64 num_read = 0, num_written = 0;
     for (; !example_reader.Done(); example_reader.Next(), num_read++) {
       const std::string &key = example_reader.Key();
       NnetChainExample &eg = example_reader.Value();
@@ -361,7 +361,6 @@ int main(int argc, char *argv[]) {
         BaseFloat weight = 1.0;
         if (!egs_weight_reader.HasKey(key)) {
           KALDI_WARN << "No weight for example key " << key;
-          num_err++;
           continue;
         }
         weight = egs_weight_reader.Value(key);
@@ -371,7 +370,6 @@ int main(int argc, char *argv[]) {
       if (!eg_output_name_rspecifier.empty()) {
         if (!output_name_reader.HasKey(key)) {
           KALDI_WARN << "No new output-name for example key " << key;
-          num_err++;
           continue;
         }
         std::string new_output_name = output_name_reader.Value(key);
