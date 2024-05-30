@@ -33,7 +33,7 @@ namespace kaldi {
 enum {
   kEps = 0,
   kDisambig,
-  kBos,kEos,
+  kBos, kEos,
 };
 
 // Number of random sentences for coverage test.
@@ -72,7 +72,7 @@ static fst::StdVectorFst* CreateGenFst(bool seps, const fst::SymbolTable* pst) {
 }
 
 // Compile given ARPA file.
-ArpaLmCompiler* Compile(bool seps, const string &infile) {
+ArpaLmCompiler* Compile(bool seps, const std::string &infile) {
   ArpaParseOptions options;
   fst::SymbolTable symbols;
   // Use spaces on special symbols, so we rather fail than read them by mistake.
@@ -88,12 +88,15 @@ ArpaLmCompiler* Compile(bool seps, const string &infile) {
       new ArpaLmCompiler(options,
                          seps ? kDisambig : 0,
                          &symbols);
-  ReadKaldiObject(infile, lm_compiler);
+  {
+    Input ki(infile);
+    lm_compiler->Read(ki.Stream());
+  }
   return lm_compiler;
 }
 
 // Add a state to an FSA after last_state, add a form last_state to the new
-// atate, and return the new state.
+// state, and return the new state.
 fst::StdArc::StateId AddToChainFsa(fst::StdMutableFst* fst,
                                    fst::StdArc::StateId last_state,
                                    int64 symbol) {
@@ -113,7 +116,7 @@ void AddSelfLoops(fst::StdMutableFst* fst) {
 
 // Compiles infile and then runs kRandomSentences random coverage tests on the
 // compiled FST.
-bool CoverageTest(bool seps, const string &infile) {
+bool CoverageTest(bool seps, const std::string &infile) {
   // Compile ARPA model.
   ArpaLmCompiler* lm_compiler = Compile(seps, infile);
 
@@ -130,7 +133,9 @@ bool CoverageTest(bool seps, const string &infile) {
     if (seps)
       AddSelfLoops(&sentence);
 
-    // The past must successfullycompose with the LM FST.
+    fst::ArcSort(lm_compiler->MutableFst(), fst::StdOLabelCompare());
+
+    // The past must successfully compose with the LM FST.
     fst::StdVectorFst composition;
     Compose(sentence, lm_compiler->Fst(), &composition);
     if (composition.Start() != fst::kNoStateId)
@@ -148,7 +153,7 @@ bool CoverageTest(bool seps, const string &infile) {
   return ok;
 }
 
-bool ScoringTest(bool seps, const string &infile, const string& sentence,
+bool ScoringTest(bool seps, const std::string &infile, const std::string& sentence,
                  float expected) {
   ArpaLmCompiler* lm_compiler = Compile(seps, infile);
   const fst::SymbolTable* symbols = lm_compiler->Fst().InputSymbols();
@@ -161,7 +166,7 @@ bool ScoringTest(bool seps, const string &infile, const string& sentence,
     state = AddToChainFsa(&sentFst, state, kBos);
   }
   std::stringstream ss(sentence);
-  string word;
+  std::string word;
   while (ss >> word) {
     int64 word_sym = symbols->Find(word);
     KALDI_ASSERT(word_sym != -1);
@@ -199,6 +204,16 @@ bool ScoringTest(bool seps, const string &infile, const string& sentence,
   return ok;
 }
 
+bool ThrowsExceptionTest(bool seps, const std::string &infile) {
+  try {
+    // Make memory cleanup easy in both cases of try-catch block.
+    std::unique_ptr<ArpaLmCompiler> compiler(Compile(seps, infile));
+    return false;
+  } catch (const KaldiFatalError&) {
+    return true;
+  }
+}
+
 }  // namespace kaldi
 
 bool RunAllTests(bool seps) {
@@ -209,6 +224,9 @@ bool RunAllTests(bool seps) {
 
   ok &= kaldi::ScoringTest(seps, "test_data/input.arpa", "b b b a", 59.2649);
   ok &= kaldi::ScoringTest(seps, "test_data/input.arpa", "a b", 4.36082);
+
+  ok &= kaldi::ThrowsExceptionTest(seps, "test_data/missing_bos.arpa");
+
   if (!ok) {
     KALDI_WARN << "Tests " << (seps ? "with" : "without")
                << " epsilon substitution FAILED";
@@ -225,8 +243,7 @@ int main(int argc, char *argv[]) {
   if (ok) {
     KALDI_LOG << "All tests passed";
     return 0;
-  }
-  else {
+  } else {
     KALDI_WARN << "Test FAILED";
     return 1;
   }

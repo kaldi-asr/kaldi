@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2012-2014  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 
@@ -104,6 +104,7 @@ done
 
 mkdir -p $dir/log || exit 1;
 
+cp $degs_dir/phones.txt $dir 2>/dev/null
 # copy some things
 for f in splice_opts cmvn_opts tree final.mat; do
   if [ -f $degs_dir/$f ]; then
@@ -249,7 +250,7 @@ done
 
 
 # function to remove egs that might be soft links.
-remove () { for x in $*; do [ -L $x ] && rm $(readlink -f $x); rm $x; done }
+remove () { for x in $*; do [ -L $x ] && rm $(utils/make_absolute.sh $x); rm $x; done }
 
 if $cleanup && $remove_egs; then  # note: this is false by default.
   echo Removing training examples

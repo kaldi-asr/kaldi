@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2014  Vimal Manohar.
 #           2014  Johns Hopkins University (author: Daniel Povey)
@@ -59,7 +59,7 @@ mkdir -p $dir/log
 mkdir -p $dir/info
 cp -r $egs_in_dir/info/*  $dir/info
 
-alignments=`eval echo $alidir/ali.{$(seq -s ',' $num_jobs_align)}.gz`
+alignments=$(for n in $(seq $num_jobs_align); do echo $alidir/ali.$n.gz; done)
 
 if [ $stage -le 0 ]; then
   for x in $(seq $num_archives); do

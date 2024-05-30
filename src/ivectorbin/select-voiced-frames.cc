@@ -33,11 +33,12 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Select a subset of frames of the input files, based on the output of\n"
         "compute-vad or a similar program (a vector of length num-frames,\n"
-        "containing 1.0 for voiced, 0.0 for unvoiced).\n"
+        "containing 1.0 for voiced, 0.0 for unvoiced).  Caution: this is\n"
+        "mostly useful only in speaker identification applications.\n"
         "Usage: select-voiced-frames [options] <feats-rspecifier> "
         " <vad-rspecifier> <feats-wspecifier>\n"
         "E.g.: select-voiced-frames [options] scp:feats.scp scp:vad.scp ark:-\n";
-    
+
     ParseOptions po(usage);
     po.Read(argc, argv);
 
@@ -45,17 +46,17 @@ int main(int argc, char *argv[]) {
       po.PrintUsage();
       exit(1);
     }
-    
+
     std::string feat_rspecifier = po.GetArg(1),
         vad_rspecifier = po.GetArg(2),
         feat_wspecifier = po.GetArg(3);
-    
+
     SequentialBaseFloatMatrixReader feat_reader(feat_rspecifier);
     RandomAccessBaseFloatVectorReader vad_reader(vad_rspecifier);
     BaseFloatMatrixWriter feat_writer(feat_wspecifier);
 
     int32 num_done = 0, num_err = 0;
-    
+
     for (;!feat_reader.Done(); feat_reader.Next()) {
       std::string utt = feat_reader.Key();
       const Matrix<BaseFloat> &feat = feat_reader.Value();
@@ -72,8 +73,8 @@ int main(int argc, char *argv[]) {
       const Vector<BaseFloat> &voiced = vad_reader.Value(utt);
 
       if (feat.NumRows() != voiced.Dim()) {
-        KALDI_WARN << "Mismatch in number for frames " << feat.NumRows() 
-                   << " for features and VAD " << voiced.Dim() 
+        KALDI_WARN << "Mismatch in number for frames " << feat.NumRows()
+                   << " for features and VAD " << voiced.Dim()
                    << ", for utterance " << utt;
         num_err++;
         continue;
@@ -111,5 +112,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-
-

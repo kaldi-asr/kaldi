@@ -1,52 +1,58 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# this script contains some common (shared) parts of the run_nnet*.sh scripts.
+set -e -o pipefail
 
-. cmd.sh
+
+# This script is called from local/nnet3/run_tdnn.sh and local/chain/run_tdnn.sh (and may eventually
+# be called by more scripts).  It contains the common feature preparation and iVector-related parts
+# of the script.  See those scripts for examples of usage.
 
 
 stage=0
-generate_alignments=true # false if doing ctc training
-speed_perturb=true
+train_set=train_960_cleaned    # you might set this to e.g. train_960
+gmm=tri6b_cleaned         # This specifies a GMM-dir from the features of the type you're training the system on;
+                         # it should contain alignments for 'train_set'.
+num_threads_ubm=16
+num_processes=4
+nnet3_affix=_cleaned     # affix for exp/nnet3 directory to put iVector stuff in, so it
+                         # becomes exp/nnet3_cleaned or whatever.
 
-set -e
 . ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
+gmm_dir=exp/${gmm}
+ali_dir=exp/${gmm}_ali_${train_set}_sp
 
-train_set=train_960
-if [ "$speed_perturb" == "true" ]; then
-  if [ $stage -le 1 ]; then
-    #Although the nnet will be trained by high resolution data, we still have to perturbe the normal data to get the alignment
-    # _sp stands for speed-perturbed
-
-    for datadir in train_960; do
-      utils/perturb_data_dir_speed.sh 0.9 data/${datadir} data/temp1
-      utils/perturb_data_dir_speed.sh 1.1 data/${datadir} data/temp2
-      utils/combine_data.sh data/${datadir}_tmp data/temp1 data/temp2
-      utils/validate_data_dir.sh --no-feats data/${datadir}_tmp
-      rm -r data/temp1 data/temp2
-
-      mfccdir=mfcc_perturbed
-      steps/make_mfcc.sh --cmd "$train_cmd" --nj 50 \
-        data/${datadir}_tmp exp/make_mfcc/${datadir}_tmp $mfccdir || exit 1;
-      steps/compute_cmvn_stats.sh data/${datadir}_tmp exp/make_mfcc/${datadir}_tmp $mfccdir || exit 1;
-      utils/fix_data_dir.sh data/${datadir}_tmp
-
-      utils/copy_data_dir.sh --spk-prefix sp1.0- --utt-prefix sp1.0- data/${datadir} data/temp0
-      utils/combine_data.sh data/${datadir}_sp data/${datadir}_tmp data/temp0
-      utils/fix_data_dir.sh data/${datadir}_sp
-      rm -r data/temp0 data/${datadir}_tmp
-    done
+for f in data/${train_set}/feats.scp ${gmm_dir}/final.mdl; do
+  if [ ! -f $f ]; then
+    echo "$0: expected file $f to exist"
+    exit 1
   fi
+done
 
-  if [ $stage -le 2 ] && [ "$generate_alignments" == "true" ]; then
-    #obtain the alignment of the perturbed data
-    steps/align_fmllr.sh --nj 100 --cmd "$train_cmd" \
-      data/train_960_sp data/lang exp/tri6b exp/tri6b_sp || exit 1
+if [ $stage -le 1 ]; then
+  #Although the nnet will be trained by high resolution data, we still have to
+  # perturb the normal data to get the alignment.  _sp stands for speed-perturbed
+  echo "$0: preparing directory for low-resolution speed-perturbed data (for alignment)"
+  utils/data/perturb_data_dir_speed_3way.sh data/${train_set} data/${train_set}_sp
+  echo "$0: making MFCC features for low-resolution speed-perturbed data"
+  steps/make_mfcc.sh --cmd "$train_cmd" --nj 50 data/${train_set}_sp || exit 1;
+  steps/compute_cmvn_stats.sh data/${train_set}_sp || exit 1;
+  echo "$0: fixing input data-dir to remove nonexistent features, in case some "
+  echo ".. speed-perturbed segments were too short."
+  utils/fix_data_dir.sh data/${train_set}_sp
+fi
+
+if [ $stage -le 2 ]; then
+  if [ -f $ali_dir/ali.1.gz ]; then
+    echo "$0: alignments in $ali_dir appear to already exist.  Please either remove them "
+    echo " ... or use a later --stage option."
+    exit 1
   fi
-  train_set=train_960_sp
+  echo "$0: aligning with the perturbed low-resolution data"
+  steps/align_fmllr.sh --nj 100 --cmd "$train_cmd" \
+    data/${train_set}_sp data/lang $gmm_dir $ali_dir || exit 1
 fi
 
 if [ $stage -le 3 ]; then
@@ -55,91 +61,98 @@ if [ $stage -le 3 ]; then
   # MFCC dir across multiple locations.  You might want to be careful here, if you
   # have multiple copies of Kaldi checked out and run the same recipe, not to let
   # them overwrite each other.
-  mfccdir=mfcc_hires
+  echo "$0: creating high-resolution MFCC features"
+  mfccdir=data/${train_set}_sp_hires/data
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $mfccdir/storage ]; then
-    utils/create_split_dir.pl /export/b0{1,2,3,4}/$USER/kaldi-data/egs/librispeech-$(date +'%m_%d_%H_%M')/s5/$mfccdir/storage $mfccdir/storage
+    utils/create_split_dir.pl /export/b0{1,2,3,4}/$USER/kaldi-data/mfcc/librispeech-$(date +'%m_%d_%H_%M')/s5/$mfccdir/storage $mfccdir/storage
   fi
 
-  for datadir in $train_set test_clean test_other dev_clean dev_other; do
-    if [ "$datadir" == "$train_set" ]; then
-      utils/data/perturb_data_dir_volume.sh data/$datadir
-    fi
+  for datadir in ${train_set}_sp test_clean test_other dev_clean dev_other; do
     utils/copy_data_dir.sh data/$datadir data/${datadir}_hires
-    steps/make_mfcc.sh --nj 70 --mfcc-config conf/mfcc_hires.conf \
-      --cmd "$train_cmd" data/${datadir}_hires exp/make_hires/$datadir $mfccdir || exit 1;
-    steps/compute_cmvn_stats.sh data/${datadir}_hires exp/make_hires/$datadir $mfccdir || exit 1;
   done
 
-  # now create some data subsets.
-  # mixed is the clean+other data.
-  # 30k is 1/10 of the data (around 100 hours), 60k is 1/5th of it (around 200 hours).
-  utils/subset_data_dir.sh data/${train_set}_hires 30000 data/${train_set}_mixed_hires_30k
-  utils/subset_data_dir.sh data/${train_set}_hires 60000 data/${train_set}_mixed_hires_60k
+  # do volume-perturbation on the training data prior to extracting hires
+  # features; this helps make trained nnets more invariant to test data volume.
+  utils/data/perturb_data_dir_volume.sh data/${train_set}_sp_hires
+
+  for datadir in ${train_set}_sp test_clean test_other dev_clean dev_other; do
+    steps/make_mfcc.sh --nj 70 --mfcc-config conf/mfcc_hires.conf \
+      --cmd "$train_cmd" data/${datadir}_hires || exit 1;
+    steps/compute_cmvn_stats.sh data/${datadir}_hires || exit 1;
+    utils/fix_data_dir.sh data/${datadir}_hires
+  done
+
+  # now create a data subset.  60k is 1/5th of the training dataset (around 200 hours).
+  utils/subset_data_dir.sh data/${train_set}_sp_hires 60000 data/${train_set}_sp_hires_60k
 fi
+
 
 if [ $stage -le 4 ]; then
-  # We need to build a small system just because we need the LDA+MLLT transform
-  # to train the diag-UBM on top of.  We align a subset of training data for
-  # this purpose.
-  utils/subset_data_dir.sh --utt-list <(awk '{print $1}' data/${train_set}_mixed_hires_30k/utt2spk) \
-     data/${train_set} data/${train_set}_30k
+  echo "$0: making a subset of data to train the diagonal UBM and the PCA transform."
+  # We'll one hundredth of the data, since Librispeech is very large.
+  mkdir -p exp/nnet3${nnet3_affix}/diag_ubm
+  temp_data_root=exp/nnet3${nnet3_affix}/diag_ubm
 
-  steps/align_fmllr.sh --nj 40 --cmd "$train_cmd" \
-    data/${train_set}_30k data/lang exp/tri6b exp/nnet3/tri6b_ali_30k
+  num_utts_total=$(wc -l <data/${train_set}_sp_hires/utt2spk)
+  num_utts=$[$num_utts_total/100]
+  utils/data/subset_data_dir.sh data/${train_set}_sp_hires \
+     $num_utts ${temp_data_root}/${train_set}_sp_hires_subset
+
+  echo "$0: computing a PCA transform from the hires data."
+  steps/online/nnet2/get_pca_transform.sh --cmd "$train_cmd" \
+      --splice-opts "--left-context=3 --right-context=3" \
+      --max-utts 10000 --subsample 2 \
+       ${temp_data_root}/${train_set}_sp_hires_subset \
+       exp/nnet3${nnet3_affix}/pca_transform
+
+  echo "$0: training the diagonal UBM."
+  # Use 512 Gaussians in the UBM.
+  steps/online/nnet2/train_diag_ubm.sh --cmd "$train_cmd" --nj 30 \
+    --num-frames 700000 \
+    --num-threads $num_threads_ubm \
+    ${temp_data_root}/${train_set}_sp_hires_subset 512 \
+    exp/nnet3${nnet3_affix}/pca_transform exp/nnet3${nnet3_affix}/diag_ubm
 fi
+
 
 if [ $stage -le 5 ]; then
-  # Train a small system just for its LDA+MLLT transform.  We use --num-iters 13
-  # because after we get the transform (12th iter is the last), any further
-  # training is pointless.
-  steps/train_lda_mllt.sh --cmd "$train_cmd" --num-iters 13 \
-    --realign-iters "" \
-    --splice-opts "--left-context=3 --right-context=3" \
-    5000 10000 data/${train_set}_mixed_hires_30k data/lang \
-    exp/nnet3/tri6b_ali_30k exp/nnet3/tri7b
-fi
-
-
-if [ $stage -le 6 ]; then
-  mkdir -p exp/nnet3
-  # To train a diagonal UBM we don't need very much data, so use a small subset
-  # (actually, it's not that small: still around 100 hours).
-  steps/online/nnet2/train_diag_ubm.sh --cmd "$train_cmd" --nj 30 --num-frames 700000 \
-    data/${train_set}_mixed_hires_30k 512 exp/nnet3/tri7b exp/nnet3/diag_ubm
-fi
-
-if [ $stage -le 7 ]; then
   # iVector extractors can in general be sensitive to the amount of data, but
   # this one has a fairly small dim (defaults to 100) so we don't use all of it,
   # we use just the 60k subset (about one fifth of the data, or 200 hours).
-  steps/online/nnet2/train_ivector_extractor.sh --cmd "$train_cmd" --nj 10 \
-    data/${train_set}_mixed_hires_60k exp/nnet3/diag_ubm exp/nnet3/extractor || exit 1;
+  echo "$0: training the iVector extractor"
+  steps/online/nnet2/train_ivector_extractor.sh --cmd "$train_cmd" --nj 10 --num-processes $num_processes \
+    data/${train_set}_sp_hires_60k exp/nnet3${nnet3_affix}/diag_ubm exp/nnet3${nnet3_affix}/extractor || exit 1;
 fi
 
-if [ $stage -le 8 ]; then
-  ivectordir=exp/nnet3/ivectors_${train_set}
+if [ $stage -le 6 ]; then
+  echo "$0: extracting iVectors for training data"
+  ivectordir=exp/nnet3${nnet3_affix}/ivectors_${train_set}_sp_hires
   if [[ $(hostname -f) == *.clsp.jhu.edu ]] && [ ! -d $ivectordir/storage ]; then
-    utils/create_split_dir.pl /export/b{09,10,11,12}/$USER/kaldi-data/egs/librispeech-$(date +'%m_%d_%H_%M')/s5/$ivectordir/storage $ivectordir/storage
+    utils/create_split_dir.pl /export/b{09,10,11,12}/$USER/kaldi-data/ivectors/librispeech-$(date +'%m_%d_%H_%M')/s5/$ivectordir/storage $ivectordir/storage
   fi
-  # We extract iVectors on all the train data, which will be what we train the
-  # system on.  With --utts-per-spk-max 2, the script.  pairs the utterances
-  # into twos, and treats each of these pairs as one speaker.  Note that these
-  # are extracted 'online'.
+  # We extract iVectors on the speed-perturbed training data after combining
+  # short segments, which will be what we train the system on.  With
+  # --utts-per-spk-max 2, the script pairs the utterances into twos, and treats
+  # each of these pairs as one speaker. this gives more diversity in iVectors..
+  # Note that these are extracted 'online'.
 
   # having a larger number of speakers is helpful for generalization, and to
   # handle per-utterance decoding well (iVector starts at zero).
-  steps/online/nnet2/copy_data_dir.sh --utts-per-spk-max 2 data/${train_set}_hires data/${train_set}_hires_max2
-  
+  utils/data/modify_speaker_info.sh --utts-per-spk-max 2 \
+    data/${train_set}_sp_hires ${ivectordir}/${train_set}_sp_hires_max2
+
   steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 60 \
-    data/${train_set}_hires_max2 exp/nnet3/extractor $ivectordir || exit 1;
+    ${ivectordir}/${train_set}_sp_hires_max2 exp/nnet3${nnet3_affix}/extractor \
+    $ivectordir || exit 1;
 fi
 
-if [ $stage -le 9 ]; then
+if [ $stage -le 7 ]; then
+  echo "$0: extracting iVectors for dev and test data"
   for data in test_clean test_other dev_clean dev_other; do
     steps/online/nnet2/extract_ivectors_online.sh --cmd "$train_cmd" --nj 20 \
-      data/${data}_hires exp/nnet3/extractor exp/nnet3/ivectors_${data} || exit 1;
-   done
-   wait
+      data/${data}_hires exp/nnet3${nnet3_affix}/extractor \
+      exp/nnet3${nnet3_affix}/ivectors_${data}_hires || exit 1;
+  done
 fi
 
 exit 0;

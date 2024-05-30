@@ -1,11 +1,10 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright Johns Hopkins University (Author: Daniel Povey) 2012.  Apache 2.0.
 
 # begin configuration section.
 cmd=run.pl
 min_lmwt=5
-max_lmwt=20
-reverse=false
+max_lmwt=17
 word_ins_penalty=0.0,0.5,1.0
 #end configuration section.
 
@@ -18,7 +17,6 @@ if [ $# -ne 3 ]; then
   echo "    --cmd (run.pl|queue.pl...)      # specify how to run the sub-processes."
   echo "    --min_lmwt <int>                # minumum LM-weight for lattice rescoring "
   echo "    --max_lmwt <int>                # maximum LM-weight for lattice rescoring "
-  echo "    --reverse (true/false)          # score with time reversed features "
   exit 1;
 fi
 
@@ -28,7 +26,7 @@ dir=$3
 
 model=$dir/../final.mdl # assume model one level up from decoding dir.
 
-hubscr=$KALDI_ROOT/tools/sctk/bin/hubscr.pl 
+hubscr=$KALDI_ROOT/tools/sctk/bin/hubscr.pl
 [ ! -f $hubscr ] && echo "Cannot find scoring program at $hubscr" && exit 1;
 hubdir=`dirname $hubscr`
 
@@ -42,7 +40,7 @@ mkdir -p $dir/scoring/log
 
 
 function filter_text {
-  perl -e 'foreach $w (@ARGV) { $bad{$w} = 1; } 
+  perl -e 'foreach $w (@ARGV) { $bad{$w} = 1; }
    while(<STDIN>) { @A  = split(" ", $_); $id = shift @A; print "$id ";
      foreach $a (@A) { if (!defined $bad{$a}) { print "$a "; }} print "\n"; }' \
    '[NOISE]' '[LAUGHTER]' '[VOCALIZED-NOISE]' '<UNK>' '%HESITATION'
@@ -58,11 +56,6 @@ for wip in $(echo $word_ins_penalty | sed 's/,/ /g'); do
   for lmwt in `seq $min_lmwt $max_lmwt`; do
     utils/int2sym.pl -f 2- $lang/words.txt <$dir/scoring/$lmwt.${wip}.tra | \
      filter_text > $dir/scoring/$lmwt.${wip}.txt || exit 1;
-    if $reverse; then
-      mv $dir/scoring/$lmwt.${wip}.txt $dir/scoring/$lmwt.${wip}.txt.orig
-      awk '{ printf("%s ",$1); for(i=NF; i>1; i--){ printf("%s ",$i); } printf("\n"); }' \
-         <$dir/scoring/$lmwt.${wip}.txt.orig >$dir/scoring/$lmwt.${wip}.txt
-    fi
   done
 done
 

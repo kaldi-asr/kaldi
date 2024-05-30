@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2012 Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 # This script, which will generally be called from other neural-net training
@@ -19,7 +19,7 @@ samples_per_iter=200000 # each iteration of training, see this many samples
 transform_dir=     # If supplied, overrides alidir
 num_jobs_nnet=16    # Number of neural net jobs to run in parallel
 stage=0
-io_opts="-tc 5" # for jobs with a lot of I/O, limits the number running at one time. 
+io_opts="--max-jobs-run 5" # for jobs with a lot of I/O, limits the number running at one time.
 splice_width=4 # meaning +- 4 frames on each side for second LDA
 left_context=
 right_context=
@@ -58,7 +58,7 @@ if [ $# != 4 ]; then
   echo "                                                   # very end."
   echo "  --stage <stage|0>                                # Used to run a partially-completed training process from somewhere in"
   echo "                                                   # the middle."
-  
+
   exit 1;
 fi
 
@@ -88,8 +88,10 @@ utils/split_data.sh $data $nj
 mkdir -p $dir/log
 cp $alidir/tree $dir
 
+utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt || exit 1;
+cp $lang/phones.txt $dir || exit 1;
 
-# Get list of validation utterances. 
+# Get list of validation utterances.
 awk '{print $1}' $data/utt2spk | utils/shuffle_list.pl | head -$num_utts_subset \
     > $dir/valid_uttlist || exit 1;
 
@@ -109,7 +111,7 @@ awk '{print $1}' $data/utt2spk | utils/filter_scp.pl --exclude $dir/valid_uttlis
 
 [ -z "$transform_dir" ] && transform_dir=$alidir
 
-## Set up features. 
+## Set up features.
 if [ -z $feat_type ]; then
   if [ -f $alidir/final.mat ] && [ ! -f $transform_dir/raw_trans.1 ]; then feat_type=lda; else feat_type=raw; fi
 fi
@@ -121,7 +123,7 @@ case $feat_type in
     train_subset_feats="ark,s,cs:utils/filter_scp.pl $dir/train_subset_uttlist $data/feats.scp | apply-cmvn $cmvn_opts --utt2spk=ark:$data/utt2spk scp:$data/cmvn.scp scp:- ark:- |"
     echo $cmvn_opts >$dir/cmvn_opts
    ;;
-  lda) 
+  lda)
     splice_opts=`cat $alidir/splice_opts 2>/dev/null`
     cp $alidir/{splice_opts,cmvn_opts,final.mat} $dir || exit 1;
     [ ! -z "$cmvn_opts" ] && \
@@ -183,7 +185,7 @@ for x in `seq 1 $num_jobs_nnet`; do
   done
 done
 
-remove () { for x in $*; do [ -L $x ] && rm $(readlink -f $x); rm $x; done }
+remove () { for x in $*; do [ -L $x ] && rm $(utils/make_absolute.sh $x); rm $x; done }
 
 nnet_context_opts="--left-context=$left_context --right-context=$right_context"
 mkdir -p $dir/egs
@@ -199,7 +201,6 @@ if [ $stage -le 2 ]; then
     gzip -c >$dir/ali_special.gz || exit 1;
   set +o pipefail; # unset the pipefail option.
 
-  all_ids=$(seq -s, $nj)  # e.g. 1,2,...39,40
   $cmd $dir/log/create_valid_subset.log \
     nnet-get-egs $ivectors_opt $nnet_context_opts "$valid_feats" \
     "ark,s,cs:gunzip -c $dir/ali_special.gz | ali-to-pdf $alidir/final.mdl ark:- ark:- | ali-to-post ark:- ark:- |" \
@@ -265,7 +266,7 @@ if [ $stage -le 4 ]; then
     echo "$0: Since iters-per-epoch == 1, just concatenating the data."
     for n in `seq 1 $num_jobs_nnet`; do
       cat $dir/egs/egs_orig.$n.*.ark > $dir/egs/egs_tmp.$n.0.ark || exit 1;
-      remove $dir/egs/egs_orig.$n.*.ark 
+      remove $dir/egs/egs_orig.$n.*.ark
     done
   else # We'll have to split it up using nnet-copy-egs.
     egs_list=
@@ -290,7 +291,7 @@ if [ $stage -le 5 ]; then
   for n in `seq 0 $[$iters_per_epoch-1]`; do
     $cmd $io_opts JOB=1:$num_jobs_nnet $dir/log/shuffle.$n.JOB.log \
       nnet-shuffle-egs "--srand=\$[JOB+($num_jobs_nnet*$n)]" \
-      ark:$dir/egs/egs_tmp.JOB.$n.ark ark:$dir/egs/egs.JOB.$n.ark 
+      ark:$dir/egs/egs_tmp.JOB.$n.ark ark:$dir/egs/egs.JOB.$n.ark
     remove $dir/egs/egs_tmp.*.$n.ark
   done
 fi

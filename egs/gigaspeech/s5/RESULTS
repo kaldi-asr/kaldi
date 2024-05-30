@@ -1,0 +1,22 @@
+# GMM model trained on part of GigaSpeech
+%WER 48.14 [ 61515 / 127790, 5789 ins, 12605 del, 43121 sub ] exp/tri1b/decode_gigaspeech_dev/wer_12_0.5
+%WER 45.65 [ 178368 / 390721, 15883 ins, 37602 del, 124883 sub ] exp/tri1b/decode_gigaspeech_test/wer_11_0.5
+%WER 43.54 [ 55643 / 127790, 5399 ins, 12270 del, 37974 sub ] exp/tri2b/decode_gigaspeech_dev/wer_12_0.5
+%WER 41.24 [ 161140 / 390721, 14673 ins, 37146 del, 109321 sub ] exp/tri2b/decode_gigaspeech_test/wer_11_0.5
+%WER 44.43 [ 56778 / 127790, 5302 ins, 13055 del, 38421 sub ] exp/tri3b/decode_gigaspeech_dev/wer_12_0.5
+%WER 42.57 [ 166320 / 390721, 14725 ins, 40289 del, 111306 sub ] exp/tri3b/decode_gigaspeech_test/wer_11_0.5
+%WER 41.08 [ 52501 / 127790, 6082 ins, 11129 del, 35290 sub ] exp/tri4b/decode_gigaspeech_dev/wer_13_0.0
+%WER 39.26 [ 153401 / 390721, 13399 ins, 40584 del, 99418 sub ] exp/tri4b/decode_gigaspeech_test/wer_12_0.5
+
+# DNN trained on XS S M L and XL of GigaSpeech
+%WER 48.83 [ 62400 / 127790, 6087 ins, 12803 del, 43510 sub ] exp/chain_cleaned/cnn_tdnn_1c_spi_XS/decode_gigaspeech_dev_rnnlm/wer_10_0.5
+%WER 48.17 [ 188198 / 390721, 20096 ins, 36896 del, 131206 sub ] exp/chain_cleaned/cnn_tdnn_1c_sp_XS/decode_gigaspeech_test_rnnlm/wer_9_0.5
+%WER 22.59 [ 28868 / 127790, 4060 ins, 6383 del, 18425 sub ] exp/chain_cleaned/cnn_tdnn_1c_sp_S/decode_gigaspeech_dev_rnnlm/wer_10_0.5
+%WER 22.13 [ 86472 / 390721, 10983 ins, 18005 del, 57484 sub ] exp/chain_cleaned/cnn_tdnn_1c_sp_S/decode_gigaspeech_test_rnnlm/wer_10_0.0
+%WER 17.96 [ 22955 / 127790, 3871 ins, 4954 del, 14130 sub ] exp/chain_cleaned/cnn_tdnn_1c_sp_M/decode_gigaspeech_dev_rnnlm/wer_11_0.0
+%WER 17.53 [ 68508 / 390721, 9490 ins, 14359 del, 44659 sub ] exp/chain_cleaned/cnn_tdnn_1c_sp_M/decode_gigaspeech_test_rnnlm/wer_9_0.0
+%WER 16.60 [ 21219 / 127790, 3510 ins, 4864 del, 12845 sub ] exp/chain_cleaned/cnn_tdnn_1c_sp_L/decode_gigaspeech_dev_rnnlm/wer_10_0.5
+%WER 16.28 [ 63595 / 390721, 8539 ins, 14167 del, 40889 sub ] exp/chain_cleaned/cnn_tdnn_1c_sp_L/decode_gigaspeech_test_rnnlm/wer_10_0.0
+%WER 14.78 [ 18886 / 127790, 3284 ins, 4590 del, 11012 sub ] exp/chain_cleaned/cnn_tdnn_1c_sp_XL/decode_gigaspeech_dev_rnnlm/wer_11_0.5
+%WER 14.84 [ 57976 / 390721, 9221 ins, 12077 del, 36678 sub ] exp/chain_cleaned/cnn_tdnn_1c_sp_XL/decode_gigaspeech_test_rnnlm/wer_10_0.0
+

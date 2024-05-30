@@ -60,7 +60,7 @@ static void UnitTestSimple() {
   // use default parameters
 
   // compute mfccs.
-  plp.Compute(v, 1.0, &m, NULL);
+  plp.Compute(v, 1.0, &m);
 
   // possibly dump
   //   std::cout << "== Output features == \n" << m;
@@ -102,7 +102,7 @@ static void UnitTestHTKCompare1() {
 
   // calculate kaldi features
   Matrix<BaseFloat> kaldi_raw_features;
-  plp.Compute(waveform, 1.0, &kaldi_raw_features, NULL);
+  plp.Compute(waveform, 1.0, &kaldi_raw_features);
 
   DeltaFeaturesOptions delta_opts;
   Matrix<BaseFloat> kaldi_features;

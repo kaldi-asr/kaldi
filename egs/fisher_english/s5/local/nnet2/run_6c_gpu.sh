@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 
 # this (local/nnet2/run_6c_gpu.sh) trains a p-norm neural network on top of
@@ -21,7 +21,7 @@ EOF
 
 
 . utils/parse_options.sh
-parallel_opts="-l gpu=1"  # This is suitable for the CLSP network, you'll likely have to change it.
+parallel_opts="--gpu 1"  # This is suitable for the CLSP network, you'll likely have to change it.
 
 ( 
   if [ "$USER" == dpovey ]; then

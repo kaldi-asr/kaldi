@@ -52,7 +52,7 @@ function setup_oov_search {
     <(cat $kwlist | grep -o -P "(?<=<kwtext>).*(?=</kwtext>)" | uconv -f utf-8 -t utf-8 -x Any-Lower) \
     >$kwsdatadir/keywords.txt 
   cut -f 2 $kwsdatadir/keywords.txt | \
-    sed 's/\s\s*/\n/g' | sort -u > $kwsdatadir/oov.txt
+    perl -ape 's/\s\s*/\n/g;' | sort -u > $kwsdatadir/oov.txt
 
 
   #Generate the confusion matrix

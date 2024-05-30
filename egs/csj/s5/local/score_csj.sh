@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright Johns Hopkins University (Author: Daniel Povey) 2012.  Apache 2.0.
 
 # Modified by Takafumi Moriya for Japanese speech recognition using CSJ.
@@ -7,8 +7,7 @@
 # begin configuration section.
 cmd=run.pl
 min_lmwt=5
-max_lmwt=20
-reverse=false
+max_lmwt=17
 #end configuration section.
 
 [ -f ./path.sh ] && . ./path.sh
@@ -20,7 +19,6 @@ if [ $# -ne 3 ]; then
   echo "    --cmd (run.pl|queue.pl...)      # specify how to run the sub-processes."
   echo "    --min_lmwt <int>                # minumum LM-weight for lattice rescoring "
   echo "    --max_lmwt <int>                # maximum LM-weight for lattice rescoring "
-  echo "    --reverse (true/false)          # score with time reversed features "
   exit 1;
 fi
 
@@ -30,7 +28,7 @@ dir=$3
 
 model=$dir/../final.mdl # assume model one level up from decoding dir.
 
-hubscr=$KALDI_ROOT/tools/sctk/bin/hubscr.pl 
+hubscr=$KALDI_ROOT/tools/sctk/bin/hubscr.pl
 #hubscr=$KALDI_ROOT/tools/sctk-2.4.0/bin/hubscr.pl
 [ ! -f $hubscr ] && echo "Cannot find scoring program at $hubscr" && exit 1;
 hubdir=`dirname $hubscr`
@@ -43,19 +41,19 @@ name=`basename $data`; # e.g. eval1
 
 mkdir -p $dir/scoring/log
 mkdir -p $dir/label
-mkdir -p $dir/label/log 
+mkdir -p $dir/label/log
 mkdir -p $dir/label/wer
 
 function filter_text_mor {
-  perl -e 'foreach $w (@ARGV) { $bad{$w} = 1; } 
+  perl -e 'foreach $w (@ARGV) { $bad{$w} = 1; }
    while(<STDIN>) { @A  = split(" ", $_); $id = shift @A; print "$id ";
      foreach $a (@A) { if (!defined $bad{$a}) { print "$a "; }} print "\n"; }' \
    '<UNK>'
 }
 
 function filter_text {
-  perl -e 'foreach $w (@ARGV) { $bad{$w} = 1; }                                                                                       
-   while(<STDIN>) { @A  = split(" ", $_); $id = shift @A; print "$id ";                                                                                                     
+  perl -e 'foreach $w (@ARGV) { $bad{$w} = 1; }
+   while(<STDIN>) { @A  = split(" ", $_); $id = shift @A; print "$id ";
      foreach $a (@A) { if (!defined $bad{$a}){ @W=split(/\+/,$a); $word=$W[0]; { print "$word "; }}} print "\n"; }' \
    '<UNK>'
 }
@@ -68,14 +66,9 @@ $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/best_path.LMWT.log \
 for lmwt in `seq $min_lmwt $max_lmwt`; do
   utils/int2sym.pl -f 2- $lang/words.txt <$dir/scoring/$lmwt.tra | \
    filter_text > $dir/scoring/$lmwt.txt || exit 1;
-  
+
   utils/int2sym.pl -f 2- $lang/words.txt <$dir/scoring/$lmwt.tra | \
    filter_text_mor > $dir/label/${lmwt}-trans.text || exit 1;
-  if $reverse; then
-    mv $dir/scoring/$lmwt.txt $dir/scoring/$lmwt.txt.orig
-    awk '{ printf("%s ",$1); for(i=NF; i>1; i--){ printf("%s ",$i); } printf("\n"); }' \
-       <$dir/scoring/$lmwt.txt.orig >$dir/scoring/$lmwt.txt
-  fi
 done
 
 filter_text <$data/text >$dir/scoring/text.filt

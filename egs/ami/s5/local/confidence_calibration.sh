@@ -1,6 +1,6 @@
-#!/bin/bash
-. cmd.sh
-. path.sh
+#!/usr/bin/env bash
+. ./cmd.sh
+. ./path.sh
 
 # Global options,
 graph=exp/ihm/tri4a/graph_ami_fsh.o3g.kn.pr1-7

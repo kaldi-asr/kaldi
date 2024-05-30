@@ -10,8 +10,13 @@ GALE Phase 2 Arabic Broadcast Conversation Speech was developed by the Linguisti
 
 The data has two types of speech: conversational and report. This script trains and test on all of them and results are reported for each of them, train data is 320 hours, 9.3 hours testing
 
-The dictionary, and scripts can be obtained from QCRI portal: http://alt.qcri.org/
+The dictionaries, and scripts can be obtained from QCRI portal: http://alt.qcri.org/
+
+The experiments here are based on the above corpus
+
+s5: Phoneme based: 
+s5b: Grapheme based: This is the receommended setup; including nnet3 and chain modeling
 
 
-s5: The experiments here are based on the above corpus
-
+[1] "A Complete Kaldi Recipe For Building Arabic Speech Recognition Systems", A. Ali, Y. Zhang, P. Cardinal, N. Dahak, S. Vogel, J. Glass.  SLT 2014 
+[2] "QCRI Advanced Transcription Systems (QATS) for the Arabic Multi-Dialect Brodcast Media Recognition: MGB-2 Challenge", S. Khurana, A. Ali. SLT 2016

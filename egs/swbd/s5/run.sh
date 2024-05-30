@@ -1,8 +1,8 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Warning-- this recipe is now out of date.  See ../s5c/ for the latest recipe.
 
-. cmd.sh
+. ./cmd.sh
 
 exit 1;
 # This is a shell script, but it's recommended that you run the commands one by
@@ -14,7 +14,7 @@ exit 1;
 
 #local/swbd_p1_data_prep.sh /mnt/matylda2/data/SWITCHBOARD_1R2
 local/swbd_p1_data_prep.sh /data/corpora0/LDC97S62/
-#local/swbd_p1_data_prep.sh /export/corpora3/LDC/LDC97S62 
+#local/swbd_p1_data_prep.sh /export/corpora3/LDC/LDC97S62
 
 local/swbd_p1_prepare_dict.sh
 
@@ -31,15 +31,15 @@ local/swbd_p1_format_data.sh
 #local/eval2000_data_prep.sh /export/corpora2/LDC/LDC2002S09/hub5e_00 /export/corpora2/LDC/LDC2002T43
 local/eval2000_data_prep.sh  /data/corpora0/LDC2002S09/hub5e_00 /data/corpora0/LDC2002T43 || exit 1;
 
-. cmd.sh
+. ./cmd.sh
 # mfccdir should be some place with a largish disk where you
-# want to store MFCC features. 
+# want to store MFCC features.
 mfccdir=`pwd`/mfcc
 
 steps/make_mfcc.sh --nj 20 --cmd "$train_cmd" data/train exp/make_mfcc/train $mfccdir || exit 1;
-# Don't do "|| exit 1" because actually some speakers don't have data, 
+# Don't do "|| exit 1" because actually some speakers don't have data,
 # we'll get rid of them later.  Ignore this error.
-steps/compute_cmvn_stats.sh data/train exp/make_mfcc/train $mfccdir 
+steps/compute_cmvn_stats.sh data/train exp/make_mfcc/train $mfccdir
 
 # after this, the next command will remove the small number of utterances
 # that couldn't be extracted for some reason (e.g. too short; no such file).
@@ -64,35 +64,35 @@ utils/subset_data_dir.sh --last data/train $n data/train_nodev
 # utterances from those.
 utils/subset_data_dir.sh --shortest data/train_nodev 100000 data/train_100kshort
 utils/subset_data_dir.sh  data/train_100kshort 10000 data/train_10k
-local/remove_dup_utts.sh 100 data/train_10k data/train_10k_nodup
+utils/data/remove_dup_utts.sh 100 data/train_10k data/train_10k_nodup
 
 # Take the first 30k utterances (about 1/8th of the data)
 utils/subset_data_dir.sh --first data/train_nodev 30000 data/train_30k
-local/remove_dup_utts.sh 200 data/train_30k data/train_30k_nodup
+utils/data/remove_dup_utts.sh 200 data/train_30k data/train_30k_nodup
 
-local/remove_dup_utts.sh 300 data/train_nodev data/train_nodup
+utils/data/remove_dup_utts.sh 300 data/train_nodev data/train_nodup
 
 # Take the first 100k utterances (just under half the data); we'll use
 # this for later stages of training.
 utils/subset_data_dir.sh --first data/train_nodev 100000 data/train_100k
-local/remove_dup_utts.sh 200 data/train_100k data/train_100k_nodup
+utils/data/remove_dup_utts.sh 200 data/train_100k data/train_100k_nodup
 
-# The next commands are not necessary for the scripts to run, but increase 
-# efficiency of data access by putting the mfcc's of the subset 
+# The next commands are not necessary for the scripts to run, but increase
+# efficiency of data access by putting the mfcc's of the subset
 # in a contiguous place in a file.
-( . path.sh; 
+( . ./path.sh;
   # make sure mfccdir is defined as above..
-  cp data/train_10k_nodup/feats.scp{,.bak} 
+  cp data/train_10k_nodup/feats.scp{,.bak}
   copy-feats scp:data/train_10k_nodup/feats.scp  ark,scp:$mfccdir/kaldi_swbd_10k_nodup.ark,$mfccdir/kaldi_swbd_10k_nodup.scp \
   && cp $mfccdir/kaldi_swbd_10k_nodup.scp data/train_10k_nodup/feats.scp
 )
-( . path.sh; 
+( . ./path.sh;
   # make sure mfccdir is defined as above..
-  cp data/train_30k_nodup/feats.scp{,.bak} 
+  cp data/train_30k_nodup/feats.scp{,.bak}
   copy-feats scp:data/train_30k_nodup/feats.scp  ark,scp:$mfccdir/kaldi_swbd_30k_nodup.ark,$mfccdir/kaldi_swbd_30k_nodup.scp \
   && cp $mfccdir/kaldi_swbd_30k_nodup.scp data/train_30k_nodup/feats.scp
 )
- 
+
 
 steps/train_mono.sh --nj 10 --cmd "$train_cmd" \
   data/train_10k_nodup data/lang exp/mono0a || exit 1;
@@ -102,7 +102,7 @@ steps/align_si.sh --nj 30 --cmd "$train_cmd" \
 
 steps/train_deltas.sh --cmd "$train_cmd" \
     2500 20000 data/train_30k_nodup data/lang exp/mono0a_ali exp/tri1 || exit 1;
- 
+
 utils/mkgraph.sh data/lang_test exp/tri1 exp/tri1/graph
 
 steps/decode.sh --nj 30 --cmd "$decode_cmd" --config conf/decode.config \
@@ -161,7 +161,6 @@ steps/align_fmllr.sh --nj 30 --cmd "$train_cmd" \
 
 
 
-#local/run_sgmm.sh
 local/run_sgmm2.sh
 
 # Building a larger SAT system.

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright      2012  Brno University of Technology (Author: Karel Vesely)
 #           2013-2014  Johns Hopkins University (Author: Daniel Povey)
 # Apache 2.0
@@ -52,6 +52,8 @@ for f in $srcdir/tree $srcdir/${iter}.mdl $data/wav.scp $lang/L.fst \
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
 
+utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt || exit 1;
+cp $lang/phones.txt $dir || exit 1;
 cp $srcdir/{tree,${iter}.mdl} $dir || exit 1;
 
 grep -v '^--endpoint' $srcdir/conf/online_nnet2_decoding.conf >$dir/feature.conf || exit 1;
@@ -72,7 +74,7 @@ echo "$0: aligning data in $data using model from $srcdir, putting alignments in
 tra="ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt $sdata/JOB/text|";
 
 $cmd JOB=1:$nj $dir/log/align.JOB.log \
-  compile-train-graphs $dir/tree $srcdir/${iter}.mdl  $lang/L.fst "$tra" ark:- \| \
+  compile-train-graphs --read-disambig-syms=$lang/phones/disambig.int $dir/tree $srcdir/${iter}.mdl  $lang/L.fst "$tra" ark:- \| \
   nnet-align-compiled $scale_opts --use-gpu=$use_gpu --beam=$beam --retry-beam=$retry_beam \
     $srcdir/${iter}.mdl ark:- "$feats" "ark:|gzip -c >$dir/ali.JOB.gz" || exit 1;
 

@@ -1,19 +1,15 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2015  Brno University of Technology (Author: Karel Vesely)
 # Apache 2.0
 
 # This example script trains a BLSTM network on FBANK features.
-# The BLSTM code comes from Ni Chongjia (I2R), thanks!
+# The initial BLSTM code comes from Ni Chongjia (I2R), thanks!
 
-# TODO, this BLSTM code needs to solve a problem how to determine the 
-# history for the 'backward' recurrency. Currently is taken the state
-# on 1st frame of previous mini-batch (20 frames).
-#
-# A more sensible approach should be single-stream training, 
-# and per-utterance updates. But the results were worse.
+# We use multi-stream training, while the BPTT is done over whole
+# utterances with similar length (selection done with C++ class MatrixBuffer).
 
-# Note: With DNNs in RM, the optimal LMWT is 2-6. Don't be tempted to try acwt's like 0.2, 
+# Note: With DNNs in RM, the optimal LMWT is 2-6. Don't be tempted to try acwt's like 0.2,
 # the value 0.1 is better both for decoding and sMBR.
 
 . ./cmd.sh
@@ -55,11 +51,13 @@ if [ $stage -le 1 ]; then
 
   # Train
   $cuda_cmd $dir/log/train_nnet.log \
-    steps/nnet/train.sh --network-type blstm --learn-rate 0.0001 \
-      --cmvn-opts "--norm-means=true --norm-vars=true" --feat-type plain --splice 0 \
-      --train-opts "--momentum 0.9 --halving-factor 0.5" \
-      --train-tool "nnet-train-lstm-streams --num-stream=4 --targets-delay=0" \
-      --proto-opts "--num-cells 512 --num-recurrent 200 --num-layers 2 --clip-gradient 50.0" \
+    steps/nnet/train.sh --network-type blstm --learn-rate 0.00004 \
+      --cmvn-opts "--norm-means=true --norm-vars=true" \
+      --delta-opts "--delta-order=2" --feat-type plain --splice 0 \
+      --scheduler-opts "--momentum 0.9 --halving-factor 0.5" \
+      --train-tool "nnet-train-multistream-perutt" \
+      --train-tool-opts "--num-streams=10 --max-frames=15000" \
+      --proto-opts "--cell-dim 320 --proj-dim 200 --num-layers 2" \
     ${train}_tr90 ${train}_cv10 data/lang $ali $ali $dir || exit 1;
 
   # Decode (reuse HCLG graph)

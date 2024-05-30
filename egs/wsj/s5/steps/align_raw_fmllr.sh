@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2012-2013  Johns Hopkins University (Author: Daniel Povey)
 # Apache 2.0
 
@@ -53,6 +53,9 @@ mkdir -p $dir/log
 echo $nj > $dir/num_jobs
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
 
+utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt || exit 1;
+cp $lang/phones.txt $dir || exit 1;
+
 cp $srcdir/{tree,final.mdl} $dir || exit 1;
 cp $srcdir/final.occs $dir;
 splice_opts=`cat $srcdir/splice_opts 2>/dev/null` # frame-splicing options.
@@ -97,7 +100,7 @@ else
     echo "$0: compiling training graphs"
     tra="ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt $sdata/JOB/text|";
     $cmd JOB=1:$nj $dir/log/compile_graphs.JOB.log  \
-      compile-train-graphs $dir/tree $dir/final.mdl  $lang/L.fst "$tra" \
+      compile-train-graphs --read-disambig-syms=$lang/phones/disambig.int $dir/tree $dir/final.mdl  $lang/L.fst "$tra" \
         "ark:|gzip -c >$dir/fsts.JOB.gz" || exit 1;
   fi
 fi

@@ -20,7 +20,7 @@ if (@ARGV != 4) {
 
 $nonsil_phones =~ s/:/ /g;
 $sil_phones =~ s/:/ /g;
-$nonsil_phones =~ m/^\d[ \d]+$/ || die "$0: bad arguments @ARGV\n";
+$nonsil_phones =~ m/^\d[ \d]*$/ || die "$0: bad arguments @ARGV\n";
 $sil_phones =~ m/^\d[ \d]*$/ || die "$0: bad arguments @ARGV\n";
 
 print "<Topology>\n";
@@ -72,7 +72,7 @@ if ($num_sil_states > 1) {
   print "<Transition> 0 0.75 ";
   print "<Transition> 1 0.25 ";
   print "</State>\n";
-  print "<State> $num_nonsil_states </State>\n"; # non-emitting final state.
+  print "<State> $num_sil_states </State>\n"; # non-emitting final state.
   print "</TopologyEntry>\n";
 }
 

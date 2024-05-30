@@ -41,14 +41,11 @@ int main(int argc, char *argv[]) {
         "nnet3-chain-merge-egs --minibatch-size=128 ark:1.cegs ark:- | nnet3-chain-train-simple ... \n"
         "See also nnet3-chain-copy-egs\n";
 
-    bool compress = false;
-    int32 minibatch_size = 64;
+
+    ExampleMergingConfig merging_config("64");  // 64 is default minibatch size.
 
     ParseOptions po(usage);
-    po.Register("minibatch-size", &minibatch_size, "Target size of minibatches "
-                "when merging (see also --measure-output-frames)");
-    po.Register("compress", &compress, "If true, compress the output examples "
-                "(not recommended unless you are writing to disk");
+    merging_config.Register(&po);
 
     po.Read(argc, argv);
 
@@ -63,39 +60,30 @@ int main(int argc, char *argv[]) {
     SequentialNnetChainExampleReader example_reader(examples_rspecifier);
     NnetChainExampleWriter example_writer(examples_wspecifier);
 
-    std::vector<NnetChainExample> examples;
-    examples.reserve(minibatch_size);
-
-    int64 num_read = 0, num_written = 0;
-    while (!example_reader.Done()) {
-      const NnetChainExample &cur_eg = example_reader.Value();
-      examples.resize(examples.size() + 1);
-      examples.back() = cur_eg;
-
-      bool minibatch_ready =
-          static_cast<int32>(examples.size()) >= minibatch_size;
-
-      // Do Next() now, so we can test example_reader.Done() below .
-      example_reader.Next();
-      num_read++;
-
-      if (minibatch_ready || (example_reader.Done() && !examples.empty())) {
-        NnetChainExample merged_eg;
-        MergeChainExamples(compress, &examples, &merged_eg);
-        std::ostringstream ostr;
-        ostr << "merged-" << num_written;
-        num_written++;
-        std::string output_key = ostr.str();
-        example_writer.Write(output_key, merged_eg);
-        examples.clear();
-      }
+    merging_config.ComputeDerived();
+    ChainExampleMerger merger(merging_config, &example_writer);
+    if(!merging_config.multilingual_eg) {
+        for (; !example_reader.Done(); example_reader.Next()) {
+          const NnetChainExample &cur_eg = example_reader.Value();
+          merger.AcceptExample(new NnetChainExample(cur_eg));
+        }
+        // the merger itself prints the necessary diagnostics.
+        merger.Finish();
+    } else {
+        for (; !example_reader.Done(); example_reader.Next()) {
+          const NnetChainExample &cur_eg = example_reader.Value();
+          const std::string &key = example_reader.Key();
+          std::string lang_name;
+          ParseFromQueryString(key, "lang", &lang_name);
+          // change output name to output-lang
+          auto new_cur_eg = new NnetChainExample(cur_eg);
+          new_cur_eg->outputs[0].name = "output-" + lang_name;
+          merger.AcceptExample(new_cur_eg);
+        }
     }
-    KALDI_LOG << "Merged " << num_read << " egs to " << num_written << '.';
-    return (num_written != 0 ? 0 : 1);
+    return merger.ExitStatus();
   } catch(const std::exception &e) {
     std::cerr << e.what() << '\n';
     return -1;
   }
 }
-
-

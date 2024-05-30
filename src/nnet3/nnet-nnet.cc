@@ -22,6 +22,9 @@
 #include "nnet3/nnet-nnet.h"
 #include "nnet3/nnet-parse.h"
 #include "nnet3/nnet-utils.h"
+#include "nnet3/nnet-simple-component.h"
+#include "nnet3/am-nnet-simple.h"
+#include "hmm/transition-model.h"
 
 namespace kaldi {
 namespace nnet3 {
@@ -45,6 +48,16 @@ int32 NetworkNode::Dim(const Nnet &nnet) const {
   }
   KALDI_ASSERT(ans > 0);
   return ans;
+}
+
+void Nnet::SetNodeName(int32 node_index, const std::string &new_name) {
+  if (!(static_cast<size_t>(node_index) < nodes_.size()))
+    KALDI_ERR << "Invalid node index";
+  if (GetNodeIndex(new_name) != -1)
+    KALDI_ERR << "You cannot rename a node to create a duplicate node name";
+  if (!IsValidName(new_name))
+    KALDI_ERR << "Node name " << new_name << " is not allowed.";
+  node_names_[node_index] = new_name;
 }
 
 const std::vector<std::string> &Nnet::GetNodeNames() const {
@@ -145,6 +158,15 @@ void Nnet::SetComponent(int32 c, Component *component) {
   components_[c] = component;
 }
 
+int32 Nnet::AddComponent(const std::string &name,
+                         Component *component) {
+  int32 ans = components_.size();
+  KALDI_ASSERT(IsValidName(name) && component != NULL);
+  components_.push_back(component);
+  component_names_.push_back(name);
+  return ans;
+}
+
 /// Returns true if this is component-input node, i.e. a node of type kDescriptor
 /// that immediately precedes a node of type kComponent.
 bool Nnet::IsComponentInputNode(int32 node) const {
@@ -181,51 +203,45 @@ void Nnet::ReadConfig(std::istream &config_is) {
 
   int32 num_lines_initial = lines.size();
 
-  ReadConfigFile(config_is, &lines);
+  ReadConfigLines(config_is, &lines);
   // now "lines" will have comments removed and empty lines stripped out
 
-  std::vector<std::string> first_tokens(lines.size());
   std::vector<ConfigLine> config_lines(lines.size());
-  for (size_t i = 0; i < lines.size(); i++) {
-    std::istringstream is(lines[i]);
-    std::string first_token;
-    is >> first_token;
-    first_tokens[i] = first_token;
-    std::string rest_of_line;
-    getline(is, rest_of_line);
-    if (!config_lines[i].ParseLine(rest_of_line))
-      KALDI_ERR << "Could not parse config-file line '" << lines[i] << "'";
 
-  }
+  ParseConfigLines(lines, &config_lines);
 
-  // the next line will possibly remove some elements from "first_tokens" and
-  // "config_lines" so nothing is doubly defined.
-  RemoveRedundantConfigLines(num_lines_initial, &first_tokens, &config_lines);
+  // the next line will possibly remove some elements from "config_lines" so no
+  // node or component is doubly defined, always keeping the second repeat.
+  // Things being doubly defined can happen when a previously existing node or
+  // component is redefined in a new config file.
+  RemoveRedundantConfigLines(num_lines_initial, &config_lines);
 
   int32 initial_num_components = components_.size();
   for (int32 pass = 0; pass <= 1; pass++) {
     for (size_t i = 0; i < config_lines.size(); i++) {
-      if (first_tokens[i] == "component") {
+      const std::string &first_token = config_lines[i].FirstToken();
+      if (first_token == "component") {
         if (pass == 0)
           ProcessComponentConfigLine(initial_num_components,
                                      &(config_lines[i]));
-      } else if (first_tokens[i] == "component-node") {
+      } else if (first_token == "component-node") {
         ProcessComponentNodeConfigLine(pass,  &(config_lines[i]));
-      } else if (first_tokens[i] == "input-node") {
+      } else if (first_token == "input-node") {
         if (pass == 0)
           ProcessInputNodeConfigLine(&(config_lines[i]));
-      } else if (first_tokens[i] == "output-node") {
+      } else if (first_token == "output-node") {
         ProcessOutputNodeConfigLine(pass, &(config_lines[i]));
-      } else if (first_tokens[i] == "dim-range-node") {
+      } else if (first_token == "dim-range-node") {
         ProcessDimRangeNodeConfigLine(pass, &(config_lines[i]));
       } else {
-        KALDI_ERR << "Invalid config-file line ('" << first_tokens[i]
+        KALDI_ERR << "Invalid config-file line ('" << first_token
                   << "' not expected): " << config_lines[i].WholeLine();
       }
     }
   }
   Check();
 }
+
 
 // called only on pass 0 of ReadConfig.
 void Nnet::ProcessComponentConfigLine(
@@ -263,7 +279,7 @@ void Nnet::ProcessComponentConfigLine(
   }
   if (config->HasUnusedValues())
     KALDI_ERR << "Unused values '" << config->UnusedValues()
-              << " in config line: " << config->WholeLine();
+              << "' in config line: " << config->WholeLine();
 }
 
 
@@ -468,11 +484,9 @@ int32 Nnet::GetComponentIndex(const std::string &component_name) const {
 // containing the node info, concatenated with a config provided by the user.
 //static
 void Nnet::RemoveRedundantConfigLines(int32 num_lines_initial,
-                                      std::vector<std::string> *first_tokens,
-                                      std::vector<ConfigLine> *configs) {
-  int32 num_lines = first_tokens->size();
-  KALDI_ASSERT(configs->size() == num_lines &&
-               num_lines_initial <= num_lines);
+                                      std::vector<ConfigLine> *config_lines) {
+  int32 num_lines = config_lines->size();
+  KALDI_ASSERT(num_lines_initial <= num_lines);
   // node names and component names live in different namespaces.
   unordered_map<std::string, int32, StringHasher> node_name_to_most_recent_line;
   unordered_set<std::string, StringHasher> component_names;
@@ -480,8 +494,7 @@ void Nnet::RemoveRedundantConfigLines(int32 num_lines_initial,
 
   std::vector<bool> to_remove(num_lines, false);
   for (int32 line = 0; line < num_lines; line++) {
-    std::string first_token = (*first_tokens)[line];
-    ConfigLine &config_line = (*configs)[line];
+    ConfigLine &config_line = (*config_lines)[line];
     std::string name;
     if (!config_line.GetValue("name", &name))
       KALDI_ERR << "Config line has no field 'name=xxx': "
@@ -489,7 +502,7 @@ void Nnet::RemoveRedundantConfigLines(int32 num_lines_initial,
     if (!IsValidName(name))
       KALDI_ERR << "Name '" << name << "' is not allowable, in line: "
                 << config_line.WholeLine();
-    if ((*first_tokens)[line] == "component") {
+    if (config_line.FirstToken() == "component") {
       // a line starting with "component"... components live in their own
       // namespace.  No repeats are allowed because we never wrote them
       // to the config generated from the nnet.
@@ -519,18 +532,13 @@ void Nnet::RemoveRedundantConfigLines(int32 num_lines_initial,
     }
   }
   // Now remove any lines with to_remove[i] = true.
-  std::vector<std::string> first_tokens_out;
-  std::vector<ConfigLine> configs_out;
-  first_tokens_out.reserve(num_lines);
-  configs_out.reserve(num_lines);
+  std::vector<ConfigLine> config_lines_out;
+  config_lines_out.reserve(num_lines);
   for (int32 i = 0; i < num_lines; i++) {
-    if (!to_remove[i]) {
-      first_tokens_out.push_back((*first_tokens)[i]);
-      configs_out.push_back((*configs)[i]);
-    }
+    if (!to_remove[i])
+      config_lines_out.push_back((*config_lines)[i]);
   }
-  first_tokens->swap(first_tokens_out);
-  configs->swap(configs_out);
+  config_lines->swap(config_lines_out);
 }
 
 // copy constructor.
@@ -568,8 +576,28 @@ void Nnet::GetSomeNodeNames(
   }
 }
 
+void Nnet::Swap(Nnet *other) {
+  component_names_.swap(other->component_names_);
+  components_.swap(other->components_);
+  node_names_.swap(other->node_names_);
+  nodes_.swap(other->nodes_);
+}
+
 void Nnet::Read(std::istream &is, bool binary) {
   Destroy();
+  int first_char = PeekToken(is, binary);
+  if (first_char == 'T') {
+    // This branch is to allow '.mdl' files (containing a TransitionModel
+    // and then an AmNnetSimple) to be read where .raw files (containing
+    // just an Nnet) would be expected.  This is often convenient.
+    TransitionModel temp_trans_model;
+    temp_trans_model.Read(is, binary);
+    AmNnetSimple temp_am_nnet;
+    temp_am_nnet.Read(is, binary);
+    temp_am_nnet.GetNnet().Swap(this);
+    return;
+  }
+
   ExpectToken(is, binary, "<Nnet3>");
   std::ostringstream config_file_out;
   std::string cur_line;
@@ -663,12 +691,11 @@ const std::string& Nnet::GetComponentName(int32 component_index) const {
   return component_names_[component_index];
 }
 
-void Nnet::Check() const {
+void Nnet::Check(bool warn_for_orphans) const {
   int32 num_nodes = nodes_.size(),
     num_input_nodes = 0,
     num_output_nodes = 0;
   KALDI_ASSERT(num_nodes != 0);
-  std::vector<bool> component_used(components_.size());
   for (int32 n = 0; n < num_nodes; n++) {
     const NetworkNode &node = nodes_[n];
     std::string node_name = node_names_[n];
@@ -699,8 +726,13 @@ void Nnet::Check() const {
         KALDI_ASSERT(n > 0 && nodes_[n-1].node_type == kDescriptor);
         const NetworkNode &src_node = nodes_[n-1];
         const Component *c = GetComponent(node.u.component_index);
-        component_used[node.u.component_index] = true;
-        int32 src_dim = src_node.Dim(*this), input_dim = c->InputDim();
+        int32 src_dim, input_dim = c->InputDim();
+        try {
+          src_dim = src_node.Dim(*this);
+        } catch (...) {
+          KALDI_ERR << "Error in Descriptor for network-node "
+                    << node_name << " (see error above)";
+        }
         if (src_dim != input_dim) {
           KALDI_ERR << "Dimension mismatch for network-node "
                     << node_name << ": input-dim "
@@ -733,14 +765,32 @@ void Nnet::Check() const {
   int32 num_components = components_.size();
   for (int32 c = 0; c < num_components; c++) {
     const std::string &component_name = component_names_[c];
-    if (!component_used[c]) {
-      KALDI_WARN << "Orphan component " << component_name;
-    }
     KALDI_ASSERT(GetComponentIndex(component_name) == c &&
                  "Duplicate component names?");
   }
   KALDI_ASSERT(num_input_nodes > 0);
   KALDI_ASSERT(num_output_nodes > 0);
+
+
+  if (warn_for_orphans) {
+    std::vector<int32> orphans;
+    FindOrphanComponents(*this, &orphans);
+    for (size_t i = 0; i < orphans.size(); i++) {
+      KALDI_WARN << "Component " << GetComponentName(orphans[i])
+                 << " is never used by any node.";
+    }
+    FindOrphanNodes(*this, &orphans);
+    for (size_t i = 0; i < orphans.size(); i++) {
+      if (!IsComponentInputNode(orphans[i])) {
+        // There is no point warning about component-input nodes, since the
+        // warning will be printed for the corresponding component nodes..  a
+        // duplicate warning might be confusing to the user, as the
+        // component-input nodes are implicit and usually hidden from users.
+        KALDI_WARN << "Node " << GetNodeName(orphans[i])
+                   << " is never used to compute any output.";
+      }
+    }
+  }
 }
 
 // copy constructor
@@ -770,6 +820,13 @@ Nnet& Nnet::operator =(const Nnet &nnet) {
 
 std::string Nnet::Info() const {
   std::ostringstream os;
+
+  if(IsSimpleNnet(*this))  {
+    int32 left_context, right_context;
+    ComputeSimpleNnetContext(*this, &left_context, &right_context);
+    os << "left-context: " << left_context << "\n";
+    os << "right-context: " << right_context << "\n";
+  }
   os << "num-parameters: " << NumParameters(*this) << "\n";
   os << "modulus: " << this->Modulus() << "\n";
   std::vector<std::string> config_lines;
@@ -782,6 +839,123 @@ std::string Nnet::Info() const {
     os << "component name=" << component_names_[i]
        << " type=" << components_[i]->Info() << "\n";
   return os.str();
+}
+
+void Nnet::RemoveOrphanComponents() {
+  std::vector<int32> orphan_components;
+  FindOrphanComponents(*this, &orphan_components);
+  KALDI_LOG << "Removing " << orphan_components.size()
+            << " orphan components.";
+  if (orphan_components.empty())
+    return;
+  int32 old_num_components = components_.size(),
+      new_num_components = 0;
+  std::vector<int32> old2new_map(old_num_components, 0);
+  for (size_t i = 0; i < orphan_components.size(); i++)
+    old2new_map[orphan_components[i]] = -1;
+  std::vector<Component*> new_components;
+  std::vector<std::string> new_component_names;
+  for (int32 c = 0; c < old_num_components; c++) {
+    if (old2new_map[c] != -1) {
+      old2new_map[c] = new_num_components++;
+      new_components.push_back(components_[c]);
+      new_component_names.push_back(component_names_[c]);
+    } else {
+      delete components_[c];
+      components_[c] = NULL;
+    }
+  }
+  for (int32 n = 0; n < NumNodes(); n++) {
+    if (IsComponentNode(n)) {
+      int32 old_c = nodes_[n].u.component_index,
+          new_c = old2new_map[old_c];
+      KALDI_ASSERT(new_c >= 0);
+      nodes_[n].u.component_index = new_c;
+    }
+  }
+  components_ = new_components;
+  component_names_ = new_component_names;
+  Check();
+}
+
+void Nnet::RemoveSomeNodes(const std::vector<int32> &nodes_to_remove) {
+  if (nodes_to_remove.empty())
+    return;
+  int32 old_num_nodes = nodes_.size(),
+      new_num_nodes = 0;
+  std::vector<int32> old2new_map(old_num_nodes, 0);
+  for (size_t i = 0; i < nodes_to_remove.size(); i++)
+    old2new_map[nodes_to_remove[i]] = -1;
+  std::vector<NetworkNode> new_nodes;
+  std::vector<std::string> new_node_names;
+  for (int32 n = 0; n < old_num_nodes; n++) {
+    if (old2new_map[n] != -1) {
+      old2new_map[n] = new_num_nodes++;
+      new_nodes.push_back(nodes_[n]);
+      new_node_names.push_back(node_names_[n]);
+    }
+  }
+  for (int32 n = 0; n < new_num_nodes; n++) {
+    if (new_nodes[n].node_type == kDescriptor) {
+      // we need to renumber the node indexes inside the descriptor.  It's
+      // easiest to do this by converting back and forth to text format.  This
+      // is inefficient, of course, but these graphs are typically quite small.
+      std::ostringstream os;
+      new_nodes[n].descriptor.WriteConfig(os, node_names_);
+      std::vector<std::string> tokens;
+      DescriptorTokenize(os.str(), &tokens);
+      KALDI_ASSERT(!tokens.empty());
+      tokens.push_back("end of input");
+      const std::string *token = &(tokens[0]);
+      Descriptor new_descriptor;
+      // this should work; if it doesn't, there was a programming error.
+      if (!new_nodes[n].descriptor.Parse(new_node_names, &token)) {
+        KALDI_ERR << "Code error removing orphan nodes.";
+      }
+    } else if (new_nodes[n].node_type == kDimRange) {
+      int32 old_node_index = new_nodes[n].u.node_index,
+          new_node_index = old2new_map[old_node_index];
+      KALDI_ASSERT(new_node_index >= 0 && new_node_index <= new_num_nodes);
+      new_nodes[n].u.node_index = new_node_index;
+    }
+  }
+  nodes_ = new_nodes;
+  node_names_ = new_node_names;
+  bool warn_for_orphans = false;
+  // don't warn about orphans, because at this stage we may have
+  // orphan components that will later be removed by calling
+  // RemoveOrphanComponents().
+  Check(warn_for_orphans);
+}
+
+
+void Nnet::RemoveOrphanNodes(bool remove_orphan_inputs) {
+  std::vector<int32> orphan_nodes;
+  FindOrphanNodes(*this, &orphan_nodes);
+  if (!remove_orphan_inputs)
+    for (int32 i = 0; i < orphan_nodes.size(); i++)
+      if (IsInputNode(orphan_nodes[i]))
+        orphan_nodes.erase(orphan_nodes.begin() + i);
+  // For each component-node, its component-input node (which is kind of a
+  // "hidden" node) would be included in 'orphan_nodes', but for diagnostic
+  // purposes we want to exclude these from 'num_nodes_removed' to avoid
+  // confusing users.
+  int32 num_nodes_removed = 0;
+  for (int32 i = 0; i < orphan_nodes.size(); i++)
+    if (!IsComponentInputNode(orphan_nodes[i]))
+      num_nodes_removed++;
+  RemoveSomeNodes(orphan_nodes);
+  KALDI_LOG << "Removed " << num_nodes_removed << " orphan nodes.";
+}
+
+void Nnet::ResetGenerators() {
+  // resets random-number generators for all random
+  // components.
+  for (int32 c = 0; c < NumComponents(); c++) {
+    RandomComponent *rc = dynamic_cast<RandomComponent*>(GetComponent(c));
+    if (rc != NULL)
+      rc->ResetGenerator();
+  }
 }
 
 } // namespace nnet3

@@ -1,0 +1,103 @@
+name: Docker Image CI
+
+on:
+  schedule:
+  - cron: '37 2 * * 1'
+  workflow_dispatch:
+    inputs:
+      logLevel:
+        description: 'Log level'
+        required: true
+        default: 'warning'
+        type: choice
+        options:
+          - info
+          - warning
+          - debug
+#  pull_request: #for debugging purposes
+#    branches: [ "master" ]
+
+jobs:
+  enable_build:
+    if: github.repository == 'kaldi-asr/kaldi'
+    runs-on: ubuntu-latest
+    outputs:
+      enabled: ${{ steps.set-enabled.outputs.enabled }}
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Set enabled
+        id: set-enabled
+        run: |
+          set -x
+          echo $(git rev-list  --after="1 week"  ${{ github.sha }})
+          if test -z $(git rev-list  --after="1 week"  ${{ github.sha }} | tail -n 1) ; then
+            enabled=false
+          else
+            enabled=true
+          fi
+          echo "enabled: $enabled"
+          echo "::set-output name=enabled::${enabled}"
+
+
+  docker-buildx-gpu:
+    needs: enable_build
+    if: needs.enable_build.outputs.enabled == 'true' || github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v2
+        with:
+          install: true
+      - name: Login to DockerHub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Inspect builder
+        run: |
+          echo "Name:      ${{ steps.buildx.outputs.name }}"
+          echo "Endpoint:  ${{ steps.buildx.outputs.endpoint }}"
+          echo "Status:    ${{ steps.buildx.outputs.status }}"
+          echo "Flags:     ${{ steps.buildx.outputs.flags }}"
+          echo "Platforms: ${{ steps.buildx.outputs.platforms }}"
+      - name: Build and push
+        run: |
+          cd docker/ubuntu18.04-cuda10.0/
+          docker build --push --tag kaldiasr/kaldi:gpu-latest --tag kaldiasr/kaldi:gpu-ubuntu18.04-cuda10.0 --tag kaldiasr/kaldi:gpu-ubuntu18.04-cuda10.0-$(date +%F) .
+
+  docker-buildx-cpu:
+    needs: enable_build
+    if: needs.enable_build.outputs.enabled == 'true' || github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v2
+        with:
+          install: true
+      - name: Login to DockerHub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+      - name: Inspect builder
+        run: |
+          echo "Name:      ${{ steps.buildx.outputs.name }}"
+          echo "Endpoint:  ${{ steps.buildx.outputs.endpoint }}"
+          echo "Status:    ${{ steps.buildx.outputs.status }}"
+          echo "Flags:     ${{ steps.buildx.outputs.flags }}"
+          echo "Platforms: ${{ steps.buildx.outputs.platforms }}"
+      - name: Build and push
+        run: |
+          cd docker/debian10-cpu/
+          docker build --push \
+                       --tag kaldiasr/kaldi:latest \
+                       --tag kaldiasr/kaldi:cpu-latest  \
+                       --tag kaldiasr/kaldi:cpu-debian10 \
+                       --tag kaldiasr/kaldi:cpu-debian10-$(date +%F) .
+

@@ -1,0 +1,266 @@
+# Get WER and CER
+%WER 48.37 [ 263343 / 544398, 59464 ins, 61751 del, 142128 sub ] exp/tri1/decode/wer_14
+%WER 46.92 [ 255435 / 544398, 61084 ins, 56012 del, 138339 sub ] exp/tri2a/decode/wer_14
+%WER 46.45 [ 252879 / 544398, 64019 ins, 49291 del, 139569 sub ] exp/tri3b/decode.si/wer_14
+%WER 45.20 [ 246062 / 544398, 64493 ins, 46744 del, 134825 sub ] exp/tri2b/decode/wer_14
+%WER 41.30 [ 224836 / 544398, 62047 ins, 46613 del, 116176 sub ] exp/tri2b_mpe/decode_it3/wer_12
+%WER 41.06 [ 223547 / 544398, 67146 ins, 37475 del, 118926 sub ] exp/tri3b/decode/wer_14
+%WER 40.66 [ 221333 / 544398, 57785 ins, 45636 del, 117912 sub ] exp/tri2b_mmi/decode_it3/wer_11
+%WER 40.58 [ 220918 / 544398, 58174 ins, 52314 del, 110430 sub ] exp/tri2b_mpe/decode_it4/wer_13
+%WER 40.42 [ 220024 / 544398, 49748 ins, 58009 del, 112267 sub ] exp/tri2b_mmi/decode_it4/wer_11
+%WER 40.22 [ 218975 / 544398, 55657 ins, 50365 del, 112953 sub ] exp/tri2b_mmi_b0.1/decode_it3/wer_12
+%WER 39.77 [ 216506 / 544398, 65278 ins, 36165 del, 115063 sub ] exp/sgmm_5a/decode/wer_11
+%WER 39.69 [ 216051 / 544398, 53034 ins, 53491 del, 109526 sub ] exp/tri2b_mmi_b0.1/decode_it4/wer_11
+%WER 38.67 [ 210531 / 544398, 66344 ins, 31914 del, 112273 sub ] exp/sgmm_5a_mmi_b0.1/decode1/wer_10
+%WER 38.18 [ 207867 / 544398, 65994 ins, 31883 del, 109990 sub ] exp/sgmm_5a_mmi_b0.1/decode2/wer_10
+%WER 37.78 [ 205693 / 544398, 65686 ins, 31705 del, 108302 sub ] exp/sgmm_5a_mmi_b0.1/decode3/wer_10
+%WER 37.51 [ 204229 / 544398, 65502 ins, 31771 del, 106956 sub ] exp/sgmm_5a_mmi_b0.1/decode4/wer_10
+%WER 36.94 [ 201074 / 544398, 66470 ins, 30258 del, 104346 sub ] exp/sgmm_5a_mmi_b0.1/decode/wer_9
+
+%WER 40.70 [ 360556 / 885790, 89973 ins, 82245 del, 188338 sub ] exp/tri1/decode/cer_13
+%WER 39.29 [ 348071 / 885790, 92415 ins, 74065 del, 181591 sub ] exp/tri2a/decode/cer_13
+%WER 38.68 [ 342642 / 885790, 98429 ins, 62154 del, 182059 sub ] exp/tri3b/decode.si/cer_12
+%WER 37.49 [ 332045 / 885790, 96932 ins, 61925 del, 173188 sub ] exp/tri2b/decode/cer_13
+%WER 33.85 [ 299862 / 885790, 93460 ins, 60231 del, 146171 sub ] exp/tri2b_mpe/decode_it3/cer_11
+%WER 33.49 [ 296629 / 885790, 86746 ins, 61534 del, 148349 sub ] exp/tri2b_mmi/decode_it3/cer_11
+%WER 33.37 [ 295570 / 885790, 80320 ins, 70288 del, 144962 sub ] exp/tri2b_mmi/decode_it4/cer_10
+%WER 33.30 [ 295009 / 885790, 99171 ins, 50231 del, 145607 sub ] exp/tri3b/decode/cer_13
+%WER 33.23 [ 294379 / 885790, 88389 ins, 68681 del, 137309 sub ] exp/tri2b_mpe/decode_it4/cer_12
+%WER 33.03 [ 292595 / 885790, 87700 ins, 61287 del, 143608 sub ] exp/tri2b_mmi_b0.1/decode_it3/cer_11
+%WER 32.60 [ 288751 / 885790, 83604 ins, 65659 del, 139488 sub ] exp/tri2b_mmi_b0.1/decode_it4/cer_10
+%WER 32.14 [ 284728 / 885790, 99089 ins, 45433 del, 140206 sub ] exp/sgmm_5a/decode/cer_10
+%WER 31.24 [ 276708 / 885790, 101134 ins, 39271 del, 136303 sub ] exp/sgmm_5a_mmi_b0.1/decode1/cer_9
+%WER 30.82 [ 273013 / 885790, 100939 ins, 38720 del, 133354 sub ] exp/sgmm_5a_mmi_b0.1/decode2/cer_9
+%WER 30.49 [ 270059 / 885790, 100834 ins, 38371 del, 130854 sub ] exp/sgmm_5a_mmi_b0.1/decode3/cer_9
+%WER 30.25 [ 267980 / 885790, 100694 ins, 38242 del, 129044 sub ] exp/sgmm_5a_mmi_b0.1/decode4/cer_9
+%WER 29.76 [ 263594 / 885790, 99415 ins, 39444 del, 124735 sub ] exp/sgmm_5a_mmi_b0.1/decode/cer_9
+
+# Detailed WER on all corpus dev sets
+
+# WER test.LDC2013S04
+%WER 37.60 [ 35770 / 95137, 5670 ins, 7459 del, 22641 sub ] exp/sgmm_5a_mmi_b0.1/decode/wer_test.LDC2013S04_9
+%WER 38.20 [ 36338 / 95137, 5759 ins, 7315 del, 23264 sub ] exp/sgmm_5a_mmi_b0.1/decode4/wer_test.LDC2013S04_9
+%WER 38.51 [ 36639 / 95137, 5768 ins, 7390 del, 23481 sub ] exp/sgmm_5a_mmi_b0.1/decode3/wer_test.LDC2013S04_9
+%WER 39.07 [ 37173 / 95137, 5805 ins, 7425 del, 23943 sub ] exp/sgmm_5a_mmi_b0.1/decode2/wer_test.LDC2013S04_9
+%WER 39.64 [ 37713 / 95137, 5843 ins, 7490 del, 24380 sub ] exp/sgmm_5a_mmi_b0.1/decode1/wer_test.LDC2013S04_9
+%WER 40.88 [ 38894 / 95137, 5514 ins, 8378 del, 25002 sub ] exp/sgmm_5a/decode/wer_test.LDC2013S04_10
+%WER 41.71 [ 39680 / 95137, 5237 ins, 9772 del, 24671 sub ] exp/tri2b_mmi_b0.1/decode_it4/wer_test.LDC2013S04_10
+%WER 41.96 [ 39915 / 95137, 5626 ins, 8584 del, 25705 sub ] exp/tri3b/decode/wer_test.LDC2013S04_13
+%WER 42.02 [ 39973 / 95137, 5539 ins, 8861 del, 25573 sub ] exp/tri2b_mmi_b0.1/decode_it3/wer_test.LDC2013S04_10
+%WER 42.13 [ 40081 / 95137, 5170 ins, 9891 del, 25020 sub ] exp/tri2b_mpe/decode_it4/wer_test.LDC2013S04_11
+%WER 42.71 [ 40635 / 95137, 5332 ins, 9748 del, 25555 sub ] exp/tri2b_mpe/decode_it3/wer_test.LDC2013S04_11
+%WER 42.72 [ 40643 / 95137, 5624 ins, 8835 del, 26184 sub ] exp/tri2b_mmi/decode_it3/wer_test.LDC2013S04_10
+%WER 42.97 [ 40880 / 95137, 5278 ins, 10109 del, 25493 sub ] exp/tri2b_mmi/decode_it4/wer_test.LDC2013S04_10
+%WER 47.10 [ 44807 / 95137, 5574 ins, 10120 del, 29113 sub ] exp/tri2b/decode/wer_test.LDC2013S04_13
+%WER 48.93 [ 46555 / 95137, 5680 ins, 10447 del, 30428 sub ] exp/tri3b/decode.si/wer_test.LDC2013S04_12
+%WER 49.38 [ 46982 / 95137, 4996 ins, 11786 del, 30200 sub ] exp/tri2a/decode/wer_test.LDC2013S04_14
+%WER 50.97 [ 48494 / 95137, 5175 ins, 11987 del, 31332 sub ] exp/tri1/decode/wer_test.LDC2013S04_13
+
+# WER test.LDC2013S08
+%WER 22.16 [ 17707 / 79911, 3606 ins, 2589 del, 11512 sub ] exp/sgmm_5a_mmi_b0.1/decode/wer_test.LDC2013S08_8
+%WER 22.54 [ 18009 / 79911, 3486 ins, 2764 del, 11759 sub ] exp/sgmm_5a_mmi_b0.1/decode4/wer_test.LDC2013S08_9
+%WER 22.84 [ 18253 / 79911, 3626 ins, 2612 del, 12015 sub ] exp/sgmm_5a_mmi_b0.1/decode3/wer_test.LDC2013S08_8
+%WER 23.16 [ 18507 / 79911, 3506 ins, 2819 del, 12182 sub ] exp/sgmm_5a_mmi_b0.1/decode2/wer_test.LDC2013S08_9
+%WER 23.62 [ 18877 / 79911, 3554 ins, 2849 del, 12474 sub ] exp/sgmm_5a_mmi_b0.1/decode1/wer_test.LDC2013S08_9
+%WER 24.52 [ 19594 / 79911, 3688 ins, 3017 del, 12889 sub ] exp/sgmm_5a/decode/wer_test.LDC2013S08_9
+%WER 25.25 [ 20177 / 79911, 3357 ins, 3442 del, 13378 sub ] exp/tri2b_mmi_b0.1/decode_it4/wer_test.LDC2013S08_10
+%WER 25.53 [ 20400 / 79911, 3346 ins, 3483 del, 13571 sub ] exp/tri2b_mmi_b0.1/decode_it3/wer_test.LDC2013S08_11
+%WER 25.59 [ 20447 / 79911, 3330 ins, 3814 del, 13303 sub ] exp/tri2b_mpe/decode_it4/wer_test.LDC2013S08_12
+%WER 25.67 [ 20510 / 79911, 3660 ins, 3361 del, 13489 sub ] exp/tri3b/decode/wer_test.LDC2013S08_13
+%WER 25.91 [ 20702 / 79911, 3295 ins, 3670 del, 13737 sub ] exp/tri2b_mmi/decode_it4/wer_test.LDC2013S08_10
+%WER 25.93 [ 20721 / 79911, 3319 ins, 3532 del, 13870 sub ] exp/tri2b_mmi/decode_it3/wer_test.LDC2013S08_11
+%WER 26.08 [ 20841 / 79911, 3418 ins, 3757 del, 13666 sub ] exp/tri2b_mpe/decode_it3/wer_test.LDC2013S08_12
+%WER 29.35 [ 23450 / 79911, 3706 ins, 3910 del, 15834 sub ] exp/tri2b/decode/wer_test.LDC2013S08_13
+%WER 30.48 [ 24359 / 79911, 3831 ins, 3859 del, 16669 sub ] exp/tri3b/decode.si/wer_test.LDC2013S08_11
+%WER 31.68 [ 25314 / 79911, 3637 ins, 4636 del, 17041 sub ] exp/tri2a/decode/wer_test.LDC2013S08_14
+%WER 33.01 [ 26375 / 79911, 3675 ins, 4743 del, 17957 sub ] exp/tri1/decode/wer_test.LDC2013S08_13
+
+# WER test.LDC2014S09
+%WER 45.41 [ 35390 / 77932, 11018 ins, 5860 del, 18512 sub ] exp/sgmm_5a_mmi_b0.1/decode/wer_test.LDC2014S09_10
+%WER 46.00 [ 35848 / 77932, 10930 ins, 6053 del, 18865 sub ] exp/sgmm_5a_mmi_b0.1/decode4/wer_test.LDC2014S09_11
+%WER 46.27 [ 36059 / 77932, 10673 ins, 6370 del, 19016 sub ] exp/sgmm_5a_mmi_b0.1/decode3/wer_test.LDC2014S09_12
+%WER 46.57 [ 36293 / 77932, 11029 ins, 5994 del, 19270 sub ] exp/sgmm_5a_mmi_b0.1/decode2/wer_test.LDC2014S09_11
+%WER 47.07 [ 36684 / 77932, 10819 ins, 6276 del, 19589 sub ] exp/sgmm_5a_mmi_b0.1/decode1/wer_test.LDC2014S09_12
+%WER 47.80 [ 37249 / 77932, 7270 ins, 12090 del, 17889 sub ] exp/tri2b_mmi_b0.1/decode_it4/wer_test.LDC2014S09_11
+%WER 48.15 [ 37528 / 77932, 10807 ins, 6823 del, 19898 sub ] exp/sgmm_5a/decode/wer_test.LDC2014S09_12
+%WER 48.40 [ 37722 / 77932, 6651 ins, 13935 del, 17136 sub ] exp/tri2b_mmi_b0.1/decode_it3/wer_test.LDC2014S09_14
+%WER 48.52 [ 37812 / 77932, 6507 ins, 13163 del, 18142 sub ] exp/tri2b_mmi/decode_it4/wer_test.LDC2014S09_11
+%WER 48.69 [ 37947 / 77932, 6897 ins, 12985 del, 18065 sub ] exp/tri2b_mmi/decode_it3/wer_test.LDC2014S09_13
+%WER 48.75 [ 37995 / 77932, 8250 ins, 12319 del, 17426 sub ] exp/tri2b_mpe/decode_it4/wer_test.LDC2014S09_14
+%WER 49.49 [ 38569 / 77932, 10792 ins, 7406 del, 20371 sub ] exp/tri3b/decode/wer_test.LDC2014S09_16
+%WER 49.55 [ 38615 / 77932, 8623 ins, 11835 del, 18157 sub ] exp/tri2b_mpe/decode_it3/wer_test.LDC2014S09_14
+%WER 53.82 [ 41942 / 77932, 9645 ins, 10274 del, 22023 sub ] exp/tri2b/decode/wer_test.LDC2014S09_16
+%WER 54.92 [ 42801 / 77932, 8585 ins, 13190 del, 21026 sub ] exp/tri2a/decode/wer_test.LDC2014S09_16
+%WER 55.33 [ 43118 / 77932, 10169 ins, 9959 del, 22990 sub ] exp/tri3b/decode.si/wer_test.LDC2014S09_15
+%WER 56.01 [ 43648 / 77932, 7925 ins, 14882 del, 20841 sub ] exp/tri1/decode/wer_test.LDC2014S09_16
+
+# WER test.LDC2015S06
+%WER 41.65 [ 25659 / 61612, 8345 ins, 4519 del, 12795 sub ] exp/sgmm_5a_mmi_b0.1/decode/wer_test.LDC2015S06_9
+%WER 42.31 [ 26067 / 61612, 8572 ins, 4202 del, 13293 sub ] exp/sgmm_5a_mmi_b0.1/decode4/wer_test.LDC2015S06_8
+%WER 42.64 [ 26271 / 61612, 8588 ins, 4225 del, 13458 sub ] exp/sgmm_5a_mmi_b0.1/decode3/wer_test.LDC2015S06_8
+%WER 43.00 [ 26491 / 61612, 8453 ins, 4486 del, 13552 sub ] exp/sgmm_5a_mmi_b0.1/decode2/wer_test.LDC2015S06_9
+%WER 43.57 [ 26846 / 61612, 8485 ins, 4545 del, 13816 sub ] exp/sgmm_5a_mmi_b0.1/decode1/wer_test.LDC2015S06_9
+%WER 44.64 [ 27503 / 61612, 8428 ins, 4884 del, 14191 sub ] exp/sgmm_5a/decode/wer_test.LDC2015S06_10
+%WER 45.50 [ 28034 / 61612, 7886 ins, 6546 del, 13602 sub ] exp/tri2b_mmi_b0.1/decode_it4/wer_test.LDC2015S06_9
+%WER 45.71 [ 28165 / 61612, 7943 ins, 6204 del, 14018 sub ] exp/tri2b_mmi_b0.1/decode_it3/wer_test.LDC2015S06_10
+%WER 46.14 [ 28428 / 61612, 8541 ins, 5351 del, 14536 sub ] exp/tri3b/decode/wer_test.LDC2015S06_13
+%WER 46.15 [ 28434 / 61612, 8006 ins, 6925 del, 13503 sub ] exp/tri2b_mpe/decode_it4/wer_test.LDC2015S06_11
+%WER 46.19 [ 28459 / 61612, 8143 ins, 5704 del, 14612 sub ] exp/tri2b_mmi/decode_it3/wer_test.LDC2015S06_9
+%WER 46.35 [ 28555 / 61612, 7379 ins, 7453 del, 13723 sub ] exp/tri2b_mmi/decode_it4/wer_test.LDC2015S06_10
+%WER 46.66 [ 28751 / 61612, 8068 ins, 6749 del, 13934 sub ] exp/tri2b_mpe/decode_it3/wer_test.LDC2015S06_11
+%WER 50.45 [ 31086 / 61612, 8308 ins, 6588 del, 16190 sub ] exp/tri2b/decode/wer_test.LDC2015S06_13
+%WER 51.27 [ 31586 / 61612, 8305 ins, 6656 del, 16625 sub ] exp/tri3b/decode.si/wer_test.LDC2015S06_12
+%WER 52.65 [ 32436 / 61612, 8220 ins, 7524 del, 16692 sub ] exp/tri2a/decode/wer_test.LDC2015S06_12
+%WER 54.21 [ 33398 / 61612, 8128 ins, 8138 del, 17132 sub ] exp/tri1/decode/wer_test.LDC2015S06_12
+
+# WER test.LDC2015S13
+%WER 19.24 [ 16273 / 84594, 2118 ins, 2624 del, 11531 sub ] exp/sgmm_5a_mmi_b0.1/decode/wer_test.LDC2015S13_8
+%WER 19.68 [ 16647 / 84594, 2117 ins, 2638 del, 11892 sub ] exp/sgmm_5a_mmi_b0.1/decode4/wer_test.LDC2015S13_8
+%WER 20.02 [ 16936 / 84594, 2156 ins, 2665 del, 12115 sub ] exp/sgmm_5a_mmi_b0.1/decode3/wer_test.LDC2015S13_8
+%WER 20.31 [ 17178 / 84594, 2179 ins, 2724 del, 12275 sub ] exp/sgmm_5a_mmi_b0.1/decode2/wer_test.LDC2015S13_8
+%WER 20.68 [ 17494 / 84594, 2111 ins, 2905 del, 12478 sub ] exp/sgmm_5a_mmi_b0.1/decode1/wer_test.LDC2015S13_9
+%WER 21.58 [ 18255 / 84594, 2222 ins, 3059 del, 12974 sub ] exp/sgmm_5a/decode/wer_test.LDC2015S13_9
+%WER 22.08 [ 18678 / 84594, 1796 ins, 3753 del, 13129 sub ] exp/tri2b_mmi_b0.1/decode_it4/wer_test.LDC2015S13_10
+%WER 22.35 [ 18907 / 84594, 1921 ins, 3449 del, 13537 sub ] exp/tri2b_mmi_b0.1/decode_it3/wer_test.LDC2015S13_10
+%WER 22.54 [ 19066 / 84594, 1700 ins, 4044 del, 13322 sub ] exp/tri2b_mpe/decode_it4/wer_test.LDC2015S13_12
+%WER 22.59 [ 19108 / 84594, 1821 ins, 3889 del, 13398 sub ] exp/tri2b_mmi/decode_it4/wer_test.LDC2015S13_10
+%WER 22.64 [ 19152 / 84594, 2243 ins, 3274 del, 13635 sub ] exp/tri3b/decode/wer_test.LDC2015S13_12
+%WER 22.68 [ 19187 / 84594, 1950 ins, 3444 del, 13793 sub ] exp/tri2b_mmi/decode_it3/wer_test.LDC2015S13_10
+%WER 22.97 [ 19429 / 84594, 1748 ins, 4021 del, 13660 sub ] exp/tri2b_mpe/decode_it3/wer_test.LDC2015S13_12
+%WER 26.22 [ 22178 / 84594, 2285 ins, 3818 del, 16075 sub ] exp/tri2b/decode/wer_test.LDC2015S13_12
+%WER 27.69 [ 23425 / 84594, 2163 ins, 4348 del, 16914 sub ] exp/tri3b/decode.si/wer_test.LDC2015S13_12
+%WER 27.74 [ 23470 / 84594, 2137 ins, 4463 del, 16870 sub ] exp/tri2a/decode/wer_test.LDC2015S13_12
+%WER 29.10 [ 24619 / 84594, 1912 ins, 5352 del, 17355 sub ] exp/tri1/decode/wer_test.LDC2015S13_13
+
+# WER test.LDC2016S03
+%WER 48.17 [ 69952 / 145212, 34989 ins, 7540 del, 27423 sub ] exp/sgmm_5a_mmi_b0.1/decode/wer_test.LDC2016S03_10
+%WER 48.71 [ 70739 / 145212, 34599 ins, 7965 del, 28175 sub ] exp/sgmm_5a_mmi_b0.1/decode4/wer_test.LDC2016S03_11
+%WER 48.97 [ 71110 / 145212, 25206 ins, 19110 del, 26794 sub ] exp/tri2b_mmi_b0.1/decode_it4/wer_test.LDC2016S03_13
+%WER 48.99 [ 71138 / 145212, 34706 ins, 7910 del, 28522 sub ] exp/sgmm_5a_mmi_b0.1/decode3/wer_test.LDC2016S03_11
+%WER 49.39 [ 71725 / 145212, 34857 ins, 7904 del, 28964 sub ] exp/sgmm_5a_mmi_b0.1/decode2/wer_test.LDC2016S03_11
+%WER 49.68 [ 72141 / 145212, 24534 ins, 19597 del, 28010 sub ] exp/tri2b_mmi/decode_it4/wer_test.LDC2016S03_12
+%WER 49.84 [ 72372 / 145212, 34400 ins, 8414 del, 29558 sub ] exp/sgmm_5a_mmi_b0.1/decode1/wer_test.LDC2016S03_12
+%WER 49.90 [ 72459 / 145212, 27743 ins, 16413 del, 28303 sub ] exp/tri2b_mmi_b0.1/decode_it3/wer_test.LDC2016S03_14
+%WER 50.19 [ 72877 / 145212, 26408 ins, 17847 del, 28622 sub ] exp/tri2b_mmi/decode_it3/wer_test.LDC2016S03_14
+%WER 50.91 [ 73932 / 145212, 33830 ins, 9535 del, 30567 sub ] exp/sgmm_5a/decode/wer_test.LDC2016S03_13
+%WER 51.11 [ 74219 / 145212, 30731 ins, 14606 del, 28882 sub ] exp/tri2b_mpe/decode_it4/wer_test.LDC2016S03_15
+%WER 52.08 [ 75631 / 145212, 31779 ins, 13885 del, 29967 sub ] exp/tri2b_mpe/decode_it3/wer_test.LDC2016S03_15
+%WER 52.52 [ 76271 / 145212, 35202 ins, 9563 del, 31506 sub ] exp/tri3b/decode/wer_test.LDC2016S03_17
+%WER 56.58 [ 82157 / 145212, 34695 ins, 11508 del, 35954 sub ] exp/tri2b/decode/wer_test.LDC2016S03_15
+%WER 57.28 [ 83179 / 145212, 33956 ins, 12500 del, 36723 sub ] exp/tri3b/decode.si/wer_test.LDC2016S03_16
+%WER 57.77 [ 83895 / 145212, 31963 ins, 14939 del, 36993 sub ] exp/tri2a/decode/wer_test.LDC2016S03_16
+%WER 59.27 [ 86074 / 145212, 30962 ins, 17056 del, 38056 sub ] exp/tri1/decode/wer_test.LDC2016S03_17
+
+# CER test.LDC2013S04
+%WER 29.58 [ 45038 / 152279, 8264 ins, 9223 del, 27551 sub ] exp/sgmm_5a_mmi_b0.1/decode/cer_test.LDC2013S04_8
+%WER 30.12 [ 45873 / 152279, 8362 ins, 9107 del, 28404 sub ] exp/sgmm_5a_mmi_b0.1/decode4/cer_test.LDC2013S04_8
+%WER 30.45 [ 46374 / 152279, 8377 ins, 9153 del, 28844 sub ] exp/sgmm_5a_mmi_b0.1/decode3/cer_test.LDC2013S04_8
+%WER 30.95 [ 47132 / 152279, 8143 ins, 9769 del, 29220 sub ] exp/sgmm_5a_mmi_b0.1/decode2/cer_test.LDC2013S04_9
+%WER 31.42 [ 47853 / 152279, 8134 ins, 9921 del, 29798 sub ] exp/sgmm_5a_mmi_b0.1/decode1/cer_test.LDC2013S04_9
+%WER 32.54 [ 49545 / 152279, 7985 ins, 10732 del, 30828 sub ] exp/sgmm_5a/decode/cer_test.LDC2013S04_9
+%WER 33.42 [ 50894 / 152279, 7672 ins, 11845 del, 31377 sub ] exp/tri3b/decode/cer_test.LDC2013S04_12
+%WER 33.72 [ 51348 / 152279, 7214 ins, 13316 del, 30818 sub ] exp/tri2b_mmi_b0.1/decode_it4/cer_test.LDC2013S04_10
+%WER 33.94 [ 51680 / 152279, 6748 ins, 14248 del, 30684 sub ] exp/tri2b_mpe/decode_it4/cer_test.LDC2013S04_11
+%WER 33.98 [ 51737 / 152279, 7729 ins, 11833 del, 32175 sub ] exp/tri2b_mmi_b0.1/decode_it3/cer_test.LDC2013S04_10
+%WER 34.64 [ 52757 / 152279, 8561 ins, 10696 del, 33500 sub ] exp/tri2b_mmi/decode_it3/cer_test.LDC2013S04_9
+%WER 34.67 [ 52802 / 152279, 7277 ins, 13490 del, 32035 sub ] exp/tri2b_mpe/decode_it3/cer_test.LDC2013S04_11
+%WER 34.88 [ 53115 / 152279, 8059 ins, 12270 del, 32786 sub ] exp/tri2b_mmi/decode_it4/cer_test.LDC2013S04_9
+%WER 38.75 [ 59002 / 152279, 7909 ins, 13549 del, 37544 sub ] exp/tri2b/decode/cer_test.LDC2013S04_12
+%WER 40.49 [ 61655 / 152279, 8366 ins, 13257 del, 40032 sub ] exp/tri3b/decode.si/cer_test.LDC2013S04_10
+%WER 41.22 [ 62774 / 152279, 7165 ins, 15963 del, 39646 sub ] exp/tri2a/decode/cer_test.LDC2013S04_13
+%WER 42.69 [ 65004 / 152279, 7307 ins, 16188 del, 41509 sub ] exp/tri1/decode/cer_test.LDC2013S04_12
+
+# CER test.LDC2013S08
+%WER 15.96 [ 21136 / 132434, 4775 ins, 3000 del, 13361 sub ] exp/sgmm_5a_mmi_b0.1/decode/cer_test.LDC2013S08_8
+%WER 16.30 [ 21593 / 132434, 4859 ins, 2856 del, 13878 sub ] exp/sgmm_5a_mmi_b0.1/decode4/cer_test.LDC2013S08_7
+%WER 16.55 [ 21914 / 132434, 4786 ins, 3035 del, 14093 sub ] exp/sgmm_5a_mmi_b0.1/decode3/cer_test.LDC2013S08_8
+%WER 16.82 [ 22272 / 132434, 4795 ins, 3084 del, 14393 sub ] exp/sgmm_5a_mmi_b0.1/decode2/cer_test.LDC2013S08_8
+%WER 17.19 [ 22766 / 132434, 4804 ins, 3151 del, 14811 sub ] exp/sgmm_5a_mmi_b0.1/decode1/cer_test.LDC2013S08_8
+%WER 17.90 [ 23712 / 132434, 4898 ins, 3447 del, 15367 sub ] exp/sgmm_5a/decode/cer_test.LDC2013S08_8
+%WER 18.75 [ 24836 / 132434, 4339 ins, 4148 del, 16349 sub ] exp/tri2b_mmi_b0.1/decode_it4/cer_test.LDC2013S08_10
+%WER 18.96 [ 25105 / 132434, 4832 ins, 3953 del, 16320 sub ] exp/tri3b/decode/cer_test.LDC2013S08_11
+%WER 19.00 [ 25164 / 132434, 4160 ins, 4851 del, 16153 sub ] exp/tri2b_mpe/decode_it4/cer_test.LDC2013S08_12
+%WER 19.01 [ 25182 / 132434, 4569 ins, 3748 del, 16865 sub ] exp/tri2b_mmi_b0.1/decode_it3/cer_test.LDC2013S08_10
+%WER 19.38 [ 25671 / 132434, 4798 ins, 3359 del, 17514 sub ] exp/tri2b_mmi/decode_it3/cer_test.LDC2013S08_9
+%WER 19.42 [ 25716 / 132434, 4571 ins, 3923 del, 17222 sub ] exp/tri2b_mmi/decode_it4/cer_test.LDC2013S08_9
+%WER 19.43 [ 25738 / 132434, 4303 ins, 4685 del, 16750 sub ] exp/tri2b_mpe/decode_it3/cer_test.LDC2013S08_12
+%WER 22.36 [ 29618 / 132434, 5010 ins, 4337 del, 20271 sub ] exp/tri2b/decode/cer_test.LDC2013S08_11
+%WER 23.38 [ 30959 / 132434, 4820 ins, 4772 del, 21367 sub ] exp/tri3b/decode.si/cer_test.LDC2013S08_11
+%WER 24.48 [ 32421 / 132434, 4829 ins, 5141 del, 22451 sub ] exp/tri2a/decode/cer_test.LDC2013S08_12
+%WER 25.74 [ 34093 / 132434, 4727 ins, 5715 del, 23651 sub ] exp/tri1/decode/cer_test.LDC2013S08_12
+
+# CER test.LDC2014S09
+%WER 37.36 [ 47080 / 126027, 16306 ins, 8137 del, 22637 sub ] exp/sgmm_5a_mmi_b0.1/decode/cer_test.LDC2014S09_10
+%WER 37.96 [ 47842 / 126027, 16721 ins, 7781 del, 23340 sub ] exp/sgmm_5a_mmi_b0.1/decode4/cer_test.LDC2014S09_10
+%WER 38.20 [ 48139 / 126027, 17115 ins, 7320 del, 23704 sub ] exp/sgmm_5a_mmi_b0.1/decode3/cer_test.LDC2014S09_9
+%WER 38.48 [ 48500 / 126027, 16796 ins, 7735 del, 23969 sub ] exp/sgmm_5a_mmi_b0.1/decode2/cer_test.LDC2014S09_10
+%WER 38.88 [ 48998 / 126027, 16815 ins, 7810 del, 24373 sub ] exp/sgmm_5a_mmi_b0.1/decode1/cer_test.LDC2014S09_10
+%WER 39.70 [ 50034 / 126027, 16290 ins, 9049 del, 24695 sub ] exp/sgmm_5a/decode/cer_test.LDC2014S09_11
+%WER 40.55 [ 51106 / 126027, 12063 ins, 15356 del, 23687 sub ] exp/tri2b_mmi_b0.1/decode_it4/cer_test.LDC2014S09_10
+%WER 41.02 [ 51702 / 126027, 13460 ins, 15578 del, 22664 sub ] exp/tri2b_mpe/decode_it4/cer_test.LDC2014S09_12
+%WER 41.03 [ 51703 / 126027, 13360 ins, 13875 del, 24468 sub ] exp/tri2b_mmi_b0.1/decode_it3/cer_test.LDC2014S09_11
+%WER 41.08 [ 51774 / 126027, 16137 ins, 10241 del, 25396 sub ] exp/tri3b/decode/cer_test.LDC2014S09_14
+%WER 41.43 [ 52216 / 126027, 12943 ins, 14013 del, 25260 sub ] exp/tri2b_mmi/decode_it3/cer_test.LDC2014S09_11
+%WER 41.44 [ 52223 / 126027, 11129 ins, 16614 del, 24480 sub ] exp/tri2b_mmi/decode_it4/cer_test.LDC2014S09_10
+%WER 41.71 [ 52571 / 126027, 13916 ins, 15018 del, 23637 sub ] exp/tri2b_mpe/decode_it3/cer_test.LDC2014S09_12
+%WER 45.78 [ 57690 / 126027, 14874 ins, 14113 del, 28703 sub ] exp/tri2b/decode/cer_test.LDC2014S09_14
+%WER 47.18 [ 59462 / 126027, 14177 ins, 16374 del, 28911 sub ] exp/tri2a/decode/cer_test.LDC2014S09_13
+%WER 47.21 [ 59502 / 126027, 15174 ins, 14317 del, 30011 sub ] exp/tri3b/decode.si/cer_test.LDC2014S09_14
+%WER 48.49 [ 61109 / 126027, 13331 ins, 18880 del, 28898 sub ] exp/tri1/decode/cer_test.LDC2014S09_13
+
+# CER test.LDC2015S06
+%WER 34.45 [ 34148 / 99132, 12809 ins, 5824 del, 15515 sub ] exp/sgmm_5a_mmi_b0.1/decode/cer_test.LDC2015S06_8
+%WER 34.95 [ 34650 / 99132, 12868 ins, 5686 del, 16096 sub ] exp/sgmm_5a_mmi_b0.1/decode4/cer_test.LDC2015S06_8
+%WER 35.23 [ 34921 / 99132, 12869 ins, 5752 del, 16300 sub ] exp/sgmm_5a_mmi_b0.1/decode3/cer_test.LDC2015S06_8
+%WER 35.53 [ 35225 / 99132, 12701 ins, 6047 del, 16477 sub ] exp/sgmm_5a_mmi_b0.1/decode2/cer_test.LDC2015S06_9
+%WER 36.01 [ 35700 / 99132, 12722 ins, 6147 del, 16831 sub ] exp/sgmm_5a_mmi_b0.1/decode1/cer_test.LDC2015S06_9
+%WER 36.86 [ 36538 / 99132, 12698 ins, 6493 del, 17347 sub ] exp/sgmm_5a/decode/cer_test.LDC2015S06_9
+%WER 38.28 [ 37946 / 99132, 11826 ins, 9192 del, 16928 sub ] exp/tri2b_mmi_b0.1/decode_it4/cer_test.LDC2015S06_9
+%WER 38.34 [ 38009 / 99132, 12635 ins, 7528 del, 17846 sub ] exp/tri3b/decode/cer_test.LDC2015S06_12
+%WER 38.35 [ 38016 / 99132, 12245 ins, 7821 del, 17950 sub ] exp/tri2b_mmi_b0.1/decode_it3/cer_test.LDC2015S06_9
+%WER 38.55 [ 38211 / 99132, 12035 ins, 9225 del, 16951 sub ] exp/tri2b_mpe/decode_it4/cer_test.LDC2015S06_10
+%WER 38.88 [ 38546 / 99132, 12302 ins, 7668 del, 18576 sub ] exp/tri2b_mmi/decode_it3/cer_test.LDC2015S06_9
+%WER 39.01 [ 38672 / 99132, 12118 ins, 8917 del, 17637 sub ] exp/tri2b_mpe/decode_it3/cer_test.LDC2015S06_10
+%WER 39.27 [ 38931 / 99132, 11682 ins, 9477 del, 17772 sub ] exp/tri2b_mmi/decode_it4/cer_test.LDC2015S06_9
+%WER 42.63 [ 42261 / 99132, 12629 ins, 8447 del, 21185 sub ] exp/tri2b/decode/cer_test.LDC2015S06_11
+%WER 43.52 [ 43141 / 99132, 12665 ins, 8709 del, 21767 sub ] exp/tri3b/decode.si/cer_test.LDC2015S06_10
+%WER 44.95 [ 44562 / 99132, 12330 ins, 10278 del, 21954 sub ] exp/tri2a/decode/cer_test.LDC2015S06_11
+%WER 46.55 [ 46143 / 99132, 12202 ins, 11242 del, 22699 sub ] exp/tri1/decode/cer_test.LDC2015S06_11
+
+# CER test.LDC2015S13
+%WER 13.50 [ 19001 / 140702, 2366 ins, 2994 del, 13641 sub ] exp/sgmm_5a_mmi_b0.1/decode/cer_test.LDC2015S13_8
+%WER 13.88 [ 19524 / 140702, 2365 ins, 2990 del, 14169 sub ] exp/sgmm_5a_mmi_b0.1/decode4/cer_test.LDC2015S13_8
+%WER 14.11 [ 19858 / 140702, 2383 ins, 3013 del, 14462 sub ] exp/sgmm_5a_mmi_b0.1/decode3/cer_test.LDC2015S13_8
+%WER 14.33 [ 20158 / 140702, 2389 ins, 3059 del, 14710 sub ] exp/sgmm_5a_mmi_b0.1/decode2/cer_test.LDC2015S13_8
+%WER 14.67 [ 20640 / 140702, 2482 ins, 2990 del, 15168 sub ] exp/sgmm_5a_mmi_b0.1/decode1/cer_test.LDC2015S13_7
+%WER 15.42 [ 21702 / 140702, 2337 ins, 3609 del, 15756 sub ] exp/sgmm_5a/decode/cer_test.LDC2015S13_9
+%WER 15.97 [ 22475 / 140702, 1954 ins, 4050 del, 16471 sub ] exp/tri2b_mmi_b0.1/decode_it4/cer_test.LDC2015S13_9
+%WER 16.23 [ 22838 / 140702, 1944 ins, 3994 del, 16900 sub ] exp/tri2b_mmi_b0.1/decode_it3/cer_test.LDC2015S13_10
+%WER 16.43 [ 23116 / 140702, 1765 ins, 4775 del, 16576 sub ] exp/tri2b_mpe/decode_it4/cer_test.LDC2015S13_11
+%WER 16.44 [ 23135 / 140702, 2306 ins, 3973 del, 16856 sub ] exp/tri3b/decode/cer_test.LDC2015S13_11
+%WER 16.50 [ 23214 / 140702, 2058 ins, 4180 del, 16976 sub ] exp/tri2b_mmi/decode_it4/cer_test.LDC2015S13_9
+%WER 16.56 [ 23296 / 140702, 2211 ins, 3512 del, 17573 sub ] exp/tri2b_mmi/decode_it3/cer_test.LDC2015S13_9
+%WER 16.81 [ 23654 / 140702, 1810 ins, 4651 del, 17193 sub ] exp/tri2b_mpe/decode_it3/cer_test.LDC2015S13_11
+%WER 19.63 [ 27616 / 140702, 2395 ins, 4467 del, 20754 sub ] exp/tri2b/decode/cer_test.LDC2015S13_11
+%WER 21.01 [ 29562 / 140702, 2365 ins, 4751 del, 22446 sub ] exp/tri3b/decode.si/cer_test.LDC2015S13_10
+%WER 21.15 [ 29758 / 140702, 2017 ins, 5741 del, 22000 sub ] exp/tri2a/decode/cer_test.LDC2015S13_12
+%WER 22.48 [ 31633 / 140702, 1928 ins, 6389 del, 23316 sub ] exp/tri1/decode/cer_test.LDC2015S13_12
+
+# CER test.LDC2016S03
+%WER 40.99 [ 96423 / 235216, 54232 ins, 10004 del, 32187 sub ] exp/sgmm_5a_mmi_b0.1/decode/cer_test.LDC2016S03_10
+%WER 41.52 [ 97659 / 235216, 54881 ins, 9585 del, 33193 sub ] exp/sgmm_5a_mmi_b0.1/decode4/cer_test.LDC2016S03_10
+%WER 41.78 [ 98270 / 235216, 55048 ins, 9598 del, 33624 sub ] exp/sgmm_5a_mmi_b0.1/decode3/cer_test.LDC2016S03_10
+%WER 42.11 [ 99051 / 235216, 54335 ins, 10340 del, 34376 sub ] exp/sgmm_5a_mmi_b0.1/decode2/cer_test.LDC2016S03_11
+%WER 42.28 [ 99452 / 235216, 41779 ins, 24370 del, 33303 sub ] exp/tri2b_mmi_b0.1/decode_it4/cer_test.LDC2016S03_12
+%WER 42.50 [ 99971 / 235216, 53658 ins, 11074 del, 35239 sub ] exp/sgmm_5a_mmi_b0.1/decode1/cer_test.LDC2016S03_12
+%WER 43.03 [ 101223 / 235216, 38061 ins, 29066 del, 34096 sub ] exp/tri2b_mmi/decode_it4/cer_test.LDC2016S03_12
+%WER 43.11 [ 101399 / 235216, 43075 ins, 23843 del, 34481 sub ] exp/tri2b_mmi_b0.1/decode_it3/cer_test.LDC2016S03_14
+%WER 43.29 [ 101832 / 235216, 53048 ins, 12380 del, 36404 sub ] exp/sgmm_5a/decode/cer_test.LDC2016S03_12
+%WER 43.33 [ 101926 / 235216, 43250 ins, 22694 del, 35982 sub ] exp/tri2b_mmi/decode_it3/cer_test.LDC2016S03_13
+%WER 43.86 [ 103167 / 235216, 48178 ins, 19999 del, 34990 sub ] exp/tri2b_mpe/decode_it4/cer_test.LDC2016S03_14
+%WER 44.76 [ 105279 / 235216, 54744 ins, 12548 del, 37987 sub ] exp/tri3b/decode/cer_test.LDC2016S03_15
+%WER 44.77 [ 105298 / 235216, 49827 ins, 18866 del, 36605 sub ] exp/tri2b_mpe/decode_it3/cer_test.LDC2016S03_14
+%WER 48.68 [ 114501 / 235216, 52710 ins, 16670 del, 45121 sub ] exp/tri2b/decode/cer_test.LDC2016S03_15
+%WER 49.57 [ 116592 / 235216, 53572 ins, 16111 del, 46909 sub ] exp/tri3b/decode.si/cer_test.LDC2016S03_14
+%WER 50.03 [ 117681 / 235216, 49653 ins, 20856 del, 47172 sub ] exp/tri2a/decode/cer_test.LDC2016S03_15
+%WER 51.54 [ 121232 / 235216, 49022 ins, 23008 del, 49202 sub ] exp/tri1/decode/cer_test.LDC2016S03_15

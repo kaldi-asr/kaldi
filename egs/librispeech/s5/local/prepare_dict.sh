@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2014 Vassil Panayotov
 # Apache 2.0
@@ -12,7 +12,7 @@ cmd=run.pl
 
 
 . utils/parse_options.sh || exit 1;
-. path.sh || exit 1
+. ./path.sh || exit 1
 
 
 if [ $# -ne 3 ]; then
@@ -72,10 +72,14 @@ if [ $stage -le 1 ]; then
   auto_lexicon_prefix="$g2p_dir/lexicon_autogen"
 
   mkdir -p $g2p_dir/log
-  auto_vocab_splits=$(eval "echo $auto_vocab_prefix.{$(seq -s',' $nj)}")
+  if [ $nj -eq 1 ]; then
+    auto_vocab_splits="${auto_vocab_prefix}.1"  #If nj is 1, use vocab_autogen.1 instead of .{1}
+  else
+    auto_vocab_splits=$(eval "echo $auto_vocab_prefix.{$(seq -s',' $nj | sed 's/,$//')}") #Create the list of files to split
+  fi
   awk 'NR==FNR{a[$1] = 1; next} !($1 in a)' $cmudict_plain $vocab |\
     sort | tee $g2p_dir/vocab_autogen.full |\
-    utils/split_scp.pl - $auto_vocab_splits || exit 1
+    utils/split_scp.pl /dev/stdin $auto_vocab_splits || exit 1
   echo "Autogenerating pronunciations for the words in $auto_vocab_prefix.* ..."
   $cmd JOB=1:$nj $g2p_dir/log/g2p.JOB.log \
     local/g2p.sh  $auto_vocab_prefix.JOB $g2p_model_dir $auto_lexicon_prefix.JOB || exit 1
@@ -120,7 +124,7 @@ if [ $stage -le 3 ]; then
     perl -e 'while(<>){
       chop; m:^([^\d]+)(\d*)$: || die "Bad phone $_";
       $phones_of{$1} .= "$_ "; }
-      foreach $list (values %phones_of) {print $list . "\n"; } ' \
+      foreach $list (values %phones_of) {print $list . "\n"; } ' | sort \
       > $nonsil_phones || exit 1;
   # A few extra questions that will be added to those obtained by automatically clustering
   # the "real" phones.  These ask about stress; there's also one for silence.

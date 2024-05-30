@@ -39,12 +39,14 @@ int main(int argc, char *argv[]) {
         " e.g.: lattice-scale --lm-scale=0.0 ark:1.lats ark:scaled.lats\n";
 
     ParseOptions po(usage);
+    bool write_compact = true;
     BaseFloat acoustic_scale = 1.0;
     BaseFloat inv_acoustic_scale = 1.0;
     BaseFloat lm_scale = 1.0;
     BaseFloat acoustic2lm_scale = 0.0;
     BaseFloat lm2acoustic_scale = 0.0;
 
+    po.Register("write-compact", &write_compact, "If true, write in normal (compact) form.");
     po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for acoustic likelihoods");
     po.Register("inv-acoustic-scale", &inv_acoustic_scale, "An alternative way "
                 "of setting the acoustic scale: you can set its inverse.");
@@ -62,11 +64,6 @@ int main(int argc, char *argv[]) {
     std::string lats_rspecifier = po.GetArg(1),
         lats_wspecifier = po.GetArg(2);
 
-    SequentialCompactLatticeReader compact_lattice_reader(lats_rspecifier);
-
-    // Write as compact lattice.
-    CompactLatticeWriter compact_lattice_writer(lats_wspecifier);
-
     int32 n_done = 0;
 
     KALDI_ASSERT(acoustic_scale == 1.0 || inv_acoustic_scale == 1.0);
@@ -81,12 +78,32 @@ int main(int argc, char *argv[]) {
     scale[1][0] = lm2acoustic_scale;
     scale[1][1] = acoustic_scale;
 
-    for (; !compact_lattice_reader.Done(); compact_lattice_reader.Next()) {
-      CompactLattice lat = compact_lattice_reader.Value();
-      ScaleLattice(scale, &lat);
-      compact_lattice_writer.Write(compact_lattice_reader.Key(), lat);
-      n_done++;
+    if (write_compact) {
+      SequentialCompactLatticeReader compact_lattice_reader(lats_rspecifier);
+
+      // Write as compact lattice.
+      CompactLatticeWriter compact_lattice_writer(lats_wspecifier);
+
+      for (; !compact_lattice_reader.Done(); compact_lattice_reader.Next()) {
+        CompactLattice lat = compact_lattice_reader.Value();
+        ScaleLattice(scale, &lat);
+        compact_lattice_writer.Write(compact_lattice_reader.Key(), lat);
+        n_done++;
+      }
+    } else {
+      SequentialLatticeReader lattice_reader(lats_rspecifier);
+
+      // Write as regular lattice.
+      LatticeWriter lattice_writer(lats_wspecifier);
+
+      for (; !lattice_reader.Done(); lattice_reader.Next()) {
+        Lattice lat = lattice_reader.Value();
+        ScaleLattice(scale, &lat);
+        lattice_writer.Write(lattice_reader.Key(), lat);
+        n_done++;
+      }
     }
+
     KALDI_LOG << "Done " << n_done << " lattices.";
     return (n_done != 0 ? 0 : 1);
   } catch(const std::exception &e) {

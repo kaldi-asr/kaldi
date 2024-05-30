@@ -40,13 +40,16 @@ struct FrameExtractionOptions {
   BaseFloat preemph_coeff;  // Preemphasis coefficient.
   bool remove_dc_offset;  // Subtract mean of wave before FFT.
   std::string window_type;  // e.g. Hamming window
-  bool round_to_power_of_two;
-  BaseFloat blackman_coeff;
-  bool snip_edges;
-  // May be "hamming", "rectangular", "povey", "hanning", "blackman"
+  // May be "hamming", "rectangular", "povey", "hanning", "sine", "blackman"
   // "povey" is a window I made to be similar to Hamming but to go to zero at the
   // edges, it's pow((0.5 - 0.5*cos(n/N*2*pi)), 0.85)
   // I just don't think the Hamming window makes sense as a windowing function.
+  bool round_to_power_of_two;
+  BaseFloat blackman_coeff;
+  bool snip_edges;
+  bool allow_downsample;
+  bool allow_upsample;
+  int max_feature_vectors;
   FrameExtractionOptions():
       samp_freq(16000),
       frame_shift_ms(10.0),
@@ -57,7 +60,11 @@ struct FrameExtractionOptions {
       window_type("povey"),
       round_to_power_of_two(true),
       blackman_coeff(0.42),
-      snip_edges(true){ }
+      snip_edges(true),
+      allow_downsample(false),
+      allow_upsample(false),
+      max_feature_vectors(-1)
+      { }
 
   void Register(OptionsItf *opts) {
     opts->Register("sample-frequency", &samp_freq,
@@ -69,19 +76,32 @@ struct FrameExtractionOptions {
                    "Coefficient for use in signal preemphasis");
     opts->Register("remove-dc-offset", &remove_dc_offset,
                    "Subtract mean from waveform on each frame");
-    opts->Register("dither", &dither, "Dithering constant (0.0 means no dither)");
+    opts->Register("dither", &dither, "Dithering constant (0.0 means no dither). "
+                   "If you turn this off, you should set the --energy-floor "
+                   "option, e.g. to 1.0 or 0.1");
     opts->Register("window-type", &window_type, "Type of window "
                    "(\"hamming\"|\"hanning\"|\"povey\"|\"rectangular\""
-                   "|\"blackmann\")");
+                   "|\"sine\"|\"blackmann\")");
     opts->Register("blackman-coeff", &blackman_coeff,
                    "Constant coefficient for generalized Blackman window.");
     opts->Register("round-to-power-of-two", &round_to_power_of_two,
-                   "If true, round window size to power of two.");
+                   "If true, round window size to power of two by zero-padding "
+                   "input to FFT.");
     opts->Register("snip-edges", &snip_edges,
                    "If true, end effects will be handled by outputting only frames that "
                    "completely fit in the file, and the number of frames depends on the "
                    "frame-length.  If false, the number of frames depends only on the "
                    "frame-shift, and we reflect the data at the ends.");
+    opts->Register("allow-downsample", &allow_downsample,
+                   "If true, allow the input waveform to have a higher frequency than "
+                   "the specified --sample-frequency (and we'll downsample).");
+    opts->Register("max-feature-vectors", &max_feature_vectors,
+                   "Memory optimization. If larger than 0, periodically remove feature "
+                   "vectors so that only this number of the latest feature vectors is "
+                   "retained.");
+    opts->Register("allow-upsample", &allow_upsample,
+                   "If true, allow the input waveform to have a lower frequency than "
+                   "the specified --sample-frequency (and we'll upsample).");
   }
   int32 WindowShift() const {
     return static_cast<int32>(samp_freq * 0.001 * frame_shift_ms);
@@ -110,7 +130,7 @@ struct FeatureWindowFunction {
    file with the given number of samples in it (assumed to have the same
    sampling rate as specified in 'opts').
 
-      @param [in] wave_length  The number of samples in the wave file.
+      @param [in] num_samples  The number of samples in the wave file.
       @param [in] opts     The frame-extraction options class
 
       @param [in] flush   True if we are asserting that this number of samples is
@@ -142,7 +162,7 @@ void Preemphasize(VectorBase<BaseFloat> *waveform, BaseFloat preemph_coeff);
 
 /**
   This function does all the windowing steps after actually
-  extracting the windowed signal: depeding on the
+  extracting the windowed signal: depending on the
   configuration, it does dithering, dc offset removal,
   preemphasis, and multiplication by the windowing function.
    @param [in] opts  The options class to be used
@@ -194,15 +214,6 @@ void ExtractWindow(int64 sample_offset,
                    const FeatureWindowFunction &window_function,
                    Vector<BaseFloat> *window,
                    BaseFloat *log_energy_pre_window = NULL);
-
-
-// ExtractWaveformRemainder is useful if the waveform is coming in segments.
-// It extracts the bit of the waveform at the end of this block that you
-// would have to append the next bit of waveform to, if you wanted to have
-// the same effect as everything being in one big block.
-void ExtractWaveformRemainder(const VectorBase<BaseFloat> &wave,
-                              const FrameExtractionOptions &opts,
-                              Vector<BaseFloat> *wave_remainder);
 
 
 /// @} End of "addtogroup feat"

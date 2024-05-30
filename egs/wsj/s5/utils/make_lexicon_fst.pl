@@ -1,4 +1,9 @@
 #!/usr/bin/env perl
+
+# THIS SCRIPT IS DEPRECATED AND WILL BE REMOVED.  See
+# utils/lang/make_lexicon_fst.py which is the python-based replacement.
+
+
 use warnings; #sed replacement for -w perl parameter
 # Copyright 2010-2011  Microsoft Corporation
 #                2013  Johns Hopkins University (author: Daniel Povey)
@@ -21,21 +26,24 @@ use warnings; #sed replacement for -w perl parameter
 
 $pron_probs = 0;
 
-if ($ARGV[0] eq "--pron-probs") {
+if ((@ARGV > 0) && ($ARGV[0] eq "--pron-probs")) {
   $pron_probs = 1;
   shift @ARGV;
 }
 
 if (@ARGV != 1 && @ARGV != 3 && @ARGV != 4) {
-  print STDERR
-    "Usage: make_lexicon_fst.pl [--pron-probs] lexicon.txt [silprob silphone [sil_disambig_sym]] >lexiconfst.txt
-Creates a lexicon FST that transduces phones to words, and may allow optional silence.
-Note: ordinarily, each line of lexicon.txt is: word phone1 phone2 ... phoneN; if the --pron-probs option is
-used, each line is: word pronunciation-probability phone1 phone2 ... phoneN.  The probability 'prob' will
-typically be between zero and one, and note that it's generally helpful to normalize so the largest one
-for each word is 1.0, but this is your responsibility.  The silence disambiguation symbol, e.g. something
-like #5, is used only when creating a lexicon with disambiguation symbols, e.g. L_disambig.fst, and was
-introduced to fix a particular case of non-determinism of decoding graphs.\n";
+  print STDERR "Usage: make_lexicon_fst.pl [--pron-probs] lexicon.txt [silprob silphone [sil_disambig_sym]] >lexiconfst.txt\n\n";
+  print STDERR "Creates a lexicon FST that transduces phones to words, and may allow optional silence.\n\n";
+  print STDERR "Note: ordinarily, each line of lexicon.txt is:\n";
+  print STDERR "  word phone1 phone2 ... phoneN;\n";
+  print STDERR "if the --pron-probs option is used, each line is:\n";
+  print STDERR "  word pronunciation-probability phone1 phone2 ... phoneN.\n\n";
+  print STDERR "The probability 'prob' will typically be between zero and one, and note that\n";
+  print STDERR "it's generally helpful to normalize so the largest one for each word is 1.0, but\n";
+  print STDERR "this is your responsibility.\n\n";
+  print STDERR "The silence disambiguation symbol, e.g. something like #5, is used only\n";
+  print STDERR "when creating a lexicon with disambiguation symbols, e.g. L_disambig.fst,\n";
+  print STDERR "and was introduced to fix a particular case of non-determinism of decoding graphs.\n\n";
   exit(1);
 }
 

@@ -19,6 +19,8 @@
 
 #include "util/text-utils.h"
 #include <limits>
+#include <map>
+#include <algorithm>
 #include "base/kaldi-common.h"
 
 namespace kaldi {
@@ -160,96 +162,430 @@ bool IsLine(const std::string &line) {
   return true;
 }
 
+template <class T>
+class NumberIstream{
+ public:
+  explicit NumberIstream(std::istream &i) : in_(i) {}
 
-inline bool starts_with(const std::string &in, const std::string &prefix) {
-  return in.substr(0, prefix.size()) == prefix;
-}
+  NumberIstream & operator >> (T &x) {
+    if (!in_.good()) return *this;
+    in_ >> x;
+    if (!in_.fail() && RemainderIsOnlySpaces()) return *this;
+    return ParseOnFail(&x);
+  }
 
-inline bool stricmp(const std::string &in, const std::string &prefix) {
-  int ret = KALDI_STRCASECMP(in.c_str(), prefix.c_str());
-  return ret == 0;
-}
+ private:
+  std::istream &in_;
 
-inline bool is_nan_text(const std::string &in, const std::string &prefix) {
-  if (in.size() < prefix.size())
-    return false;
+  bool RemainderIsOnlySpaces() {
+    if (in_.tellg() != std::istream::pos_type(-1)) {
+      std::string rem;
+      in_ >> rem;
 
-  if (stricmp(in, prefix))
+      if (rem.find_first_not_of(' ') != std::string::npos) {
+        // there is not only spaces
+        return false;
+      }
+    }
+
+    in_.clear();
     return true;
+  }
 
-  for (int i = 0; i < prefix.size(); ++i)
-    if (tolower(in[i]) != tolower(prefix[i]))
-      return false;
+  NumberIstream & ParseOnFail(T *x) {
+    std::string str;
+    in_.clear();
+    in_.seekg(0);
+    // If the stream is broken even before trying
+    // to read from it or if there are many tokens,
+    // it's pointless to try.
+    if (!(in_ >> str) || !RemainderIsOnlySpaces()) {
+      in_.setstate(std::ios_base::failbit);
+      return *this;
+    }
 
-  for (int i = prefix.size(); i < in.size(); ++i)
-    if (!isalpha(in[i]) && (in[i] != '_'))
-      return false;
+    std::map<std::string, T> inf_nan_map;
+    // we'll keep just uppercase values.
+    inf_nan_map["INF"] = std::numeric_limits<T>::infinity();
+    inf_nan_map["+INF"] = std::numeric_limits<T>::infinity();
+    inf_nan_map["-INF"] = - std::numeric_limits<T>::infinity();
+    inf_nan_map["INFINITY"] = std::numeric_limits<T>::infinity();
+    inf_nan_map["+INFINITY"] = std::numeric_limits<T>::infinity();
+    inf_nan_map["-INFINITY"] = - std::numeric_limits<T>::infinity();
+    inf_nan_map["NAN"] = std::numeric_limits<T>::quiet_NaN();
+    inf_nan_map["+NAN"] = std::numeric_limits<T>::quiet_NaN();
+    inf_nan_map["-NAN"] = - std::numeric_limits<T>::quiet_NaN();
+    // MSVC
+    inf_nan_map["1.#INF"] = std::numeric_limits<T>::infinity();
+    inf_nan_map["-1.#INF"] = - std::numeric_limits<T>::infinity();
+    inf_nan_map["1.#QNAN"] = std::numeric_limits<T>::quiet_NaN();
+    inf_nan_map["-1.#QNAN"] = - std::numeric_limits<T>::quiet_NaN();
+
+    std::transform(str.begin(), str.end(), str.begin(), ::toupper);
+
+    if (inf_nan_map.find(str) != inf_nan_map.end()) {
+      *x = inf_nan_map[str];
+    } else {
+      in_.setstate(std::ios_base::failbit);
+    }
+
+    return *this;
+  }
+};
+
+
+template <typename T>
+bool ConvertStringToReal(const std::string &str,
+                         T *out) {
+  std::istringstream iss(str);
+
+  NumberIstream<T> i(iss);
+
+  i >> *out;
+
+  if (iss.fail()) {
+    // Number conversion failed.
+    return false;
+  }
 
   return true;
 }
 
-template<typename T>
-bool convert_special_number(const std::string &str, T *out) {
-  if (stricmp(str, "infinity") || stricmp(str, "inf") ||
-      starts_with(str, "1.#INF")) {
-    *out = std::numeric_limits<T>::infinity();
-    return true;
-  } else if (stricmp(str, "-infinity") || stricmp(str, "-inf") ||
-             starts_with(str, "-1.#INF")) {
-    *out = -std::numeric_limits<T>::infinity();
-    return true;
-  } else if (is_nan_text(str, "nan") || starts_with(str, "1.#QNAN")) {
-    *out = std::numeric_limits<T>::quiet_NaN();
-    return true;
-  } else if (is_nan_text(str, "-nan") || starts_with(str, "-1.#QNAN")) {
-    *out = -std::numeric_limits<T>::quiet_NaN();
-    return true;
+template
+bool ConvertStringToReal(const std::string &str,
+                         float *out);
+template
+bool ConvertStringToReal(const std::string &str,
+                         double *out);
+
+
+
+/*
+  This function is a helper function of StringsApproxEqual.  It should be
+  thought of as a recursive function-- it was designed that way-- but rather
+  than actually recursing (which would cause problems with stack overflow), we
+  just set the args and return to the start.
+
+  The 'decimal_places_tolerance' argument is just passed in from outside,
+  see the documentation for StringsApproxEqual in text-utils.h to see an
+  explanation.  The argument 'places_into_number' provides some information
+  about the strings 'a' and 'b' that precedes the current pointers.
+  For purposes of this comment, let's define the 'decimal' of a number
+  as the part that comes after the decimal point, e.g. in '99.123',
+  '123' would be the decimal.  If 'places_into_number' is -1, it means
+  we're not currently inside some place like that (i.e. it's not the
+  case that we're pointing to the '1' or the '2' or the '3').
+  If it's 0, then we'd be pointing to the first place after the decimal,
+  '1' in this case.  Note if one of the numbers is shorter than the
+  other, like '99.123' versus '99.1234' and 'a' points to the first '3'
+  while 'b' points to the second '4', 'places_into_number' referes to the
+  shorter of the two, i.e. it would be 2 in this example.
+
+
+ */
+bool StringsApproxEqualInternal(const char *a, const char *b,
+                                int32 decimal_places_tolerance,
+                                int32 places_into_number) {
+start:
+  char ca = *a, cb = *b;
+  if (ca == cb) {
+    if (ca == '\0') {
+      return true;
+    } else {
+      if (places_into_number >= 0) {
+        if (isdigit(ca)) {
+          places_into_number++;
+        } else {
+          places_into_number = -1;
+        }
+      } else {
+        if (ca == '.') {
+          places_into_number = 0;
+        }
+      }
+      a++;
+      b++;
+      goto start;
+    }
+  } else {
+    if (places_into_number  >= decimal_places_tolerance &&
+        (isdigit(ca) || isdigit(cb))) {
+      // we're potentially willing to accept this difference between the
+      // strings.
+      if (isdigit(ca)) a++;
+      if (isdigit(cb)) b++;
+      // we'll have advanced at least one of the two strings.
+      goto start;
+    } else if (places_into_number >= 0 &&
+               ((ca == '0' && !isdigit(cb)) || (cb == '0' && !isdigit(ca)))) {
+      // this clause is designed to ensure that, for example,
+      // "0.1" would count the same as "0.100001".
+      if (ca == '0') a++;
+      else b++;
+      places_into_number++;
+      goto start;
+    } else {
+      return false;
+    }
+  }
+
+}
+
+
+bool StringsApproxEqual(const std::string &a,
+                        const std::string &b,
+                        int32 decimal_places_tolerance) {
+  return StringsApproxEqualInternal(a.c_str(), b.c_str(),
+                                    decimal_places_tolerance, -1);
+}
+
+
+bool ConfigLine::ParseLine(const std::string &line) {
+  data_.clear();
+  whole_line_ = line;
+  if (line.size() == 0) return false;   // Empty line
+  size_t pos = 0, size = line.size();
+  while (isspace(line[pos]) && pos < size) pos++;
+  if (pos == size)
+    return false;  // whitespace-only line
+  size_t first_token_start_pos = pos;
+  // first get first_token_.
+  while (!isspace(line[pos]) && pos < size) {
+    if (line[pos] == '=') {
+      // If the first block of non-whitespace looks like "foo-bar=...",
+      // then we ignore it: there is no initial token, and FirstToken()
+      // is empty.
+      pos = first_token_start_pos;
+      break;
+    }
+    pos++;
+  }
+  first_token_ = std::string(line, first_token_start_pos, pos - first_token_start_pos);
+  // first_token_ is expected to be either empty or something like
+  // "component-node", which actually is a slightly more restrictive set of
+  // strings than IsValidName() checks for this is a convenient way to check it.
+  if (!first_token_.empty() && !IsValidName(first_token_))
+    return false;
+
+  while (pos < size) {
+    if (isspace(line[pos])) {
+      pos++;
+      continue;
+    }
+
+    // OK, at this point we know that we are pointing at nonspace.
+    size_t next_equals_sign = line.find_first_of("=", pos);
+    if (next_equals_sign == pos || next_equals_sign == std::string::npos) {
+      // we're looking for something like 'key=value'.  If there is no equals sign,
+      // or it's not preceded by something, it's a parsing failure.
+      return false;
+    }
+    std::string key(line, pos, next_equals_sign - pos);
+    if (!IsValidName(key)) return false;
+
+    // handle any quotes.  we support key='blah blah' or key="foo bar".
+    // no escaping is supported.
+    if (line[next_equals_sign+1] == '\'' || line[next_equals_sign+1] == '"') {
+      char my_quote = line[next_equals_sign+1];
+      size_t next_quote = line.find_first_of(my_quote, next_equals_sign + 2);
+      if (next_quote == std::string::npos) {  // no matching quote was found.
+        KALDI_WARN << "No matching quote for " << my_quote << " in config line '"
+                   << line << "'";
+        return false;
+      } else {
+        std::string value(line, next_equals_sign + 2,
+                          next_quote - next_equals_sign - 2);
+        data_.insert(std::make_pair(key, std::make_pair(value, false)));
+        pos = next_quote + 1;
+        continue;
+      }
+    } else {
+      // we want to be able to parse something like "... input=Offset(a, -1) foo=bar":
+      // in general, config values with spaces in them, even without quoting.
+
+      size_t next_next_equals_sign = line.find_first_of("=", next_equals_sign + 1),
+          terminating_space = size;
+
+      if (next_next_equals_sign != std::string::npos) {  // found a later equals sign.
+        size_t preceding_space = line.find_last_of(" \t", next_next_equals_sign);
+        if (preceding_space != std::string::npos &&
+            preceding_space > next_equals_sign)
+          terminating_space = preceding_space;
+      }
+      while (isspace(line[terminating_space - 1]) && terminating_space > 0)
+        terminating_space--;
+
+      std::string value(line, next_equals_sign + 1,
+                        terminating_space - (next_equals_sign + 1));
+      data_.insert(std::make_pair(key, std::make_pair(value, false)));
+      pos = terminating_space;
+    }
+  }
+  return true;
+}
+
+bool ConfigLine::GetValue(const std::string &key, std::string *value) {
+  KALDI_ASSERT(value != NULL);
+  std::map<std::string, std::pair<std::string, bool> >::iterator it = data_.begin();
+  for (; it != data_.end(); ++it) {
+    if (it->first == key) {
+      *value = (it->second).first;
+      (it->second).second = true;
+      return true;
+    }
   }
   return false;
 }
 
-bool ConvertStringToReal(const std::string &str,
-                         double *out) {
-  const char *this_str = str.c_str();
-  char *end = NULL;
-  errno = 0;
+bool ConfigLine::GetValue(const std::string &key, BaseFloat *value) {
+  KALDI_ASSERT(value != NULL);
+  std::map<std::string, std::pair<std::string, bool> >::iterator it = data_.begin();
+  for (; it != data_.end(); ++it) {
+    if (it->first == key) {
+      if (!ConvertStringToReal((it->second).first, value))
+        return false;
+      (it->second).second = true;
+      return true;
+    }
+  }
+  return false;
+}
 
-#if defined(_MSC_VER)
-  // TODO: check if the new MSVC already supports it
-  // depending on claims of the C++11 support, it should have
-  if (convert_special_number(str, out))
-    return true;
-#endif  // defined(_MSC_VER)
+bool ConfigLine::GetValue(const std::string &key, int32 *value) {
+  KALDI_ASSERT(value != NULL);
+  std::map<std::string, std::pair<std::string, bool> >::iterator it = data_.begin();
+  for (; it != data_.end(); ++it) {
+    if (it->first == key) {
+      if (!ConvertStringToInteger((it->second).first, value))
+        return false;
+      (it->second).second = true;
+      return true;
+    }
+  }
+  return false;
+}
 
-  double d = KALDI_STRTOD(this_str, &end);
-  if (end != this_str)
-    while (isspace(*end)) end++;
-  if (end == this_str || *end != '\0' || errno != 0)
-    return false;
-  *out = d;
+bool ConfigLine::GetValue(const std::string &key, std::vector<int32> *value) {
+  KALDI_ASSERT(value != NULL);
+  value->clear();
+  std::map<std::string, std::pair<std::string, bool> >::iterator it = data_.begin();
+  for (; it != data_.end(); ++it) {
+    if (it->first == key) {
+      if (!SplitStringToIntegers((it->second).first, ":,", true, value)) {
+        // KALDI_WARN << "Bad option " << (it->second).first;
+        return false;
+      }
+      (it->second).second = true;
+      return true;
+    }
+  }
+  return false;
+}
+
+bool ConfigLine::GetValue(const std::string &key, bool *value) {
+  KALDI_ASSERT(value != NULL);
+  std::map<std::string, std::pair<std::string, bool> >::iterator it = data_.begin();
+  for (; it != data_.end(); ++it) {
+    if (it->first == key) {
+      if ((it->second).first.size() == 0) return false;
+      switch (((it->second).first)[0]) {
+        case 'F':
+        case 'f':
+          *value = false;
+          break;
+        case 'T':
+        case 't':
+          *value = true;
+          break;
+        default:
+          return false;
+      }
+      (it->second).second = true;
+      return true;
+    }
+  }
+  return false;
+}
+
+bool ConfigLine::HasUnusedValues() const {
+  std::map<std::string, std::pair<std::string, bool> >::const_iterator it = data_.begin();
+  for (; it != data_.end(); ++it) {
+    if (!(it->second).second) return true;
+  }
+  return false;
+}
+
+std::string ConfigLine::UnusedValues() const {
+  std::string unused_str;
+  std::map<std::string, std::pair<std::string, bool> >::const_iterator it = data_.begin();
+  for (; it != data_.end(); ++it) {
+    if (!(it->second).second) {
+      if (unused_str == "")
+        unused_str = it->first + "=" + (it->second).first;
+      else
+        unused_str += " " + it->first + "=" + (it->second).first;
+    }
+  }
+  return unused_str;
+}
+
+// This is like ExpectToken but for two tokens, and it
+// will either accept token1 and then token2, or just token2.
+// This is useful in Read functions where the first token
+// may already have been consumed.
+void ExpectOneOrTwoTokens(std::istream &is, bool binary,
+                          const std::string &token1,
+                          const std::string &token2) {
+  KALDI_ASSERT(token1 != token2);
+  std::string temp;
+  ReadToken(is, binary, &temp);
+  if (temp == token1) {
+    ExpectToken(is, binary, token2);
+  } else {
+    if (temp != token2) {
+      KALDI_ERR << "Expecting token " << token1 << " or " << token2
+                << " but got " << temp;
+    }
+  }
+}
+
+
+bool IsValidName(const std::string &name) {
+  if (name.size() == 0) return false;
+  for (size_t i = 0; i < name.size(); i++) {
+    if (i == 0 && !isalpha(name[i]) && name[i] != '_')
+      return false;
+    if (!isalnum(name[i]) && name[i] != '_' && name[i] != '-' && name[i] != '.')
+      return false;
+  }
   return true;
 }
 
-bool ConvertStringToReal(const std::string &str,
-                         float *out) {
-  const char *this_str = str.c_str();
-  char *end = NULL;
-  errno = 0;
-
-#ifdef _MSC_VER
-  // TODO: check if the new MSVC already supports it
-  // depending on claims of the C++11 support, it should have
-  if (convert_special_number(str, out))
-    return true;
-#endif  // _MSC_VER
-
-  float f = KALDI_STRTOF(this_str, &end);
-  if (end != this_str)
-    while (isspace(*end)) end++;
-  if (end == this_str || *end != '\0' || errno != 0)
-    return false;
-  *out = f;
-  return true;
+void ReadConfigLines(std::istream &is,
+                    std::vector<std::string> *lines) {
+  KALDI_ASSERT(lines != NULL);
+  std::string line;
+  while (std::getline(is, line)) {
+    if (line.size() == 0) continue;
+    size_t start = line.find_first_not_of(" \t");
+    size_t end = line.find_first_of('#');
+    if (start == std::string::npos || start == end) continue;
+    end = line.find_last_not_of(" \t", end - 1);
+    KALDI_ASSERT(end >= start);
+    lines->push_back(line.substr(start, end - start + 1));
+  }
 }
+
+void ParseConfigLines(const std::vector<std::string> &lines,
+                      std::vector<ConfigLine> *config_lines) {
+  config_lines->resize(lines.size());
+  for (size_t i = 0; i < lines.size(); i++) {
+    bool ret = (*config_lines)[i].ParseLine(lines[i]);
+    if (!ret) {
+      KALDI_ERR << "Error parsing config line: " << lines[i];
+    }
+  }
+}
+
 
 }  // end namespace kaldi

@@ -28,6 +28,7 @@ while (<W>) {
   ($sym, $int) = @A;
   if ($sym eq "<s>" || $sym eq "</s>") { $is_forbidden{$int} = 1; }
   if ($sym eq "#0") { $hash_zero = $int; }
+  if ($sym =~ m/^#nonterm/) { $is_nonterminal{$int} = 1; }
 }
 
 if (-e "$lang/phones/wdisambig_words.int") {
@@ -65,9 +66,9 @@ while (<G>) {
     } elsif ($A[2] == 0) {
       print I $_;
       $has_epsilons = 1;
-    } elsif ($A[2] != $A[3]) {
+    } elsif ($A[2] != $A[3] && !$is_nonterminal{$A[2]} ) {
       chop;
-      print "$0: validating $lang: error: line $_ in G.fst has inputs and outputs different but input is not disambig symbol.\n";
+      print "$0: validating $lang: error: line $_ in G.fst has inputs and outputs different but input is not disambig symbol or nonterminal.\n";
       exit(1);
     }
   }

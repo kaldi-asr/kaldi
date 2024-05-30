@@ -23,9 +23,15 @@
 #include <iomanip>
 #include "nnet3/nnet-component-itf.h"
 #include "nnet3/nnet-simple-component.h"
+#include "nnet3/nnet-combined-component.h"
+#include "nnet3/nnet-normalize-component.h"
 #include "nnet3/nnet-general-component.h"
+#include "nnet3/nnet-convolutional-component.h"
+#include "nnet3/nnet-attention-component.h"
 #include "nnet3/nnet-parse.h"
 #include "nnet3/nnet-computation-graph.h"
+
+
 
 // \file This file contains some more-generic component code: things in base classes.
 //       See nnet-component.cc for the code of the actual Components.
@@ -55,6 +61,18 @@ ComponentPrecomputedIndexes* ComponentPrecomputedIndexes::NewComponentPrecompute
     ans = new StatisticsExtractionComponentPrecomputedIndexes();
   } else if (cpi_type == "StatisticsPoolingComponentPrecomputedIndexes") {
     ans = new StatisticsPoolingComponentPrecomputedIndexes();
+  } else if (cpi_type == "BackpropTruncationComponentPrecomputedIndexes") {
+    ans = new BackpropTruncationComponentPrecomputedIndexes();
+  } else if (cpi_type == "TimeHeightConvolutionComponentPrecomputedIndexes") {
+    ans = new TimeHeightConvolutionComponent::PrecomputedIndexes();
+  } else if (cpi_type == "RestrictedAttentionComponentPrecomputedIndexes") {
+    ans = new RestrictedAttentionComponent::PrecomputedIndexes();
+  } else if (cpi_type == "GeneralDropoutComponentPrecomputedIndexes") {
+    ans = new GeneralDropoutComponentPrecomputedIndexes();
+  } else if (cpi_type == "SpecAugmentTimeMaskComponentPrecomputedIndexes") {
+    ans = new SpecAugmentTimeMaskComponentPrecomputedIndexes();
+  } else if (cpi_type == "TdnnComponentPrecomputedIndexes") {
+    ans = new TdnnComponent::PrecomputedIndexes();
   }
   if (ans != NULL) {
     KALDI_ASSERT(cpi_type == ans->Type());
@@ -93,10 +111,10 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new NormalizeComponent();
   } else if (component_type == "PnormComponent") {
     ans = new PnormComponent();
-  } else if (component_type == "SumReduceComponent") {
-    ans = new SumReduceComponent();
   } else if (component_type == "AffineComponent") {
     ans = new AffineComponent();
+  } else if (component_type == "LinearComponent") {
+    ans = new LinearComponent();
   } else if (component_type == "NaturalGradientAffineComponent") {
     ans = new NaturalGradientAffineComponent();
   } else if (component_type == "PerElementScaleComponent") {
@@ -121,6 +139,8 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new ElementwiseProductComponent();
   } else if (component_type == "ConvolutionComponent") {
     ans = new ConvolutionComponent();
+  } else if (component_type == "TdnnComponent") {
+    ans = new TdnnComponent();
   } else if (component_type == "MaxpoolingComponent") {
     ans = new MaxpoolingComponent();
   } else if (component_type == "PermuteComponent") {
@@ -141,6 +161,34 @@ Component* Component::NewComponentOfType(const std::string &component_type) {
     ans = new StatisticsPoolingComponent();
   } else if (component_type == "ConstantFunctionComponent") {
     ans = new ConstantFunctionComponent();
+  } else if (component_type == "ConstantComponent") {
+    ans = new ConstantComponent();
+  } else if (component_type == "DropoutComponent") {
+    ans = new DropoutComponent();
+  } else if (component_type == "DropoutMaskComponent") {
+    ans = new DropoutMaskComponent();
+  } else if (component_type == "GeneralDropoutComponent") {
+    ans = new GeneralDropoutComponent();
+  } else if (component_type == "SpecAugmentTimeMaskComponent") {
+    ans = new SpecAugmentTimeMaskComponent();
+  } else if (component_type == "BackpropTruncationComponent") {
+    ans = new BackpropTruncationComponent();
+  } else if (component_type == "LstmNonlinearityComponent") {
+    ans = new LstmNonlinearityComponent();
+  } else if (component_type == "BatchNormComponent") {
+    ans = new BatchNormComponent();
+  } else if (component_type == "TimeHeightConvolutionComponent") {
+    ans = new TimeHeightConvolutionComponent();
+  } else if (component_type == "RestrictedAttentionComponent") {
+    ans = new RestrictedAttentionComponent();
+  } else if (component_type == "SumBlockComponent") {
+    ans = new SumBlockComponent();
+  } else if (component_type == "GruNonlinearityComponent") {
+    ans = new GruNonlinearityComponent();
+  } else if (component_type == "OutputGruNonlinearityComponent") {
+    ans = new OutputGruNonlinearityComponent();
+  } else if (component_type == "ScaleAndOffsetComponent") {
+    ans = new ScaleAndOffsetComponent();
   }
   if (ans != NULL) {
     KALDI_ASSERT(component_type == ans->Type());
@@ -178,15 +226,42 @@ bool Component::IsComputable(const MiscComputationInfo &misc_info,
 }
 
 
+UpdatableComponent::UpdatableComponent(const UpdatableComponent &other):
+    learning_rate_(other.learning_rate_),
+    learning_rate_factor_(other.learning_rate_factor_),
+    l2_regularize_(other.l2_regularize_),
+    is_gradient_(other.is_gradient_),
+    max_change_(other.max_change_) { }
+
+
+void UpdatableComponent::SetUpdatableConfigs(
+    const UpdatableComponent &other) {
+  learning_rate_ = other.learning_rate_;
+  learning_rate_factor_ = other.learning_rate_factor_;
+  l2_regularize_ = other.l2_regularize_;
+  is_gradient_ = other.is_gradient_;
+  max_change_ = other.max_change_;
+}
+
+// If these defaults are changed, the defaults in the constructor that
+// takes no arguments should be changed too.
 void UpdatableComponent::InitLearningRatesFromConfig(ConfigLine *cfl) {
+  learning_rate_ = 0.001;
   cfl->GetValue("learning-rate", &learning_rate_);
+  learning_rate_factor_ = 1.0;
   cfl->GetValue("learning-rate-factor", &learning_rate_factor_);
-  if (learning_rate_ < 0.0 || learning_rate_factor_ < 0.0)
+  max_change_ = 0.0;
+  cfl->GetValue("max-change", &max_change_);
+  l2_regularize_ = 0.0;
+  cfl->GetValue("l2-regularize", &l2_regularize_);
+  if (learning_rate_ < 0.0 || learning_rate_factor_ < 0.0 ||
+      max_change_ < 0.0 || l2_regularize_ < 0.0)
     KALDI_ERR << "Bad initializer " << cfl->WholeLine();
 }
 
 
-void UpdatableComponent::ReadUpdatableCommon(std::istream &is, bool binary) {
+std::string UpdatableComponent::ReadUpdatableCommon(std::istream &is,
+                                                    bool binary) {
   std::ostringstream opening_tag;
   opening_tag << '<' << this->Type() << '>';
   std::string token;
@@ -208,11 +283,23 @@ void UpdatableComponent::ReadUpdatableCommon(std::istream &is, bool binary) {
   } else {
     is_gradient_ = false;
   }
+  if (token == "<MaxChange>") {
+    ReadBasicType(is, binary, &max_change_);
+    ReadToken(is, binary, &token);
+  } else {
+    max_change_ = 0.0;
+  }
+  if (token == "<L2Regularize>") {
+    ReadBasicType(is, binary, &l2_regularize_);
+    ReadToken(is, binary, &token);
+  } else {
+    l2_regularize_ = 0.0;
+  }
   if (token == "<LearningRate>") {
     ReadBasicType(is, binary, &learning_rate_);
+    return "";
   } else {
-    KALDI_ERR << "Expected token <LearningRate>, got "
-              << token;
+    return token;
   }
 }
 
@@ -230,6 +317,14 @@ void UpdatableComponent::WriteUpdatableCommon(std::ostream &os,
     WriteToken(os, binary, "<IsGradient>");
     WriteBasicType(os, binary, is_gradient_);
   }
+  if (max_change_ > 0.0) {
+    WriteToken(os, binary, "<MaxChange>");
+    WriteBasicType(os, binary, max_change_);
+  }
+  if (l2_regularize_ > 0.0) {
+    WriteToken(os, binary, "<L2Regularize>");
+    WriteBasicType(os, binary, l2_regularize_);
+  }
   WriteToken(os, binary, "<LearningRate>");
   WriteBasicType(os, binary, learning_rate_);
 }
@@ -242,32 +337,35 @@ std::string UpdatableComponent::Info() const {
          << LearningRate();
   if (is_gradient_)
     stream << ", is-gradient=true";
+  if (l2_regularize_ != 0.0)
+    stream << ", l2-regularize=" << l2_regularize_;
   if (learning_rate_factor_ != 1.0)
     stream << ", learning-rate-factor=" << learning_rate_factor_;
+  if (max_change_ > 0.0)
+    stream << ", max-change=" << max_change_;
   return stream.str();
 }
 
 void NonlinearComponent::StoreStatsInternal(
     const CuMatrixBase<BaseFloat> &out_value,
     const CuMatrixBase<BaseFloat> *deriv) {
-  KALDI_ASSERT(out_value.NumCols() == InputDim());
+  KALDI_ASSERT(out_value.NumCols() == dim_);
+
   // Check we have the correct dimensions.
-  if (value_sum_.Dim() != InputDim() ||
-      (deriv != NULL && deriv_sum_.Dim() != InputDim())) {
-    mutex_.Lock();
-    if (value_sum_.Dim() != InputDim()) {
-      value_sum_.Resize(InputDim());
+  if (value_sum_.Dim() != dim_ ||
+      (deriv != NULL && deriv_sum_.Dim() != dim_)) {
+    if (value_sum_.Dim() != dim_) {
+      value_sum_.Resize(dim_);
       count_ = 0.0;
     }
-    if (deriv != NULL && deriv_sum_.Dim() != InputDim()) {
-      deriv_sum_.Resize(InputDim());
+    if (deriv != NULL && deriv_sum_.Dim() != dim_) {
+      deriv_sum_.Resize(dim_);
       count_ = 0.0;
       value_sum_.SetZero();
     }
-    mutex_.Unlock();
   }
   count_ += out_value.NumRows();
-  CuVector<BaseFloat> temp(InputDim());
+  CuVector<BaseFloat> temp(dim_);
   temp.AddRowSumMat(1.0, out_value, 0.0);
   value_sum_.AddVec(1.0, temp);
   if (deriv != NULL) {
@@ -276,38 +374,74 @@ void NonlinearComponent::StoreStatsInternal(
   }
 }
 
+void NonlinearComponent::StoreBackpropStats(
+    const CuMatrixBase<BaseFloat> &out_deriv) {
+  // Only store these stats about every 4 minibatches.  Make sure to always
+  // store the stats on the very first minibatch, or it would interact badly
+  // with the ConsolidateMemory() code.
+  if (RandInt(0, 3) == 0 && oderiv_count_ != 0)
+    return;
+
+  KALDI_ASSERT(out_deriv.NumCols() == dim_);
+
+  // Check we have the correct dimensions.
+  if (oderiv_sumsq_.Dim() != dim_) {
+    oderiv_sumsq_.Resize(dim_);
+    oderiv_count_ = 0.0;
+  }
+  CuVector<BaseFloat> temp(dim_);
+  temp.AddDiagMat2(1.0, out_deriv, kTrans, 0.0);
+  oderiv_sumsq_.AddVec(1.0, temp);
+  oderiv_count_ += out_deriv.NumRows();
+}
+
+
 void NonlinearComponent::ZeroStats() {
   value_sum_.SetZero();
   deriv_sum_.SetZero();
+  oderiv_sumsq_.SetZero();
   count_ = 0.0;
+  oderiv_count_ = 0.0;
+  num_dims_self_repaired_ = 0.0;
+  num_dims_processed_ = 0.0;
 }
 
 std::string NonlinearComponent::Info() const {
   std::stringstream stream;
-  if (InputDim() == OutputDim())
-    stream << Type() << ", dim=" << InputDim();
-  else
-    stream << Type() << ", input-dim=" << InputDim()
-           << ", output-dim=" << OutputDim()
-           << ", add-log-stddev=true";
-
+  stream << Type() << ", dim=" << dim_;
+  if (block_dim_ != dim_)
+    stream << ", block-dim=" << block_dim_;
   if (self_repair_lower_threshold_ != BaseFloat(kUnsetThreshold))
     stream << ", self-repair-lower-threshold=" << self_repair_lower_threshold_;
   if (self_repair_upper_threshold_ != BaseFloat(kUnsetThreshold))
     stream << ", self-repair-upper-threshold=" << self_repair_upper_threshold_;
   if (self_repair_scale_ != 0.0)
     stream << ", self-repair-scale=" << self_repair_scale_;
-  if (count_ > 0 && value_sum_.Dim() == dim_ &&  deriv_sum_.Dim() == dim_) {
+  if (count_ > 0 && value_sum_.Dim() == dim_) {
     stream << ", count=" << std::setprecision(3) << count_
            << std::setprecision(6);
+    stream << ", self-repaired-proportion="
+           << (num_dims_processed_ > 0 ?
+               num_dims_self_repaired_ / num_dims_processed_ : 0);
     Vector<double> value_avg_dbl(value_sum_);
     Vector<BaseFloat> value_avg(value_avg_dbl);
     value_avg.Scale(1.0 / count_);
     stream << ", value-avg=" << SummarizeVector(value_avg);
-    Vector<double> deriv_avg_dbl(deriv_sum_);
-    Vector<BaseFloat> deriv_avg(deriv_avg_dbl);
-    deriv_avg.Scale(1.0 / count_);
-    stream << ", deriv-avg=" << SummarizeVector(deriv_avg);
+    if (deriv_sum_.Dim() == dim_) {
+      Vector<double> deriv_avg(deriv_sum_);
+      deriv_avg.Scale(1.0 / count_);
+      stream << ", deriv-avg=" << SummarizeVector(deriv_avg);
+    }
+  }
+  if (oderiv_count_ > 0 && oderiv_sumsq_.Dim() == dim_) {
+    Vector<double> oderiv_rms(oderiv_sumsq_);
+    oderiv_rms.Scale(1.0 / oderiv_count_);
+    // The ApplyMin() is so that the statement after it does not fail even if we
+    // had subtracted models (e.g. in full_progress.*.log).
+    oderiv_rms.ApplyFloor(0.0);
+    oderiv_rms.ApplyPow(0.5);
+    stream << ", oderiv-rms=" << SummarizeVector(oderiv_rms)
+           << ", oderiv-count=" << oderiv_count_;
   }
   return stream.str();
 }
@@ -315,7 +449,11 @@ std::string NonlinearComponent::Info() const {
 void NonlinearComponent::Scale(BaseFloat scale) {
   value_sum_.Scale(scale);
   deriv_sum_.Scale(scale);
+  oderiv_sumsq_.Scale(scale);
   count_ *= scale;
+  oderiv_count_ *= scale;
+  num_dims_self_repaired_ *= scale;
+  num_dims_processed_ *= scale;
 }
 
 void NonlinearComponent::Add(BaseFloat alpha, const Component &other_in) {
@@ -326,11 +464,18 @@ void NonlinearComponent::Add(BaseFloat alpha, const Component &other_in) {
     value_sum_.Resize(other->value_sum_.Dim());
   if (deriv_sum_.Dim() == 0 && other->deriv_sum_.Dim() != 0)
     deriv_sum_.Resize(other->deriv_sum_.Dim());
+  if (oderiv_sumsq_.Dim() == 0 && other->oderiv_sumsq_.Dim() != 0)
+    oderiv_sumsq_.Resize(other->oderiv_sumsq_.Dim());
   if (other->value_sum_.Dim() != 0)
     value_sum_.AddVec(alpha, other->value_sum_);
   if (other->deriv_sum_.Dim() != 0)
     deriv_sum_.AddVec(alpha, other->deriv_sum_);
+  if (other->oderiv_sumsq_.Dim() != 0)
+    oderiv_sumsq_.AddVec(alpha, other->oderiv_sumsq_);
   count_ += alpha * other->count_;
+  oderiv_count_ += alpha * other->oderiv_count_;
+  num_dims_self_repaired_ += alpha * other->num_dims_self_repaired_;
+  num_dims_processed_ += alpha * other->num_dims_processed_;
 }
 
 void NonlinearComponent::Read(std::istream &is, bool binary) {
@@ -339,17 +484,47 @@ void NonlinearComponent::Read(std::istream &is, bool binary) {
   ostr_end << "</" << Type() << ">"; // e.g. "</SigmoidComponent>"
   ExpectOneOrTwoTokens(is, binary, ostr_beg.str(), "<Dim>");
   ReadBasicType(is, binary, &dim_); // Read dimension.
+  if (PeekToken(is, binary) == 'B') {
+    ExpectToken(is, binary, "<BlockDim>");
+    ReadBasicType(is, binary, &block_dim_);
+  } else {
+    block_dim_ = dim_;
+  }
   ExpectToken(is, binary, "<ValueAvg>");
   value_sum_.Read(is, binary);
   ExpectToken(is, binary, "<DerivAvg>");
   deriv_sum_.Read(is, binary);
   ExpectToken(is, binary, "<Count>");
   ReadBasicType(is, binary, &count_);
+  if (PeekToken(is, binary) == 'O') {
+    ExpectToken(is, binary, "<OderivRms>");
+    oderiv_sumsq_.Read(is, binary);
+    oderiv_sumsq_.ApplyPow(2.0);
+    ExpectToken(is, binary, "<OderivCount>");
+    ReadBasicType(is, binary, &oderiv_count_);
+  } else {
+    oderiv_count_ = 0.0;
+    oderiv_sumsq_.Resize(0);
+  }
   value_sum_.Scale(count_);
   deriv_sum_.Scale(count_);
+  oderiv_sumsq_.Scale(oderiv_count_);
 
   std::string token;
   ReadToken(is, binary, &token);
+  if (token[0] != '<') {
+    // this should happen only rarely, in case we couldn't push back the
+    // '<' to the stream in PeekToken().
+    token = '<' + token;
+  }
+  if (token == "<NumDimsSelfRepaired>") {
+    ReadBasicType(is, binary, &num_dims_self_repaired_);
+    ReadToken(is, binary, &token);
+  }
+  if (token == "<NumDimsProcessed>") {
+    ReadBasicType(is, binary, &num_dims_processed_);
+    ReadToken(is, binary, &token);
+  }
   if (token == "<SelfRepairLowerThreshold>") {
     ReadBasicType(is, binary, &self_repair_lower_threshold_);
     ReadToken(is, binary, &token);
@@ -375,20 +550,43 @@ void NonlinearComponent::Write(std::ostream &os, bool binary) const {
   WriteToken(os, binary, ostr_beg.str());
   WriteToken(os, binary, "<Dim>");
   WriteBasicType(os, binary, dim_);
+  if (block_dim_ != dim_) {
+    WriteToken(os, binary, "<BlockDim>");
+    WriteBasicType(os, binary, block_dim_);
+  }
   // Write the values and derivatives in a count-normalized way, for
   // greater readability in text form.
   WriteToken(os, binary, "<ValueAvg>");
   Vector<BaseFloat> temp(value_sum_);
   if (count_ != 0.0) temp.Scale(1.0 / count_);
   temp.Write(os, binary);
-  WriteToken(os, binary, "<DerivAvg>");
 
-  temp.Resize(deriv_sum_.Dim(), kUndefined);
+  WriteToken(os, binary, "<DerivAvg>");
+  temp.Resize(deriv_sum_.Dim());
   temp.CopyFromVec(deriv_sum_);
   if (count_ != 0.0) temp.Scale(1.0 / count_);
   temp.Write(os, binary);
+
   WriteToken(os, binary, "<Count>");
   WriteBasicType(os, binary, count_);
+
+  WriteToken(os, binary, "<OderivRms>");
+  temp.Resize(oderiv_sumsq_.Dim());
+  temp.CopyFromVec(oderiv_sumsq_);
+  if (oderiv_count_ != 0.0) temp.Scale(1.0 / oderiv_count_);
+  // The ApplyMin() is so that the statement after it does not fail even if we
+  // had subtracted models (e.g. in full_progress.*.log).
+  temp.ApplyFloor(0.0);
+  temp.ApplyPow(0.5);
+  temp.Write(os, binary);
+
+  WriteToken(os, binary, "<OderivCount>");
+  WriteBasicType(os, binary, oderiv_count_);
+
+  WriteToken(os, binary, "<NumDimsSelfRepaired>");
+  WriteBasicType(os, binary, num_dims_self_repaired_);
+  WriteToken(os, binary, "<NumDimsProcessed>");
+  WriteBasicType(os, binary, num_dims_processed_);
   if (self_repair_lower_threshold_ != kUnsetThreshold) {
     WriteToken(os, binary, "<SelfRepairLowerThreshold>");
     WriteBasicType(os, binary, self_repair_lower_threshold_);
@@ -405,29 +603,41 @@ void NonlinearComponent::Write(std::ostream &os, bool binary) const {
 }
 
 NonlinearComponent::NonlinearComponent():
-    dim_(-1), count_(0.0),
+    dim_(-1), block_dim_(-1), count_(0.0), oderiv_count_(0.0),
+    num_dims_self_repaired_(0.0), num_dims_processed_(0.0),
     self_repair_lower_threshold_(kUnsetThreshold),
     self_repair_upper_threshold_(kUnsetThreshold),
     self_repair_scale_(0.0) { }
 
 NonlinearComponent::NonlinearComponent(const NonlinearComponent &other):
-    dim_(other.dim_), value_sum_(other.value_sum_), deriv_sum_(other.deriv_sum_),
-    count_(other.count_),
+    dim_(other.dim_), block_dim_(other.block_dim_),
+    value_sum_(other.value_sum_), deriv_sum_(other.deriv_sum_),
+    count_(other.count_), oderiv_sumsq_(other.oderiv_sumsq_),
+    oderiv_count_(other.oderiv_count_),
+    num_dims_self_repaired_(other.num_dims_self_repaired_),
+    num_dims_processed_(other.num_dims_processed_),
     self_repair_lower_threshold_(other.self_repair_lower_threshold_),
     self_repair_upper_threshold_(other.self_repair_upper_threshold_),
     self_repair_scale_(other.self_repair_scale_) { }
 
 void NonlinearComponent::InitFromConfig(ConfigLine *cfl) {
   bool ok = cfl->GetValue("dim", &dim_);
+  block_dim_ = dim_;
+  cfl->GetValue("block-dim", &block_dim_);
   cfl->GetValue("self-repair-lower-threshold", &self_repair_lower_threshold_);
   cfl->GetValue("self-repair-upper-threshold", &self_repair_upper_threshold_);
   cfl->GetValue("self-repair-scale", &self_repair_scale_);
-  if (!ok || cfl->HasUnusedValues() || dim_ <= 0)
+  if (!ok || cfl->HasUnusedValues() || dim_ <= 0 ||
+      block_dim_ <= 0 || dim_ % block_dim_ != 0)
     KALDI_ERR << "Invalid initializer for layer of type "
               << Type() << ": \"" << cfl->WholeLine() << "\"";
 }
 
-
+void NonlinearComponent::ConsolidateMemory() {
+  { CuVector<double> temp(value_sum_); value_sum_.Swap(&temp); }
+  { CuVector<double> temp(deriv_sum_); deriv_sum_.Swap(&temp); }
+  { CuVector<double> temp(oderiv_sumsq_); oderiv_sumsq_.Swap(&temp); }
+}
 
 } // namespace nnet3
 } // namespace kaldi

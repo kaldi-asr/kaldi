@@ -22,7 +22,7 @@
 #include "util/common-utils.h"
 #include "gmm/am-diag-gmm.h"
 #include "ivector/ivector-extractor.h"
-#include "thread/kaldi-task-sequence.h"
+#include "util/kaldi-thread.h"
 
 
 namespace kaldi {
@@ -84,7 +84,7 @@ int main(int argc, char *argv[]) {
     sequencer_opts.Register(&po);
 
     po.Read(argc, argv);
-    
+
     if (po.NumArgs() != 4) {
       po.PrintUsage();
       exit(1);
@@ -108,19 +108,19 @@ int main(int argc, char *argv[]) {
     // g_num_threads.  So if the user specified the --num-threads option, which
     // goes to sequencer_opts in this case, copy it to g_num_threads.
     g_num_threads = sequencer_opts.num_threads;
-    
+
     IvectorExtractor extractor;
     ReadKaldiObject(ivector_extractor_rxfilename, &extractor);
-    
+
     IvectorExtractorStats stats(extractor, stats_opts);
-    
-    
+
+
     int64 tot_t = 0;
     int32 num_done = 0, num_err = 0;
-    
+
     {
       TaskSequencer<IvectorTask> sequencer(sequencer_opts);
-      
+
       for (; !feature_reader.Done(); feature_reader.Next()) {
         std::string key = feature_reader.Key();
         if (!posteriors_reader.HasKey(key)) {
@@ -147,15 +147,15 @@ int main(int argc, char *argv[]) {
       // destructor of "sequencer" will wait for any remaining tasks that
       // have not yet completed.
     }
-    
+
     KALDI_LOG << "Done " << num_done << " files, " << num_err
               << " with errors.  Total frames " << tot_t;
-    
+
     {
       Output ko(accs_wxfilename, binary);
       stats.Write(ko.Stream(), binary);
     }
-    
+
     KALDI_LOG << "Wrote stats to " << accs_wxfilename;
 
     return (num_done != 0 ? 0 : 1);

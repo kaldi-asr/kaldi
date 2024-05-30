@@ -20,10 +20,11 @@
 
 #include "base/kaldi-math.h"
 #ifndef _MSC_VER
-#include <pthread.h>
 #include <stdlib.h>
+#include <unistd.h>
 #endif
 #include <string>
+#include <mutex>
 
 namespace kaldi {
 // These routines are tested in matrix/matrix-test.cc
@@ -39,24 +40,18 @@ int32 RoundUpToNearestPowerOfTwo(int32 n) {
   return n+1;
 }
 
-#ifndef _MSC_VER
-static pthread_mutex_t _RandMutex = PTHREAD_MUTEX_INITIALIZER;
-#endif
+static std::mutex _RandMutex;
 
 int Rand(struct RandomState* state) {
-#ifdef _MSC_VER
-  // On Windows, just call Rand()
+#if !defined(_POSIX_THREAD_SAFE_FUNCTIONS)
+  // On Windows and Cygwin, just call Rand()
   return rand();
 #else
   if (state) {
     return rand_r(&(state->seed));
   } else {
-    int rs = pthread_mutex_lock(&_RandMutex);
-    KALDI_ASSERT(rs == 0);
-    int val = rand();
-    rs = pthread_mutex_unlock(&_RandMutex);
-    KALDI_ASSERT(rs == 0);
-    return val;
+    std::lock_guard<std::mutex> lock(_RandMutex);
+    return rand();
   }
 #endif
 }
@@ -71,7 +66,7 @@ RandomState::RandomState() {
   // without calling rand() in between, they would give you the same sequence
   // offset by one (if we didn't have the "+ 27437" in the code).  27437 is just
   // a randomly chosen prime number.
-  seed = Rand() + 27437;
+  seed = unsigned(Rand()) + 27437;
 }
 
 bool WithProb(BaseFloat prob, struct RandomState* state) {
@@ -115,10 +110,8 @@ int32 RandInt(int32 min_val, int32 max_val, struct RandomState* state) {
       return min_val + ( (unsigned int)( (Rand(state)+RAND_MAX*Rand(state)))
                     % (unsigned int)(max_val+1-min_val));
     } else {
-      throw std::runtime_error(std::string()
-                               +"rand_int failed because we do not support "
-                               +"such large random numbers. "
-                               +"(Extend this function).");
+      KALDI_ERR << "rand_int failed because we do not support such large "
+          "random numbers. (Extend this function).";
     }
   }
 #else
@@ -128,7 +121,7 @@ int32 RandInt(int32 min_val, int32 max_val, struct RandomState* state) {
 }
 
 // Returns poisson-distributed random number.
-// Take care: this takes time proportinal
+// Take care: this takes time proportional
 // to lambda.  Faster algorithms exist but are more complex.
 int32 RandPoisson(float lambda, struct RandomState* state) {
   // Knuth's algorithm.
@@ -167,5 +160,3 @@ void RandGauss2(double *a, double *b, RandomState *state) {
 
 
 }  // end namespace kaldi
-
-

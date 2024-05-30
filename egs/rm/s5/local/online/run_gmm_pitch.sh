@@ -1,6 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-. cmd.sh
+. ./cmd.sh
 
 
 steps/online/prepare_online_decoding.sh --add-pitch true --cmd "$train_cmd" data/train data/lang \

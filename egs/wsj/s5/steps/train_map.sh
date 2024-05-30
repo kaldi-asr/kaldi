@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 
 
@@ -59,6 +59,9 @@ delta_opts=`cat $alidir/delta_opts 2>/dev/null`
 
 
 mkdir -p $dir/log
+
+utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt || exit 1;
+cp $lang/phones.txt $dir || exit 1;
 
 cp $alidir/tree $dir
 # link ali.*.gz from $alidir to dest directory.

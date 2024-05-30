@@ -64,9 +64,9 @@ class RemoveEpsLocalClass {
  private:
   MutableFst<Arc> *fst_;
   StateId non_coacc_state_;  //  use this to delete arcs: make it nextstate
-  vector<StateId> num_arcs_in_;   // The number of arcs into the state, plus one
+  std::vector<StateId> num_arcs_in_;   // The number of arcs into the state, plus one
                                   // if it's the start state.
-  vector<StateId> num_arcs_out_;  // The number of arcs out of the state, plus
+  std::vector<StateId> num_arcs_out_;  // The number of arcs out of the state, plus
                                   // one if it's a final state.
   ReweightPlus reweight_plus_;
 
@@ -95,7 +95,7 @@ class RemoveEpsLocalClass {
     num_arcs_in_[fst_->Start()]++;  // count start as trans in.
     for (StateId s = 0; s < num_states; s++) {
       if (fst_->Final(s) != Weight::Zero())
-      num_arcs_out_[s]++;  // count final as transition.
+        num_arcs_out_[s]++;  // count final as transition.
       for (ArcIterator<MutableFst<Arc> > aiter(*fst_, s); !aiter.Done(); aiter.Next()) {
         num_arcs_in_[aiter.Value().nextstate]++;
         num_arcs_out_[s]++;
@@ -174,7 +174,7 @@ class RemoveEpsLocalClass {
     const StateId nextstate = arc.nextstate;
     Weight total_removed = Weight::Zero(),
         total_kept = Weight::Zero();  // totals out of nextstate.
-    vector<Arc> arcs_to_add;  // to add to state s.
+    std::vector<Arc> arcs_to_add;  // to add to state s.
     for (MutableArcIterator<MutableFst<Arc> > aiter_next(fst_, nextstate);
         !aiter_next.Done();
         aiter_next.Next()) {

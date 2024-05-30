@@ -25,6 +25,7 @@
 #include "fstext/prune-special.h"
 
 namespace fst {
+using std::vector;
 
 bool PrintProxyFstPath(const VectorFst<StdArc> &proxy,
                        vector<vector<StdArc::Label> > *path,
@@ -52,12 +53,14 @@ bool PrintProxyFstPath(const VectorFst<StdArc> &proxy,
 
   return true;
 }
-}
+}  // namespace fst
 
 int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
     using namespace fst;
+    using std::vector;
+    using std::string;
     typedef kaldi::int32 int32;
     typedef kaldi::uint64 uint64;
     typedef StdArc::StateId StateId;
@@ -125,7 +128,7 @@ int main(int argc, char *argv[]) {
         L1_filename = po.GetArg(2),
         keyword_rspecifier = po.GetArg(3),
         proxy_wspecifier = po.GetArg(4),
-        kwlist_wspecifier = (po.NumArgs() == 5) ? po.GetArg(5) : "";
+        kwlist_wspecifier = po.GetOptArg(5);
 
     VectorFst<StdArc> *L2xE = ReadFstKaldi(L2xE_filename);
     VectorFst<StdArc> *L1 = ReadFstKaldi(L1_filename);
@@ -203,7 +206,7 @@ int main(int argc, char *argv[]) {
       if (proxy_nbest > 0) {
         KALDI_VLOG(1) << "ShortestPath(KxL2xExL1', " << proxy_nbest << ")";
         proxy = tmp_proxy;
-        tmp_proxy.DeleteStates(); // Not needed for now.
+        tmp_proxy.DeleteStates();  // Not needed for now.
         RmEpsilon(&proxy);
         ShortestPath(proxy, &tmp_proxy, proxy_nbest, true, true);
         proxy.DeleteStates();     // Not needed for now.

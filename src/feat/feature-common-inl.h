@@ -20,29 +20,55 @@
 #ifndef KALDI_FEAT_FEATURE_COMMON_INL_H_
 #define KALDI_FEAT_FEATURE_COMMON_INL_H_
 
+#include "feat/resample.h"
 // Do not include this file directly.  It is included by feat/feature-common.h
 
 namespace kaldi {
 
 template <class F>
+void OfflineFeatureTpl<F>::ComputeFeatures(
+    const VectorBase<BaseFloat> &wave,
+    BaseFloat sample_freq,
+    BaseFloat vtln_warp,
+    Matrix<BaseFloat> *output) {
+  KALDI_ASSERT(output != NULL);
+  BaseFloat new_sample_freq = computer_.GetFrameOptions().samp_freq;
+  if (sample_freq == new_sample_freq) {
+    Compute(wave, vtln_warp, output);
+  } else {
+    if (new_sample_freq < sample_freq &&
+        ! computer_.GetFrameOptions().allow_downsample)
+        KALDI_ERR << "Waveform and config sample Frequency mismatch: "
+                  << sample_freq << " .vs " << new_sample_freq
+                  << " (use --allow-downsample=true to allow "
+                  << " downsampling the waveform).";
+    else if (new_sample_freq > sample_freq &&
+             ! computer_.GetFrameOptions().allow_upsample)
+      KALDI_ERR << "Waveform and config sample Frequency mismatch: "
+                  << sample_freq << " .vs " << new_sample_freq
+                << " (use --allow-upsample=true option to allow "
+                << " upsampling the waveform).";
+    // Resample the waveform.
+    Vector<BaseFloat> resampled_wave(wave);
+    ResampleWaveform(sample_freq, wave,
+                     new_sample_freq, &resampled_wave);
+    Compute(resampled_wave, vtln_warp, output);
+  }
+}
+
+template <class F>
 void OfflineFeatureTpl<F>::Compute(
     const VectorBase<BaseFloat> &wave,
     BaseFloat vtln_warp,
-    Matrix<BaseFloat> *output,
-    Vector<BaseFloat> *deprecated_wave_remainder) {
+    Matrix<BaseFloat> *output) {
   KALDI_ASSERT(output != NULL);
   int32 rows_out = NumFrames(wave.Dim(), computer_.GetFrameOptions()),
       cols_out = computer_.Dim();
   if (rows_out == 0) {
     output->Resize(0, 0);
-    if (deprecated_wave_remainder != NULL)
-      *deprecated_wave_remainder = wave;
     return;
   }
   output->Resize(rows_out, cols_out);
-  if (deprecated_wave_remainder != NULL)
-    ExtractWaveformRemainder(wave, computer_.GetFrameOptions(),
-                             deprecated_wave_remainder);
   Vector<BaseFloat> window;  // windowed waveform.
   bool use_raw_log_energy = computer_.NeedRawLogEnergy();
   for (int32 r = 0; r < rows_out; r++) {  // r is frame index.
@@ -60,13 +86,12 @@ template <class F>
 void OfflineFeatureTpl<F>::Compute(
     const VectorBase<BaseFloat> &wave,
     BaseFloat vtln_warp,
-    Matrix<BaseFloat> *output,
-    Vector<BaseFloat> *deprecated_wave_remainder) const {
+    Matrix<BaseFloat> *output) const {
   OfflineFeatureTpl<F> temp(*this);
   // call the non-const version of Compute() on a temporary copy of this object.
   // This is a workaround for const-ness that may sometimes be useful in
   // multi-threaded code, although it's not optimally efficient.
-  temp.Compute(wave, vtln_warp, output, deprecated_wave_remainder);
+  temp.Compute(wave, vtln_warp, output);
 }
 
 } // end namespace kaldi

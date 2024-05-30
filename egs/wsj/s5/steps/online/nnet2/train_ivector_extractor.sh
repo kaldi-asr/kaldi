@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright   2013  Daniel Povey
 # Apache 2.0.
@@ -21,7 +21,7 @@
 #  - Set num_threads to the minimum of (4, or how many virtual cores your machine has).
 #    (because of needing to lock various global quantities, the program can't
 #    use many more than 4 threads with good CPU utilization).
-#  - Set num_processes to the number of virtual cores on each machine you have, divided by 
+#  - Set num_processes to the number of virtual cores on each machine you have, divided by
 #    num_threads.  E.g. 4, if you have 16 virtual cores.   If you're on a shared queue
 #    that's busy with other people's jobs, it may be wise to set it to rather less
 #    than this maximum though, or your jobs won't get scheduled.  And if memory is
@@ -32,8 +32,8 @@
 #    may want more jobs, though.
 
 # Begin configuration section.
-nj=10   # this is the number of separate queue jobs we run, but each one 
-        # contains num_processes sub-jobs.. the real number of threads we 
+nj=10   # this is the number of separate queue jobs we run, but each one
+        # contains num_processes sub-jobs.. the real number of threads we
         # run is nj * num_processes * num_threads, and the number of
         # separate pieces of data is nj * num_processes.
 num_threads=4
@@ -41,6 +41,7 @@ num_processes=4 # each job runs this many processes, each with --num-threads thr
 cmd="run.pl"
 stage=-4
 ivector_dim=100 # dimension of the extracted i-vector
+online_cmvn_iextractor=false # apply online-cmvn on i-vector input features, uses the configuration from UBM,
 num_iters=10
 num_gselect=5 # Gaussian-selection using diagonal model: number of Gaussians to select
 posterior_scale=0.1 # Scale on the acoustic posteriors, intended to account for
@@ -88,6 +89,17 @@ for f in $srcdir/final.dubm $srcdir/final.mat $srcdir/global_cmvn.stats $srcdir/
   [ ! -f $f ] && echo "No such file $f" && exit 1;
 done
 
+
+if [ -d "$dir" ]; then
+  bak_dir=$(mktemp -d ${dir}/backup.XXX);
+  echo "$0: Directory $dir already exists. Backing up iVector extractor in ${bak_dir}";
+  for f in $dir/final.ie $dir/*.ie $dir/final.mat $dir/final.dubm \
+        $dir/online_cmvn.conf $dir/global_cmvn.stats; do
+    [ -f "$f" ] &&  mv $f ${bak_dir}/
+  done
+  [ -d "$dir/log" ] && mv $dir/log ${bak_dir}/
+fi
+
 # Set various variables.
 mkdir -p $dir/log
 nj_full=$[$nj*$num_processes]
@@ -101,10 +113,16 @@ splice_opts=$(cat $srcdir/splice_opts)
 
 ## Set up features.  $gmm_feats is the version of the features with online CMVN, that we use
 ## to get the Gaussian posteriors, $feats is the version of the features with no CMN.
-gmm_feats="ark,s,cs:apply-cmvn-online --config=$dir/online_cmvn.conf $dir/global_cmvn.stats scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- | subsample-feats --n=$subsample ark:- ark:- |"
+gmm_feats="ark,s,cs:apply-cmvn-online --config=$dir/online_cmvn.conf --spk2utt=ark:$sdata/JOB/spk2utt $dir/global_cmvn.stats scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- | subsample-feats --n=$subsample ark:- ark:- |"
 feats="ark,s,cs:splice-feats $splice_opts scp:$sdata/JOB/feats.scp ark:- | transform-feats $dir/final.mat ark:- ark:- | subsample-feats --n=$subsample ark:- ark:- |"
 
-
+## This adds online-cmvn in $feats, upon request (configuration taken from UBM),
+## ('online_cmvn_iextractor' marks that we added online_cmvn_iextractor)
+rm $dir/online_cmvn_iextractor 2>/dev/null || true
+if $online_cmvn_iextractor; then
+  feats="$gmm_feats"
+  touch $dir/online_cmvn_iextractor
+fi
 
 # Initialize the i-vector extractor using the input GMM, which is converted to
 # full because that's what the i-vector extractor expects.  Note: we have to do
@@ -115,7 +133,7 @@ if [ $stage -le -2 ]; then
   $cmd $dir/log/init.log \
     ivector-extractor-init --ivector-dim=$ivector_dim --use-weights=false \
      "gmm-global-to-fgmm $dir/final.dubm -|" $dir/0.ie || exit 1
-fi 
+fi
 
 # Do Gaussian selection and posterior extracion
 
@@ -156,31 +174,38 @@ while [ $x -lt $num_iters ]; do
     done
     wait
     [ -f $dir/.error ] && echo "Error accumulating stats on iteration $x" && exit 1;
-	accs=""
-	for j in $(seq $nj); do
-	  accs+="$dir/acc.$x.$j "
-	done
-	echo "Summing accs (pass $x)"
-	$cmd $dir/log/sum_acc.$x.log \
-	  ivector-extractor-sum-accs $accs $dir/acc.$x || exit 1;
+    accs=""
+    for j in $(seq $nj); do
+      accs+="$dir/acc.$x.$j "
+    done
+    echo "Summing accs (pass $x)"
+    $cmd $dir/log/sum_acc.$x.log \
+      ivector-extractor-sum-accs $accs $dir/acc.$x || exit 1;
     echo "Updating model (pass $x)"
     nt=$[$num_threads*$num_processes] # use the same number of threads that
                                       # each accumulation process uses, since we
                                       # can be sure the queue will support this many.
                                       #
-                                      # The parallel-opts was either specified by 
+                                      # The parallel-opts was either specified by
                                       # the user or we computed it correctly in
                                       # tge previous stages
-	$cmd --num-threads $[$num_threads*$num_processes] $dir/log/update.$x.log \
-	  ivector-extractor-est --num-threads=$nt $dir/$x.ie $dir/acc.$x $dir/$[$x+1].ie || exit 1;
-	rm $dir/acc.$x.*
+    $cmd --num-threads $[$num_threads*$num_processes] $dir/log/update.$x.log \
+      ivector-extractor-est --num-threads=$nt $dir/$x.ie $dir/acc.$x $dir/$[$x+1].ie || exit 1;
+    rm $dir/acc.$x.*
     if $cleanup; then
-      rm $dir/acc.$x
-      # rm $dir/$x.ie
+      rm $dir/acc.$x $dir/$x.ie
     fi
   fi
   x=$[$x+1]
 done
 
+if $cleanup; then
+  rm $dir/post.*.gz
+fi
+
 rm $dir/final.ie 2>/dev/null
 ln -s $x.ie $dir/final.ie
+
+# assign a unique id to this extractor
+# we are not interested in the id itself, just pre-caching ...
+steps/nnet2/get_ivector_id.sh $dir > /dev/null || exit 1

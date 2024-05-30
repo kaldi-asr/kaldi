@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2014  Guoguo Chen
 # Apache 2.0
@@ -18,7 +18,7 @@ echo "$0 $@"  # Print the command line for logging
 
 if [ $# != 5 ]; then
    echo "Does language model rescoring of lattices (remove old LM, add new LM)"
-   echo "Usage: steps/lmrescore.sh [options] <old-lang-dir> <new-lang-dir> \\"
+   echo "Usage: $0 [options] <old-lang-dir> <new-lang-dir> \\"
    echo "                   <data-dir> <input-decode-dir> <output-decode-dir>"
    echo "options: [--cmd (run.pl|queue.pl [queue opts])]"
    exit 1;

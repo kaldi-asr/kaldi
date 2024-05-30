@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
 # Apache 2.0
 
@@ -8,9 +8,8 @@
 cmd=run.pl
 stage=0
 decode_mbr=true
-reverse=false
-min_lmwt=9
-max_lmwt=20
+min_lmwt=7
+max_lmwt=17
 #end configuration section.
 
 [ -f ./path.sh ] && . ./path.sh
@@ -24,7 +23,6 @@ if [ $# -ne 3 ]; then
   echo "    --decode_mbr (true/false)       # maximum bayes risk decoding (confusion network)."
   echo "    --min_lmwt <int>                # minumum LM-weight for lattice rescoring "
   echo "    --max_lmwt <int>                # maximum LM-weight for lattice rescoring "
-  echo "    --reverse (true/false)          # score with time reversed features "
   exit 1;
 fi
 
@@ -45,14 +43,6 @@ cat $data/text | sed 's:<NOISE>::g' | sed 's:<SPOKEN_NOISE>::g' > $dir/scoring/t
 $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/best_path.LMWT.log \
   lattice-best-path --lm-scale=LMWT --word-symbol-table=$symtab \
     "ark:gunzip -c $dir/lat.*.gz|" ark,t:$dir/scoring/LMWT.tra || exit 1;
-
-if $reverse; then
-  for lmwt in `seq $min_lmwt $max_lmwt`; do
-    mv $dir/scoring/$lmwt.tra $dir/scoring/$lmwt.tra.orig
-    awk '{ printf("%s ",$1); for(i=NF; i>1; i--){ printf("%s ",$i); } printf("\n"); }' \
-       <$dir/scoring/$lmwt.tra.orig >$dir/scoring/$lmwt.tra
-  done
-fi
 
 # Note: the double level of quoting for the sed command
 $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/score.LMWT.log \

@@ -88,8 +88,13 @@ int32 NumFrames(int64 num_samples,
 
 
 void Dither(VectorBase<BaseFloat> *waveform, BaseFloat dither_value) {
-  for (int32 i = 0; i < waveform->Dim(); i++)
-    (*waveform)(i) += RandGauss() * dither_value;
+  if (dither_value == 0.0)
+    return;
+  int32 dim = waveform->Dim();
+  BaseFloat *data = waveform->Data();
+  RandomState rstate;
+  for (int32 i = 0; i < dim; i++)
+    data[i] += RandGauss(&rstate) * dither_value;
 }
 
 
@@ -110,6 +115,10 @@ FeatureWindowFunction::FeatureWindowFunction(const FrameExtractionOptions &opts)
     double i_fl = static_cast<double>(i);
     if (opts.window_type == "hanning") {
       window(i) = 0.5  - 0.5*cos(a * i_fl);
+    } else if (opts.window_type == "sine") {
+      // when you are checking ws wikipedia, please
+      // note that 0.5 * a = M_PI/(frame_length-1)
+      window(i) = sin(0.5 * a * i_fl);
     } else if (opts.window_type == "hamming") {
       window(i) = 0.54 - 0.46*cos(a * i_fl);
     } else if (opts.window_type == "povey") {  // like hamming but goes to zero at edges.
@@ -139,7 +148,7 @@ void ProcessWindow(const FrameExtractionOptions &opts,
     window->Add(-window->Sum() / frame_length);
 
   if (log_energy_pre_window != NULL) {
-    BaseFloat energy = std::max(VecVec(*window, *window),
+    BaseFloat energy = std::max<BaseFloat>(VecVec(*window, *window),
                                 std::numeric_limits<float>::epsilon());
     *log_energy_pre_window = Log(energy);
   }
@@ -213,21 +222,5 @@ void ExtractWindow(int64 sample_offset,
 
   ProcessWindow(opts, window_function, &frame, log_energy_pre_window);
 }
-
-void ExtractWaveformRemainder(const VectorBase<BaseFloat> &wave,
-                              const FrameExtractionOptions &opts,
-                              Vector<BaseFloat> *wave_remainder) {
-  int32 frame_shift = opts.WindowShift();
-  int32 num_frames = NumFrames(wave.Dim(), opts);
-  // offset is the amount at the start that has been extracted.
-  int32 offset = num_frames * frame_shift;
-  KALDI_ASSERT(wave_remainder != NULL);
-  int32 remaining_len = wave.Dim() - offset;
-  wave_remainder->Resize(remaining_len);
-  KALDI_ASSERT(remaining_len >= 0);
-  if (remaining_len > 0)
-    wave_remainder->CopyFromVec(SubVector<BaseFloat>(wave, offset, remaining_len));
-}
-
 
 }  // namespace kaldi

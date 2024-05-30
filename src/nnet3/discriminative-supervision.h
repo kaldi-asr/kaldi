@@ -29,37 +29,20 @@
 namespace kaldi {
 namespace discriminative {
 
-struct DiscriminativeSupervisionOptions {
-  int32 frame_subsampling_factor;
-  BaseFloat acoustic_scale;
-
-  DiscriminativeSupervisionOptions(): frame_subsampling_factor(1), acoustic_scale(0.1) { }
-
-  void Register(OptionsItf *opts) {
-    opts->Register("frame-subsampling-factor", &frame_subsampling_factor, "Used "
-                   "if the frame-rate for the model will be less than the "
-                   "frame-rate of the original alignment.  Applied after "
-                   "left-tolerance and right-tolerance are applied (so they are "
-                   "in terms of the original num-frames.");
-    opts->Register("acoustic-scale", &acoustic_scale,
-                   "Scaling factor for acoustic likelihoods");
-  }
-
-  void Check() const;
-};
 
 struct SplitDiscriminativeSupervisionOptions {
+  int32 frame_subsampling_factor;
   bool remove_output_symbols;
   bool collapse_transition_ids;
   bool remove_epsilons;
   bool determinize;
   bool minimize; // we'll push and minimize if this is true.
-  DiscriminativeSupervisionOptions supervision_config;
-  
+  BaseFloat acoustic_scale;
+
   SplitDiscriminativeSupervisionOptions() :
-    remove_output_symbols(false), collapse_transition_ids(false), 
-    remove_epsilons(false), determinize(false),
-    minimize(false) { }
+      remove_output_symbols(true), collapse_transition_ids(true),
+      remove_epsilons(true), determinize(true),
+      minimize(true), acoustic_scale(0.1) { }
 
   void Register(OptionsItf *opts) {
     opts->Register("collapse-transition-ids", &collapse_transition_ids,
@@ -76,7 +59,9 @@ struct SplitDiscriminativeSupervisionOptions {
                    "lattices (as Lattice) after splitting and possibly minimize");
     opts->Register("minimize", &minimize, "If true, we push and "
                    "minimize lattices (as Lattice) after splitting");
-    supervision_config.Register(opts);
+    opts->Register("acoustic-scale", &acoustic_scale,
+                   "Scaling factor for acoustic likelihoods (should match the "
+                   "value used in discriminative-get-supervision)");
   }
 };
 
@@ -86,13 +71,13 @@ struct SplitDiscriminativeSupervisionOptions {
 */
 
 // struct DiscriminativeSupervision is the fully-processed information for
-// a whole utterance or (after splitting) part of an utterance. 
+// a whole utterance or (after splitting) part of an utterance.
 struct DiscriminativeSupervision {
   // The weight we assign to this example;
   // this will typically be one, but we include it
-  // for the sake of generality.  
-  BaseFloat weight; 
-  
+  // for the sake of generality.
+  BaseFloat weight;
+
   // num_sequences will be 1 if you create a DiscriminativeSupervision object from a single
   // lattice or alignment, but if you combine multiple DiscriminativeSupervision objects
   // the 'num_sequences' is the number of objects that were combined (the
@@ -104,20 +89,20 @@ struct DiscriminativeSupervision {
   // Technically this information is redundant with the lattices, but it's convenient
   // to have it separately.
   int32 frames_per_sequence;
-  
+
   // The numerator alignment
   // Usually obtained by aligning the reference text with the seed neural
   // network model; can be the best path of generated lattice in the case of
   // semi-supervised training.
   std::vector<int32> num_ali;
-  
+
   // Note: any acoustic
   // likelihoods in the lattices will be
   // recomputed at the time we train.
-  
-  // The denominator lattice.  
-  Lattice den_lat; 
-  
+
+  // The denominator lattice.
+  Lattice den_lat;
+
   DiscriminativeSupervision(): weight(1.0), num_sequences(1),
                                frames_per_sequence(-1) { }
 
@@ -128,7 +113,7 @@ struct DiscriminativeSupervision {
   // and denominator lattice.  The supervision object is used for sequence
   // discriminative training.
   // Topologically sorts the lattice after copying to the supervision object.
-  // Returns false when alignment or lattice is empty 
+  // Returns false when alignment or lattice is empty
   bool Initialize(const std::vector<int32> &alignment,
                   const Lattice &lat,
                   BaseFloat weight);
@@ -136,13 +121,13 @@ struct DiscriminativeSupervision {
   void Swap(DiscriminativeSupervision *other);
 
   bool operator == (const DiscriminativeSupervision &other) const;
-  
+
   // This function checks that this supervision object satifsies some
   // of the properties we expect of it, and calls KALDI_ERR if not.
   void Check() const;
-  
-  inline int32 NumFrames() const { 
-    return num_sequences * frames_per_sequence; 
+
+  inline int32 NumFrames() const {
+    return num_sequences * frames_per_sequence;
   }
 
   void Write(std::ostream &os, bool binary) const;
@@ -156,30 +141,30 @@ class DiscriminativeSupervisionSplitter {
  public:
   typedef fst::ArcTpl<LatticeWeight> LatticeArc;
   typedef fst::VectorFst<LatticeArc> Lattice;
- 
+
   DiscriminativeSupervisionSplitter(
       const SplitDiscriminativeSupervisionOptions &config,
       const TransitionModel &tmodel,
       const DiscriminativeSupervision &supervision);
 
-  // A structure used to store the forward and backward scores 
+  // A structure used to store the forward and backward scores
   // and state times of a lattice
   struct LatticeInfo {
-    // These values are stored in log. 
+    // These values are stored in log.
     std::vector<double> alpha;
     std::vector<double> beta;
     std::vector<int32> state_times;
 
     void Check() const;
   };
-  
-  // Extracts a frame range of the supervision into 'supervision'.  
+
+  // Extracts a frame range of the supervision into 'supervision'.
   void GetFrameRange(int32 begin_frame, int32 frames_per_sequence,
                      bool normalize,
                      DiscriminativeSupervision *supervision) const;
 
   // Get the acoustic scaled denominator lattice out for debugging purposes
-  inline const Lattice& DenLat() const { return den_lat_; }  
+  inline const Lattice& DenLat() const { return den_lat_; }
 
  private:
 
@@ -187,7 +172,7 @@ class DiscriminativeSupervisionSplitter {
   // assuming that the corresponding state-range that we need to
   // include, begin_state <= s < end_state has been included.
   // (note: the output lattice will also have two special initial and final
-  // states).  
+  // states).
   // Also does post-processing (RmEpsilon, Determinize,
   // TopSort on the result).  See code for details.
   void CreateRangeLattice(const Lattice &in_lat,
@@ -201,7 +186,7 @@ class DiscriminativeSupervisionSplitter {
   // Transition model is used by the function
   // CollapseTransitionIds()
   const TransitionModel &tmodel_;
-  
+
   // A reference to the supervision object that we will be splitting
   const DiscriminativeSupervision &supervision_;
 
@@ -216,7 +201,7 @@ class DiscriminativeSupervisionSplitter {
   // Function to compute lattice scores for a lattice
   void ComputeLatticeScores(const Lattice &lat, LatticeInfo *scores) const;
 
-  // Prepare lattice : 
+  // Prepare lattice :
   // 1) Order states in breadth-first search order
   // 2) Compute states times, which must be a strictly non-decreasing vector
   // 3) Compute lattice alpha and beta scores
@@ -225,7 +210,7 @@ class DiscriminativeSupervisionSplitter {
   // Modifies the transition-ids on lat_ so that on each frame, there is just
   // one with any given pdf-id.  This allows us to determinize and minimize
   // more completely.
-  void CollapseTransitionIds(const std::vector<int32> &state_times, 
+  void CollapseTransitionIds(const std::vector<int32> &state_times,
                              Lattice *lat) const;
 
 };
@@ -237,13 +222,9 @@ class DiscriminativeSupervisionSplitter {
 /// normal use-case for this is when you are combining neural-net examples for
 /// training; appending them like this helps to simplify the training process.
 
-void AppendSupervision(const std::vector<const DiscriminativeSupervision*> &input,
-    bool compactify,
-    std::vector<DiscriminativeSupervision> *output_supervision);
+void MergeSupervision(const std::vector<const DiscriminativeSupervision*> &input,
+    DiscriminativeSupervision *output_supervision);
 
-typedef TableWriter<KaldiObjectHolder<DiscriminativeSupervision> > DiscriminativeSupervisionWriter;
-typedef SequentialTableReader<KaldiObjectHolder<DiscriminativeSupervision> > SequentialDiscriminativeSupervisionReader;
-typedef RandomAccessTableReader<KaldiObjectHolder<DiscriminativeSupervision> > RandomAccessDiscriminativeSupervisionReader;
 
 } // namespace discriminative
 } // namespace kaldi

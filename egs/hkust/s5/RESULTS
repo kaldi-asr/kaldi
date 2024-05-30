@@ -1,15 +1,32 @@
-# for x in exp/*/decode; do [ -d $x ] && grep WER $x/cer_* | utils/best_wer.sh; done
-%WER 80.89 [ 45422 / 56154, 1530 ins, 11018 del, 32874 sub ] exp/mono0a/decode/cer_9
-%WER 60.01 [ 33698 / 56154, 2528 ins, 5961 del, 25209 sub ] exp/tri1/decode/cer_12
-%WER 59.68 [ 33514 / 56154, 2574 ins, 5752 del, 25188 sub ] exp/tri2/decode/cer_12
-%WER 57.25 [ 32148 / 56154, 2484 ins, 5811 del, 23853 sub ] exp/tri3a/decode/cer_13
-%WER 53.47 [ 30026 / 56154, 2789 ins, 5115 del, 22122 sub ] exp/tri4a/decode/cer_13
-%WER 49.72 [ 27921 / 56154, 2833 ins, 4568 del, 20520 sub ] exp/tri5a/decode/cer_13
-%WER 43.95 [ 24681 / 56154, 2106 ins, 3890 del, 18685 sub ] exp/tri5a_mmi_b0.1/decode/cer_10
-%WER 44.60 [ 25044 / 56154, 2121 ins, 4040 del, 18883 sub ] exp/tri5a_mpe/decode/cer_11
-%WER 43.81 [ 24602 / 56154, 2843 ins, 3751 del, 18008 sub ] exp/sgmm2_5a/decode/cer_10
-exp/tri5a_mce/decode/cer_11:%WER 44.74 [ 25125 / 56154, 2112 ins, 4108 del, 18905 sub ]
+## Caution: these WERs are actually CERs.
 
+# for x in exp/*/decode; do [ -d $x ] && grep WER $x/cer_* | utils/best_wer.sh; done
+%WER 80.67 [ 45198 / 56027, 1607 ins, 10733 del, 32858 sub ] exp/mono0a/decode/cer_9_0.0
+%WER 58.79 [ 32939 / 56027, 2662 ins, 6124 del, 24153 sub ] exp/tri1/decode/cer_13_0.0
+%WER 58.24 [ 32632 / 56027, 2502 ins, 6163 del, 23967 sub ] exp/tri2/decode/cer_14_0.0
+%WER 56.41 [ 31607 / 56027, 2489 ins, 6019 del, 23099 sub ] exp/tri3a/decode/cer_12_0.5
+%WER 51.66 [ 28946 / 56027, 2893 ins, 4975 del, 21078 sub ] exp/tri4a/decode/cer_13_0.0
+%WER 47.27 [ 26483 / 56027, 2754 ins, 4467 del, 19262 sub ] exp/tri5a/decode/cer_13_0.0
+%WER 42.44 [ 23780 / 56027, 1889 ins, 4325 del, 17566 sub ] exp/tri5a_mpe/decode/cer_13_0.0
+%WER 42.08 [ 23574 / 56027, 1919 ins, 4121 del, 17534 sub ] exp/tri5a_mmi_b0.1/decode/cer_10_0.5
+%WER 41.01 [ 22976 / 56027, 2880 ins, 3500 del, 16596 sub ] exp/sgmm2_5a/decode/cer_10_0.0
+
+# nnet2 online results
+%WER 38.22 [ 21411 / 56027, 2363 ins, 4167 del, 14881 sub ] exp/nnet2_online/nnet_ms/decode/cer_12_0.0
+%WER 37.90 [ 21237 / 56027, 2574 ins, 4065 del, 14598 sub ] exp/nnet2_online/nnet_ms_online/decode/cer_12_0.0
+%WER 36.97 [ 20713 / 56027, 2364 ins, 3865 del, 14484 sub ] exp/nnet2_online/nnet_ms_online/decode_per_utt/cer_11_0.5
+
+# nnet3 online results
+%WER 32.65 [ 18295 / 56027, 1993 ins, 3420 del, 12882 sub ] exp/nnet3/tdnn_sp/decode/cer_10_0.0
+%WER 32.85 [ 18406 / 56027, 2154 ins, 3409 del, 12843 sub ] exp/nnet3/tdnn_sp_online/decode/cer_9_0.5
+%WER 33.90 [ 18992 / 56027, 2217 ins, 3377 del, 13398 sub ] exp/nnet3/tdnn_sp_online/decode_per_utt/cer_10_0.0
+
+# chain online results
+%WER 28.14 [ 15764 / 56027, 1472 ins, 3320 del, 10972 sub ] exp/chain/tdnn_7h_sp/decode/cer_10_0.0
+%WER 28.06 [ 15721 / 56027, 1666 ins, 2729 del, 11326 sub ] exp/chain/tdnn_7h_sp_online/decode/cer_9_0.0
+%WER 29.44 [ 16497 / 56027, 1564 ins, 3339 del, 11594 sub ] exp/chain/tdnn_7h_sp_online/decode_per_utt/cer_10_0.0
+
+## results before adding pitch
 # nnet1 results
 exp/dnn5b_pretrain-dbn_dnn/decode/cer_10:%WER 39.42 [ 22134 / 56154, 2507 ins, 3730 del, 15897 sub ]
 exp/dnn5b_pretrain-dbn_dnn_smbr/decode/cer_11:%WER 36.50 [ 20499 / 56154, 1915 ins, 3312 del, 15272 sub ]
@@ -18,11 +35,14 @@ exp/cnn5c/decode/cer_10:%WER 40.13 [ 22536 / 56154, 2329 ins, 3962 del, 16245 su
 exp/cnn5c_pretrain-dbn_dnn/decode/cer_10:%WER 38.80 [ 21790 / 56154, 2470 ins, 3582 del, 15738 sub ]
 exp/lstm5e/decode/cer_10:%WER 37.61 [ 21121 / 56154, 1829 ins, 3941 del, 15351 sub ]
 
-# nnet2 results
+# nnet2 mfcc results
 exp/nnet2_5d/decode/cer_10:%WER 38.59 [ 21669 / 56154, 2498 ins, 3581 del, 15590 sub ]
-# ConvNet with 2 convolutional layers and 2 ReLU layers
+# ConvNet using fbank, with 2 convolutional layers and 2 ReLU layers
 exp/nnet2_convnet/decode/cer_10:%WER 41.19 [ 23129 / 56154, 2599 ins, 3782 del, 16748 sub ]
 
-# nnet3 results (using speed perturbed data)
+# nnet3 mfcc results (using speed perturbed data)
 exp/nnet3/tdnn_sp/decode_dev/cer_10:%WER 33.79 [ 18977 / 56154, 2027 ins, 3485 del, 13465 sub ]
 exp/nnet3/lstm_sp_ld5/decode_dev/cer_9:%WER 33.51 [ 18815 / 56154, 1813 ins, 3249 del, 13753 sub ]
+
+
+#  For nnet3+chain results, which are significantly better, see scripts in local/chain/tuning/.

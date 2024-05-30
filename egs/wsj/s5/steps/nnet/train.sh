@@ -1,6 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# Copyright 2012-2015  Brno University of Technology (author: Karel Vesely)
+# Copyright 2012-2017  Brno University of Technology (author: Karel Vesely)
 # Apache 2.0
 
 # Begin configuration.
@@ -22,19 +22,19 @@ nnet_proto=         # (optional) use this NN prototype for initialization,
 
 # feature processing,
 splice=5            # (default) splice features both-ways along time axis,
+online_cmvn_opts=   # (optional) adds 'apply-cmvn-online' to input feature pipeline, see opts,
 cmvn_opts=          # (optional) adds 'apply-cmvn' to input feature pipeline, see opts,
 delta_opts=         # (optional) adds 'add-deltas' to input feature pipeline, see opts,
 ivector=            # (optional) adds 'append-vector-to-feats', the option is rx-filename for the 2nd stream,
 ivector_append_tool=append-vector-to-feats # (optional) the tool for appending ivectors,
 
-feat_type=plain  
+feat_type=plain
 traps_dct_basis=11    # (feat_type=traps) nr. of DCT basis, 11 is good with splice=10,
 transf=               # (feat_type=transf) import this linear tranform,
 splice_after_transf=5 # (feat_type=transf) splice after the linear transform,
 
 feature_transform_proto= # (optional) use this prototype for 'feature_transform',
 feature_transform=  # (optional) directly use this 'feature_transform',
-pytel_transform=    # (BUT) use external python transform,
 
 # labels,
 labels=            # (optional) specify non-default training targets,
@@ -53,14 +53,20 @@ utt_weights=       # per-utterance weights (scalar for --frame-weights),
 copy_feats=true     # resave the train/cv features into /tmp (disabled by default),
 copy_feats_tmproot=/tmp/kaldi.XXXX # sets tmproot for 'copy-feats',
 copy_feats_compress=true # compress feats while resaving
+feats_std=1.0
+
+split_feats=        # split the training data into N portions, one portion will be one 'epoch',
+                    # (empty = no splitting)
+
 seed=777            # seed value used for data-shuffling, nn-initialization, and training,
 skip_cuda_check=false
+skip_phoneset_check=false
 
 # End configuration.
 
 echo "$0 $@"  # Print the command line for logging
 
-[ -f path.sh ] && . ./path.sh; 
+[ -f path.sh ] && . ./path.sh;
 . parse_options.sh || exit 1;
 
 set -euo pipefail
@@ -84,7 +90,7 @@ if [ $# != 6 ]; then
    echo "  --cmvn-opts  <string>            # add 'apply-cmvn' to input feature pipeline"
    echo "  --delta-opts <string>            # add 'add-deltas' to input feature pipeline"
    echo "  --splice <N>                     # splice +/-N frames of input features"
-   echo 
+   echo
    echo "  --learn-rate <float>     # initial leaning-rate"
    echo "  --copy-feats <bool>      # copy features to /tmp, lowers storage stress"
    echo ""
@@ -99,7 +105,7 @@ alidir_cv=$5
 dir=$6
 
 # Using alidir for supervision (default)
-if [ -z "$labels" ]; then 
+if [ -z "$labels" ]; then
   silphonelist=`cat $lang/phones/silence.csl`
   for f in $alidir/final.mdl $alidir/ali.1.gz $alidir_cv/ali.1.gz; do
     [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
@@ -119,6 +125,12 @@ printf "\t CV-set    : $data_cv $(cat $data_cv/feats.scp | wc -l) $alidir_cv \n"
 echo
 
 mkdir -p $dir/{log,nnet}
+
+if ! $skip_phoneset_check; then
+  utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt
+  utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir_cv/phones.txt
+  cp $lang/phones.txt $dir
+fi
 
 # skip when already trained,
 if [ -e $dir/final.nnet ]; then
@@ -184,18 +196,24 @@ utils/shuffle_list.pl --srand ${seed:-777} <$dir/train_sorted.scp >$dir/train.sc
 # create a 10k utt subset for global cmvn estimates,
 head -n 10000 $dir/train.scp > $dir/train.scp.10k
 
+# split the list,
+if [ -n "$split_feats" ]; then
+  scps= # 1..split_feats,
+  for (( ii=1; ii<=$split_feats; ii++ )); do scps="$scps $dir/train.${ii}.scp"; done
+  utils/split_scp.pl $dir/train.scp $scps
+fi
+
 # for debugging, add lists with non-local features,
 utils/shuffle_list.pl --srand ${seed:-777} <$data/feats.scp >$dir/train.scp_non_local
 cp $data_cv/feats.scp $dir/cv.scp_non_local
 
 ###### OPTIONALLY IMPORT FEATURE SETTINGS (from pre-training) ######
 ivector_dim= # no ivectors,
-if [ ! -z $feature_transform ]; then
+if [ -n "$feature_transform" ]; then
   D=$(dirname $feature_transform)
   echo "# importing feature settings from dir '$D'"
-  [ -e $D/norm_vars ] && cmvn_opts="--norm-means=true --norm-vars=$(cat $D/norm_vars)" # Bwd-compatibility,
+  [ -e $D/online_cmvn_opts ] && online_cmvn_opts=$(cat $D/online_cmvn_opts)
   [ -e $D/cmvn_opts ] && cmvn_opts=$(cat $D/cmvn_opts)
-  [ -e $D/delta_order ] && delta_opts="--delta-order=$(cat $D/delta_order)" # Bwd-compatibility,
   [ -e $D/delta_opts ] && delta_opts=$(cat $D/delta_opts)
   [ -e $D/ivector_dim ] && ivector_dim=$(cat $D/ivector_dim)
   [ -e $D/ivector_append_tool ] && ivector_append_tool=$(cat $D/ivector_append_tool)
@@ -208,7 +226,14 @@ feats_tr="ark:copy-feats scp:$dir/train.scp ark:- |"
 feats_cv="ark:copy-feats scp:$dir/cv.scp ark:- |"
 
 # optionally add per-speaker CMVN,
-if [ ! -z "$cmvn_opts" ]; then
+[ -n "$online_cmvn_opts" -a -n "$cmvn_opts" ] && echo "Error: use \$online_cmvn_opts or \$cmvn_opts, not both!" && exit 1
+if [ -n "$online_cmvn_opts" ]; then
+  echo "# + 'apply-cmvn-online' with '$online_cmvn_opts' is used,"
+  global_cmvn_stats=$dir/global_cmvn_stats.mat
+  matrix-sum --binary=false scp:$data/cmvn.scp $global_cmvn_stats
+  feats_tr="$feats_tr apply-cmvn-online $online_cmvn_opts $global_cmvn_stats ark:- ark:- |"
+  feats_cv="$feats_cv apply-cmvn-online $online_cmvn_opts $global_cmvn_stats ark:- ark:- |"
+elif [ -n "$cmvn_opts" ]; then
   echo "# + 'apply-cmvn' with '$cmvn_opts' using statistics : $data/cmvn.scp, $data_cv/cmvn.scp"
   [ ! -r $data/cmvn.scp ] && echo "Missing $data/cmvn.scp" && exit 1;
   [ ! -r $data_cv/cmvn.scp ] && echo "Missing $data_cv/cmvn.scp" && exit 1;
@@ -226,38 +251,32 @@ if [ ! -z "$delta_opts" ]; then
 fi
 
 # keep track of the config,
-[ ! -z "$cmvn_opts" ] && echo "$cmvn_opts" >$dir/cmvn_opts 
-[ ! -z "$delta_opts" ] && echo "$delta_opts" >$dir/delta_opts
+[ -n "$online_cmvn_opts" ] && echo "$online_cmvn_opts" >$dir/online_cmvn_opts
+[ -n "$cmvn_opts" ] && echo "$cmvn_opts" >$dir/cmvn_opts
+[ -n "$delta_opts" ] && echo "$delta_opts" >$dir/delta_opts
 #
 
-# optionally append python feature transform,
-if [ ! -z "$pytel_transform" ]; then
-  cp $pytel_transform $dir/pytel_transform.py
-  { echo; echo "### Comes from here: '$pytel_transform' ###"; } >> $dir/pytel_transform.py
-  pytel_transform=$dir/pytel_transform.py
-  feats_tr="$feats_tr /bin/env python $pytel_transform |"
-  feats_cv="$feats_cv /bin/env python $pytel_transform |"
-  echo "# + 'pytel-transform' from '$pytel_transform'"
-fi
+# temoprary pipeline with first 10k,
+feats_tr_10k="${feats_tr/train.scp/train.scp.10k}"
 
 # get feature dim,
-feat_dim=$(feat-to-dim "$feats_tr" -)
+feat_dim=$(feat-to-dim "$feats_tr_10k" -)
 echo "# feature dim : $feat_dim (input of 'feature_transform')"
 
-# Now we start building 'feature_transform' which goes right in front of a NN. 
+# Now we start building 'feature_transform' which goes right in front of a NN.
 # The forwarding is computed on a GPU before the frame shuffling is applied.
 #
 # Same GPU is used both for 'feature_transform' and the NN training.
 # So it has to be done by a single process (we are using exclusive mode).
 # This also reduces the CPU-GPU uploads/downloads to minimum.
 
-if [ ! -z "$feature_transform" ]; then
+if [ -n "$feature_transform" ]; then
   echo "# importing 'feature_transform' from '$feature_transform'"
-  tmp=$dir/imported_$(basename $feature_transform) 
+  tmp=$dir/imported_$(basename $feature_transform)
   cp $feature_transform $tmp; feature_transform=$tmp
 else
   # Make default proto with splice,
-  if [ ! -z $feature_transform_proto ]; then
+  if [ -n "$feature_transform_proto" ]; then
     echo "# importing custom 'feature_transform_proto' from '$feature_transform_proto'"
   else
     echo "# + default 'feature_transform_proto' with splice +/-$splice frames,"
@@ -292,7 +311,7 @@ else
       feature_transform=${feature_transform%.nnet}_transf_splice${splice_after_transf}.nnet
       [ -z $transf ] && transf=$alidir/final.mat
       [ ! -f $transf ] && echo "Missing transf $transf" && exit 1
-      feat_dim=$(feat-to-dim "$feats_tr nnet-forward 'nnet-concat $feature_transform_old \"transf-to-nnet $transf - |\" - |' ark:- ark:- |" -)
+      feat_dim=$(feat-to-dim "$feats_tr_10k nnet-forward 'nnet-concat $feature_transform_old \"transf-to-nnet $transf - |\" - |' ark:- ark:- |" -)
       nnet-concat --binary=false $feature_transform_old \
         "transf-to-nnet $transf - |" \
         "utils/nnet/gen_splice.py --fea-dim=$feat_dim --splice=$splice_after_transf |" \
@@ -312,11 +331,11 @@ else
   feature_transform=${feature_transform%.nnet}_cmvn-g.nnet
   echo "# compute normalization stats from 10k sentences"
   nnet-forward --print-args=true --use-gpu=yes $feature_transform_old \
-    "$(echo $feats_tr | sed 's|train.scp|train.scp.10k|')" ark:- |\
+    "$feats_tr_10k" ark:- |\
     compute-cmvn-stats ark:- $dir/cmvn-g.stats
   echo "# + normalization of NN-input at '$feature_transform'"
   nnet-concat --binary=false $feature_transform_old \
-    "cmvn-to-nnet $dir/cmvn-g.stats -|" $feature_transform
+    "cmvn-to-nnet --std-dev=$feats_std $dir/cmvn-g.stats -|" $feature_transform
 fi
 
 if [ ! -z $ivector ]; then
@@ -325,34 +344,34 @@ if [ ! -z $ivector ]; then
   # The iVectors are concatenated 'as they are' directly to the input of the neural network,
   # To do this, we paste the features, and use <ParallelComponent> where the 1st component
   # contains the transform and 2nd network contains <Copy> component.
-  
+
   echo "# getting dims,"
-  dim_raw=$(feat-to-dim "$feats_tr" -)
-  dim_raw_and_ivec=$(feat-to-dim "$feats_tr $ivector_append_tool ark:- '$ivector' ark:- |" -)
+  dim_raw=$(feat-to-dim "$feats_tr_10k" -)
+  dim_raw_and_ivec=$(feat-to-dim "$feats_tr_10k $ivector_append_tool ark:- '$ivector' ark:- |" -)
   dim_ivec=$((dim_raw_and_ivec - dim_raw))
   echo "# dims, feats-raw $dim_raw, ivectors $dim_ivec,"
 
   # Should we do something with 'feature_transform'?
-  if [ ! -z $ivector_dim ]; then 
+  if [ ! -z $ivector_dim ]; then
     # No, the 'ivector_dim' comes from dir with 'feature_transform' with iVec forwarding,
     echo "# assuming we got '$feature_transform' with ivector forwarding,"
     [ $ivector_dim != $dim_ivec ] && \
     echo -n "Error, i-vector dimensionality mismatch!" && \
     echo " (expected $ivector_dim, got $dim_ivec in $ivector)" && exit 1
-  else 
+  else
     # Yes, adjust the transform to do ``iVec forwarding'',
     feature_transform_old=$feature_transform
     feature_transform=${feature_transform%.nnet}_ivec_copy.nnet
     echo "# setting up ivector forwarding into '$feature_transform',"
-    dim_transformed=$(feat-to-dim "$feats_tr nnet-forward $feature_transform_old ark:- ark:- |" -)
-    nnet-initialize --print-args=false <(echo "<Copy> <InputDim> $dim_ivec <OutputDim> $dim_ivec <BuildVector> 1:$dim_ivec </BuildVector>") $dir/tr_ivec_copy.nnet 
+    dim_transformed=$(feat-to-dim "$feats_tr_10k nnet-forward $feature_transform_old ark:- ark:- |" -)
+    nnet-initialize --print-args=false <(echo "<Copy> <InputDim> $dim_ivec <OutputDim> $dim_ivec <BuildVector> 1:$dim_ivec </BuildVector>") $dir/tr_ivec_copy.nnet
     nnet-initialize --print-args=false <(echo "<ParallelComponent> <InputDim> $((dim_raw+dim_ivec)) <OutputDim> $((dim_transformed+dim_ivec)) \
-                                               <NestedNnetFilename> $feature_transform_old $dir/tr_ivec_copy.nnet </NestedNnetFilename>") $feature_transform 
+                                               <NestedNnetFilename> $feature_transform_old $dir/tr_ivec_copy.nnet </NestedNnetFilename>") $feature_transform
   fi
   echo $dim_ivec >$dir/ivector_dim # mark down the iVec dim!
   echo $ivector_append_tool >$dir/ivector_append_tool
 
-  # pasting the iVecs to the feaures,
+  # pasting the iVecs to the features,
   echo "# + ivector input '$ivector'"
   feats_tr="$feats_tr $ivector_append_tool ark:- '$ivector' ark:- |"
   feats_cv="$feats_cv $ivector_append_tool ark:- '$ivector' ark:- |"
@@ -371,7 +390,7 @@ feature_transform=$dir/final.feature_transform
 
 
 ###### INITIALIZE THE NNET ######
-echo 
+echo
 echo "# NN-INITIALIZATION"
 if [ ! -z $nnet_init ]; then
   echo "# using pre-initialized network '$nnet_init'"
@@ -379,12 +398,12 @@ elif [ ! -z $nnet_proto ]; then
   echo "# initializing NN from prototype '$nnet_proto'";
   nnet_init=$dir/nnet.init; log=$dir/log/nnet_initialize.log
   nnet-initialize --seed=$seed $nnet_proto $nnet_init
-else 
+else
   echo "# getting input/output dims :"
   # input-dim,
   get_dim_from=$feature_transform
   [ ! -z "$dbn" ] && get_dim_from="nnet-concat $feature_transform '$dbn' -|"
-  num_fea=$(feat-to-dim "$feats_tr nnet-forward \"$get_dim_from\" ark:- ark:- |" -)
+  num_fea=$(feat-to-dim "$feats_tr_10k nnet-forward \"$get_dim_from\" ark:- ark:- |" -)
 
   # output-dim,
   [ -z $num_tgt ] && \
@@ -407,19 +426,7 @@ else
         $num_fea >$nnet_proto
       cnn_fea=$(cat $nnet_proto | grep -v '^$' | tail -n1 | awk '{ print $5; }')
       utils/nnet/make_nnet_proto.py $proto_opts \
-        --no-proto-head --no-smaller-input-weights \
-        ${bn_dim:+ --bottleneck-dim=$bn_dim} \
-        "$cnn_fea" $num_tgt $hid_layers $hid_dim >>$nnet_proto
-      ;;
-    cnn2d) 
-      delta_order=$([ -z $delta_opts ] && echo "0" || { echo $delta_opts | tr ' ' '\n' | grep "delta[-_]order" | sed 's:^.*=::'; })
-      echo "Debug : $delta_opts, delta_order $delta_order"
-      utils/nnet/make_cnn2d_proto.py $cnn_proto_opts \
-        --splice=$splice --delta-order=$delta_order --dir=$dir \
-        $num_fea >$nnet_proto
-      cnn_fea=$(cat $nnet_proto | grep -v '^$' | tail -n1 | awk '{ print $5; }')
-      utils/nnet/make_nnet_proto.py $proto_opts \
-        --no-proto-head --no-smaller-input-weights \
+        --no-smaller-input-weights \
         ${bn_dim:+ --bottleneck-dim=$bn_dim} \
         "$cnn_fea" $num_tgt $hid_layers $hid_dim >>$nnet_proto
       ;;
@@ -430,7 +437,7 @@ else
     blstm)
       utils/nnet/make_blstm_proto.py $proto_opts \
         $num_fea $num_tgt >$nnet_proto
-      ;; 
+      ;;
     *) echo "Unknown : --network-type $network_type" && exit 1;
   esac
 
@@ -455,6 +462,7 @@ steps/nnet/train_scheduler.sh \
   ${train_tool:+ --train-tool "$train_tool"} \
   ${train_tool_opts:+ --train-tool-opts "$train_tool_opts"} \
   ${feature_transform:+ --feature-transform $feature_transform} \
+  ${split_feats:+ --split-feats $split_feats} \
   --learn-rate $learn_rate \
   ${frame_weights:+ --frame-weights "$frame_weights"} \
   ${utt_weights:+ --utt-weights "$utt_weights"} \

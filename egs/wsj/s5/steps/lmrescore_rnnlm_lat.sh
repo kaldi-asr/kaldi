@@ -1,6 +1,7 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2015  Guoguo Chen
+#           2017  Hainan Xu
 # Apache 2.0
 
 # This script rescores lattices with RNNLM.  See also rnnlmrescore.sh which is
@@ -10,9 +11,9 @@
 cmd=run.pl
 skip_scoring=false
 max_ngram_order=4
-N=10
-inv_acwt=12
-weight=1.0  # Interpolation weight for RNNLM.
+acwt=0.1
+weight=0.5  # Interpolation weight for RNNLM.
+rnnlm_ver=
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -39,15 +40,26 @@ data=$3
 indir=$4
 outdir=$5
 
+rescoring_binary=lattice-lmrescore-rnnlm
+
+first_arg=ark:$rnnlm_dir/unk.probs # this is for mikolov's rnnlm
+extra_arg=
+
+if [ "$rnnlm_ver" == "cuedrnnlm" ]; then
+  layer_string=`cat $rnnlm_dir/layer_string | sed "s=:= =g"`
+  total_size=`wc -l $rnnlm_dir/unigram.counts | awk '{print $1}'`
+  rescoring_binary="lattice-lmrescore-cuedrnnlm"
+  cat $rnnlm_dir/rnnlm.input.wlist.index | tail -n +2 | awk '{print $1-1,$2}' > $rnnlm_dir/rnn.wlist
+  extra_arg="--full-voc-size=$total_size --layer-sizes=\"$layer_string\""
+  first_arg=$rnnlm_dir/rnn.wlist
+fi
+
 oldlm=$oldlang/G.fst
 if [ -f $oldlang/G.carpa ]; then
   oldlm=$oldlang/G.carpa
-elif [ ! -f $oldlm ]; then
-  echo "$0: expecting either $oldlang/G.fst or $oldlang/G.carpa to exist" &&\
-    exit 1;
 fi
 
-[ ! -f $oldlm ] && echo "$0: Missing file $oldlm" && exit 1;
+[ ! -f $oldlm ] && echo "$0: expecting either $oldlang/G.fst or $oldlang/G.carpa to exist" && exit 1;
 [ ! -f $rnnlm_dir/rnnlm ] && echo "$0: Missing file $rnnlm_dir/rnnlm" && exit 1;
 [ ! -f $rnnlm_dir/unk.probs ] &&\
   echo "$0: Missing file $rnnlm_dir/unk.probs" && exit 1;
@@ -61,8 +73,6 @@ awk -v n=$0 -v w=$weight 'BEGIN {if (w < 0 || w > 1) {
 
 oldlm_command="fstproject --project_output=true $oldlm |"
 
-acwt=`perl -e "print (1.0/$inv_acwt);"`
-
 mkdir -p $outdir/log
 nj=`cat $indir/num_jobs` || exit 1;
 cp $indir/num_jobs $outdir
@@ -72,26 +82,25 @@ if [ "$oldlm" == "$oldlang/G.fst" ]; then
   $cmd JOB=1:$nj $outdir/log/rescorelm.JOB.log \
     lattice-lmrescore --lm-scale=$oldlm_weight \
     "ark:gunzip -c $indir/lat.JOB.gz|" "$oldlm_command" ark:-  \| \
-    lattice-lmrescore-rnnlm --lm-scale=$weight \
-    --max-ngram-order=$max_ngram_order ark:$rnnlm_dir/unk.probs \
-    $oldlang/words.txt ark:- "$rnnlm_dir/rnnlm" \
+    $rescoring_binary $extra_arg --lm-scale=$weight \
+    --max-ngram-order=$max_ngram_order \
+    $first_arg $oldlang/words.txt ark:- "$rnnlm_dir/rnnlm" \
     "ark,t:|gzip -c>$outdir/lat.JOB.gz" || exit 1;
 else
   $cmd JOB=1:$nj $outdir/log/rescorelm.JOB.log \
     lattice-lmrescore-const-arpa --lm-scale=$oldlm_weight \
-    "ark:gunzip -c $indir/lat.JOB.gz|" "$oldlm_command" ark:-  \| \
-    lattice-lmrescore-rnnlm --lm-scale=$weight \
-    --max-ngram-order=$max_ngram_order ark:$rnnlm_dir/unk.probs \
-    $oldlang/words.txt ark:- "$rnnlm_dir/rnnlm" \
+    "ark:gunzip -c $indir/lat.JOB.gz|" "$oldlm" ark:-  \| \
+    $rescoring_binary $extra_arg --lm-scale=$weight \
+    --max-ngram-order=$max_ngram_order \
+    $first_arg $oldlang/words.txt ark:- "$rnnlm_dir/rnnlm" \
     "ark,t:|gzip -c>$outdir/lat.JOB.gz" || exit 1;
 fi
-
 if ! $skip_scoring ; then
   err_msg="Not scoring because local/score.sh does not exist or not executable."
   [ ! -x local/score.sh ] && echo $err_msg && exit 1;
   local/score.sh --cmd "$cmd" $data $oldlang $outdir
 else
-  echo "Not scoring because requested so..."
+  echo "$0: Not scoring because --skip-scoring was specified."
 fi
 
 exit 0;

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
 #                 Korbinian Riedhammer
 # Apache 2.0
@@ -49,6 +49,7 @@ oov_sym=`cat $lang/oov.int` || exit 1;
 mkdir -p $dir/log
 echo $nj > $dir/num_jobs
 
+cp $lang/phones.txt $dir || exit 1;
 
 # Set up features.
 
@@ -97,7 +98,7 @@ incgauss=$[($totgauss-$numgauss)/$max_iter_inc] # per-iter increment for #Gauss
 if [ $stage -le -2 ]; then
   echo "$0: Compiling training graphs"
   $cmd JOB=1:$nj $dir/log/compile_graphs.JOB.log \
-    compile-train-graphs $dir/tree $dir/0.mdl  $lang/L.fst \
+    compile-train-graphs --read-disambig-syms=$lang/phones/disambig.int $dir/tree $dir/0.mdl  $lang/L.fst \
     "ark:sym2int.pl --map-oov $oov_sym -f 2- $lang/words.txt < $sdata1/JOB/text|" \
     "ark:|gzip -c >$dir/fsts.JOB.gz" || exit 1;
 fi

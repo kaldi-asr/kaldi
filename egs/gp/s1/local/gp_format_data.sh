@@ -57,7 +57,7 @@ do
 done
 
 cd $WDIR
-. path.sh
+. ./path.sh
 
 echo "Preparing train data"
 

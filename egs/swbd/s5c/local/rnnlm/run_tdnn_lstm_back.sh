@@ -1,0 +1,1 @@
+tuning/run_tdnn_lstm_back_1e.sh

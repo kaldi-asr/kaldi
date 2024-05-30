@@ -31,6 +31,10 @@
 #  - added a bit of documentation, without really trying to decipher this thing
 # -----------------------------------------------------------------------
 
+use utf8;
+binmode(STDIN, ":utf8");
+binmode(STDOUT, ":utf8");
+
 $vfile = "";
 $preference_file = "";
 $rules_file = "";
@@ -86,6 +90,7 @@ if ($vfile ne "") {
 }
 
 open(PF, $preference_file) || die "Can't read `preferences' file";
+binmode(PF, ":iso88591");
 while (<PF>) {
   chop;
   if ($_ ne "") {
@@ -98,6 +103,7 @@ while (<PF>) {
 $previous = "";
 $brule_num = 0;
 open(BF, $rules_file) || die "Can't read `basic_rules' file";
+binmode(BF, ":iso88591");
 while (<BF>) {
   chop;
   @A = split(//);
@@ -144,7 +150,7 @@ while(<STDIN>){
     next;
   }
   $original = $_;
-  tr/A-Z¡…Õ”⁄œ‹—/a-z·ÈÌÛ˙Ô¸Ò/;
+  tr/A-Z√Å√â√ç√ì√ö√è√ú√ë/a-z√°√©√≠√≥√∫√Ø√º√±/;
   $orig = "#" . $_ . "#";
 
   @l = ();
@@ -155,12 +161,12 @@ while(<STDIN>){
 
   foreach (@pron) {
     $a = $_;
-    y/aeiou·ÈÌÛ˙//cd;
+    y/aeiou√°√©√≠√≥√∫//cd;
     if ($_ eq "") {
       print "#No stressable vowel in $original\n";
     } else {
       s/[aeiou]/0/go;
-      s/[·ÈÌÛ˙]/1/go;
+      s/[√°√©√≠√≥√∫]/1/go;
       if (!/1/) {
         if(length() == 1){
           s/\b./1/o;
@@ -171,11 +177,11 @@ while(<STDIN>){
         }
       }
 
-      $a =~ s/·/a/g;
-      $a =~ s/È/e/g;
-      $a =~ s/Ì/i/g;
-      $a =~ s/Û/o/g;
-      $a =~ s/˙/u/g;
+      $a =~ s/√°/a/g;
+      $a =~ s/√©/e/g;
+      $a =~ s/√≠/i/g;
+      $a =~ s/√≥/o/g;
+      $a =~ s/√∫/u/g;
 
       print "$a\t$_\n";
     }

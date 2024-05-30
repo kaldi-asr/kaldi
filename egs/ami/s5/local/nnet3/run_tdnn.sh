@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # this is the standard "tdnn" system, built in nnet3; it's what we use to
 # call multi-splice.
@@ -22,7 +22,7 @@ remove_egs=true
 relu_dim=850
 num_epochs=3
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 

@@ -22,6 +22,7 @@
 #include "util/common-utils.h"
 #include "hmm/transition-model.h"
 #include "nnet3/nnet-chain-example.h"
+#include <random>
 
 int main(int argc, char *argv[]) {
   try {
@@ -73,8 +74,9 @@ int main(int argc, char *argv[]) {
         egs.push_back(std::pair<std::string, NnetChainExample*>(
             example_reader.Key(),
             new NnetChainExample(example_reader.Value())));
-
-      std::random_shuffle(egs.begin(), egs.end());
+      std::random_device rd;
+      std::mt19937 g(rd());
+      std::shuffle(egs.begin(), egs.end(), g);
     } else {
       KALDI_ASSERT(buffer_size > 0);
       egs.resize(buffer_size,

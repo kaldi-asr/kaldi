@@ -86,14 +86,12 @@ template<class I, class T> class HashList {
   /// is free to modify the "val" element.
   inline Elem *Find(I key);
 
-  /// Insert inserts a new element into the hashtable/stored list.  By calling
-  /// this,
-  /// the user asserts that it is not already present (e.g. Find was called and
-  /// returned NULL).  With current code, calling this if an element already
-  ///  exists will result in duplicate elements in the structure, and Find()
-  ///  will find the first one that was added.
-  /// [but we don't guarantee this behavior].
-  inline void Insert(I key, T val);
+  /// Insert inserts a new element into the hashtable/stored list.
+  /// Because element keys in a hashtable are unique, this operation checks
+  /// whether each inserted element has a key equivalent to the one of an
+  /// element already in the hashtable. If so, the element is not inserted,
+  /// returning an pointer to this existing element.
+  inline Elem *Insert(I key, T val);
 
   /// Insert inserts another element with same key into the hashtable/
   /// stored list.

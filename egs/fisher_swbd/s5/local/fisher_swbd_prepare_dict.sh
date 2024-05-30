@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 
 # To be run from one directory above this script.
@@ -10,7 +10,7 @@
 
 # for example /mnt/matylda2/data/SWITCHBOARD_1R2
 
-. path.sh
+. ./path.sh
 
 # The parts of the output of this that will be needed are
 # [in data/local/dict/ ]
@@ -112,15 +112,16 @@ srcdict=$srcdir/swb_ms98_transcriptions/sw-ms98-dict.text
 # assume swbd_p1_data_prep.sh was done already.
 [ ! -f "$srcdict" ] && echo "No such file $srcdict" && exit 1;
 
+rm $dir/lexicon0.txt 2>/dev/null
 cp $srcdict $dir/lexicon0.txt || exit 1;
-patch <local/dict.patch $dir/lexicon0.txt || exit 1;
+chmod +w $srcdict $dir/lexicon0.txt
+
+# Use absolute path in case patch reports the "Invalid file name" error (a bug with patch)
+patch <local/dict.patch `pwd`/$dir/lexicon0.txt || exit 1;
 
 #(2a) Dictionary preparation:
-# Pre-processing (Upper-case, remove comments)
-awk 'BEGIN{getline}($0 !~ /^#/) {print}' \
-  $dir/lexicon0.txt | sort | awk '($0 !~ /^[[:space:]]*$/) {print}' \
-   > $dir/lexicon1_swbd.txt || exit 1;
-
+# Pre-processing (remove comments)
+grep -v '^#' $dir/lexicon0.txt | awk 'NF>0' | sort > $dir/lexicon1_swbd.txt || exit 1;
 
 cat $dir/lexicon1_swbd.txt | awk '{ for(n=2;n<=NF;n++){ phones[$n] = 1; }} END{for (p in phones) print p;}' | \
   grep -v SIL > $dir/nonsilence_phones_msu.txt  || exit 1;

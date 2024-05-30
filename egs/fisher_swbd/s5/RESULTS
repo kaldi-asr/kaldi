@@ -40,46 +40,6 @@ for x in exp/nnet2_online/nnet_ms_a_online/decode_eval2000*_fg; do grep Sum  $x/
 %WER 12.3 | 1831 21395 | 89.2 7.2 3.5 1.5 12.3 50.8 | exp/nnet2_online/nnet_ms_a_online/decode_eval2000_utt_fsh_sw1_fg/score_13/eval2000.ctm.swbd.filt.sys
 %WER 11.8 | 1831 21395 | 89.6 7.2 3.2 1.4 11.8 49.0 | exp/nnet2_online/nnet_ms_a_online/decode_eval2000_utt_offline_fsh_sw1_fg/score_11/eval2000.ctm.swbd.filt.sys
 
-# nnet3 result on eval2000
-# BLSTM ran for about 760 hours, command:
-# local/nnet3/run_lstm.sh --affix bidirectional --lstm-delay " [-1,1] [-2,2] [-3,3] " --label-delay 0 \
-#                         --cell-dim 1024 --recurrent-projection-dim 128 --non-recurrent-projection-dim 128 \
-#                         --chunk-left-context 40 --chunk-right-context 40 \
-#                         --extra-left-context 50 --extra-right-context 50
-# use tri-gram
-for x in exp/nnet3/*/decode_eval2000*tg; do grep Sum  $x/score_*/*.ctm.filt.sys | utils/best_wer.sh ; done
-%WER 15.8 | 4459 42989 | 86.1 9.7 4.1 1.9 15.8 52.6 | exp/nnet3/tdnn_sp/decode_eval2000_fsh_sw1_tg/score_10_0.0/eval2000_hires.ctm.filt.sys
-%WER 14.8 | 4459 42989 | 87.2 9.4 3.4 2.1 14.8 52.2 | exp/nnet3/tdnn_sp_smbr/decode_eval2000_fsh_sw1_tg_epoch2.adj/score_13_0.0/eval2000_hires.ctm.filt.sys
-%WER 14.8 | 4459 42989 | 86.6 9.2 4.3 1.4 14.8 54.3 | exp/nnet3/lstm_bidirectional_sp/decode_eval2000_fsh_sw1_tg/score_10_0.0/eval2000_hires.ctm.filt.sys
-# rescore with four-gram
-for x in exp/nnet3/*/decode_eval2000*fg; do grep Sum  $x/score_*/*.ctm.filt.sys | utils/best_wer.sh ; done
-%WER 15.4 | 4459 42989 | 86.4 9.5 4.0 1.8 15.4 51.6 | exp/nnet3/tdnn_sp/decode_eval2000_fsh_sw1_fg/score_10_0.0/eval2000_hires.ctm.filt.sys
-%WER 14.5 | 4459 42989 | 87.5 9.0 3.5 2.0 14.5 51.4 | exp/nnet3/tdnn_sp_smbr/decode_eval2000_fsh_sw1_fg_epoch2.adj/score_14_0.0/eval2000_hires.ctm.filt.sys
-%WER 14.5 | 4459 42989 | 87.0 9.0 4.0 1.5 14.5 53.7 | exp/nnet3/lstm_bidirectional_sp/decode_eval2000_fsh_sw1_fg/score_8_0.0/eval2000_hires.ctm.filt.sys
-
-# nnet3 result on eval2000 for swbd subset
-# use tri-gram
-for x in exp/nnet3/*/decode_eval2000*tg; do grep Sum  $x/score_*/*.ctm.swbd.filt.sys | utils/best_wer.sh ; done
-%WER 11.6 | 1831 21395 | 89.7 7.3 3.0 1.3 11.6 47.7 | exp/nnet3/tdnn_sp/decode_eval2000_fsh_sw1_tg/score_10_0.0/eval2000_hires.ctm.swbd.filt.sys
-%WER 10.3 | 1831 21395 | 91.0 6.4 2.5 1.3 10.3 45.9 | exp/nnet3/tdnn_sp_smbr/decode_eval2000_fsh_sw1_tg_epoch2.adj/score_19_0.0/eval2000_hires.ctm.swbd.filt.sys
-%WER 10.7 | 1831 21395 | 90.3 6.7 3.0 1.0 10.7 45.9 | exp/nnet3/lstm_bidirectional_sp/decode_eval2000_fsh_sw1_tg/score_10_0.0/eval2000_hires.ctm.swbd.filt.sys
-# rescore with four-gram
-for x in exp/nnet3/*/decode_eval2000*fg; do grep Sum  $x/score_*/*.ctm.swbd.filt.sys | utils/best_wer.sh ; done
-%WER 11.1 | 1831 21395 | 90.2 7.0 2.8 1.3 11.1 46.2 | exp/nnet3/tdnn_sp/decode_eval2000_fsh_sw1_fg/score_10_0.0/eval2000_hires.ctm.swbd.filt.sys
-%WER 10.0 | 1831 21395 | 91.3 6.3 2.4 1.3 10.0 45.1 | exp/nnet3/tdnn_sp_smbr/decode_eval2000_fsh_sw1_fg_epoch2.adj/score_19_1.0/eval2000_hires.ctm.swbd.filt.sys
-%WER 10.4 | 1831 21395 | 90.6 6.5 2.9 1.0 10.4 45.3 | exp/nnet3/lstm_bidirectional_sp/decode_eval2000_fsh_sw1_fg/score_10_0.0/eval2000_hires.ctm.swbd.filt.sys
-
-# nnet3 result on eval2000 for callhm subset
-# use tri-gram
-for x in exp/nnet3/*/decode_eval2000*tg; do grep Sum  $x/score_*/*.ctm.callhm.filt.sys | utils/best_wer.sh ; done
-%WER 19.9 | 2628 21594 | 82.6 12.1 5.3 2.6 19.9 56.0 | exp/nnet3/tdnn_sp/decode_eval2000_fsh_sw1_tg/score_10_0.0/eval2000_hires.ctm.callhm.filt.sys
-%WER 19.0 | 2628 21594 | 83.5 11.7 4.8 2.5 19.0 56.5 | exp/nnet3/tdnn_sp_smbr/decode_eval2000_fsh_sw1_tg_epoch2.adj/score_14_0.5/eval2000_hires.ctm.callhm.filt.sys
-%WER 18.8 | 2628 21594 | 83.1 11.7 5.2 1.9 18.8 60.2 | exp/nnet3/lstm_bidirectional_sp/decode_eval2000_fsh_sw1_tg/score_8_0.0/eval2000_hires.ctm.callhm.filt.sys
-# rescore with four-gram
-for x in exp/nnet3/*/decode_eval2000*fg; do grep Sum  $x/score_*/*.ctm.swbd.filt.sys | utils/best_wer.sh ; done
-%WER 19.7 | 2628 21594 | 82.7 12.1 5.2 2.4 19.7 55.3 | exp/nnet3/tdnn_sp/decode_eval2000_fsh_sw1_fg/score_10_0.0/eval2000_hires.ctm.callhm.filt.sys
-%WER 18.7 | 2628 21594 | 83.7 11.5 4.8 2.5 18.7 55.6 | exp/nnet3/tdnn_sp_smbr/decode_eval2000_fsh_sw1_fg_epoch2.adj/score_14_0.0/eval2000_hires.ctm.callhm.filt.sys
-%WER 18.6 | 2628 21594 | 83.3 11.5 5.2 1.9 18.6 59.6 | exp/nnet3/lstm_bidirectional_sp/decode_eval2000_fsh_sw1_fg/score_8_0.0/eval2000_hires.ctm.callhm.filt.sys
 
 # chain result on eval2000
 # BLSTM ran for about 380 hours

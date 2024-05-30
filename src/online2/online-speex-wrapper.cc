@@ -18,7 +18,7 @@
 // limitations under the License.
 
 #include <cstring>
-#include "online-speex-wrapper.h"
+#include "online2/online-speex-wrapper.h"
 
 namespace kaldi {
 

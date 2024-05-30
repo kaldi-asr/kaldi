@@ -1,0 +1,105 @@
+DNN EER for fame_complete_3sec_eval
+python local/prepare_for_eer.py data/fame_complete_3sec_eval_test/trials local/scores_dnn_ind_female_complete_3sec_eval/plda_scores
+ind female: 20.71
+python local/prepare_for_eer.py data/fame_complete_3sec_eval_test/trials local/scores_dnn_ind_male_complete_3sec_eval/plda_scores
+ind male: 13.6
+python local/prepare_for_eer.py data/fame_complete_3sec_eval_test/trials local/scores_dnn_ind_pooled_complete_3sec_eval/plda_scores
+ind pooled: 16.89
+DNN EER for fame_complete_10sec_eval
+python local/prepare_for_eer.py data/fame_complete_10sec_eval_test/trials local/scores_dnn_ind_female_complete_10sec_eval/plda_scores
+ind female: 13.21
+python local/prepare_for_eer.py data/fame_complete_10sec_eval_test/trials local/scores_dnn_ind_male_complete_10sec_eval/plda_scores
+ind male: 7.391
+python local/prepare_for_eer.py data/fame_complete_10sec_eval_test/trials local/scores_dnn_ind_pooled_complete_10sec_eval/plda_scores
+ind pooled: 9.929
+DNN EER for fame_complete_30sec_eval
+python local/prepare_for_eer.py data/fame_complete_30sec_eval_test/trials local/scores_dnn_ind_female_complete_30sec_eval/plda_scores
+ind female: 10.27
+python local/prepare_for_eer.py data/fame_complete_30sec_eval_test/trials local/scores_dnn_ind_male_complete_30sec_eval/plda_scores
+ind male: 4.963
+python local/prepare_for_eer.py data/fame_complete_30sec_eval_test/trials local/scores_dnn_ind_pooled_complete_30sec_eval/plda_scores
+ind pooled: 7.469
+DNN EER for fame_ageing_3sec_eval
+python local/prepare_for_eer.py data/fame_ageing_3sec_eval_test/trials local/scores_dnn_ind_female_ageing_3sec_eval/plda_scores
+ind female: 20.05
+python local/prepare_for_eer.py data/fame_ageing_3sec_eval_test/trials local/scores_dnn_ind_male_ageing_3sec_eval/plda_scores
+ind male: 14.52
+python local/prepare_for_eer.py data/fame_ageing_3sec_eval_test/trials local/scores_dnn_ind_pooled_ageing_3sec_eval/plda_scores
+ind pooled: 17.71
+DNN EER for fame_ageing_10sec_eval
+python local/prepare_for_eer.py data/fame_ageing_10sec_eval_test/trials local/scores_dnn_ind_female_ageing_10sec_eval/plda_scores
+ind female: 12.06
+python local/prepare_for_eer.py data/fame_ageing_10sec_eval_test/trials local/scores_dnn_ind_male_ageing_10sec_eval/plda_scores
+ind male: 7.947
+python local/prepare_for_eer.py data/fame_ageing_10sec_eval_test/trials local/scores_dnn_ind_pooled_ageing_10sec_eval/plda_scores
+ind pooled: 10.35
+DNN EER for fame_ageing_30sec_eval
+python local/prepare_for_eer.py data/fame_ageing_30sec_eval_test/trials local/scores_dnn_ind_female_ageing_30sec_eval/plda_scores
+ind female: 7.518
+python local/prepare_for_eer.py data/fame_ageing_30sec_eval_test/trials local/scores_dnn_ind_male_ageing_30sec_eval/plda_scores
+ind male: 4.624
+python local/prepare_for_eer.py data/fame_ageing_30sec_eval_test/trials local/scores_dnn_ind_pooled_ageing_30sec_eval/plda_scores
+ind pooled: 7.118
+DNN EER for fame_ageing_3sec_eval_1t3
+python local/prepare_for_eer.py data/fame_ageing_3sec_eval_1t3_test/trials local/scores_dnn_ind_female_ageing_3sec_eval_1t3/plda_scores
+ind female: 20.57
+python local/prepare_for_eer.py data/fame_ageing_3sec_eval_1t3_test/trials local/scores_dnn_ind_male_ageing_3sec_eval_1t3/plda_scores
+ind male: 10.88
+python local/prepare_for_eer.py data/fame_ageing_3sec_eval_1t3_test/trials local/scores_dnn_ind_pooled_ageing_3sec_eval_1t3/plda_scores
+ind pooled: 16.38
+DNN EER for fame_ageing_3sec_eval_4t10
+python local/prepare_for_eer.py data/fame_ageing_3sec_eval_4t10_test/trials local/scores_dnn_ind_female_ageing_3sec_eval_4t10/plda_scores
+ind female: 18.02
+python local/prepare_for_eer.py data/fame_ageing_3sec_eval_4t10_test/trials local/scores_dnn_ind_male_ageing_3sec_eval_4t10/plda_scores
+ind male: 14.48
+python local/prepare_for_eer.py data/fame_ageing_3sec_eval_4t10_test/trials local/scores_dnn_ind_pooled_ageing_3sec_eval_4t10/plda_scores
+ind pooled: 16.54
+DNN EER for fame_ageing_3sec_eval_mt10
+python local/prepare_for_eer.py data/fame_ageing_3sec_eval_mt10_test/trials local/scores_dnn_ind_female_ageing_3sec_eval_mt10/plda_scores
+ind female: 21.83
+python local/prepare_for_eer.py data/fame_ageing_3sec_eval_mt10_test/trials local/scores_dnn_ind_male_ageing_3sec_eval_mt10/plda_scores
+ind male: 17.1
+python local/prepare_for_eer.py data/fame_ageing_3sec_eval_mt10_test/trials local/scores_dnn_ind_pooled_ageing_3sec_eval_mt10/plda_scores
+ind pooled: 20.09
+DNN EER for fame_ageing_10sec_eval_1t3
+python local/prepare_for_eer.py data/fame_ageing_10sec_eval_1t3_test/trials local/scores_dnn_ind_female_ageing_10sec_eval_1t3/plda_scores
+ind female: 12.81
+python local/prepare_for_eer.py data/fame_ageing_10sec_eval_1t3_test/trials local/scores_dnn_ind_male_ageing_10sec_eval_1t3/plda_scores
+ind male: 5.076
+python local/prepare_for_eer.py data/fame_ageing_10sec_eval_1t3_test/trials local/scores_dnn_ind_pooled_ageing_10sec_eval_1t3/plda_scores
+ind pooled: 9.946
+DNN EER for fame_ageing_10sec_eval_4t10
+python local/prepare_for_eer.py data/fame_ageing_10sec_eval_4t10_test/trials local/scores_dnn_ind_female_ageing_10sec_eval_4t10/plda_scores
+ind female: 9.812
+python local/prepare_for_eer.py data/fame_ageing_10sec_eval_4t10_test/trials local/scores_dnn_ind_male_ageing_10sec_eval_4t10/plda_scores
+ind male: 9.193
+python local/prepare_for_eer.py data/fame_ageing_10sec_eval_4t10_test/trials local/scores_dnn_ind_pooled_ageing_10sec_eval_4t10/plda_scores
+ind pooled: 9.746
+DNN EER for fame_ageing_10sec_eval_mt10
+python local/prepare_for_eer.py data/fame_ageing_10sec_eval_mt10_test/trials local/scores_dnn_ind_female_ageing_10sec_eval_mt10/plda_scores
+ind female: 13.19
+python local/prepare_for_eer.py data/fame_ageing_10sec_eval_mt10_test/trials local/scores_dnn_ind_male_ageing_10sec_eval_mt10/plda_scores
+ind male: 7.711
+python local/prepare_for_eer.py data/fame_ageing_10sec_eval_mt10_test/trials local/scores_dnn_ind_pooled_ageing_10sec_eval_mt10/plda_scores
+ind pooled: 11.04
+DNN EER for fame_ageing_30sec_eval_1t3
+python local/prepare_for_eer.py data/fame_ageing_30sec_eval_1t3_test/trials local/scores_dnn_ind_female_ageing_30sec_eval_1t3/plda_scores
+ind female: 8.882
+python local/prepare_for_eer.py data/fame_ageing_30sec_eval_1t3_test/trials local/scores_dnn_ind_male_ageing_30sec_eval_1t3/plda_scores
+ind male: 2.212
+python local/prepare_for_eer.py data/fame_ageing_30sec_eval_1t3_test/trials local/scores_dnn_ind_pooled_ageing_30sec_eval_1t3/plda_scores
+ind pooled: 7.547
+DNN EER for fame_ageing_30sec_eval_4t10
+python local/prepare_for_eer.py data/fame_ageing_30sec_eval_4t10_test/trials local/scores_dnn_ind_female_ageing_30sec_eval_4t10/plda_scores
+ind female: 5.155
+python local/prepare_for_eer.py data/fame_ageing_30sec_eval_4t10_test/trials local/scores_dnn_ind_male_ageing_30sec_eval_4t10/plda_scores
+ind male: 5.461
+python local/prepare_for_eer.py data/fame_ageing_30sec_eval_4t10_test/trials local/scores_dnn_ind_pooled_ageing_30sec_eval_4t10/plda_scores
+ind pooled: 6.021
+DNN EER for fame_ageing_30sec_eval_mt10
+python local/prepare_for_eer.py data/fame_ageing_30sec_eval_mt10_test/trials local/scores_dnn_ind_female_ageing_30sec_eval_mt10/plda_scores
+ind female: 8.244
+python local/prepare_for_eer.py data/fame_ageing_30sec_eval_mt10_test/trials local/scores_dnn_ind_male_ageing_30sec_eval_mt10/plda_scores
+ind male: 4.202
+python local/prepare_for_eer.py data/fame_ageing_30sec_eval_mt10_test/trials local/scores_dnn_ind_pooled_ageing_30sec_eval_mt10/plda_scores
+ind pooled: 7.737

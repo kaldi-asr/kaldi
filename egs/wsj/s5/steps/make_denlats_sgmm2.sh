@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 #           2014  Guoguo Chen
 
@@ -66,6 +66,8 @@ oov=`cat $lang/oov.int` || exit 1;
 
 mkdir -p $dir
 
+utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt || exit 1;
+
 cp -RH $lang $dir/
 
 # Compute grammar FST which corresponds to unigram decoding graph.
@@ -100,7 +102,8 @@ esac
 
 if [ ! -z "$transform_dir" ]; then # add transforms to features...
   echo "$0: using fMLLR transforms from $transform_dir"
-  [ ! -f $transform_dir/trans.1 ] && echo "Expected $transform_dir/trans.1 to exist."
+  [ ! -f $transform_dir/trans.1 ] && echo "Expected $transform_dir/trans.1 to exist." && exit 1
+  [ ! -f $transform_dir/num_jobs ] && echo "Expected $transform_dir/num_jobs to exist." && exit 1
   [ "`cat $transform_dir/num_jobs`" -ne "$nj" ] \
     && echo "$0: mismatch in number of jobs with $transform_dir" && exit 1;
   [ -f $alidir/final.mat ] && ! cmp $transform_dir/final.mat $alidir/final.mat && \
@@ -162,7 +165,7 @@ else
       split_data.sh --per-utt $sdata/$n $sub_split || exit 1;
       mkdir -p $dir/log/$n
       mkdir -p $dir/part
-      feats_subset=`echo $feats | sed "s/trans.JOB/trans.$n/g" | sed s:JOB/:$n/split$sub_split/JOB/:g`
+      feats_subset=`echo $feats | sed "s/trans.JOB/trans.$n/g" | sed s:JOB/:$n/split${sub_split}utt/JOB/:g`
       spkvecs_opt_subset=`echo $spkvecs_opt | sed "s/JOB/$n/g"`
       gselect_opt_subset=`echo $gselect_opt | sed "s/JOB/$n/g"`
       $cmd --num-threads $num_threads JOB=1:$sub_split $dir/log/$n/decode_den.JOB.log \

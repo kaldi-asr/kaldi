@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2014  Johns Hopkins University (author: Vijayaditya Peddinti)
 # Apache 2.0
@@ -18,6 +18,7 @@
 # begin configuration section
 utt_prefix=
 utt_suffix=
+cmd=run.pl
 # end configuration section
 
 . utils/parse_options.sh
@@ -42,7 +43,7 @@ dest_dir=$2
 mkdir -p $dest_dir
 
 if [ ! -f $src_dir/ali.1.gz ]; then
-  echo "copy_ali_dir.sh: no such files $src_dir/ali.*.gz" 
+  echo "copy_ali_dir.sh: no such files $src_dir/ali.*.gz"
   exit 1;
 fi
 
@@ -53,7 +54,7 @@ for f in tree cmvn_opts splice_opts num_jobs final.mdl; do
   fi
   cp $src_dir/$f $dest_dir/
 done
-    
+
 nj=$(cat $dest_dir/num_jobs)
 mkdir -p $dest_dir/temp
 cat << EOF > $dest_dir/temp/copy_ali.sh
@@ -63,7 +64,7 @@ echo "$src_dir/ali.\$id.gz"
 gunzip -c $src_dir/ali.\$id.gz | \
   copy-int-vector ark:- ark,t:- | \
 python -c "
-import sys 
+import sys
 for line in sys.stdin:
   parts = line.split()
   print '$utt_prefix{0}$utt_suffix {1}'.format(parts[0], ' '.join(parts[1:]))
@@ -72,6 +73,6 @@ for line in sys.stdin:
 set +o pipefail; # unset the pipefail option.
 EOF
 chmod +x $dest_dir/temp/copy_ali.sh
-$decode_cmd -v PATH JOB=1:$nj $dest_dir/temp/copy_ali.JOB.log $dest_dir/temp/copy_ali.sh JOB || exit 1;
+$cmd -v PATH JOB=1:$nj $dest_dir/temp/copy_ali.JOB.log $dest_dir/temp/copy_ali.sh JOB || exit 1;
 
 echo "$0: copied alignments from $src_dir to $dest_dir"

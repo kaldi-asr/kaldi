@@ -3,27 +3,127 @@
 # Apache 2.0.
 # Copyright  2012   Guoguo Chen
 #            2014   Neil Nelson
+#            2017   Johns Hopkins University (Jan "Yenda" Trmal <jtrmal@gmail.com>)
+#            2019   Dongji Gao
 #
 # Validation script for data/lang
 
+# this function reads the opened file (supplied as a first
+# parameter) into an array of lines. For each
+# line, it tests whether it's a valid utf-8 compatible
+# line. If all lines are valid utf-8, it returns the lines
+# decoded as utf-8, otherwise it assumes the file's encoding
+# is one of those 1-byte encodings, such as ISO-8859-x
+# or Windows CP-X.
+# Please recall we do not really care about
+# the actually encoding, we just need to
+# make sure the length of the (decoded) string
+# is correct (to make the output formatting looking right).
+sub get_utf8_or_bytestream {
+  use Encode qw(decode encode);
+  my $is_utf_compatible = 1;
+  my @unicode_lines;
+  my @raw_lines;
+  my $raw_text;
+  my $lineno = 0;
+  my $file = shift;
+
+  while (<$file>) {
+    $raw_text = $_;
+    last unless $raw_text;
+    if ($is_utf_compatible) {
+      my $decoded_text = eval { decode("UTF-8", $raw_text, Encode::FB_CROAK) } ;
+      $is_utf_compatible = $is_utf_compatible && defined($decoded_text);
+      push @unicode_lines, $decoded_text;
+    } else {
+      #print STDERR "WARNING: the line $raw_text cannot be interpreted as UTF-8: $decoded_text\n";
+      ;
+    }
+    push @raw_lines, $raw_text;
+    $lineno += 1;
+  }
+
+  if (!$is_utf_compatible) {
+    return (0, @raw_lines);
+  } else {
+    return (1, @unicode_lines);
+  }
+}
+
+# check if the given unicode string contain unicode whitespaces
+# other than the usual four: TAB, LF, CR and SPACE
+sub validate_utf8_whitespaces {
+  my $unicode_lines = shift;
+  use feature 'unicode_strings';
+  for (my $i = 0; $i < scalar @{$unicode_lines}; $i++) {
+    my $current_line = $unicode_lines->[$i];
+    if ((substr $current_line, -1) ne "\n"){
+      print STDERR "$0: The current line (nr. $i) has invalid newline\n";
+      return 1;
+    }
+    # we replace TAB, LF, CR, and SPACE
+    # this is to simplify the test
+    if ($current_line =~ /\x{000d}/) {
+      print STDERR "$0: The current line (nr. $i) contains CR (0x0D) character\n";
+      return 1;
+    }
+    $current_line =~ s/[\x{0009}\x{000a}\x{0020}]/./g;
+    if ($current_line =~/\s/) {
+      return 1;
+    }
+  }
+  return 0;
+}
+
+# checks if the text in the file (supplied as the argument) is utf-8 compatible
+# if yes, checks if it contains only allowed whitespaces. If no, then does not
+# do anything. The function seeks to the original position in the file after
+# reading the text.
+sub check_allowed_whitespace {
+  my $file = shift;
+  my $pos = tell($file);
+  (my $is_utf, my @lines) = get_utf8_or_bytestream($file);
+  seek($file, $pos, SEEK_SET);
+  if ($is_utf) {
+    my $has_invalid_whitespaces = validate_utf8_whitespaces(\@lines);
+    print "--> text seems to be UTF-8 or ASCII, checking whitespaces\n";
+    if ($has_invalid_whitespaces) {
+      print "--> ERROR: the text containes disallowed UTF-8 whitespace character(s)\n";
+      return 0;
+    } else {
+      print "--> text contains only allowed whitespaces\n";
+    }
+  } else {
+    print "--> text doesn't seem to be UTF-8 or ASCII, won't check whitespaces\n";
+  }
+  return 1;
+}
 
 $skip_det_check = 0;
 $skip_disambig_check = 0;
+$skip_generate_words_check = 0;
+$subword_check = 0;
 
-if (@ARGV > 0 && $ARGV[0] eq "--skip-determinization-check") {
-  $skip_det_check = 1;
-  shift @ARGV;
-}
-
-if (@ARGV > 0 && $ARGV[0] eq "--skip-disambig-check") {
-  $skip_disambig_check = 1;
-  shift @ARGV;
+for ($x=0; $x <= 3; $x++) {
+  if (@ARGV > 0 && $ARGV[0] eq "--skip-determinization-check") {
+    $skip_det_check = 1;
+    shift @ARGV;
+  }
+  if (@ARGV > 0 && $ARGV[0] eq "--skip-disambig-check") {
+    $skip_disambig_check = 1;
+    shift @ARGV;
+  }
+  if (@ARGV > 0 && $ARGV[0] eq "--skip-generate-words-check") {
+    $skip_generate_words_check = 1;
+    shift @ARGV;
+  }
 }
 
 if (@ARGV != 1) {
   print "Usage: $0 [options] <lang_directory>\n";
   print "e.g.:  $0 data/lang\n";
   print "Options:\n";
+  print " --skip-generate-words-check              (this flag causes it to skip a check of generated word sequences).\n";
   print " --skip-determinization-check             (this flag causes it to skip a time consuming check).\n";
   print " --skip-disambig-check                    (this flag causes it to skip a disambig check in phone bigram models).\n";
   exit(1);
@@ -34,6 +134,40 @@ print "$0 " . join(" ", @ARGV) . "\n";
 $lang = shift @ARGV;
 $exit = 0;
 $warning = 0;
+
+# Checking existence of separator file ------------------
+print "Checking existence of separator file\n";
+if (!-e "$lang/subword_separator.txt") {
+  print "separator file $lang/subword_separator.txt is empty or does not exist, deal in word case.\n";
+} else {
+  if (!open(S, "<$lang/subword_separator.txt")) {
+    print "--> ERROR: fail to open $lang/subword_separator.txt\n"; exit 1;
+  } else {
+    $line_num = `wc -l <$lang/subword_separator.txt`;
+    if ($line_num != 1) {
+      print "--> ERROR, $lang/subword_separator.txt should only contain one line.\n"; exit 1;
+    } else {
+      while (<S>) {
+        chomp;
+        my @col = split(" ", $_);
+        if (@col != 1) {
+          print "--> ERROR, invalid separator.\n"; exit 1;
+        } else {
+         $separator = shift @col;
+         $separator_length = length $separator;
+         $subword_check = 1;
+        }
+      }
+    }
+  }
+}
+
+if (!$subword_check) {
+  $word_boundary = "word_boundary";
+} else {
+  $word_boundary = "word_boundary_moved";
+}
+
 # Checking phones.txt -------------------------------
 print "Checking $lang/phones.txt ...\n";
 if (-z "$lang/phones.txt") {
@@ -44,6 +178,7 @@ if (!open(P, "<$lang/phones.txt")) {
 }
 $idx = 1;
 %psymtab = ();
+check_allowed_whitespace(\*P) or exit 1;
 while (<P>) {
   chomp;
   my @col = split(" ", $_);
@@ -77,6 +212,7 @@ if (!open(W, "<$lang/words.txt")) {
 }
 $idx = 1;
 %wsymtab = ();
+check_allowed_whitespace(\*W) or exit 1;
 while (<W>) {
   chomp;
   my @col = split(" ", $_);
@@ -124,6 +260,7 @@ sub check_txt_int_csl {
   }
 
   $idx1 = 1;
+  check_allowed_whitespace(\*TXT) or $exit = 1;
   while (<TXT>) {
     chomp;
     my @col = split(" ", $_);
@@ -202,6 +339,7 @@ sub check_txt_int {
   }
 
   $idx1 = 1;
+  check_allowed_whitespace(\*TXT) or $exit = 1;
   while (<TXT>) {
     chomp;
     s/^(shared|not-shared) (split|not-split) //g;
@@ -388,32 +526,15 @@ sub check_summation {
   %sum = (%silence, %nonsilence, %disambig);
   $sum{"<eps>"} = 1;
 
-  my @itset = intersect(\%sum, \%psymtab);
-  my @key1 = keys %sum;
-  my @key2 = keys %psymtab;
-  my %itset = (); foreach(@itset) {$itset{$_} = 1;}
-  if (@itset < @key1) {
-    $exit = 1; print "--> ERROR: phones in silence.txt, nonsilence.txt, disambig.txt but not in phones.txt -- ";
-    foreach (@key1) {
-      if (!$itset{$_}) {
-        print "$_ ";
-      }
+  my $ok = 1;
+  foreach $p (keys %psymtab) {
+    if (! defined $sum{$p} && $p !~ m/^#nonterm/) {
+      $exit = 1;  $ok = 0;  print("--> ERROR: phone $p is not in silence.txt, nonsilence.txt or disambig.txt...\n");
     }
-    print "\n";
   }
 
-  if (@itset < @key2) {
-    $exit = 1; print "--> ERROR: phones in phones.txt but not in silence.txt, nonsilence.txt, disambig.txt -- ";
-    foreach (@key2) {
-      if (!$itset{$_}) {
-        print "$_ ";
-      }
-    }
-    print "\n";
-  }
-
-  if (@itset == @key1 and @itset == @key2) {
-    print "--> summation property is OK\n";
+  if ($ok) {
+    print "--> found no unexplainable phones in phones.txt\n";
   }
   return;
 }
@@ -446,8 +567,8 @@ if ((-s "$lang/phones/extra_questions.txt") || (-s "$lang/phones/extra_questions
     $exit = 1;
   }
 }
-if (-e "$lang/phones/word_boundary.txt") {
-  check_txt_int("$lang/phones/word_boundary", \%psymtab, 0); print "\n";
+if (-e "$lang/phones/$word_boundary.txt") {
+  check_txt_int("$lang/phones/$word_boundary", \%psymtab, 0); print "\n";
 }
 
 # Checking optional_silence.txt -------------------------------
@@ -550,10 +671,10 @@ $begin     = "";
 $end       = "";
 $internal  = "";
 $singleton = "";
-if (-s "$lang/phones/word_boundary.txt") {
-  print "Checking word_boundary.txt: silence.txt, nonsilence.txt, disambig.txt ...\n";
-  if (!open (W, "<$lang/phones/word_boundary.txt")) {
-    $exit = 1; print "--> ERROR: fail to open $lang/phones/word_boundary.txt\n";
+if (-s "$lang/phones/$word_boundary.txt") {
+  print "Checking $word_boundary.txt: silence.txt, nonsilence.txt, disambig.txt ...\n";
+  if (!open (W, "<$lang/phones/$word_boundary.txt")) {
+    $exit = 1; print "--> ERROR: fail to open $lang/phones/$word_boundary.txt\n";
   }
   $idx = 1;
   %wb = ();
@@ -576,7 +697,7 @@ if (-s "$lang/phones/word_boundary.txt") {
       s/ singleton$//g; @col = split(" ", $_); if (@col == 1) {$singleton .= "$col[0] ";}
     }
     if (@col != 1) {
-      $exit = 1; print "--> ERROR: expect 1 column in $lang/phones/word_boundary.txt (line $idx)\n";
+      $exit = 1; print "--> ERROR: expect 1 column in $lang/phones/$word_boundary.txt (line $idx)\n";
     }
     $wb{shift @col} = 1;
     $idx ++;
@@ -587,13 +708,13 @@ if (-s "$lang/phones/word_boundary.txt") {
   $success1 = 1;
   if (@itset != 0) {
     $success1 = 0;
-    $exit = 1; print "--> ERROR: $lang/phones/word_boundary.txt has disambiguation symbols -- ";
+    $exit = 1; print "--> ERROR: $lang/phones/$word_boundary.txt has disambiguation symbols -- ";
     foreach (@itset) {
       print "$_ ";
     }
     print "\n";
   }
-  $success1 == 0 || print "--> $lang/phones/word_boundary.txt doesn't include disambiguation symbols\n";
+  $success1 == 0 || print "--> $lang/phones/$word_boundary.txt doesn't include disambiguation symbols\n";
 
   %sum = (%silence, %nonsilence);
   @itset = intersect(\%sum, \%wb);
@@ -601,7 +722,7 @@ if (-s "$lang/phones/word_boundary.txt") {
   $success2 = 1;
   if (@itset < scalar(keys %sum)) {
     $success2 = 0;
-    $exit = 1; print "--> ERROR: phones in nonsilence.txt and silence.txt but not in word_boundary.txt -- ";
+    $exit = 1; print "--> ERROR: phones in nonsilence.txt and silence.txt but not in $word_boundary.txt -- ";
     foreach (keys %sum) {
       if (!$itset{$_}) {
         print "$_ ";
@@ -611,7 +732,7 @@ if (-s "$lang/phones/word_boundary.txt") {
   }
   if (@itset < scalar(keys %wb)) {
     $success2 = 0;
-    $exit = 1; print "--> ERROR: phones in word_boundary.txt but not in nonsilence.txt or silence.txt -- ";
+    $exit = 1; print "--> ERROR: phones in $word_boundary.txt but not in nonsilence.txt or silence.txt -- ";
     foreach (keys %wb) {
       if (!$itset{$_}) {
         print "$_ ";
@@ -619,8 +740,8 @@ if (-s "$lang/phones/word_boundary.txt") {
     }
     print "\n";
   }
-  $success2 == 0 || print "--> $lang/phones/word_boundary.txt is the union of nonsilence.txt and silence.txt\n";
-  $success1 != 1 or $success2 != 1 || print "--> $lang/phones/word_boundary.txt is OK\n";
+  $success2 == 0 || print "--> $lang/phones/$word_boundary.txt is the union of nonsilence.txt and silence.txt\n";
+  $success1 != 1 or $success2 != 1 || print "--> $lang/phones/$word_boundary.txt is OK\n";
   print "\n";
 }
 
@@ -666,11 +787,11 @@ if (-s "$lang/phones/word_boundary.txt") {
     close(P);
     my $len = @wdisambig, $len2;
     if (($len2 = @wdisambig_words) != $len) {
-      print "--> ERROR: files $lang/phones/wdisambig.txt and $lang/phones/wdisambig_words.int have different lengths";
+      print "--> ERROR: files $lang/phones/wdisambig.txt and $lang/phones/wdisambig_words.int have different lengths\n";
       $exit = 1; return;
     }
     if (($len2 = @wdisambig_phones) != $len) {
-      print "--> ERROR: files $lang/phones/wdisambig.txt and $lang/phones/wdisambig_phones.int have different lengths";
+      print "--> ERROR: files $lang/phones/wdisambig.txt and $lang/phones/wdisambig_phones.int have different lengths\n";
       $exit = 1; return;
     }
     for (my $i = 0; $i < $len; $i++) {
@@ -693,16 +814,23 @@ if (-s "$lang/phones/word_boundary.txt") {
   }
 }
 
-
-if (-s "$lang/phones/word_boundary.int") {
-  print "Checking word_boundary.int and disambig.int\n";
-  if (!open (W, "<$lang/phones/word_boundary.int")) {
-    $exit = 1; print "--> ERROR: fail to open $lang/phones/word_boundary.int\n";
+# Check validity of L.fst, L_disambig.fst, and word_boundary.int.
+# First we generate a random word/subword sequence. We then compile it into fst and compose it with L.fst/L_disambig.fst.
+# For subword case the last subword of the sequence must be a end-subword 
+# (i.e. the subword can only be at the end of word or is a single word itself) 
+# to guarantee the composition would not fail.
+# We then get the corresponging phones sequence and apply a transition matrix on it to get the number of valid boundaries.
+# In word case, the number of valid boundaries should be equal to the number of words.
+# In subword case, the number of valid boundaries should be equal to the number of end-subwords.
+if (-s "$lang/phones/$word_boundary.int") {
+  print "Checking $word_boundary.int and disambig.int\n";
+  if (!open (W, "<$lang/phones/$word_boundary.int")) {
+    $exit = 1; print "--> ERROR: fail to open $lang/phones/$word_boundary.int\n";
   }
   while (<W>) {
     @A = split;
     if (@A != 2) {
-      $exit = 1; print "--> ERROR: bad line $_ in $lang/phones/word_boundary.int\n";
+      $exit = 1; print "--> ERROR: bad line $_ in $lang/phones/$word_boundary.int\n";
     }
     $wbtype{$A[0]} = $A[1];
   }
@@ -718,24 +846,70 @@ if (-s "$lang/phones/word_boundary.int") {
     $is_disambig{$A[0]} = 1;
   }
 
+  $text = `. ./path.sh`;
+  if ($text ne "") {
+    print "*** This script cannot continue because your path.sh or bash profile prints something: $text" .
+      "*** Please fix that and try again.\n";
+    exit(1);
+  }
+
   foreach $fst ("L.fst", "L_disambig.fst") {
+    if ($skip_generate_words_check) {
+      next;
+    }
     $wlen = int(rand(100)) + 1;
-    print "--> generating a $wlen word sequence\n";
+    $end_subword = 0;
+    print "--> generating a $wlen word/subword sequence\n";
     $wordseq = "";
     $sid = 0;
     $wordseq_syms = "";
-    foreach (1 .. $wlen) {
+    # exclude disambiguation symbols, BOS and EOS, epsilon, and
+    # grammar-related symbols from the word sequence.
+    while ($sid < ($wlen - 1)) {
       $id = int(rand(scalar(keys %wint2sym)));
-      # exclude disambiguation symbols, BOS and EOS and epsilon from the word
-      # sequence.
       while (defined $wdisambig_words_hash{$id} or
-             $wint2sym{$id} eq "<s>" or $wint2sym{$id} eq "</s>" or $id == 0) {
+           $wint2sym{$id} eq "<s>" or $wint2sym{$id} eq "</s>" or
+           $wint2sym{$id} =~ m/^#nonterm/ or $id == 0) {
         $id = int(rand(scalar(keys %wint2sym)));
       }
       $wordseq_syms = $wordseq_syms . $wint2sym{$id} . " ";
       $wordseq = $wordseq . "$sid ". ($sid + 1) . " $id $id 0\n";
       $sid ++;
+
+      if ($subword_check) {
+        $subword = $wint2sym{$id};
+        $suffix = substr($subword, -$separator_length, $separator_length);
+        if ($suffix ne $separator) {
+          $end_subword ++;
+        }
+      }
+    } 
+
+    # generate the last word (subword)
+    $id = int(rand(scalar(keys %wint2sym)));
+    if ($subword_check) {
+      $subword = $wint2sym{$id};
+      $suffix = substr($subword, -$separator_length, $separator_length);
+      # the last subword can not followed by separator  
+      while (defined $wdisambig_words_hash{$id} or
+           $wint2sym{$id} eq "<s>" or $wint2sym{$id} eq "</s>" or
+           $wint2sym{$id} =~ m/^#nonterm/ or $id == 0 or $suffix eq $separator) {
+        $id = int(rand(scalar(keys %wint2sym)));
+        $subword = $wint2sym{$id};
+        $suffix = substr($subword, -$separator_length, $separator_length);
+      }
+      $end_subword ++;
+    } else {
+      while (defined $wdisambig_words_hash{$id} or
+           $wint2sym{$id} eq "<s>" or $wint2sym{$id} eq "</s>" or
+           $wint2sym{$id} =~ m/^#nonterm/ or $id == 0) {
+       $id = int(rand(scalar(keys %wint2sym)));
+      }
     }
+    $wordseq_syms = $wordseq_syms . $wint2sym{$id} . " ";
+    $wordseq = $wordseq . "$sid ". ($sid + 1) . " $id $id 0\n";
+    $sid ++;
+
     $wordseq = $wordseq . "$sid 0";
     $phoneseq = `. ./path.sh; echo \"$wordseq" | fstcompile | fstcompose $lang/$fst - | fstproject | fstrandgen | fstrmepsilon | fsttopsort | fstprint | awk '{if (NF > 2) {print \$3}}';`;
     $transition = { }; # empty assoc. array of allowed transitions between phone types.  1 means we count a word,
@@ -754,17 +928,22 @@ if (-s "$lang/phones/word_boundary.int") {
     $cur_state = "bos";
     $num_words = 0;
     foreach $phone (split (" ", "$phoneseq <<eos>>")) {
-      if (!($fst == "L_disambig.fst" && defined $is_disambig{$phone})) {
-        if ($phone == "<<eos>>") {
+      # Note: now that we support unk-LMs (see the --unk-fst option to
+      # prepare_lang.sh), the regular L.fst may contain some disambiguation
+      # symbols.
+      if (! defined $is_disambig{$phone}) {
+        if ($phone eq "<<eos>>") {
           $state = "eos";
+        } elsif ($phone == 0) {
+          $exit = 1; print "--> ERROR: unexpected phone sequence=$phoneseq, wordseq=$wordseq\n"; last;
         } else {
           $state = $wbtype{$phone};
         }
         if (!defined $state) {
-          $exit = 1; print "--> ERROR: phone $phone is not specified in $lang/phones/word_boundary.int\n";
+          $exit = 1; print "--> ERROR: phone $phone is not specified in $lang/phones/$word_boundary.int\n";
           last;
         } elsif (!defined $transition{$cur_state, $state}) {
-          $exit = 1; print "--> ERROR: transition from state $cur_state to $state indicates error in word_boundary.int or L.fst\n";
+          $exit = 1; print "--> ERROR: transition from state $cur_state to $state indicates error in $word_boundary.int or L.fst\n";
           last;
         } else {
           $num_words += $transition{$cur_state, $state};
@@ -773,10 +952,13 @@ if (-s "$lang/phones/word_boundary.int") {
       }
     }
     if (!$exit) {
+      if ($subword_check) { 
+        $wlen = $end_subword;
+      }
       if ($num_words != $wlen) {
         $phoneseq_syms = "";
         foreach my $id (split(" ", $phoneseq)) { $phoneseq_syms = $phoneseq_syms . " " . $pint2sym{$id}; }
-        $exit = 1; print "--> ERROR: number of reconstructed words $num_words does not match real number of words $wlen; indicates problem in $fst or word_boundary.int.  phoneseq = $phoneseq_syms, wordseq = $wordseq_syms\n";
+        $exit = 1; print "--> ERROR: number of reconstructed words $num_words does not match real number of words $wlen; indicates problem in $fst or $word_boundary.int.  phoneseq = $phoneseq_syms, wordseq = $wordseq_syms\n";
       } else {
         print "--> resulting phone sequence from $fst corresponds to the word sequence\n";
         print "--> $fst is OK\n";

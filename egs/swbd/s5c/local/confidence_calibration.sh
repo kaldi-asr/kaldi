@@ -1,6 +1,6 @@
-#!/bin/bash
-. cmd.sh
-. path.sh
+#!/usr/bin/env bash
+. ./cmd.sh
+. ./path.sh
 
 # Global options,
 graph=exp/tri4/graph_sw1_tg

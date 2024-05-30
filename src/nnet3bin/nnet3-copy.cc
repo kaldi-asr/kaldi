@@ -42,15 +42,42 @@ int main(int argc, char *argv[]) {
 
     bool binary_write = true;
     BaseFloat learning_rate = -1;
-    
+    std::string nnet_config, edits_config, edits_str;
+    BaseFloat scale = 1.0;
+    bool prepare_for_test = false;
+    bool batchnorm_test_mode = false;
+
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
     po.Register("learning-rate", &learning_rate,
-                "If supplied, all the learning rates of updatable components"
+                "If supplied, all the learning rates of updatable components "
                 "are set to this value.");
+    po.Register("nnet-config", &nnet_config,
+                "Name of nnet3 config file that can be used to add or replace "
+                "components or nodes of the neural network (the same as you "
+                "would give to nnet3-init).");
+    po.Register("edits-config", &edits_config,
+                "Name of edits-config file that can be used to modify the network "
+                "(applied after nnet-config).  See comments for ReadEditConfig()"
+                "in nnet3/nnet-utils.h to see currently supported commands.");
+    po.Register("edits", &edits_str,
+                "Can be used as an inline alternative to edits-config; semicolons "
+                "will be converted to newlines before parsing.  E.g. "
+                "'--edits=remove-orphans'.");
+    po.Register("scale", &scale, "The parameter matrices are scaled"
+                " by the specified value.");
+    po.Register("prepare-for-test", &prepare_for_test,
+                "If true, prepares the model for test time (may reduce model size "
+                "slightly.  Involves setting test mode in dropout and batch-norm "
+                "components, and calling CollapseModel() which may remove some "
+                "components.");
+    po.Register("batchnorm-test-mode", &batchnorm_test_mode,
+                "Batch-norm components' test mode is set to this value. "
+                "The deafult is false, but is overriden when --prepare-for-test is "
+                "used");
 
     po.Read(argc, argv);
-    
+
     if (po.NumArgs() != 2) {
       po.PrintUsage();
       exit(1);
@@ -58,13 +85,40 @@ int main(int argc, char *argv[]) {
 
     std::string raw_nnet_rxfilename = po.GetArg(1),
                 raw_nnet_wxfilename = po.GetArg(2);
-    
+
     Nnet nnet;
     ReadKaldiObject(raw_nnet_rxfilename, &nnet);
-    
+
+    if (!nnet_config.empty()) {
+      Input ki(nnet_config);
+      nnet.ReadConfig(ki.Stream());
+    }
+
     if (learning_rate >= 0)
       SetLearningRate(learning_rate, &nnet);
 
+    if (scale != 1.0)
+      ScaleNnet(scale, &nnet);
+
+    if (!edits_config.empty()) {
+      Input ki(edits_config);
+      ReadEditConfig(ki.Stream(), &nnet);
+    }
+    if (!edits_str.empty()) {
+      for (size_t i = 0; i < edits_str.size(); i++)
+        if (edits_str[i] == ';')
+          edits_str[i] = '\n';
+      std::istringstream is(edits_str);
+      ReadEditConfig(is, &nnet);
+    }
+    if (prepare_for_test) {
+      SetBatchnormTestMode(true, &nnet);
+      SetDropoutTestMode(true, &nnet);
+      CollapseModel(CollapseModelConfig(), &nnet);
+    }
+    else {
+      SetBatchnormTestMode(batchnorm_test_mode, &nnet);
+    }
     WriteKaldiObject(nnet, raw_nnet_wxfilename, binary_write);
     KALDI_LOG << "Copied raw neural net from " << raw_nnet_rxfilename
               << " to " << raw_nnet_wxfilename;

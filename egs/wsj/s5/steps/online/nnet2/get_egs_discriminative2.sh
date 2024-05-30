@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 
@@ -37,7 +37,7 @@ if [ $# != 6 ]; then
   echo ""
   echo "Main options (for others, see top of script file)"
   echo "  --config <config-file>                           # config file containing options"
-  echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs (probably would be good to add -tc 5 or so if using"
+  echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs (probably would be good to add --max-jobs-run 5 or so if using"
   echo "                                                   # GridEngine (to avoid excessive NFS traffic)."
   echo "  --samples-per-iter <#samples|400000>             # Number of samples of data to process per iteration, per"
   echo "                                                   # process."
@@ -66,6 +66,8 @@ done
 
 mkdir -p $dir/log $dir/info || exit 1;
 
+utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt || exit 1;
+cp $lang/phones.txt $dir || exit 1;
 
 nj=$(cat $denlatdir/num_jobs) || exit 1; # $nj is the number of
                                          # splits of the denlats and alignments.
@@ -85,9 +87,9 @@ else
   ali_rspecifier="scp:$dir/ali.scp"
   if [ $stage -le 1 ]; then
     echo "$0: number of jobs in den-lats versus alignments differ: dumping them as single archive and index."
-    all_ids=$(seq -s, $nj_ali)
+    alis=$(for n in $(seq $nj_ali); do echo -n "$alidir/ali.$n.gz "; done)
     copy-int-vector --print-args=false \
-      "ark:gunzip -c $alidir/ali.{$all_ids}.gz|" ark,scp:$dir/ali.ark,$dir/ali.scp || exit 1;
+      "ark:gunzip -c $alis|" ark,scp:$dir/ali.ark,$dir/ali.scp || exit 1;
   fi
 fi
 
@@ -121,7 +123,7 @@ if [ $stage -le 2 ]; then
   echo "$0: working out number of frames of training data"
   num_frames=$(steps/nnet2/get_num_frames.sh $data)
 
-  echo $num_frames > $dir/info/num_frames 
+  echo $num_frames > $dir/info/num_frames
 
   # Working out total number of archives. Add one on the assumption the
   # num-frames won't divide exactly, and we want to round up.
@@ -138,7 +140,7 @@ if [ $stage -le 2 ]; then
 
   echo $num_archives >$dir/info/num_archives || exit 1
   echo $num_archives_temp >$dir/info/num_archives_temp || exit 1
-  
+
   frames_per_archive=$[$num_frames/$num_archives]
 
   # note, this is the number of frames per archive prior to discarding frames.
@@ -176,7 +178,7 @@ fi
 if [ $stage -le 3 ]; then
   echo "$0: getting initial training examples by splitting lattices"
 
-  degs_list=$(for n in $(seq $num_archives_temp); do echo ark:$dir/degs_orig.JOB.$n.ark; done)
+  degs_list=$(for n in $(seq $num_archives_temp); do echo -n "ark:$dir/degs_orig.JOB.$n.ark "; done)
 
   $cmd JOB=1:$nj $dir/log/get_egs.JOB.log \
     nnet-get-egs-discriminative --criterion=$criterion --drop-frames=$drop_frames \
@@ -186,12 +188,12 @@ if [ $stage -le 3 ]; then
 fi
 
 if [ $stage -le 4 ]; then
-  
-  degs_list=$(for n in $(seq $nj); do echo $dir/degs_orig.$n.JOB.ark; done)
+
+  degs_list=$(for n in $(seq $nj); do echo -n "$dir/degs_orig.$n.JOB.ark "; done)
 
   if [ $num_archives -eq $num_archives_temp ]; then
     echo "$0: combining data into final archives and shuffling it"
-    
+
     $cmd JOB=1:$num_archives $dir/log/shuffle.JOB.log \
       cat $degs_list \| nnet-shuffle-egs-discriminative --srand=JOB ark:- \
        ark:$dir/degs.JOB.ark || exit 1;
@@ -206,7 +208,7 @@ if [ $stage -le 4 ]; then
     # ... num_archives, which is more than num_archives_temp.  The list with
     # \$[... ] expressions in it computes the set of final indexes for each
     # temporary index.
-    degs_list_out=$(for n in $(seq $archive_ratio); do echo "ark:$dir/degs_temp.\$[((JOB-1)*$archive_ratio)+$n].ark"; done)
+    degs_list_out=$(for n in $(seq $archive_ratio); do echo -n "ark:$dir/degs_temp.\$[((JOB-1)*$archive_ratio)+$n].ark "; done)
     # e.g. if dir=foo and archive_ratio=2, we'd have
     # degs_list_out='foo/degs_temp.$[((JOB-1)*2)+1].ark foo/degs_temp.$[((JOB-1)*2)+2].ark'
 
@@ -230,13 +232,13 @@ if $cleanup; then
   for x in $(seq $nj); do
     for y in $(seq $num_archives_temp); do
       file=$dir/degs_orig.$x.$y.ark
-      [ -L $file ] && rm $(readlink -f $file); rm $file
+      [ -L $file ] && rm $(utils/make_absolute.sh $file); rm $file
     done
   done
   if [ $num_archives_temp -ne $num_archives ]; then
     for z in $(seq $num_archives); do
       file=$dir/degs_temp.$z.ark
-      [ -L $file ] && rm $(readlink -f $file); rm $file
+      [ -L $file ] && rm $(utils/make_absolute.sh $file); rm $file
     done
   fi
 fi

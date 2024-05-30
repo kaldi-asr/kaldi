@@ -1,6 +1,6 @@
 // nnet/nnet-activation.h
 
-// Copyright 2011-2013  Brno University of Technology (author: Karel Vesely)
+// Copyright 2011-2016  Brno University of Technology (author: Karel Vesely)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -23,6 +23,7 @@
 
 #include <string>
 #include <vector>
+#include <cmath>
 
 #include "nnet/nnet-component.h"
 #include "nnet/nnet-utils.h"
@@ -48,7 +49,7 @@ class Softmax : public Component {
   void PropagateFnc(const CuMatrixBase<BaseFloat> &in,
                     CuMatrixBase<BaseFloat> *out) {
     // y = e^x_j/sum_j(e^x_j)
-    out->ApplySoftMaxPerRow(in);
+    out->SoftMaxPerRow(in);
   }
 
   void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in,
@@ -80,7 +81,7 @@ class HiddenSoftmax : public Component {
   void PropagateFnc(const CuMatrixBase<BaseFloat> &in,
                     CuMatrixBase<BaseFloat> *out) {
     // y = e^x_j/sum_j(e^x_j)
-    out->ApplySoftMaxPerRow(in);
+    out->SoftMaxPerRow(in);
   }
 
   void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in,
@@ -166,7 +167,7 @@ class BlockSoftmax : public Component {
       CuSubMatrix<BaseFloat> out_bl =
         out->ColRange(block_offset[bl], block_dims[bl]);
       // y = e^x_j/sum_j(e^x_j),
-      out_bl.ApplySoftMaxPerRow(in_bl);
+      out_bl.SoftMaxPerRow(in_bl);
     }
   }
 
@@ -269,7 +270,7 @@ class Dropout : public Component {
  public:
   Dropout(int32 dim_in, int32 dim_out):
       Component(dim_in, dim_out),
-      dropout_retention_(0.5)
+      dropout_rate_(0.5)
   { }
 
   ~Dropout()
@@ -284,36 +285,58 @@ class Dropout : public Component {
     std::string token;
     while (is >> std::ws, !is.eof()) {
       ReadToken(is, false, &token);
-      /**/ if (token == "<DropoutRetention>") ReadBasicType(is, false, &dropout_retention_);
+      /**/ if (token == "<DropoutRate>") ReadBasicType(is, false, &dropout_rate_);
       else KALDI_ERR << "Unknown token " << token << ", a typo in config?"
-                     << " (DropoutRetention)";
+                     << " (DropoutRate)";
     }
-    KALDI_ASSERT(dropout_retention_ > 0.0 && dropout_retention_ <= 1.0);
+    KALDI_ASSERT(dropout_rate_ >= 0.0 && dropout_rate_ < 1.0);
   }
 
   void ReadData(std::istream &is, bool binary) {
-    if ('<' == Peek(is, binary)) {
-      ExpectToken(is, binary, "<DropoutRetention>");
-      ReadBasicType(is, binary, &dropout_retention_);
+    // Read all the '<Tokens>' in arbitrary order,
+    bool finished = false;
+    while ('<' == Peek(is, binary) && !finished) {
+      std::string token;
+      int first_char = PeekToken(is, binary);
+      switch (first_char) {
+        case 'D': ReadToken(is, false, &token);
+          /**/ if (token == "<DropoutRate>") ReadBasicType(is, binary, &dropout_rate_);
+          else if (token == "<DropoutRetention>") { /* compatibility */
+            BaseFloat dropout_retention;
+            ReadBasicType(is, binary, &dropout_retention);
+            dropout_rate_ = 1.0 - dropout_retention;
+          } else KALDI_ERR << "Unknown token: " << token;
+          break;
+        case '!': ExpectToken(is, binary, "<!EndOfComponent>");
+          finished = true;
+          break;
+        default: ReadToken(is, false, &token);
+          KALDI_ERR << "Unknown token: " << token;
+      }
     }
-    KALDI_ASSERT(dropout_retention_ > 0.0 && dropout_retention_ <= 1.0);
+    KALDI_ASSERT(dropout_rate_ >= 0.0 && dropout_rate_ < 1.0);
   }
 
   void WriteData(std::ostream &os, bool binary) const {
-    WriteToken(os, binary, "<DropoutRetention>");
-    WriteBasicType(os, binary, dropout_retention_);
+    WriteToken(os, binary, "<DropoutRate>");
+    WriteBasicType(os, binary, dropout_rate_);
+  }
+
+  std::string Info() const {
+    return std::string("<DropoutRate> ") + ToString(dropout_rate_);
   }
 
   void PropagateFnc(const CuMatrixBase<BaseFloat> &in,
                     CuMatrixBase<BaseFloat> *out) {
     out->CopyFromMat(in);
-    // switch off 50% of the inputs...
+    // set N inputs to zero, according to the 'dropout_rate_' ...
     dropout_mask_.Resize(out->NumRows(), out->NumCols());
-    dropout_mask_.Set(dropout_retention_);
-    rand_.BinarizeProbs(dropout_mask_, &dropout_mask_);
+    rand_.RandUniform(&dropout_mask_);  // [0..1]
+    dropout_mask_.Add(-dropout_rate_);  // [(-rate)..(1-rate)]
+    dropout_mask_.Heaviside(dropout_mask_); // (x > 0.0 ? 1 : 0)
     out->MulElements(dropout_mask_);
-    // rescale to keep same dynamic range as w/o dropout
-    out->Scale(1.0/dropout_retention_);
+    // rescale to keep the same dynamic range as w/o dropout,
+    out->Scale(1.0 / (1.0 - dropout_rate_));
   }
 
   void BackpropagateFnc(const CuMatrixBase<BaseFloat> &in,
@@ -323,24 +346,25 @@ class Dropout : public Component {
     in_diff->CopyFromMat(out_diff);
     // use same mask on the error derivatives...
     in_diff->MulElements(dropout_mask_);
-    // enlarge output to fit dynamic range w/o dropout
-    in_diff->Scale(1.0/dropout_retention_);
+    // enlarge the output to fit same dynamic range as w/o dropout
+    in_diff->Scale(1.0 / (1.0 - dropout_rate_));
   }
 
-  BaseFloat GetDropoutRetention() { return dropout_retention_; }
+  BaseFloat GetDropoutRate() { return dropout_rate_; }
 
-  void SetDropoutRetention(BaseFloat dr) {
-    dropout_retention_ = dr;
-    KALDI_ASSERT(dropout_retention_ > 0.0 && dropout_retention_ <= 1.0);
+  void SetDropoutRate(BaseFloat dr) {
+    dropout_rate_ = dr;
+    KALDI_ASSERT(dropout_rate_ >= 0.0 && dropout_rate_ < 1.0);
   }
 
  private:
-  CuRand<BaseFloat> rand_;
-  CuMatrix<BaseFloat> dropout_mask_;
-  BaseFloat dropout_retention_;
+  BaseFloat dropout_rate_;  ///< probability that a neuron is dropped,
+
+  CuRand<BaseFloat> rand_;  ///< generator of random numbers,
+
+  CuMatrix<BaseFloat> dropout_mask_;  // random binary mask,
+                                      // 1 = keep neuron, 0 = drop neuron,
 };
-
-
 
 }  // namespace nnet1
 }  // namespace kaldi

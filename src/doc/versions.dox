@@ -1,0 +1,172 @@
+// doc/versions.dox
+
+// Copyright     2017 Johns Hopkins University (author: Daniel Povey)
+
+// See ../../COPYING for clarification regarding multiple authors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+
+//  http://www.apache.org/licenses/LICENSE-2.0
+
+// THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+// KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
+// WARRANTIES OR CONDITIONS OF TITLE, FITNESS FOR A PARTICULAR PURPOSE,
+// MERCHANTABLITY OR NON-INFRINGEMENT.
+// See the Apache 2 License for the specific language governing permissions and
+// limitations under the License.
+
+// note: you have to run the file get_version_info.sh in order
+// to generate the HTML files that we include via \htmlinclude.
+// Any time you add a new version you need to edit get_version_info.sh
+
+
+/**
+
+  \page versions Versions of Kaldi
+
+   \section versions_scheme Versioning scheme
+
+     During its lifetime, Kaldi has three different versioning methods.
+     Originally Kaldi was a subversion (svn)-based project, and was hosted
+     on Sourceforge.  Then Kaldi was moved to github, and for some time the
+     only version-number available was the git hash of the commit.
+
+     In January 2017 we introduced a version number scheme.  The first version
+     of Kaldi was 5.0.0, in recognition of the fact that the project had
+     already existed for quite a long time.  The basic scheme is major/minor/patch,
+     but the "patch" version number may also encompass features (usually
+     back-compatible ones).  The "patch number" automatically increases whenever
+     a commit to Kaldi is merged on github.
+
+    We only intend to change the major or minor
+    version number when making relatively larger changes, or non-back compatible
+    changes.
+
+    We always plan to recommend that Kaldi users check out the latest version of
+    'master', since actively supporting multiple versions would increase our
+    workload.
+
+   \section versions_versions Versions (and changes)
+
+   This section lists the version numbers of Kaldi with the commit messages
+   for each patch commit (by "patch commit" we mean a commit that does not
+   increase the major or minor version number).
+   Each time we add a new major/minor version number we will include a longer
+   section explaining the changes involved.
+
+ \subsection versions_versions_50 Version 5.0
+
+    This is the first major/minor version number after introducing the versioning scheme.
+    The latest revision of version 5.0 is saved as branch "5.0" on github.
+
+    Below are commits corresponding to minor version numbers 5.0.x.
+
+     \htmlinclude 5.0.html
+
+
+ \subsection versions_versions_51 Version 5.1
+
+   Some of the major changes introduced in version 5.1 are:
+     - Kaldi now requires C++11 to compile, and we support only the latest
+       version of OpenFst (1.6.0).  (This simplifies Kaldi's code, and will later
+       enable the threading code to be
+       <a href="https://github.com/kaldi-asr/kaldi/pull/1350" target="_blank">rewritten</a>
+       to use C++11's better and more portable mechanisms).
+     - The way chunk size and feature context is handled in nnet3 is changed
+       to allow variable chunk size and shorter context at utterance boundaries.
+       See \ref dnn3_scripts_context for more information.
+     - A new decoding mechanism, \ref dnn3_scripts_context_looped, is introduced
+       in nnet3; this allows faster and more-easily-online decoding for
+       recurrent setups (but only unidirectionally-recurrent ones, like LSTMs
+       but not BLSTMs).
+     - \ref online_decoding_nnet3 is now rewritten; it's faster and it supports
+       models like LSTMs.
+     - The sequence-training scripts in nnet3 are refactored and are now simpler
+       and use less disk space.
+     - There are scripts for segmentation of long transcribed audio files.
+
+   The latest revision of version 5.1 is saved as branch "5.1" on github.
+
+   Below are commits corresponding to minor version numbers 5.1.x.
+
+    \htmlinclude 5.1.html
+
+ \subsection versions_versions_52 Version 5.2
+
+  Some of the changes introduced between 5.1 and 5.2 are:
+    - Upgrades to nnet3 to support batch-norm and convolutional components;
+      recipes for certain image tasks (like CIFAR).
+    - nnet3 training script simplifications and refactoring.
+    - Some of the recipes are upgraded to include dropout and
+      the --proportional-shrink option (which approximates l2 regularization);
+      this improves results.
+
+  Many changes were made in the commits listed below (i.e. in the minor versions 5.2.x), including:
+    - <a href="https://github.com/kaldi-asr/kaldi/pull/1676"> Speech/nonspeech segmentation based on nnet3 </a>
+    - <a href="https://github.com/kaldi-asr/kaldi/pull/1633"> Scripts for transfer learning/domain-adaptation of nnet3 models </a>
+    - <a href="https://github.com/kaldi-asr/kaldi/pull/1896"> Xvectors: DNN Embeddings for Speaker Recognition </a>
+
+  The latest revision of version 5.2 is saved as branch "5.2" on github.
+
+  Below are commits corresponding to minor version numbers 5.1.x.
+
+    \htmlinclude 5.2.html
+
+ \subsection versions_versions_53 Version 5.3
+
+   Major changes that were made between the end of 5.2.x
+   and the start of the 5.3 branch include:
+      - Create a nnet3-based setup for RNN language models (i.e. recurrent and neural net based
+        language models)
+      - Some extentions to the core of the nnet3 framework to support constant values and
+        scalar multiplication without dedicated components.
+
+   Below are commits corresponding to minor version numbers 5.3.x.
+
+   \htmlinclude 5.3.html
+
+ \subsection versions_versions_54 Version 5.4
+
+
+   The main changes that were made between
+   the end of 5.3.x and the start of the 5.4 branch include:
+    - Some code changes in the nnet3 codebase, for speed and memory efficiency.
+    - Various simplifications and code reorganizations in the nnet3 code.
+    - Support for a new kind of factorized TDNN (TDNN-F) which gives substantially better
+      results than our old TDNN recipe, and is even better than our old TDNN+LSTM
+      recipe.  A good example of this is in egs/swbd/s5c/local/chain/tuning/run_tdnn_lstm_1n.sh.
+      Some nnet3 code changes were needed for this as well (mostly: support for constraining
+      a matrix to have orthonormal rows).
+
+  Some of the larger changes that were made while 5.4 was the major version number include:
+    - Improvements to handwriting recognition and OCR recipes, including BPE (word-piece) encoding.
+    - An updated version of the TDNN-F configuration, including ResNet-style bypass,
+      which is now the default in many recipes.  (it's called tdnnf-layer in xconfigs).
+    - A rewrite of the CUDA memory allocator to be based on a small number of large regions
+      (since with newer drivers and hardware, allocation speed was becoming a bottleneck).
+    - A decoder speedup (make use of OpenFst's NumInputEpsilons() function).
+
+
+   Below are commits corresponding to minor version numbers 5.4.x.
+
+   \htmlinclude 5.4.html
+
+
+
+ \subsection versions_versions_55 Version 5.5
+
+
+  Version 5.5 is the current master branch.   The change that was made between the end of
+  5.4 and the start of 5.5 is support for \ref grammar grammar decoding; this allows support for things like
+  the "contact list scenario" where you want to use a dynamically changing contact list in
+  a larger, fixed decoding graph.
+
+  Below are commits corresponding to minor version numbers 5.5.x.
+
+
+    \htmlinclude 5.5.html
+
+
+*/

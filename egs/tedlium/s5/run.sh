@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # Based mostly on the Switchboard recipe. The training database is TED-LIUM,
 # it consists of TED talks with cleaned automatic transcripts:
@@ -6,24 +6,30 @@
 # http://www-lium.univ-lemans.fr/en/content/ted-lium-corpus
 # http://www.openslr.org/resources (Mirror).
 #
+# Note: this only trains on the tedlium-1 data, there is now a second
+# release which we plan to incorporate in a separate directory, e.g
+# s5b or s5-release2.
+#
 # The data is distributed under 'Creative Commons BY-NC-ND 3.0' license,
 # which allow free non-commercial use, while only a citation is required.
 #
-# Copyright  2014 Nickolay V. Shmyrev
-#            2014 Brno University of Technology (Author: Karel Vesely)
+# Copyright  2014  Nickolay V. Shmyrev
+#            2014  Brno University of Technology (Author: Karel Vesely)
+#            2016  Johs Hopkins University (Author: Daniel Povey)
 # Apache 2.0
 #
 
-# TODO : use pruned trigram?
-
-. cmd.sh
-. path.sh
+. ./cmd.sh
+. ./path.sh
 
 nj=40
 decode_nj=8
 
 stage=0
-. utils/parse_options.sh # accept options
+
+. utils/parse_options.sh  # accept options.. you can run this run.sh with the
+                          # --stage option, for instance, if you don't want to
+                          # change it in the script.
 
 # Data preparation
 if [ $stage -le 0 ]; then
@@ -41,7 +47,6 @@ if [ $stage -le 0 ]; then
 fi
 
 # Feature extraction
-feat_dir=$pwd/data/mfcc_features
 if [ $stage -le 1 ]; then
   for set in test dev train; do
     dir=data/$set
@@ -54,7 +59,7 @@ fi
 # Let's create a subset with 10k short segments to make flat-start training easier:
 if [ $stage -le 2 ]; then
   utils/subset_data_dir.sh --shortest data/train 10000 data/train_10kshort || exit 1
-  local/remove_dup_utts.sh 10 data/train_10kshort data/train_10kshort_nodup || exit 1
+  utils/data/remove_dup_utts.sh 10 data/train_10kshort data/train_10kshort_nodup || exit 1
 fi
 
 # Train

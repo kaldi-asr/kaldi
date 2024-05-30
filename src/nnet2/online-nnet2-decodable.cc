@@ -80,7 +80,7 @@ int32 DecodableNnet2Online::NumFramesReady() const {
 
 void DecodableNnet2Online::ComputeForFrame(int32 frame) {
   int32 features_ready = features_->NumFramesReady();
-  bool input_finished = features_->IsLastFrame(features_ready - 1);  
+  bool input_finished = features_->IsLastFrame(features_ready - 1);
   KALDI_ASSERT(frame >= 0);
   if (frame >= begin_frame_ &&
       frame < begin_frame_ + scaled_loglikes_.NumRows())
@@ -112,20 +112,20 @@ void DecodableNnet2Online::ComputeForFrame(int32 frame) {
       t_modified = features_ready - 1;
     features_->GetFrame(t_modified, &row);
   }
-  CuMatrix<BaseFloat> cu_features; 
+  CuMatrix<BaseFloat> cu_features;
   cu_features.Swap(&features);  // Copy to GPU, if we're using one.
-  
+
 
   int32 num_frames_out = input_frame_end - input_frame_begin -
       left_context_ - right_context_;
-  
+
   CuMatrix<BaseFloat> cu_posteriors(num_frames_out, num_pdfs_);
-  
+
   // The "false" below tells it not to pad the input: we've already done
   // any padding that we needed to do.
   NnetComputation(nnet_.GetNnet(), cu_features,
                   false, &cu_posteriors);
-  
+
   cu_posteriors.ApplyFloor(1.0e-20); // Avoid log of zero which leads to NaN.
   cu_posteriors.ApplyLog();
   // subtract log-prior (divide by prior)

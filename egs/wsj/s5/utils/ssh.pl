@@ -161,6 +161,7 @@ for ($jobid = $jobstart; $jobid <= $jobend; $jobid++) {
     # bash commands.
     print S "set -e\n";  # if any of the later commands fails, we want it to exit.
     print S "cd $cwd\n";
+    print S ". ./path.sh\n";
     print S "mkdir -p $logdir\n";
     print S "time1=\`date +\"%s\"\`\n";
     print S "( echo '#' Running on \`hostname\`\n";

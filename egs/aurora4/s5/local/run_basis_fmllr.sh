@@ -1,6 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-. cmd.sh
+. ./cmd.sh
 
 mfccdir=mfcc
 

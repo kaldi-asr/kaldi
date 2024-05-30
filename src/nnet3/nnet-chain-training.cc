@@ -30,87 +30,203 @@ NnetChainTrainer::NnetChainTrainer(const NnetChainTrainingOptions &opts,
     opts_(opts),
     den_graph_(den_fst, nnet->OutputDim("output")),
     nnet_(nnet),
-    compiler_(*nnet, opts_.nnet_config.optimize_config),
-    num_minibatches_processed_(0) {
+    compiler_(*nnet, opts_.nnet_config.optimize_config,
+              opts_.nnet_config.compiler_config),
+    num_minibatches_processed_(0),
+    max_change_stats_(*nnet),
+    srand_seed_(RandInt(0, 100000)) {
   if (opts.nnet_config.zero_component_stats)
     ZeroComponentStats(nnet);
-  if (opts.nnet_config.momentum == 0.0 &&
-      opts.nnet_config.max_param_change == 0.0) {
-    delta_nnet_= NULL;
-  } else {
-    KALDI_ASSERT(opts.nnet_config.momentum >= 0.0 &&
-                 opts.nnet_config.max_param_change >= 0.0);
-    delta_nnet_ = nnet_->Copy();
-    bool is_gradient = false;  // setting this to true would disable the
-                               // natural-gradient updates.
-    SetZero(is_gradient, delta_nnet_);
-  }
+  KALDI_ASSERT(opts.nnet_config.momentum >= 0.0 &&
+               opts.nnet_config.max_param_change >= 0.0 &&
+               opts.nnet_config.backstitch_training_interval > 0);
+  delta_nnet_ = nnet_->Copy();
+  ScaleNnet(0.0, delta_nnet_);
+
   if (opts.nnet_config.read_cache != "") {
     bool binary;
     try {
       Input ki(opts.nnet_config.read_cache, &binary);
       compiler_.ReadCache(ki.Stream(), binary);
-      KALDI_LOG << "Read computation cache from " << opts.nnet_config.write_cache;
+      KALDI_LOG << "Read computation cache from " << opts.nnet_config.read_cache;
     } catch (...) {
       KALDI_WARN << "Could not open cached computation. "
                     "Probably this is the first training iteration.";
     }
-  } 
-}
-
-
-void NnetChainTrainer::Train(const NnetChainExample &chain_eg) {
-  bool need_model_derivative = true;
-  const NnetTrainerOptions &nnet_config = opts_.nnet_config;
-  bool use_xent_regularization = (opts_.chain_config.xent_regularize != 0.0);
-  ComputationRequest request;
-  GetChainComputationRequest(*nnet_, chain_eg, need_model_derivative,
-                             nnet_config.store_component_stats,
-                             use_xent_regularization, need_model_derivative,
-                             &request);
-  const NnetComputation *computation = compiler_.Compile(request);
-
-  NnetComputer computer(nnet_config.compute_config, *computation,
-                        *nnet_,
-                        (delta_nnet_ == NULL ? nnet_ : delta_nnet_));
-  // give the inputs to the computer object.
-  computer.AcceptInputs(*nnet_, chain_eg.inputs);
-  computer.Forward();
-
-  this->ProcessOutputs(chain_eg, &computer);
-  computer.Backward();
-
-  if (delta_nnet_ != NULL) {
-    BaseFloat scale = (1.0 - nnet_config.momentum);
-    if (nnet_config.max_param_change != 0.0) {
-      BaseFloat param_delta =
-          std::sqrt(DotProduct(*delta_nnet_, *delta_nnet_)) * scale;
-      if (param_delta > nnet_config.max_param_change) {
-        if (param_delta - param_delta != 0.0) {
-          KALDI_WARN << "Infinite parameter change, will not apply.";
-          SetZero(false, delta_nnet_);
-        } else {
-          scale *= nnet_config.max_param_change / param_delta;
-          KALDI_LOG << "Parameter change too big: " << param_delta << " > "
-                    << "--max-param-change=" << nnet_config.max_param_change
-                    << ", scaling by "
-                    << nnet_config.max_param_change / param_delta;
-        }
-      }
-    }
-    AddNnet(*delta_nnet_, scale, nnet_);
-    ScaleNnet(nnet_config.momentum, delta_nnet_);
   }
 }
 
 
-void NnetChainTrainer::ProcessOutputs(const NnetChainExample &eg,
+void NnetChainTrainer::Train(const NnetChainExample &chain_eg) {
+  NVTX_RANGE(__func__);
+  bool need_model_derivative = true;
+  const NnetTrainerOptions &nnet_config = opts_.nnet_config;
+  bool use_xent_regularization = (opts_.chain_config.xent_regularize != 0.0);
+  ComputationRequest request;
+
+  GetChainComputationRequest(*nnet_, chain_eg, need_model_derivative,
+                             nnet_config.store_component_stats,
+                             use_xent_regularization, need_model_derivative,
+                             &request);
+
+  std::shared_ptr<const NnetComputation> computation = compiler_.Compile(request);
+
+  if (nnet_config.backstitch_training_scale > 0.0 && num_minibatches_processed_
+      % nnet_config.backstitch_training_interval ==
+      srand_seed_ % nnet_config.backstitch_training_interval) {
+    // backstitch training is incompatible with momentum > 0
+    KALDI_ASSERT(nnet_config.momentum == 0.0);
+    FreezeNaturalGradient(true, delta_nnet_);
+    bool is_backstitch_step1 = true;
+    srand(srand_seed_ + num_minibatches_processed_);
+    ResetGenerators(nnet_);
+    TrainInternalBackstitch(chain_eg, *computation, is_backstitch_step1);
+    FreezeNaturalGradient(false, delta_nnet_); // un-freeze natural gradient
+    is_backstitch_step1 = false;
+    srand(srand_seed_ + num_minibatches_processed_);
+    ResetGenerators(nnet_);
+    TrainInternalBackstitch(chain_eg, *computation, is_backstitch_step1);
+  } else { // conventional training
+    TrainInternal(chain_eg, *computation);
+  }
+  if (num_minibatches_processed_ == 0) {
+    ConsolidateMemory(nnet_);
+    ConsolidateMemory(delta_nnet_);
+  }
+  num_minibatches_processed_++;
+}
+
+
+void NnetChainTrainer::TrainInternal(const NnetChainExample &eg,
+                                     const NnetComputation &computation) {
+  NVTX_RANGE(__func__);
+  const NnetTrainerOptions &nnet_config = opts_.nnet_config;
+  // note: because we give the 1st arg (nnet_) as a pointer to the
+  // constructor of 'computer', it will use that copy of the nnet to
+  // store stats.
+  NnetComputer computer(nnet_config.compute_config, computation,
+                        nnet_, delta_nnet_);
+
+  // give the inputs to the computer object.
+  computer.AcceptInputs(*nnet_, eg.inputs);
+  computer.Run();
+
+  this->ProcessOutputs(false, eg, &computer);
+  computer.Run();
+
+  // If relevant, add in the part of the gradient that comes from
+  // parameter-level L2 regularization.
+  ApplyL2Regularization(*nnet_,
+                        GetNumNvalues(eg.inputs, false) *
+                        nnet_config.l2_regularize_factor,
+                        delta_nnet_);
+
+  // Updates the parameters of nnet
+  bool success = UpdateNnetWithMaxChange(
+      *delta_nnet_,
+      nnet_config.max_param_change,
+      1.0, 1.0 - nnet_config.momentum, nnet_,
+      &max_change_stats_);
+
+  // Scale down the batchnorm stats (keeps them fresh... this affects what
+  // happens when we use the model with batchnorm test-mode set).
+  ScaleBatchnormStats(nnet_config.batchnorm_stats_scale, nnet_);
+
+  // The following will only do something if we have a LinearComponent
+  // or AffineComponent with orthonormal-constraint set to a nonzero value.
+  ConstrainOrthonormal(nnet_);
+
+  // Scale delta_nnet
+  if (success)
+    ScaleNnet(nnet_config.momentum, delta_nnet_);
+  else
+    ScaleNnet(0.0, delta_nnet_);
+}
+
+void NnetChainTrainer::TrainInternalBackstitch(const NnetChainExample &eg,
+                                               const NnetComputation &computation,
+                                               bool is_backstitch_step1) {
+  const NnetTrainerOptions &nnet_config = opts_.nnet_config;
+  // note: because we give the 1st arg (nnet_) as a pointer to the
+  // constructor of 'computer', it will use that copy of the nnet to
+  // store stats.
+  NnetComputer computer(nnet_config.compute_config, computation,
+                        nnet_, delta_nnet_);
+  // give the inputs to the computer object.
+  computer.AcceptInputs(*nnet_, eg.inputs);
+  computer.Run();
+
+  bool is_backstitch_step2 = !is_backstitch_step1;
+  this->ProcessOutputs(is_backstitch_step2, eg, &computer);
+  computer.Run();
+
+  BaseFloat max_change_scale, scale_adding;
+  if (is_backstitch_step1) {
+    // max-change is scaled by backstitch_training_scale;
+    // delta_nnet is scaled by -backstitch_training_scale when added to nnet;
+    max_change_scale = nnet_config.backstitch_training_scale;
+    scale_adding = -nnet_config.backstitch_training_scale;
+  } else {
+    // max-change is scaled by 1 + backstitch_training_scale;
+    // delta_nnet is scaled by 1 + backstitch_training_scale when added to nnet;
+    max_change_scale = 1.0 + nnet_config.backstitch_training_scale;
+    scale_adding = 1.0 + nnet_config.backstitch_training_scale;
+    // If relevant, add in the part of the gradient that comes from L2
+    // regularization.  It may not be optimally inefficient to do it on both
+    // passes of the backstitch, like we do here, but it probably minimizes
+    // any harmful interactions with the max-change.
+    ApplyL2Regularization(*nnet_,
+        1.0 / scale_adding * GetNumNvalues(eg.inputs, false) *
+        nnet_config.l2_regularize_factor, delta_nnet_);
+  }
+
+  // Updates the parameters of nnet
+  UpdateNnetWithMaxChange(
+      *delta_nnet_, nnet_config.max_param_change,
+      max_change_scale, scale_adding, nnet_,
+      &max_change_stats_);
+
+  if (is_backstitch_step1) {
+    // The following will only do something if we have a LinearComponent or
+    // AffineComponent with orthonormal-constraint set to a nonzero value. We
+    // choose to do this only on the 1st backstitch step, for efficiency.
+    ConstrainOrthonormal(nnet_);
+  }
+
+  if (!is_backstitch_step1) {
+    // Scale down the batchnorm stats (keeps them fresh... this affects what
+    // happens when we use the model with batchnorm test-mode set).  Do this
+    // after backstitch step 2 so that the stats are scaled down before we start
+    // the next minibatch.
+    ScaleBatchnormStats(nnet_config.batchnorm_stats_scale, nnet_);
+  }
+
+  ScaleNnet(0.0, delta_nnet_);
+}
+
+void NnetChainTrainer::ProcessOutputs(bool is_backstitch_step2,
+                                      const NnetChainExample &eg,
                                       NnetComputer *computer) {
+  NVTX_RANGE(__func__);
   // normally the eg will have just one output named 'output', but
   // we don't assume this.
+  // In backstitch training, the output-name with the "_backstitch" suffix is
+  // the one computed after the first, backward step of backstitch.
+  const std::string suffix = (is_backstitch_step2 ? "_backstitch" : "");
   std::vector<NnetChainSupervision>::const_iterator iter = eg.outputs.begin(),
       end = eg.outputs.end();
-  for (; iter != end; ++iter) {
+
+  const NnetIo *lwf_io = NULL;
+  for (auto &io: eg.inputs)
+    if (io.name == "__LWF-posteriors") {
+      lwf_io = &io;
+      break;
+    }
+
+  for (int32 output_counter = 0; iter != end; ++iter, ++output_counter) {
+    if (opts_.chain_config.lwf_den_scale != 0.0 || opts_.chain_config.lwf_scale != 0.0)
+      KALDI_ASSERT(output_counter == 0);  // The LWF CL code is not yet ready for multi-output case.
+
     const NnetChainSupervision &sup = *iter;
     int32 node_index = nnet_->GetNodeIndex(sup.name);
     if (node_index < 0 ||
@@ -125,9 +241,6 @@ void NnetChainTrainer::ProcessOutputs(const NnetChainExample &eg,
     bool use_xent = (opts_.chain_config.xent_regularize != 0.0);
     std::string xent_name = sup.name + "-xent";  // typically "output-xent".
     CuMatrix<BaseFloat> xent_deriv;
-    if (use_xent)
-      xent_deriv.Resize(nnet_output.NumRows(), nnet_output.NumCols(),
-                        kUndefined);
 
     BaseFloat tot_objf, tot_l2_term, tot_weight;
 
@@ -144,10 +257,54 @@ void NnetChainTrainer::ProcessOutputs(const NnetChainExample &eg,
       // at this point, xent_deriv is posteriors derived from the numerator
       // computation.  note, xent_objf has a factor of '.supervision.weight'
       BaseFloat xent_objf = TraceMatMat(xent_output, xent_deriv, kTrans);
-      objf_info_[xent_name].UpdateStats(xent_name, opts_.nnet_config.print_interval,
+      objf_info_[xent_name + suffix].UpdateStats(xent_name + suffix,
+                                        opts_.nnet_config.print_interval,
                                         num_minibatches_processed_,
                                         tot_weight, xent_objf);
     }
+
+    BaseFloat lwf_weight = 0, lwf_objf = 0;
+    if (lwf_io) {
+      const GeneralMatrix &supervision = lwf_io->features;
+      Matrix<BaseFloat> sup_mat_bad_order;
+      supervision.GetMatrix(&sup_mat_bad_order);
+      Matrix<BaseFloat> sup_mat(sup_mat_bad_order.NumRows(),
+                                sup_mat_bad_order.NumCols(), kUndefined);
+      // Re-order it to make the order same as output
+      int32 frames_per_sequence = sup.supervision.frames_per_sequence,
+          num_sequences = sup.supervision.num_sequences;
+      for (int32 i = 0; i < sup_mat_bad_order.NumRows(); i++) {
+        int32 old_index = (i % num_sequences) * frames_per_sequence + i / num_sequences;
+        sup_mat.Row(i).CopyFromVec(sup_mat_bad_order.Row(old_index));
+      }
+      // Some checks:
+      if (WithProb(0.01) &&
+          (opts_.chain_config.lwf_den_scale != 0.0 ||
+           opts_.chain_config.lwf_scale != 0.0)) { // Some checks
+        Matrix<BaseFloat> output_cpu(nnet_output);
+        int32 i = RandInt(0, output_cpu.NumRows() - 1);
+        BaseFloat logsumexp = output_cpu.Row(i).LogSumExp();
+        KALDI_LOG << "Log sum of exp of row i is: " << logsumexp;
+        if (abs(logsumexp - 0.0) > 0.1) KALDI_ERR << "Nnet output is not softmaxed.";
+        BaseFloat sum = sup_mat.Row(i).Sum();
+        KALDI_LOG << "Sum of row " << i << " of sup is " << sum;
+        if (abs(sum - 1.0) > 0.1) KALDI_ERR << "Sup does not sum to 1.0.";
+      }
+      if (opts_.chain_config.lwf_den_scale != 0.0) {
+        CuMatrix<BaseFloat> cu_post(sup_mat);
+        lwf_weight = cu_post.Sum();
+        lwf_objf = opts_.chain_config.lwf_den_scale * TraceMatMat(nnet_output, cu_post, kTrans);
+        KALDI_VLOG(1) << "Full DenLWF objf: " << lwf_objf/lwf_weight << "  weight: " << lwf_weight;
+        nnet_output_deriv.AddMat(opts_.chain_config.lwf_den_scale, cu_post);
+      }
+      if (opts_.chain_config.lwf_scale != 0.0) {
+        CuMatrix<BaseFloat> cu_post(sup_mat);
+        lwf_weight = cu_post.Sum();
+        lwf_objf = opts_.chain_config.lwf_scale * TraceMatMat(nnet_output, cu_post, kTrans);
+        KALDI_VLOG(1) << "Full LWF objf: " << lwf_objf/lwf_weight << "  weight: " << lwf_weight;
+        nnet_output_deriv.AddMat(opts_.chain_config.lwf_scale, cu_post);
+      }
+    } //// LWF
 
     if (opts_.apply_deriv_weights && sup.deriv_weights.Dim() != 0) {
       CuVector<BaseFloat> cu_deriv_weights(sup.deriv_weights);
@@ -156,22 +313,22 @@ void NnetChainTrainer::ProcessOutputs(const NnetChainExample &eg,
         xent_deriv.MulRowsVec(cu_deriv_weights);
     }
 
-    computer->AcceptOutputDeriv(sup.name, &nnet_output_deriv);
+    computer->AcceptInput(sup.name, &nnet_output_deriv);
 
-    objf_info_[sup.name].UpdateStats(sup.name, opts_.nnet_config.print_interval,
-                                     num_minibatches_processed_++,
+    objf_info_[sup.name + suffix].UpdateStats(sup.name + suffix,
+                                     opts_.nnet_config.print_interval,
+                                     num_minibatches_processed_,
                                      tot_weight, tot_objf, tot_l2_term);
 
     if (use_xent) {
       xent_deriv.Scale(opts_.chain_config.xent_regularize);
-      computer->AcceptOutputDeriv(xent_name, &xent_deriv);
+      computer->AcceptInput(xent_name, &xent_deriv);
     }
   }
 }
 
-
 bool NnetChainTrainer::PrintTotalStats() const {
-  unordered_map<std::string, ObjectiveFunctionInfo>::const_iterator
+  unordered_map<std::string, ObjectiveFunctionInfo, StringHasher>::const_iterator
       iter = objf_info_.begin(),
       end = objf_info_.end();
   bool ans = false;
@@ -180,16 +337,16 @@ bool NnetChainTrainer::PrintTotalStats() const {
     const ObjectiveFunctionInfo &info = iter->second;
     ans = info.PrintTotalStats(name) || ans;
   }
+  max_change_stats_.Print(*nnet_);
   return ans;
 }
-
 
 NnetChainTrainer::~NnetChainTrainer() {
   if (opts_.nnet_config.write_cache != "") {
     Output ko(opts_.nnet_config.write_cache, opts_.nnet_config.binary_write_cache);
     compiler_.WriteCache(ko.Stream(), opts_.nnet_config.binary_write_cache);
     KALDI_LOG << "Wrote computation cache to " << opts_.nnet_config.write_cache;
-  } 
+  }
   delete delta_nnet_;
 }
 

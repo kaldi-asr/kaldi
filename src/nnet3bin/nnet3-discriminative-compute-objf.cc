@@ -22,6 +22,7 @@
 #include "util/common-utils.h"
 #include "nnet3/nnet-discriminative-diagnostics.h"
 #include "nnet3/am-nnet-simple.h"
+#include "nnet3/nnet-utils.h"
 
 int main(int argc, char *argv[]) {
   try {
@@ -38,6 +39,7 @@ int main(int argc, char *argv[]) {
         "Usage:  nnet3-discrminative-compute-objf [options] <nnet3-model-in> <training-examples-in>\n"
         "e.g.: nnet3-discriminative-compute-objf 0.mdl ark:valid.degs\n";
 
+    bool batchnorm_test_mode = true, dropout_test_mode = true;
 
     // This program doesn't support using a GPU, because these probabilities are
     // used for diagnostics, and you can just compute them with a small enough
@@ -48,6 +50,12 @@ int main(int argc, char *argv[]) {
     discriminative::DiscriminativeOptions discriminative_opts;
 
     ParseOptions po(usage);
+
+    po.Register("batchnorm-test-mode", &batchnorm_test_mode,
+                "If true, set test-mode to true on any BatchNormComponents.");
+    po.Register("dropout-test-mode", &dropout_test_mode,
+                "If true, set test-mode to true on any DropoutComponents and "
+                "DropoutMaskComponents.");
 
     nnet_opts.Register(&po);
     discriminative_opts.Register(&po);
@@ -71,11 +79,19 @@ int main(int argc, char *argv[]) {
       tmodel.Read(ki.Stream(), binary);
       am_nnet.Read(ki.Stream(), binary);
     }
+    
+    Nnet* nnet = &(am_nnet.GetNnet());
+
+    if (batchnorm_test_mode)
+      SetBatchnormTestMode(true, nnet);
+
+    if (dropout_test_mode)
+      SetDropoutTestMode(true, nnet);
 
     NnetDiscriminativeComputeObjf discriminative_objf_computer(nnet_opts, 
                                               discriminative_opts, 
                                               tmodel, am_nnet.Priors(), 
-                                              am_nnet.GetNnet());
+                                              *nnet);
 
     SequentialNnetDiscriminativeExampleReader example_reader(examples_rspecifier);
 

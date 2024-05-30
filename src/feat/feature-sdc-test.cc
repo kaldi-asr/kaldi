@@ -148,7 +148,7 @@ int main() {
   op.use_energy = false;
   Mfcc mfcc(op);
   Matrix<BaseFloat> raw_features;
-  mfcc.Compute(waveform, 1.0, &raw_features, NULL);
+  mfcc.Compute(waveform, 1.0, &raw_features);
 
   try {
     for (int32 window = 1; window < 4; window++) {

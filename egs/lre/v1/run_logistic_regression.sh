@@ -1,12 +1,12 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright  2014   David Snyder,  Daniel Povey
 # Apache 2.0.
 #
 # An in progress example script for training and evaluating
 # using logistic regression.
 
-. cmd.sh
-. path.sh
+. ./cmd.sh
+. ./path.sh
 set -e
 
 config=conf/logistic-regression.conf

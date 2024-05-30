@@ -1,0 +1,1 @@
+../../s5/local/data_split.sh

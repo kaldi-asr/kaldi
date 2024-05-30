@@ -203,7 +203,7 @@ void GeneratePathThroughHmm(const HmmTopology &topology,
     const HmmTopology::HmmState &cur_hmm_state = this_entry[cur_state];
     int32 num_transitions = cur_hmm_state.transitions.size(),
         transition_index = RandInt(0, num_transitions - 1);
-    if (cur_hmm_state.pdf_class != -1) {
+    if (cur_hmm_state.forward_pdf_class != -1) {
       std::pair<int32, int32> pr(cur_state, transition_index);
       if (!reorder) {
         path->push_back(pr);
@@ -257,12 +257,15 @@ void GenerateRandomAlignment(const ContextDependencyInterface &ctx_dep,
           trans_model.GetTopo().TopologyForPhone(phone);
       int32 hmm_state = path[k].first,
           transition_index = path[k].second,
-          pdf_class = entry[hmm_state].pdf_class,
-          pdf_id;
-      bool ans = ctx_dep.Compute(context_window, pdf_class, &pdf_id);
+          forward_pdf_class = entry[hmm_state].forward_pdf_class,
+          self_loop_pdf_class = entry[hmm_state].self_loop_pdf_class,
+          forward_pdf_id, self_loop_pdf_id;
+      bool ans = ctx_dep.Compute(context_window, forward_pdf_class, &forward_pdf_id);
       KALDI_ASSERT(ans && "context-dependency computation failed.");
-      int32 transition_state = trans_model.TripleToTransitionState(
-          phone, hmm_state, pdf_id),
+      ans = ctx_dep.Compute(context_window, self_loop_pdf_class, &self_loop_pdf_id);
+      KALDI_ASSERT(ans && "context-dependency computation failed.");
+      int32 transition_state = trans_model.TupleToTransitionState(
+                               phone, hmm_state, forward_pdf_id, self_loop_pdf_id),
           transition_id = trans_model.PairToTransitionId(transition_state,
                                                          transition_index);
       alignment->push_back(transition_id);

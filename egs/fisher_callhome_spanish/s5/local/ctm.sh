@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Copyright 2014  Gaurav Kumar.   Apache 2.0
 
-. cmd.sh
+. ./cmd.sh
 
 split=test
 data_dir=data/test
@@ -10,7 +10,7 @@ lang_dir=data/lang
 
 # Create the STM file
 # Always create this file before creating the CTM files so that
-# channel numbers are properly created. 
+# channel numbers are properly created.
 if [ ! -f $data_dir/stm ]; then
     /export/a11/guoguo/babel/103-bengali-limitedLP.official/local/prepare_stm.pl $data_dir
 fi
@@ -19,9 +19,9 @@ fi
 steps/get_ctm.sh $data_dir $lang_dir $decode_dir
 
 # Make sure that channel markers match
-#sed -i "s:\s.*_fsp-([AB]): \1:g" data/dev/stm
-#ls exp/tri5a/decode_dev/score_*/dev.ctm | xargs -I {} sed -i -r 's:fsp\s1\s:fsp A :g' {}
-#ls exp/tri5a/decode_dev/score_*/dev.ctm | xargs -I {} sed -i -r 's:fsp\s2\s:fsp B :g' {}
+#perl -i -pe "s:\s.*_fsp-([AB]): \1:g" data/dev/stm
+#ls exp/tri5a/decode_dev/score_*/dev.ctm | xargs -I {} perl -i -pe 's:fsp\s1\s:fsp A :g' {}
+#ls exp/tri5a/decode_dev/score_*/dev.ctm | xargs -I {} perl -i -pe 's:fsp\s2\s:fsp B :g' {}
 
 # Get the environment variables
 . /export/babel/data/software/env.sh

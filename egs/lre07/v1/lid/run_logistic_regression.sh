@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright  2014   David Snyder,  Daniel Povey
 # Apache 2.0.
 #
@@ -6,8 +6,8 @@
 # i-Vectors, and evaluates it on the NIST LRE07 closed-set
 # evaluation.  
 
-. cmd.sh
-. path.sh
+. ./cmd.sh
+. ./path.sh
 set -e
 
 train_dir=exp/ivectors_train

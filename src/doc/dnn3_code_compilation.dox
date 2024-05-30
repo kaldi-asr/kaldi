@@ -98,7 +98,7 @@ private:
  is an input to the computation.  This might seem redundant, because we could just
  look up whether its node is of type kInput.  It is needed because we have actually
  designed the framework so that you can provide previously computed values of nodes
- of type kComponent: this has an envisaged use in online decoding for speech 
+ of type kComponent: this has an envisaged use in online decoding for speech
  recognition with things like RNNs.
 
  \subsection dnn3_compile_graph_building  Building the ComputationGraph
@@ -113,10 +113,10 @@ private:
  Components).  The simple version of the process is that we start with requested outputs
  of the network, compute their dependencies and add them to the ComputationGraph,
  and keep working backward adding dependencies until we hit input nodes.  At that
- point, hopefully all Cindexes we require at input nodes are ones that have been 
+ point, hopefully all Cindexes we require at input nodes are ones that have been
  supplied in the ComputationRequest; if they are not supplied, we would have to
  say that the computation is not possible.
- 
+
 
  \subsubsection dnn3_compile_graph_building_basic  Basic algorithm
 
@@ -137,7 +137,7 @@ private:
     .
  However, this algorithm wouldn't work in all cases of interest, for instance
  RNNs.  The problem is that the first phase (following back all possible dependencies)
- would run forever, with t approaching -\infin.  
+ would run forever, with t approaching -\infin.
 
  \subsubsection dnn3_compile_graph_building_idea Motivation for the algorithm we use
 
@@ -156,7 +156,7 @@ private:
 
  \subsubsection dnn3_compile_graph_building_real The algorithm we use
 
- The way we solve this problem is as follows.  We assign to each Cindex an enum 
+ The way we solve this problem is as follows.  We assign to each Cindex an enum
  \ref ComputationGraphBuilder::ComputableInfo "ComputableInfo", defined as:
 \verbatim
   enum ComputableInfo {
@@ -187,7 +187,7 @@ a value determined by the following rules:
      - This Cindex is a dependency of j in the computation graph.
      .
   .
-The way we avoid infinitely recursing in the processing of dependencies is that 
+The way we avoid infinitely recursing in the processing of dependencies is that
 if the usable_count of a Cindex is zero we set its state to kWillNotCompute and
 then we refrain from adding its dependencies to the computation graph.
 For this to work, we make sure to process the dependencies in breadth-first
@@ -197,14 +197,14 @@ process the hidden layer all the way back to t = -\infin before noticing that
 the corresponding inputs were not available.
 
 Class ComputationGraphBuilder maintains two queues: one for Cindexes that
-we haven't yet added their dependencies to the graph, and one 
+we haven't yet added their dependencies to the graph, and one
 (\ref ComputationGraphBuilder::computable_queue_ "computable_queue_") for
 Cindexes such that we need to re-evaluate whether they are computable
 (i.e. update their ComputableInfo).  When the ComputableInfo of a Cindex
 changes, we need to re-check the ComputableInfo of Cindexes that depend on it,
 and to do so we add them to \ref ComputationGraphBuilder::computable_queue_ "computable_queue_".
 
- 
+
  \subsubsection dnn3_compile_graph_building_interface Interface of ComputationGraphBuilder
 
 We list the most important parts of the public interface of ComputationGraph Builder below;
@@ -246,7 +246,7 @@ and it will roughly correspond to one command in the NnetComputation.
 We are going to arrange the set of all cindex_ids in the computation into a sequence
 of steps, with the following properties:
   - All cindex_ids within a given step correspond to the same node in the graph
-  - All dependencies of cindex_ids within a given step have been computed in 
+  - All dependencies of cindex_ids within a given step have been computed in
     earlier steps.
   .
 There are also some extra, more obscure properties that the sequence of steps
@@ -255,7 +255,7 @@ must satisfy:
     Indexes in the same order as specified in the ComputationRequest.  (Note:
     inputs can be for nodes of type kComponent as well as kInput).
   - (b) If a step corresponds to a node of type kComponent (and does not correspond to
-    an input in the ComputationRequest), then the immediately 
+    an input in the ComputationRequest), then the immediately
     preceding step must correspond to a node of type kDescriptor, and the sequence of
     Indexes in the two steps must be identical.
   - (c) If a step corresponds to a node of type kDimRange, then there must
@@ -278,7 +278,7 @@ Here we describe a basic algorithm for creating the sequence of steps
 that we <em>do not use</em>, but will serve to motivate the actual algorithm that
 we'll describe later.
 This basic algorithm would be:
-  - First put aside Cindexes corresponding to input and output nodes, 
+  - First put aside Cindexes corresponding to input and output nodes,
     separate them by node-index, order within each of those steps
     to the same order as the ComputationRequests, and put them on the side.
   - Next process the intermediate Cindexes that are not inputs or outputs as follows:
@@ -306,10 +306,10 @@ This basic algorithm would be:
        - For each existing step s, for each dim-range node that has an existing
          Cindex getting input from that step, create a step containing the same
          sequence of Indexes as step s, and place the new step immediately after step s.
-    
-  - Order all the steps so that inputs come first, intermediate steps come next, 
+
+  - Order all the steps so that inputs come first, intermediate steps come next,
     and output-steps come last.
-  
+
  The problem with the algorithm described above is that it would end up
  splitting things into to many steps.  For instance, imagine that we have a recurrent
  layer followed by a standard feedforward layer.  The recurrent layer has to be
@@ -319,14 +319,14 @@ This basic algorithm would be:
  for the recurrent layer.  What we want it for it to do all computation of the
  recurrent layer, then do the computation for the fully-connected layer in one step.
 
- \subsection dnn3_compile_steps_creating  Creating the sequence of steps (actual algorithm)
+ \subsection dnn3_compile_steps_creating_actual  Creating the sequence of steps (actual algorithm)
 
  In order to handle architectures like RNNs without creating an excessive number
  of computation steps, we first do some graph-theoretic processing on the neural
  network itself to determine the order in which we can process nodes in the
  graph.  We can express the neural network itself as a directed graph on nodes,
  where there is an arc from node A to node B if node B ever refers to quantities
- from node A (see \ref NnetToDirectedGraph()).  
+ from node A (see \ref NnetToDirectedGraph()).
 
  The function \ref ComputeNnetComputationEpochs() produces a mapping from nodes
  to epoch indexes, where nodes that are part of the same strongly connected
@@ -341,7 +341,7 @@ This basic algorithm would be:
  epochs.   We first call \ref ComputeComputationPhases() to divide the cindexes
  into phases, and then \ref ComputeComputationSteps() which works out the actual
  steps.
- 
+
 
 \section dnn3_compile_compiler Class Compiler
 
@@ -358,7 +358,7 @@ class Compiler {
  public:
   Compiler(const ComputationRequest &request,
            const Nnet &nnet);
-  
+
   void CreateComputation(const CompilerOptions &opts,
                          NnetComputation *computation);
   ...
@@ -389,7 +389,7 @@ void Compiler::CreateComputation(const CompilerOptions &opts,
   AddCommands(deriv_needed, computation);
   if (opts.output_debug_info)
     OutputDebugInfo(computation);
-}  
+}
 \endverbatim
 The commands up to ComputeComputationSteps() correspond to things that we have
 discussed above, and should be clear.  Below we will discuss some of the remaining
@@ -398,7 +398,7 @@ commands, and use them to give an overview of the compilation process.
 
 \subsection dnn3_compile_compiler_location Setting up the location information
 
-The function 
+The function
 \ref Compiler::CreateLocationInfo() "CreateLocationInfo()"
 sets up a mapping \ref Compiler::cindex_id_to_location_ "cindex_id_to_location_"
 that maps each cindex_id to a <em>location</em>, where a location defined as a
@@ -472,7 +472,7 @@ This sets up a variety of information associated with each step.  Class Compiler
 has a member \ref Compiler::steps_ "steps_", of type <code>std::vector<StepInfo></code>,
 which stores all this information:
 \verbatim
-class Compiler { 
+class Compiler {
    ...
   struct StepInfo {
     int32 node_index;  // network-node index
@@ -482,7 +482,7 @@ class Compiler {
     int32 precomputed_indexes_index;  // ignore; only relevant for non-simple Components
     std::vector<Index> output_indexes;      // Indexes that this step outputs.
     std::vector<int32> output_cindex_ids;   // cindex_ids corresponding to the above.
-    
+
     // If this component is of type kDescriptor (and note that the top-level
     // Descriptor is a concatenation over >= 1 parts), then we set value_parts
     // to a list of submatrix-indexes, each for the corresponding part of the
@@ -510,14 +510,14 @@ here.  The quantities <code>node_index</code> and
 <code>is_input</code> can be immediately computed from the ComputationGraph and
 computation request.  Likewise, <code>output_cindex_ids</code> is just a copy of
 the cindex_ids that this step consists of; and <code>output_indexes</code> can
-be immediately computed from the <code>output_cindex_ids</code> and the 
+be immediately computed from the <code>output_cindex_ids</code> and the
 ComputationGraph.  The members <code>value</code> and <code>deriv</code>
-are sub-matrix ids that we need to allocate for this step. 
+are sub-matrix ids that we need to allocate for this step.
 
  \subsubsection dnn3_compile_compiler_allocating  Allocating matrices and submatrices (background)
-  
- Now is a good time to discuss matrix and sub-matrix indexes, and how we allocate matrix 
- and sub-matrix indexes.  A matrix index is an index into the 
+
+ Now is a good time to discuss matrix and sub-matrix indexes, and how we allocate matrix
+ and sub-matrix indexes.  A matrix index is an index into the
  \ref NnetComputer::matrices_ "matrices_" array of class NnetComputer, and also
  into the \ref NnetComputation::matrices "matrices" array of class NnetComputation,
  (where only the size information is stored).  We reserve matrix index zero for
@@ -540,9 +540,9 @@ struct NnetComputation {
 \endverbatim
 The \ref NnetComputation::NewMatrix() "NewMatrix()" function allocates a new matrix
 and a sub-matrix referring to its entirety, and returns the sub-matrix index; the
-\ref NnetComputation::NewSubMatrix() "NewSubMatrix()" function returns 
+\ref NnetComputation::NewSubMatrix() "NewSubMatrix()" function returns
 a new sub-matrix corresponding to a column range of an existing matrix.
-  
+
 \subsubsection dnn3_compile_compiler_parts  Allocating matrices and submatrices for StepInfo
 
 All steps except those of type kDimRange have a matrix allocated to store their
@@ -565,7 +565,7 @@ If there are multiple parts, the command to set up one sub-matrix looks like thi
 \verbatim
   this_info.value_parts[p] = computation->NewSubMatrix(this_info.value,
                                                        cur_dim_offset,
-                                                       this_dim); 
+                                                       this_dim);
 \endverbatim
 
 
@@ -643,7 +643,7 @@ The commands will be of type kAllocateMatrixZeroed, with one argument
 corresponding to the matrix index.  Later, in the optimization phase, we will
 replace some of these commands with kAllocateMatrixUndefined, if we determine
 that zeroing the newly allocated matrix was not necessary.
- 
+
 
 \subsection dnn3_compile_compiler_forward  The forward computation
 
@@ -669,7 +669,7 @@ void Compiler::DoForwardComputation(int32 step,
     case kDescriptor:
       DoForwardComputationDescriptor(step, computation);
       break;
-  }      
+  }
 }
 \endverbatim
 
@@ -743,7 +743,7 @@ void Compiler::DoForwardComputationFromSubmatLocationsList(
     int32 value_submatrix_index,
     const std::vector<std::vector<std::pair<int32, int32> > > &submat_lists,
     NnetComputation *computation) const {
-  std::vector<std::vector<std::pair<int32, int32> > > split_lists;  
+  std::vector<std::vector<std::pair<int32, int32> > > split_lists;
   SplitLocations(submat_lists, &split_lists);
   for (int32 i = 0; i < split_lists.size(); i++)
     DoForwardComputationFromSubmatLocations(
@@ -758,7 +758,7 @@ void Compiler::DoForwardComputationFromSubmatLocationsList(
 The function SplitLocations() is important.  Its input and output is of the same
 type (<code>std::vector<std::pair<int32, int32> ></code>, but it performs a change
 of format.  The input <code>submat_lists</code> is indexed by matrix-row and is then a list
-of input locations to be summed over.  SplitLocations() pads all 
+of input locations to be summed over.  SplitLocations() pads all
 those lists with (-1, -1) so they are all the same length and then turns the
 vector of lists into a list of vectors (<code>split_lists</code>).  For example, if we had a matrix with 1000
 rows and the input submat_lists were all of length not exceeding 2, the SplitLocations()
@@ -787,7 +787,7 @@ function is quite simple so we show it:
 void Compiler::DoForwardComputationFromSubmatLocations(
     int32 value_submatrix_index,
     bool is_first_term_in_sum,
-    const std::vector<std::pair<int32, int32> > &submat_locations, 
+    const std::vector<std::pair<int32, int32> > &submat_locations,
     NnetComputation *computation) const {
 
   int32 input_submatrix_index = -1;
@@ -915,6 +915,21 @@ We won't go into further detail on this, since it's quite obvious what this func
 would do.  We note that in the optimization phase, we sometimes merge matrices together
 as an optimization.  In this case the associated \ref NnetComputation::debug_info "debug_info"
 will correspond to the debug information of one of the matrices that we merged.
+
+
+\subsection dnn3_compile_compiler_shortcut Shortcut compilation
+
+A feature available from Kaldi version 5.1 is 'shortcut' compilation (enabled
+by default).  This is done only when the ComputationRequest has a suitably
+regular structure; this basically means that there are more than two different
+"n" indexes in the computation, they are numbered consecutively from zero,
+nd for each "n" index, the requested set of "t" and "x" indexes is the same
+and in a regular order.  What the shortcut compilation does is reduce the
+computation request down to just two distinct "n" indexes (zero and one),
+compile the mini-request, and then expand the resulting compilation-- basically,
+it extrapolates the compiled computation to what it would have been if
+the entire original computation request had been supplied.  Shortcut
+compilation significantly cuts down compilation time.
 
 
  - Up: \ref dnn3

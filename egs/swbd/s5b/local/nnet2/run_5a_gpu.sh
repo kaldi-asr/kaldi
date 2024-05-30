@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This runs on the 100 hour subset.
 # e.g. of usage:
@@ -18,7 +18,7 @@ EOF
 
 . utils/parse_options.sh
 
-parallel_opts="-l gpu=1"  # This is suitable for the CLSP network, you'll likely have to change it.
+parallel_opts="--gpu 1"  # This is suitable for the CLSP network, you'll likely have to change it.
 
 ( 
   if [ ! -f exp/nnet5a_gpu/final.mdl ]; then

@@ -1,8 +1,8 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2015   David Snyder
 # Apache 2.0.
 #
-# This script trains an LDA transform, applies it to the enroll and 
+# This script trains an LDA transform, applies it to the enroll and
 # test i-vectors and does cosine scoring.
 
 use_existing_models=false
@@ -32,14 +32,18 @@ if [ "$use_existing_models" == "true" ]; then
     [ ! -f $f ] && echo "No such file $f" && exit 1;
   done
 else
-ivector-compute-lda --dim=$lda_dim  --total-covariance-factor=$covar_factor \
+
+mkdir -p ${lda_ivec_dir}/log
+run.pl ${lda_ivec_dir}/log/lda.log \
+  ivector-compute-lda --dim=$lda_dim  --total-covariance-factor=$covar_factor \
   "ark:ivector-normalize-length scp:${lda_ivec_dir}/ivector.scp ark:- |" \
     ark:${lda_data_dir}/utt2spk \
-    ${lda_ivec_dir}/transform.mat 2>${lda_ivec_dir}/log/lda.log
+    ${lda_ivec_dir}/transform.mat || exit 1;
 fi
 
-mkdir -p $scores_dir
-ivector-compute-dot-products  "cat '$trials' | awk '{print \$1, \$2}' |"  \
+mkdir -p $scores_dir/log
+run.pl $scores_dir/log/lda_scoring.log \
+  ivector-compute-dot-products  "cat '$trials' | cut -d\  --fields=1,2 |"  \
   "ark:ivector-transform ${lda_ivec_dir}/transform.mat scp:${enroll_ivec_dir}/spk_ivector.scp ark:- | ivector-normalize-length ark:- ark:- |" \
-  "ark:ivector-transform ${lda_ivec_dir}/transform.mat scp:${test_ivec_dir}/ivector.scp ark:- | ivector-normalize-length ark:- ark:- |" \
-  $scores_dir/lda_scores
+  "ark:ivector-normalize-length scp:${test_ivec_dir}/ivector.scp ark:- | ivector-transform ${lda_ivec_dir}/transform.mat ark:- ark:- | ivector-normalize-length ark:- ark:- |" \
+  $scores_dir/lda_scores || exit 1;

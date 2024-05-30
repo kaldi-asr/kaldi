@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 '''
 # Copyright 2013-2014 Mirsk Digital Aps  (Author: Andreas Kirkedal)
+# Copyright 2014-2016 Andreas Kirkedal
 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,16 +25,16 @@ import writenumbers
 
 ## Global vars
 
-normdict = {",": " ",
-            ":": " ",
-            ";": " ",
-            "?": " ",
-            "\\": " ",
-            "\t": " ",
-            #".": ""
-            }
+# normdict = {",": " ",
+#             ":": " ",
+#             ";": " ",
+#             "?": " ",
+#             "\\": " ",
+#             "\t": " ",
+#             #".": ""
+#             }
 
-t_table = str.maketrans(normdict)
+# t_table = str.maketrans(normdict)
 
 
 ## Utility function
@@ -51,12 +52,13 @@ outtext = codecs.open(sys.argv[4], "w", "utf8")
 
 for line in textin:
         utt_id, text = getuttid_text(line)
-        normtext1 = text.translate(t_table)
-        normtext2 = re.sub(r'  +', ' ', normtext1.strip())
-        normtext3 = writenumbers.normNumber(normtext2, numtable)
-
+        normtext1 = re.sub(r'[\.,:;\?]', '', text)
+        normtext2 = re.sub(r'[\t\\]', ' ', normtext1)
+        normtext3 = re.sub(r'  +', ' ', normtext2.strip())
+        normtext4 = writenumbers.normNumber(normtext3, numtable)
+        outtext.write(normtext4)
         fid.write(utt_id + "\n")
-        outtext.write(normtext3)
+
 
 textin.close()
 outtext.close()

@@ -1,6 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-. path.sh
+. ./path.sh
 
 format=pdf # pdf svg
 output=

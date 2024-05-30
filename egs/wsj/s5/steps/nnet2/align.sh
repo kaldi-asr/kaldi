@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2012  Brno University of Technology (Author: Karel Vesely)
 #           2013  Johns Hopkins University (Author: Daniel Povey)
 # Apache 2.0
@@ -53,6 +53,9 @@ for f in $srcdir/tree $srcdir/${iter}.mdl $data/feats.scp $lang/L.fst $extra_fil
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
 
+utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt || exit 1;
+cp $lang/phones.txt $dir || exit 1;
+
 cp $srcdir/{tree,${iter}.mdl} $dir || exit 1;
 
 
@@ -65,7 +68,7 @@ fi
 echo "$0: feature type is $feat_type"
 
 cmvn_opts=`cat $srcdir/cmvn_opts 2>/dev/null`
-cp $srcdir/cmvn_opts $dir 2>/dev/null
+cp $srcdir/cmvn_opts $srcdir/splice_opts $dir 2>/dev/null
 
 case $feat_type in
   raw) feats="ark,s,cs:apply-cmvn $cmvn_opts --utt2spk=ark:$sdata/JOB/utt2spk scp:$sdata/JOB/cmvn.scp scp:$sdata/JOB/feats.scp ark:- |"
@@ -117,11 +120,10 @@ echo "$0: aligning data in $data using model from $srcdir, putting alignments in
 tra="ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt $sdata/JOB/text|";
 
 $cmd JOB=1:$nj $dir/log/align.JOB.log \
-  compile-train-graphs $dir/tree $srcdir/${iter}.mdl  $lang/L.fst "$tra" ark:- \| \
+  compile-train-graphs --read-disambig-syms=$lang/phones/disambig.int $dir/tree $srcdir/${iter}.mdl  $lang/L.fst "$tra" ark:- \| \
   nnet-align-compiled $scale_opts --use-gpu=$use_gpu --beam=$beam --retry-beam=$retry_beam \
     $srcdir/${iter}.mdl ark:- "$feats" "ark:|gzip -c >$dir/ali.JOB.gz" || exit 1;
 
 steps/diagnostic/analyze_alignments.sh --cmd "$cmd" $lang $dir
 
 echo "$0: done aligning data."
-

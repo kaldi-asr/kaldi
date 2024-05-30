@@ -28,13 +28,35 @@
 #include <map>
 
 #include "base/kaldi-common.h"
-#include "hmm/posterior.h"
 #include "fstext/fstext-lib.h"
-#include "hmm/transition-model.h"
-#include "lat/kaldi-lattice.h"
 #include "itf/decodable-itf.h"
+#include "itf/transition-information.h"
+#include "lat/kaldi-lattice.h"
 
 namespace kaldi {
+
+// Redundant with the typedef in hmm/posterior.h. We want functions
+// using the Posterior type to be usable without a dependency on the
+// hmm library.
+typedef std::vector<std::vector<std::pair<int32, BaseFloat> > > Posterior;
+
+/**
+   This function extracts the per-frame log likelihoods from a linear
+   lattice (which we refer to as an 'nbest' lattice elsewhere in Kaldi code).
+   The dimension of *per_frame_loglikes will be set to the
+   number of input symbols in 'nbest'.  The elements of
+   '*per_frame_loglikes' will be set to the .Value2() elements of the lattice
+   weights, which represent the acoustic costs; you may want to scale this
+   vector afterward by -1/acoustic_scale to get the original loglikes.
+   If there are acoustic costs on input-epsilon arcs or the final-prob in 'nbest'
+   (and this should not normally be the case in situations where it makes
+   sense to call this function), they will be included to the cost of the
+   preceding input symbol, or the following input symbol for input-epsilons
+   encountered prior to any input symbol.  If 'nbest' has no input symbols,
+   'per_frame_loglikes' will be set to the empty vector.
+**/
+void GetPerFrameAcousticCosts(const Lattice &nbest,
+                              Vector<BaseFloat> *per_frame_loglikes);
 
 /// This function iterates over the states of a topologically sorted lattice and
 /// counts the time instance corresponding to each state. The times are returned
@@ -67,23 +89,23 @@ BaseFloat LatticeForwardBackward(const Lattice &lat,
 // the CompactLattice lattice format. Also we only need the alpha in the forward
 // path, not the posteriors.
 bool ComputeCompactLatticeAlphas(const CompactLattice &lat,
-                                 vector<double> *alpha);
+                                 std::vector<double> *alpha);
 
 // A sibling of the function CompactLatticeAlphas()... We compute the beta from
 // the backward path here.
 bool ComputeCompactLatticeBetas(const CompactLattice &lat,
-                                vector<double> *beta);
+                                std::vector<double> *beta);
 
 
 // Computes (normal or Viterbi) alphas and betas; returns (total-prob, or
 // best-path negated cost) Note: in either case, the alphas and betas are
 // negated costs.  Requires that lat be topologically sorted.  This code
-// will work for either CompactLattice or Latice.
+// will work for either CompactLattice or Lattice.
 template<typename LatticeType>
 double ComputeLatticeAlphasAndBetas(const LatticeType &lat,
                                     bool viterbi,
-                                    vector<double> *alpha,
-                                    vector<double> *beta);
+                                    std::vector<double> *alpha,
+                                    std::vector<double> *beta);
 
 
 /// Topologically sort the compact lattice if not already topologically sorted.
@@ -119,7 +141,7 @@ void CompactLatticeLimitDepth(int32 max_arcs_per_frame,
 /// outputs for each frame the set of phones active on that frame.  If
 /// sil_phones (which must be sorted and uniq) is nonempty, it excludes
 /// phones in this list.
-void LatticeActivePhones(const Lattice &lat, const TransitionModel &trans,
+void LatticeActivePhones(const Lattice &lat, const TransitionInformation &trans,
                          const std::vector<int32> &sil_phones,
                          std::vector<std::set<int32> > *active_phones);
 
@@ -133,7 +155,7 @@ void LatticeActivePhones(const Lattice &lat, const TransitionModel &trans,
 /// transition-id in the phone if reordering is not done (but typically
 /// we do reorder).
 /// Also see PhoneAlignLattice, in phone-align-lattice.h.
-void ConvertLatticeToPhones(const TransitionModel &trans_model,
+void ConvertLatticeToPhones(const TransitionInformation &trans_model,
                             Lattice *lat);
 
 /// Prunes a lattice or compact lattice.  Returns true on success, false if
@@ -146,7 +168,7 @@ bool PruneLattice(BaseFloat beam, LatticeType *lat);
 /// replace the sequences of transition-ids with sequences of phones.
 /// Note that this is different from ConvertLatticeToPhones, in that
 /// we replace the transition-ids not the words.
-void ConvertCompactLatticeToPhones(const TransitionModel &trans_model,
+void ConvertCompactLatticeToPhones(const TransitionInformation &trans_model,
                                    CompactLattice *clat);
 
 /// Boosts LM probabilities by b * [number of frame errors]; equivalently, adds
@@ -154,14 +176,14 @@ void ConvertCompactLatticeToPhones(const TransitionModel &trans_model,
 /// There is a frame error if a particular transition-id on a particular frame
 /// corresponds to a phone not matching transcription's alignment for that frame.
 /// This is used in "margin-inspired" discriminative training, esp. Boosted MMI.
-/// The TransitionModel is used to map transition-ids in the lattice
+/// The TransitionInformation is used to map transition-ids in the lattice
 /// input-side to phones; the phones appearing in
 /// "silence_phones" are treated specially in that we replace the frame error f
 /// (either zero or 1) for a frame, with the minimum of f or max_silence_error.
 /// For the normal recipe, max_silence_error would be zero.
 /// Returns true on success, false if there was some kind of mismatch.
 /// At input, silence_phones must be sorted and unique.
-bool LatticeBoost(const TransitionModel &trans,
+bool LatticeBoost(const TransitionInformation &trans,
                   const std::vector<int32> &alignment,
                   const std::vector<int32> &silence_phones,
                   BaseFloat b,
@@ -173,43 +195,48 @@ bool LatticeBoost(const TransitionModel &trans,
    This function implements either the MPFE (minimum phone frame error) or SMBR
    (state-level minimum bayes risk) forward-backward, depending on whether
    "criterion" is "mpfe" or "smbr".  It returns the MPFE
-   criterion of SMBR criterion for this file, and outputs the posteriors (which
-   may be positive or negative) into "arc_post".
-   Note: setting one_silence_class to false gives the old traditional behavior,
-   true gives a possibly improved behavior which will tend to reduce insertions
-   in the trained model.
+   criterion of SMBR criterion for this utterance, and outputs the posteriors (which
+   may be positive or negative) into "post".
+
+   @param [in] trans    The transition model. Used to map the
+                        transition-ids to phones or pdfs.
+   @param [in] silence_phones   A list of integer ids of silence phones. The
+                        silence frames i.e. the frames where num_ali
+                        corresponds to a silence phones are treated specially.
+                        The behavior is determined by 'one_silence_class'
+                        being false (traditional behavior) or true.
+                        Usually in our setup, several phones including
+                        the silence, vocalized noise, non-spoken noise
+                        and unk are treated as "silence phones"
+   @param [in] lat      The denominator lattice
+   @param [in] num_ali  The numerator alignment
+   @param [in] criterion    The objective function. Must be "mpfe" or "smbr"
+                        for MPFE (minimum phone frame error) or sMBR
+                        (state minimum bayes risk) training.
+   @param [in] one_silence_class   Determines how the silence frames are treated.
+                        Setting this to false gives the old traditional behavior,
+                        where the silence frames (according to num_ali) are
+                        treated as incorrect. However, this means that the
+                        insertions are not penalized by the objective.
+                        Setting this to true gives the new behaviour, where we
+                        treat silence as any other phone, except that all pdfs
+                        of silence phones are collapsed into a single class for
+                        the frame-error computation. This can possible reduce
+                        the insertions in the trained model. This is closer to
+                        the WER metric that we actually care about, since WER is
+                        generally computed after filtering out noises, but
+                        does penalize insertions.
+    @param [out] post   The "MBR posteriors" i.e. derivatives w.r.t to the
+                        pseudo log-likelihoods of states at each frame.
 */
 BaseFloat LatticeForwardBackwardMpeVariants(
-    const TransitionModel &trans,
+    const TransitionInformation &trans,
     const std::vector<int32> &silence_phones,
     const Lattice &lat,
     const std::vector<int32> &num_ali,
     std::string criterion,
     bool one_silence_class,
     Posterior *post);
-
-/**
-   This function can be used to compute posteriors for MMI, with a positive contribution
-   for the numerator and a negative one for the denominator.  This function is not actually
-   used in our normal MMI training recipes, where it's instead done using various command
-   line programs that each do a part of the job.  This function was written for use in
-   neural-net MMI training.
-   If drop_frames is true, it will not compute any posteriors on frames where the num and
-   den have disjoint pdf-ids.
-   If "convert_to_pdf_ids" is true, it will convert the output to be at the level of pdf-ids,
-   not transition-ids.
-   If "cancel" is true, it will cancel out any positive and negative parts from
-   the same transition-id (or pdf-id, if convert_to_pdf_ids == true).
-   It returns the forward-backward likelihood of the lattice. */
-BaseFloat LatticeForwardBackwardMmi(
-    const TransitionModel &trans,
-    const Lattice &lat,
-    const std::vector<int32> &num_ali,
-    bool drop_frames,
-    bool convert_to_pdf_ids,
-    bool cancel,
-    Posterior *arc_post);
-
 
 /// This function takes a CompactLattice that should only contain a single
 /// linear sequence (e.g. derived from lattice-1best), and that should have been
@@ -227,31 +254,39 @@ bool CompactLatticeToWordAlignment(const CompactLattice &clat,
                                    std::vector<int32> *begin_times,
                                    std::vector<int32> *lengths);
 
-/// This function takes a CompactLattice that should only contain a single
-/// linear sequence (e.g. derived from lattice-1best), and that should have been
-/// processed so that the arcs in the CompactLattice align correctly with the
-/// word boundaries (e.g. by lattice-align-words).  It outputs 4 vectors of the
-/// same size, which give, for each word in the lattice (in sequence), the word
-/// label, the begin time and length in frames, and the pronunciation (sequence
-/// of phones).  This is done even for zero words, corresponding to optional
-/// silences -- if you don't want them, just ignore them in the output.
-/// This function will print a warning and return false, if the lattice
-/// did not have the correct format (e.g. if it is empty or it is not
-/// linear).
-bool CompactLatticeToWordProns(
-    const TransitionModel &tmodel,
-    const CompactLattice &clat,
-    std::vector<int32> *words,
-    std::vector<int32> *begin_times,
-    std::vector<int32> *lengths,
-    std::vector<std::vector<int32> > *prons,
-    std::vector<std::vector<int32> > *phone_lengths);
-
-
 /// A form of the shortest-path/best-path algorithm that's specially coded for
 /// CompactLattice.  Requires that clat be acyclic.
 void CompactLatticeShortestPath(const CompactLattice &clat,
                                 CompactLattice *shortest_path);
+
+/// This function expands a CompactLattice to ensure high-probability paths
+/// have unique histories. Arcs with posteriors larger than epsilon get splitted.
+void ExpandCompactLattice(const CompactLattice &clat,
+                          double epsilon,
+                          CompactLattice *expand_clat);
+
+/// For each state, compute forward and backward best (viterbi) costs and its
+/// traceback states (for generating best paths later). The forward best cost
+/// for a state is the cost of the best path from the start state to the state.
+/// The traceback state of this state is its predecessor state in the best path.
+/// The backward best cost for a state is the cost of the best path from the
+/// state to a final one. Its traceback state is the successor state in the best
+/// path in the forward direction.
+/// Note: final weights of states are in backward_best_cost_and_pred.
+/// Requires the input CompactLattice clat be acyclic.
+typedef std::vector<std::pair<double,
+        CompactLatticeArc::StateId> > CostTraceType;
+void CompactLatticeBestCostsAndTracebacks(
+    const CompactLattice &clat,
+    CostTraceType *forward_best_cost_and_pred,
+    CostTraceType *backward_best_cost_and_pred);
+
+/// This function adds estimated neural language model scores of words in a
+/// minimal list of hypotheses that covers a lattice, to the graph scores on the
+/// arcs. The list of hypotheses are generated by latbin/lattice-path-cover.
+typedef unordered_map<std::pair<int32, int32>, double, PairHasher<int32> > MapT;
+void AddNnlmScoreToCompactLattice(const MapT &nnlm_scores,
+                                  CompactLattice *clat);
 
 /// This function add the word insertion penalty to graph score of each word
 /// in the compact lattice
@@ -291,7 +326,7 @@ int32 LongestSentenceLength(const CompactLattice &lat);
 /// speedup_factor; otherwise we set them to zero.  This gives the right
 /// expected probability so our corpus-level diagnostics will be about right.
 bool RescoreCompactLatticeSpeedup(
-    const TransitionModel &tmodel,
+    const TransitionInformation &tmodel,
     BaseFloat speedup_factor,
     DecodableInterface *decodable,
     CompactLattice *clat);
@@ -318,7 +353,50 @@ void ComposeCompactLatticeDeterministic(
     fst::DeterministicOnDemandFst<fst::StdArc>* det_fst,
     CompactLattice* composed_clat);
 
+/// This function computes the mapping from the pair 
+/// (frame-index, transition-id) to the pair 
+/// (sum-of-acoustic-scores, num-of-occurences) over all occurences of the 
+/// transition-id in that frame.
+/// frame-index in the lattice. 
+/// This function is useful for retaining the acoustic scores in a 
+/// non-compact lattice after a process like determinization where the 
+/// frame-level acoustic scores are typically lost.
+/// The function ReplaceAcousticScoresFromMap is used to restore the 
+/// acoustic scores computed by this function.
+///
+///   @param [in] lat   Input lattice. Expected to be top-sorted. Otherwise the 
+///                     function will crash. 
+///   @param [out] acoustic_scores  
+///                     Pointer to a map from the pair (frame-index,
+///                     transition-id) to a pair (sum-of-acoustic-scores,
+///                     num-of-occurences).
+///                     Usually the acoustic scores for a pdf-id (and hence
+///                     transition-id) on a frame will be the same for all the
+///                     occurences of the pdf-id in that frame. 
+///                     But if not, we will take the average of the acoustic
+///                     scores. Hence, we store both the sum-of-acoustic-scores
+///                     and the num-of-occurences of the transition-id in that
+///                     frame.
+void ComputeAcousticScoresMap(
+    const Lattice &lat,
+    unordered_map<std::pair<int32, int32>, std::pair<BaseFloat, int32>,
+                                        PairHasher<int32> > *acoustic_scores);
+
+/// This function restores acoustic scores computed using the function
+/// ComputeAcousticScoresMap into the lattice.
+///
+///   @param [in] acoustic_scores  
+///                      A map from the pair (frame-index, transition-id) to a
+///                      pair (sum-of-acoustic-scores, num-of-occurences) of 
+///                      the occurences of the transition-id in that frame.
+///                      See the comments for ComputeAcousticScoresMap for 
+///                      details.
+///   @param [out] lat   Pointer to the output lattice.
+void ReplaceAcousticScoresFromMap(
+    const unordered_map<std::pair<int32, int32>, std::pair<BaseFloat, int32>,
+                                        PairHasher<int32> > &acoustic_scores,
+    Lattice *lat);
+
 }  // namespace kaldi
 
 #endif  // KALDI_LAT_LATTICE_FUNCTIONS_H_
-

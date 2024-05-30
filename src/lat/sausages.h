@@ -2,6 +2,7 @@
 
 // Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
 //           2015  Guoguo Chen
+//           2019  Dogan Can
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -50,8 +51,25 @@ namespace kaldi {
 /// confidence.  Note: due to the way these sausages are made, typically there
 /// will be, between each bin representing a high-confidence word, a bin
 /// in which epsilon (no word) is the most likely word.  Inside these bins
-/// is where we put possible insertions. 
+/// is where we put possible insertions.
 
+struct MinimumBayesRiskOptions {
+  /// Boolean configuration parameter: if true, we actually update the hypothesis
+  /// to do MBR decoding (if false, our output is the MAP decoded output, but we
+  /// output the stats too (i.e. the confidences)).
+  bool decode_mbr;
+  /// Boolean configuration parameter: if true, the 1-best path will 'keep' the <eps> bins,
+  bool print_silence;
+
+  MinimumBayesRiskOptions() : decode_mbr(true), print_silence(false)
+  { }
+  void Register(OptionsItf *opts) {
+    opts->Register("decode-mbr", &decode_mbr, "If true, do Minimum Bayes Risk "
+                   "decoding (else, Maximum a Posteriori)");
+    opts->Register("print-silence", &print_silence, "Keep the inter-word '<eps>' "
+                   "bins in the 1-best output (ctm, <eps> can be a 'silence' or a 'deleted' word)");
+  }
+};
 
 /// This class does the word-level Minimum Bayes Risk computation, and gives you
 /// either the 1-best MBR output together with the expected Bayes Risk,
@@ -62,29 +80,52 @@ class MinimumBayesRisk {
   /// to have been done already.
   /// This does the whole computation.  You get the output with
   /// GetOneBest(), GetBayesRisk(), and GetSausageStats().
-  MinimumBayesRisk(const CompactLattice &clat, bool do_mbr = true); // if do_mbr == false,
-  // it will just use the MAP recognition output, but will get the MBR stats for things
-  // like confidences.
-
-  // Uses the provided <words> as <R_> instead of using the lattice best path. 
   MinimumBayesRisk(const CompactLattice &clat,
-                   const std::vector<int32> &words, bool do_mbr = false);
+                   MinimumBayesRiskOptions opts = MinimumBayesRiskOptions());
+
+  // Uses the provided <words> as <R_> instead of using the lattice best path.
+  // Note that the default value of opts.decode_mbr is true. If you provide 1-best
+  // hypothesis from MAP decoding, the output ctm from MBR decoding may be
+  // mismatched with the provided <words> (<words> would be used as the starting
+  // point of optimization).
+  MinimumBayesRisk(const CompactLattice &clat,
+                   const std::vector<int32> &words,
+                   MinimumBayesRiskOptions opts = MinimumBayesRiskOptions());
+  // Uses the provided <words> as <R_> and <times> of bins instead of using the lattice best path.
+  // Note that the default value of opts.decode_mbr is true. If you provide 1-best
+  // hypothesis from MAP decoding, the output ctm from MBR decoding may be
+  // mismatched with the provided <words> (<words> would be used as the starting
+  // point of optimization).
+  MinimumBayesRisk(const CompactLattice &clat,
+                   const std::vector<int32> &words,
+                   const std::vector<std::pair<BaseFloat,BaseFloat> > &times,
+                   MinimumBayesRiskOptions opts = MinimumBayesRiskOptions());
 
   const std::vector<int32> &GetOneBest() const { // gets one-best (with no epsilons)
     return R_;
   }
 
+  const std::vector<std::vector<std::pair<BaseFloat, BaseFloat> > > GetTimes() const {
+    return times_; // returns average (start,end) times for each word in each
+    // bin. These are raw averages without any processing, i.e. time intervals
+    // from different bins can overlap.
+  }
+
   const std::vector<std::pair<BaseFloat, BaseFloat> > GetSausageTimes() const {
-    return times_; // returns average (start,end) times for each bin (each entry
-    // of GetSausageStats()).  Note: if you want the times for the one best,
-    // you can work out the one best yourself from the sausage stats and get the times
-    // at the same time.
+    return sausage_times_; // returns average (start,end) times for each bin.
+    // This is typically the weighted average of the times in GetTimes() but can
+    // be slightly different if the times for the bins overlap, in which case
+    // the times returned by this method do not overlap unlike the times
+    // returned by GetTimes().
   }
 
   const std::vector<std::pair<BaseFloat, BaseFloat> > &GetOneBestTimes() const {
-    return one_best_times_; // returns average (start,end) times for each bin corresponding
-    // to an entry in the one-best output.  This is just the appropriate
-    // subsequence of the times in SausageTimes().
+    return one_best_times_; // returns average (start,end) times for each word
+    // corresponding to an entry in the one-best output.  This is typically the
+    // appropriate subset of the times in GetTimes() but can be slightly
+    // different if the times for the one-best words overlap, in which case
+    // the times returned by this method do not overlap unlike the times
+    // returned by GetTimes().
   }
 
   /// Outputs the confidences for the one-best transcript.
@@ -92,27 +133,36 @@ class MinimumBayesRisk {
     return one_best_confidences_;
   }
 
-  /// Returns the expected WER over this sentence (assuming
-  /// model correctness.
+  /// Returns the expected WER over this sentence (assuming model correctness).
   BaseFloat GetBayesRisk() const { return L_; }
-  
+
   const std::vector<std::vector<std::pair<int32, BaseFloat> > > &GetSausageStats() const {
     return gamma_;
-  }  
+  }
 
  private:
   void PrepareLatticeAndInitStats(CompactLattice *clat);
 
   /// Minimum-Bayes-Risk Decode. Top-level algorithm.  Figure 6 of the paper.
-  void MbrDecode(); 
+  void MbrDecode();
 
-  /// The basic edit-distance function l(a,b), as in the paper.
-  inline double l(int32 a, int32 b) { return (a == b ? 0.0 : 1.0); }
-  
+  /// Without the 'penalize' argument this gives us the basic edit-distance
+  /// function l(a,b), as in the paper.
+  /// With the 'penalize' argument it can be interpreted as the edit distance
+  /// plus the 'delta' from the paper, except that we make a kind of conceptual
+  /// bug-fix and only apply the delta if the edit-distance was not already
+  /// zero.  This bug-fix was necessary in order to force all the stats to show
+  /// up, that should show up, and applying the bug-fix makes the sausage stats
+  /// significantly less sparse.
+  inline double l(int32 a, int32 b, bool penalize = false) {
+    if (a == b) return 0.0;
+    else return (penalize ? 1.0 + delta() : 1.0);
+  }
+
   /// returns r_q, in one-based indexing, as in the paper.
   inline int32 r(int32 q) { return R_[q-1]; }
-  
-  
+
+
   /// Figure 4 of the paper; called from AccStats (Fig. 5)
   double EditDistance(int32 N, int32 Q,
                       Vector<double> &alpha,
@@ -120,17 +170,23 @@ class MinimumBayesRisk {
                       Vector<double> &alpha_dash_arc);
 
   /// Figure 5 of the paper.  Outputs to gamma_ and L_.
-  void AccStats(); 
+  void AccStats();
 
   /// Removes epsilons (symbol 0) from a vector
-  static void RemoveEps(std::vector<int32> *vec); 
+  static void RemoveEps(std::vector<int32> *vec);
 
   // Ensures that between each word in "vec" and at the beginning and end, is
   // epsilon (0).  (But if no words in vec, just one epsilon)
-  static void NormalizeEps(std::vector<int32> *vec);   
+  static void NormalizeEps(std::vector<int32> *vec);
 
-  static inline BaseFloat delta() { return 1.0e-05; } // A constant
-  // used in the algorithm.
+  // delta() is a constant used in the algorithm, which penalizes
+  // the use of certain epsilon transitions in the edit-distance which would cause
+  // words not to show up in the accumulated edit-distance statistics.
+  // There has been a conceptual bug-fix versus the way it was presented in
+  // the paper: we now add delta only if the edit-distance was not already
+  // zero.
+  static inline BaseFloat delta() { return 1.0e-05; }
+
 
   /// Function used to increment map.
   static inline void AddToMap(int32 i, double d, std::map<int32, double> *gamma) {
@@ -140,7 +196,7 @@ class MinimumBayesRisk {
     if (!ret.second) // not inserted, so add to contents.
       ret.first->second += d;
   }
-    
+
   struct Arc {
     int32 word;
     int32 start_node;
@@ -148,11 +204,9 @@ class MinimumBayesRisk {
     BaseFloat loglike;
   };
 
-  /// Boolean configuration parameter: if true, we actually update the hypothesis
-  /// to do MBR decoding (if false, our output is the MAP decoded output, but we
-  /// output the stats too).
-  bool do_mbr_;
-  
+  MinimumBayesRiskOptions opts_;
+
+
   /// Arcs in the topologically sorted acceptor form of the word-level lattice,
   /// with one final-state.  Contains (word-symbol, log-likelihood on arc ==
   /// negated cost).  Indexed from zero.
@@ -164,35 +218,40 @@ class MinimumBayesRisk {
 
   std::vector<int32> state_times_; // time of each state in the word lattice,
   // indexed from 1 (same index as into pre_)
-  
+
   std::vector<int32> R_; // current 1-best word sequence, normalized to have
   // epsilons between each word and at the beginning and end.  R in paper...
   // caution: indexed from zero, not from 1 as in paper.
 
   double L_; // current averaged edit-distance between lattice and R_.
   // \hat{L} in paper.
-  
+
   std::vector<std::vector<std::pair<int32, BaseFloat> > > gamma_;
   // The stats we accumulate; these are pairs of (posterior, word-id), and note
   // that word-id may be epsilon.  Caution: indexed from zero, not from 1 as in
   // paper.  We sort in reverse order on the second member (posterior), so more
   // likely word is first.
 
-  std::vector<std::pair<BaseFloat, BaseFloat> > times_;
+  std::vector<std::vector<std::pair<BaseFloat, BaseFloat> > > times_;
+  // The average start and end times for words in each confusion-network bin.
+  // This is like an average over arcs, of the tau_b and tau_e quantities in
+  // Appendix C of the paper.  Indexed from zero, like gamma_ and R_.
+
+  std::vector<std::pair<BaseFloat, BaseFloat> > sausage_times_;
   // The average start and end times for each confusion-network bin.  This
   // is like an average over words, of the tau_b and tau_e quantities in
   // Appendix C of the paper.  Indexed from zero, like gamma_ and R_.
 
   std::vector<std::pair<BaseFloat, BaseFloat> > one_best_times_;
-  // one_best_times_ is a subsequence of times_, corresponding to
-  // (start,end) times of words in the one best output.  Actually these
-  // times are averages over the bin that each word came from.
+  // The average start and end times for words in the one best output.  This
+  // is like an average over the arcs, of the tau_b and tau_e quantities in
+  // Appendix C of the paper. Indexed from zero, like gamma_ and R_.
 
   std::vector<BaseFloat> one_best_confidences_;
   // vector of confidences for the 1-best output (which could be
-  // the MAP output if do_mbr_ == false, or the MBR output otherwise).
+  // the MAP output if opts_.decode_mbr == false, or the MBR output otherwise).
   // Indexed by the same index as one_best_times_.
-  
+
   struct GammaCompare{
     // should be like operator <.  But we want reverse order
     // on the 2nd element (posterior), so it'll be like operator

@@ -28,7 +28,6 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "fstext/fstext-lib.h"
-#include "hmm/transition-model.h"
 #include "lat/kaldi-lattice.h"
 
 namespace fst {
@@ -40,6 +39,7 @@ namespace fst {
 /// function will not combine as many states as it could, but it won't crash.
 /// Returns true on success, and false if it failed due to topological sorting
 /// failing.
+/// The output will be topologically sorted.
 template<class Weight, class IntType>
 bool MinimizeCompactLattice(
     MutableFst<ArcTpl<CompactLatticeWeightTpl<Weight, IntType> > > *clat,

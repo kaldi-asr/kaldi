@@ -25,6 +25,7 @@
 
 #include <algorithm>
 #include <string>
+#include <thread>
 #include <utility>
 #include <vector>
 #include <errno.h>
@@ -32,26 +33,13 @@
 #include "util/kaldi-holder.h"
 #include "util/text-utils.h"
 #include "util/stl-utils.h"  // for StringHasher.
-#include "thread/kaldi-thread.h"
-#include "thread/kaldi-semaphore.h"
+#include "util/kaldi-semaphore.h"
 
 
 namespace kaldi {
 
 /// \addtogroup table_impl_types
 /// @{
-
-// In SequentialTableReaderScriptImpl and RandomAccessTableReaderScriptImpl, for
-// cases where the scp contained 'range specifiers' (things in square brackets
-// identifying parts of objects like matrices), use this function to separate
-// the input string 'line' (e.g "1.ark:100[1:2,2:10]") into the data_rxfilename
-// (e.g. "1.ark:100") and the optional range specifier which will be everything
-// inside the square brackets.  It returns true if everything seems OK, and
-// false if for example the string contained more than one '['.  This function
-// should only be called if 'line' ends in '[', otherwise it is an error.
-bool ExtractRangeSpecifier(const std::string &line,
-                           std::string *data_rxfilename,
-                           std::string *range);
 
 template<class Holder> class SequentialTableReaderImplBase {
  public:
@@ -60,7 +48,7 @@ template<class Holder> class SequentialTableReaderImplBase {
   // called on a just-allocated object.
   virtual bool Open(const std::string &rxfilename) = 0;
   // Done() should be called on a successfully opened, not-closed object.
-  // only throws if called a the wrong time (i.e. code error).
+  // only throws if called at the wrong time (i.e. code error).
   virtual bool Done() const = 0;
   // Returns true if the reader is open [i.e. Open() succeeded and
   // the user has not called Close()]
@@ -72,7 +60,7 @@ template<class Holder> class SequentialTableReaderImplBase {
   // Done() returned false.  It throws if the value could not be read.  [However
   // if you use the ,p modifier it will never throw, unless you call it at the
   // wrong time, i.e. unless there is a code error.]
-  virtual const T &Value() = 0;
+  virtual T &Value() = 0;
   virtual void FreeCurrent() = 0;
   // move to the next object.  This won't throw unless called wrongly (e.g. on
   // non-open archive.]
@@ -171,7 +159,7 @@ template<class Holder>  class SequentialTableReaderScriptImpl:
     return key_;
   }
 
-  const T &Value() {
+  T &Value() {
     if (!EnsureObjectLoaded())
       KALDI_ERR << "Failed to load object from "
                 << PrintableRxfilename(data_rxfilename_)
@@ -624,7 +612,7 @@ template<class Holder>  class SequentialTableReaderArchiveImpl:
     return key_;
   }
 
-  const T &Value() {
+  T &Value() {
     switch (state_) {
       case kHaveObject:
         break;  // only valid case.
@@ -727,18 +715,8 @@ class SequentialTableReaderBackgroundImpl:
     KALDI_ASSERT(base_reader_ != NULL &&
                  base_reader_->IsOpen());  // or code error.
     {
-      pthread_attr_t pthread_attr;
-      pthread_attr_init(&pthread_attr);
-      int32 ret = pthread_create(
-          &thread_,
-          &pthread_attr,
-          SequentialTableReaderBackgroundImpl<Holder>::run,
-          static_cast<void*>(this));
-      if (ret != 0) {
-        const char *c = strerror(ret);
-        KALDI_WARN << "Error creating thread, errno was: " << c;
-        return false;
-      }
+      thread_ = std::thread(SequentialTableReaderBackgroundImpl<Holder>::run,
+                            this);
     }
 
     if (!base_reader_->Done())
@@ -787,11 +765,8 @@ class SequentialTableReaderBackgroundImpl:
       return;
     }
   }
-  static void* run(void *object_in) {
-    SequentialTableReaderBackgroundImpl<Holder> *object =
-        reinterpret_cast<SequentialTableReaderBackgroundImpl<Holder>*>(object_in);
+  static void run(SequentialTableReaderBackgroundImpl<Holder> *object) {
     object->RunInBackground();
-    return NULL;
   }
   virtual bool Done() const {
     return key_.empty();
@@ -801,7 +776,7 @@ class SequentialTableReaderBackgroundImpl:
       KALDI_ERR << "Calling Key() at the wrong time.";
     return key_;
   }
-  virtual const T &Value() {
+  virtual T &Value() {
     if (key_.empty())
       KALDI_ERR << "Calling Value() at the wrong time.";
     return holder_.Value();
@@ -839,7 +814,7 @@ class SequentialTableReaderBackgroundImpl:
   // note: we can be sure that Close() won't be called twice, as the TableReader
   // object will delete this object after calling Close.
   virtual bool Close() {
-    KALDI_ASSERT(base_reader_ != NULL && KALDI_PTHREAD_PTR(thread_) != 0);
+    KALDI_ASSERT(base_reader_ != NULL && thread_.joinable());
     // wait until the producer thread is idle.
     consumer_sem_.Wait();
     bool ans = true;
@@ -854,10 +829,7 @@ class SequentialTableReaderBackgroundImpl:
     base_reader_ = NULL;
     producer_sem_.Signal();
 
-    if (pthread_join(thread_, NULL) != 0) {
-      KALDI_WARN << "Error rejoining thread.";
-      return false;
-    }
+    thread_.join();
     return ans;
   }
   ~SequentialTableReaderBackgroundImpl() {
@@ -876,7 +848,7 @@ class SequentialTableReaderBackgroundImpl:
   // that the producer (background thread) waits on.
   Semaphore consumer_sem_;
   Semaphore producer_sem_;
-  pthread_t thread_;
+  std::thread thread_;
   SequentialTableReaderImplBase<Holder> *base_reader_;
 
 };
@@ -958,7 +930,7 @@ void SequentialTableReader<Holder>::FreeCurrent() {
 
 
 template<class Holder>
-const typename SequentialTableReader<Holder>::T &
+typename SequentialTableReader<Holder>::T &
 SequentialTableReader<Holder>::Value() {
   CheckImpl();
   return impl_->Value();  // This may throw (if EnsureObjectLoaded() returned false you
@@ -1180,7 +1152,7 @@ class TableWriterScriptImpl: public TableWriterImplBase<Holder> {
                                            &script_rxfilename_,
                                            &opts_);
     KALDI_ASSERT(ws == kScriptWspecifier);  // or wrongly called.
-    KALDI_ASSERT(script_.empty());  // no way it could be nonempty at this poin.
+    KALDI_ASSERT(script_.empty());  // no way it could be nonempty at this point.
 
     if (!ReadScriptFile(script_rxfilename_,
                          true,  // print any warnings
@@ -1494,8 +1466,8 @@ class TableWriterBothImpl: public TableWriterImplBase<Holder> {
 template<class Holder>
 TableWriter<Holder>::TableWriter(const std::string &wspecifier): impl_(NULL) {
   if (wspecifier != "" && !Open(wspecifier))
-    KALDI_ERR << "Failed to open for writing: " << wspecifier
-              << ": " << strerror(errno);
+    KALDI_ERR << "Failed to open table for writing with wspecifier: " << wspecifier
+              << ": errno (in case it's relevant) is: " << strerror(errno);
 }
 
 template<class Holder>
@@ -1707,8 +1679,8 @@ class RandomAccessTableReaderScriptImpl:
   virtual const T&  Value(const std::string &key) {
     if (!HasKeyInternal(key, true)) // true == preload.
       KALDI_ERR << "Could not get item for key " << key
-                << ", rspecifier is " << rspecifier_ << "[to ignore this, "
-                << "add the p, (permissive) option to the rspecifier.";
+                << ", rspecifier is " << rspecifier_ << " [to ignore this, "
+                 << "add the p, (permissive) option to the rspecifier.";
     KALDI_ASSERT(key_ == key);
     if (state_ == kHaveObject) {
       return holder_.Value();
@@ -2105,15 +2077,13 @@ class RandomAccessTableReaderDSortedArchiveImpl:
     return FindKeyInternal(key);
   }
   virtual const T & Value(const std::string &key) {
-    if (FindKeyInternal(key)) {
-      KALDI_ASSERT(this->state_ == kHaveObject && key == this->cur_key_
-                   && holder_ != NULL);
-      return this->holder_->Value();
-    } else {
+    if (!FindKeyInternal(key)) {
       KALDI_ERR << "Value() called but no such key " << key
                 << " in archive " << PrintableRxfilename(archive_rxfilename_);
-      return *(const T*)NULL;  // keep compiler happy.
     }
+    KALDI_ASSERT(this->state_ == kHaveObject && key == this->cur_key_
+                 && holder_ != NULL);
+    return this->holder_->Value();
   }
 
   virtual ~RandomAccessTableReaderDSortedArchiveImpl() {
@@ -2242,20 +2212,18 @@ class RandomAccessTableReaderSortedArchiveImpl:
   virtual const T & Value(const std::string &key) {
     HandlePendingDelete();
     size_t index;
-    if (FindKeyInternal(key, &index)) {
-      if (seen_pairs_[index].second == NULL) {  // can happen if opts.once_
-        KALDI_ERR << "Error: Value() called more than once for key "
-                  << key << " and once (o) option specified: rspecifier is "
-                  << rspecifier_;
-      }
-      if (opts_.once)
-        pending_delete_ = index;  // mark this index to be deleted on next call.
-      return seen_pairs_[index].second->Value();
-    } else {
+    if (!FindKeyInternal(key, &index)) {
       KALDI_ERR << "Value() called but no such key " << key
                 << " in archive " << PrintableRxfilename(archive_rxfilename_);
-      return *(const T*)NULL;  // keep compiler happy.
     }
+    if (seen_pairs_[index].second == NULL) {  // can happen if opts.once_
+      KALDI_ERR << "Error: Value() called more than once for key "
+                << key << " and once (o) option specified: rspecifier is "
+                << rspecifier_;
+    }
+    if (opts_.once)
+      pending_delete_ = index;  // mark this index to be deleted on next call.
+    return seen_pairs_[index].second->Value();
   }
   virtual ~RandomAccessTableReaderSortedArchiveImpl() {
     if (this->IsOpen())
@@ -2430,12 +2398,10 @@ class RandomAccessTableReaderUnsortedArchiveImpl:
   virtual const T & Value(const std::string &key) {
     HandlePendingDelete();
     const T *ans_ptr = NULL;
-    if (FindKeyInternal(key, &ans_ptr))
-      return *ans_ptr;
-    else
+    if (!FindKeyInternal(key, &ans_ptr))
       KALDI_ERR << "Value() called but no such key " << key
                 << " in archive " << PrintableRxfilename(archive_rxfilename_);
-    return *(const T*)NULL;  // keep compiler happy.
+    return *ans_ptr;
   }
   virtual ~RandomAccessTableReaderUnsortedArchiveImpl() {
     if (this->IsOpen())

@@ -48,7 +48,7 @@ KaldiRnnlmWrapper::KaldiRnnlmWrapper(
     label_to_word_[i] = word_symbols->Find(i);
     if (label_to_word_[i] == "") {
       KALDI_ERR << "Could not find word for integer " << i << "in the word "
-          << "symbol table, mismatched symbol table or you have discoutinuous "
+          << "symbol table, mismatched symbol table or you have discontinuous "
           << "integers in your symbol table?";
     }
   }

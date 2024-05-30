@@ -22,6 +22,10 @@
 #define KALDI_CHAIN_CHAIN_KERNELS_ANSI_H_
 #include "chain/chain-datastruct.h"
 
+#ifdef __IS_HIP_COMPILE__
+#include <hip/hip_runtime_api.h>
+#endif
+
 #if HAVE_CUDA == 1
 extern "C" {
 
@@ -47,6 +51,12 @@ extern "C" {
                               int32_cuda prob_stride,
                               const BaseFloat *prev_alpha,
                               BaseFloat *this_alpha);
+
+  void cuda_penalize_out_of_range(dim3 Gr, dim3 Bl, BaseFloat limit,
+                                  BaseFloat scale, const BaseFloat *in_data,
+                                  MatrixDim dim, int out_stride,
+                                  BaseFloat *out_deriv);
+
 
 } // extern "C"
 

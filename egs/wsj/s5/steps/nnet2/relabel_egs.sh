@@ -1,14 +1,14 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2014  Vimal Manohar. Apache 2.0.
-# This script, which will generally be called during the neural-net training 
+# This script, which will generally be called during the neural-net training
 # relabels existing examples with better labels obtained by realigning the data
 # with the current nnet model
 
 # Begin configuration section
 cmd=run.pl
 stage=0
-extra_egs=        # Names of additional egs files that need to relabelled 
+extra_egs=        # Names of additional egs files that need to relabelled
                   # other than egs.*.*.ark, combine.egs, train_diagnostic.egs,
                   # valid_diagnostic.egs
 iter=final
@@ -53,7 +53,7 @@ echo $num_jobs_nnet > $dir/num_jobs_nnet
 echo $iters_per_epoch > $dir/iters_per_epoch
 echo $samples_per_iter_real > $dir/samples_per_iter
 
-alignments=`eval echo $alidir/ali.{$(seq -s ',' $num_jobs_align)}.gz`
+alignments=$(for n in $(seq $num_jobs_align); do echo -n "$alidir/ali.$n.gz "; done)
 
 if [ $stage -le 0 ]; then
   egs_in=

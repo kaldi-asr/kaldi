@@ -1,9 +1,9 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
 # Apache 2.0
 
-# Computes training alignments using a model with delta or
-# LDA+MLLT features.
+# Compute training alignments using a model with delta or
+# delta + delta-delta features.
 
 # If you supply the "--use-graphs true" option, it will use the training
 # graphs from the source directory (where the model is).  In this
@@ -61,6 +61,9 @@ cp $srcdir/delta_opts $dir 2>/dev/null
 
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
 
+utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt || exit 1;
+cp $lang/phones.txt $dir || exit 1;
+
 cp $srcdir/{tree,final.mdl} $dir || exit 1;
 cp $srcdir/final.occs $dir;
 
@@ -93,7 +96,7 @@ else
   # We could just use gmm-align in the next line, but it's less efficient as it compiles the
   # training graphs one by one.
   $cmd JOB=1:$nj $dir/log/align.JOB.log \
-    compile-train-graphs $dir/tree $dir/final.mdl  $lang/L.fst "$tra" ark:- \| \
+    compile-train-graphs --read-disambig-syms=$lang/phones/disambig.int $dir/tree $dir/final.mdl  $lang/L.fst "$tra" ark:- \| \
     gmm-align-compiled $scale_opts --beam=$beam --retry-beam=$retry_beam --careful=$careful "$mdl" ark:- \
       "$feats" "ark,t:|gzip -c >$dir/ali.JOB.gz" || exit 1;
 fi

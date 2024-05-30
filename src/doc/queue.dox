@@ -222,6 +222,9 @@ effect is to produce no extra command line options. We previously had it
 configured with a line: <tt>"option gpu=0 -q all.q"</tt>, so there was a time when the line
 <tt>"default gpu=0"</tt> used to make a difference.
 
+(Note: most of the time if you are configuring GridEngine yourself you will want a queue.conf
+that is the same as the one above missing the "-q g.q" option).
+
 The mapping from what the config-file specifies to what appears on the command-line
 of qsub sometimes has to be tweaked slightly in the perl code: for instance, we made it
 so that the <tt>--max-jobs-run</tt> option is ignored for non-array jobs.
@@ -242,7 +245,7 @@ option allow_k20=true
 option allow_k20=false -l 'hostname=!g01*&!g02*&!b06*'
 \endverbatim
 We then set the relevant <tt>$cmd</tt> variable to the value
-<tt>queue.pl -config conf/no_k20.conf --allow-k20 false</tt>.
+<tt>queue.pl --config conf/no_k20.conf --allow-k20 false</tt>.
 Note that a simpler way to have done this would have been
 to simply edit the <tt>command</tt> line in the config file to read
 \verbatim
@@ -438,21 +441,23 @@ change <tt>root</tt> to an email address where you want to receive
 notifications if things go wrong.  Be advised that due to anti-spam measures,
 sending emails from the cloud is painful from EC2 and close to impossible
 from Google's cloud offering, so it may be best just to leave this field the
-way it is and make do without email notifications.  You could also edit the file so that it says
+way it is and make do without email notifications.
+You may also want to run <tt>qconf -msconf</tt> and edit it so that
+the schedule_interval is:
 \verbatim
-                      flush_time=00:00:10
+schedule_interval                 0:0:5
 \endverbatim (the default is <tt>00:00:15</tt>), which will
 give a slightly faster turnaround time for submitting jobs.
 
 GridEngine has the concept of "resources" which can be requested or specified by
 your jobs, and these can be viewed using <tt>qconf -sc</tt>.  Modify them
 using <tt>qconf -mc</tt>.  Modify the <tt>mem_free</tt> line to change the default
-memory requirement from 0 to 1G, i.e.:
+memory requirement from 0 to 1G, and to make it consumable, i.e.:
 \verbatim
 #name               shortcut    type        relop requestable consumable default  urgency
 #------------------------------------------------------------------------------------------
 <snip>
-mem_free            mf         MEMORY      <=    YES         NO         1G        0
+mem_free            mf         MEMORY      <=    YES         YES         1G        0
 \endverbatim
  and also add the following two new lines; it doesn't matter where in the file you add them.
 \verbatim
@@ -485,6 +490,13 @@ ram_free            ram_free    MEMORY      <=    YES         JOB        1G     
  <tt>ram_free</tt> means that the <tt>ram_free</tt> resource is specified per job rather than
  per thread; this is more convenient for Kaldi scripts.
 
+ We are not saying anything here about the queue "g.q" which is required for GPUs
+ in the default queue.pl behavior.  That was introduced at Hopkins in order to avoid
+ the situation where GPUs are blocked because all CPU slots are used.  It's really not
+ necessary in general; the easiest way to get things working without it is to create a file
+ <tt>conf/queue.conf</tt> that's the same as the default one (search above) except
+ without the "-q g.q" option.
+
  Next you have to have to add the parallel environment called <tt>smp</tt> to GridEngine.
  This is a kind of tradition in GridEngine setups, but it's not built-in.  It's a
  simple parallel environment where GridEngine doesn't really do anything, it just reserves you
@@ -502,6 +514,7 @@ slots              9999
 pe_list               make smp
 \endverbatim
  This enables the <tt>smp</tt> parallelization method in the queue <tt>all.q</tt>.
+
 
  \subsection parallelization_gridengine_configuring_advanced Configuring GridEngine (advanced)
 
@@ -872,4 +885,3 @@ their home directories.  This is the most frequent cause of grid-wide problems.
 */
 
 }
-

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2015   David Snyder
 # Apache 2.0.
 #
@@ -12,7 +12,7 @@ plda_ivec_dir=${4%/}
 enroll_ivec_dir=${5%/}
 test_ivec_dir=${6%/}
 
-if [ ! -f ${test_data_dir}/trials ]; then 
+if [ ! -f ${test_data_dir}/trials ]; then
   echo "${test_data_dir} needs a trial file."
   exit;
 fi
@@ -81,8 +81,14 @@ utils/filter_scp.pl ${plda_data_dir}_female/spk2utt \
   ${plda_ivec_dir}/num_utts.ark > ${plda_ivec_dir}_female/num_utts.ark
 
 # Compute gender independent and dependent i-vector means.
-ivector-mean scp:${plda_ivec_dir}/ivector.scp ${plda_ivec_dir}/mean.vec
-ivector-mean scp:${plda_ivec_dir}_male/ivector.scp ${plda_ivec_dir}_male/mean.vec
-ivector-mean scp:${plda_ivec_dir}_female/ivector.scp ${plda_ivec_dir}_female/mean.vec
+run.pl ${plda_ivec_dir}/log/compute_mean.log \
+  ivector-normalize-length scp:${plda_ivec_dir}/ivector.scp \
+  ark:- \| ivector-mean ark:- ${plda_ivec_dir}/mean.vec || exit 1;
+run.pl ${plda_ivec_dir}_male/log/compute_mean.log \
+  ivector-normalize-length scp:${plda_ivec_dir}_male/ivector.scp \
+  ark:- \| ivector-mean ark:- ${plda_ivec_dir}_male/mean.vec || exit 1;
+run.pl ${plda_ivec_dir}_female/log/compute_mean.log \
+  ivector-normalize-length scp:${plda_ivec_dir}_female/ivector.scp \
+  ark:- \| ivector-mean ark:- ${plda_ivec_dir}_female/mean.vec || exit 1;
 
 rm -rf local/.tmp

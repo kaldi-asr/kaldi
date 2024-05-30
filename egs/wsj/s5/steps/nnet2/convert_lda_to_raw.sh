@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2014    Johns Hopkins University (Author: Daniel Povey).
 # Apache 2.0.
@@ -44,6 +44,7 @@ for f in $src/final.mdl $src/final.mat $src/splice_opts $src/cmvn_opts; do
   [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1
 done
 
+cp $src/phones.txt $dir 2>/dev/null
 
 mkdir -p $dir/log
 

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # this script contains some common (shared) parts of the run_nnet*.sh scripts.
 # speed perturbation is done for the training data
@@ -10,7 +10,7 @@ nj=10
 use_ihm_ali=false
 use_sat_alignments=true
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 

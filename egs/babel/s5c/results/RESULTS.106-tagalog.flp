@@ -1,0 +1,34 @@
+%WER  56.7  |  25332  63009  |  50.6  38.5  10.9  7.3  56.7  32.1  |  -1.361  |  exp/tri5/decode_dev10h.pem/score_12/dev10h.pem.ctm.sys
+%WER  48.4  |  25332  63009  |  57.4  32.7  9.9   5.8  48.4  30.3  |  -0.891  |  exp/sgmm5_mmi_b0.1/decode_fmllr_dev10h.pem_it4/score_11/dev10h.pem.ctm.sys
+%WER  46.9  |  25332  63009  |  57.4  30.5  12.1  4.3  46.9  30.3  |  -0.517  |  exp/tri6_nnet/decode_dev10h.pem/score_13/dev10h.pem.ctm.sys
+%WER  46.7  |  25332  63009  |  58.2  31.1  10.7  4.9  46.7  29.9  |  -0.737  |  exp_bnf/sgmm7_mmi_b0.1/decode_fmllr_dev10h.pem_it3/score_18/dev10h.pem.ctm.sys
+%WER  47.7  |  25332  63009  |  56.1  30.5  13.4  3.9  47.7  30.2  |  -0.548  |  exp_bnf/tri7_nnet/decode_dev10h.pem/score_15/dev10h.pem.ctm.sys
+%WER 56.7 | 25332 63009 | 50.6 38.5 10.9 7.3 56.7 32.1 | -1.361 | exp/tri5/decode_dev10h.pem/score_12/dev10h.pem.ctm.sys
+%WER 48.4 | 25332 63009 | 57.4 32.7 9.9 5.8 48.4 30.3 | -0.891 | exp/sgmm5_mmi_b0.1/decode_fmllr_dev10h.pem_it4/score_11/dev10h.pem.ctm.sys
+%WER 46.9 | 25332 63009 | 57.4 30.5 12.1 4.3 46.9 30.3 | -0.517 | exp/tri6_nnet/decode_dev10h.pem/score_13/dev10h.pem.ctm.sys
+%WER 46.7 | 25332 63009 | 58.2 31.1 10.7 4.9 46.7 29.9 | -0.737 | exp_bnf/sgmm7_mmi_b0.1/decode_fmllr_dev10h.pem_it3/score_18/dev10h.pem.ctm.sys
+%WER 47.7 | 25332 63009 | 56.1 30.5 13.4 3.9 47.7 30.2 | -0.548 | exp_bnf/tri7_nnet/decode_dev10h.pem/score_15/dev10h.pem.ctm.sys
+exp/sgmm5_mmi_b0.1/decode_fmllr_dev10h.pem_it3/kws_12/metrics.txt:MTWV      =  0.4452,  THRESHOLD  =  0.577
+exp/tri6_nnet/decode_dev10h.pem/kws_11/metrics.txt:MTWV                     =  0.4778,  THRESHOLD  =  0.696000000000001
+exp_bnf/sgmm7_mmi_b0.1/decode_fmllr_dev10h.pem_it3/kws_15/metrics.txt:MTWV  =  0.4448,  THRESHOLD  =  0.770000000000001
+exp_bnf/tri7_nnet/decode_dev10h.pem/kws_15/metrics.txt:MTWV                 =  0.4450,  THRESHOLD  =  0.730000000000001
+exp/sgmm5_mmi_b0.1/decode_fmllr_dev10h.pem_it3/dev_kws_12/metrics.txt:MTWV      =  0.4452,  THRESHOLD  =  0.577
+exp/tri6_nnet/decode_dev10h.pem/dev_kws_11/metrics.txt:MTWV                     =  0.4778,  THRESHOLD  =  0.696000000000001
+exp_bnf/sgmm7_mmi_b0.1/decode_fmllr_dev10h.pem_it3/dev_kws_15/metrics.txt:MTWV  =  0.4448,  THRESHOLD  =  0.770000000000001
+exp_bnf/tri7_nnet/decode_dev10h.pem/dev_kws_15/metrics.txt:MTWV                 =  0.4450,  THRESHOLD  =  0.730000000000001
+exp/sgmm5_mmi_b0.1/decode_fmllr_dev10h.pem_it1/dev_oov_kws_8/metrics.txt:MTWV       =  0.0173,  THRESHOLD  =  0.809000000000001
+exp/tri6_nnet/decode_dev10h.pem/dev_oov_kws_10/metrics.txt:MTWV                     =  0.0310,  THRESHOLD  =  0.621
+exp_bnf/sgmm7_mmi_b0.1/decode_fmllr_dev10h.pem_it2/dev_oov_kws_21/metrics.txt:MTWV  =  0.0164,  THRESHOLD  =  0.309
+exp_bnf/tri7_nnet/decode_dev10h.pem/dev_oov_kws_20/metrics.txt:MTWV                 =  0.0183,  THRESHOLD  =  0.851000000000001
+exp/sgmm5_mmi_b0.1/decode_fmllr_dev10h.pem_it4/eval_kws_9/metrics.txt:MTWV       =  0.5117,  THRESHOLD  =  0.451
+exp/tri6_nnet/decode_dev10h.pem/eval_kws_10/metrics.txt:MTWV                     =  0.5408,  THRESHOLD  =  0.504
+exp_bnf/sgmm7_mmi_b0.1/decode_fmllr_dev10h.pem_it4/eval_kws_17/metrics.txt:MTWV  =  0.5221,  THRESHOLD  =  0.556
+exp_bnf/tri7_nnet/decode_dev10h.pem/eval_kws_15/metrics.txt:MTWV                 =  0.5077,  THRESHOLD  =  0.648
+exp/sgmm5_mmi_b0.1/decode_fmllr_dev10h.pem_it2/eval_oov_kws_10/metrics.txt:MTWV      =  0.0038,  THRESHOLD  =  0.900000000000001
+exp/tri6_nnet/decode_dev10h.pem/eval_oov_kws_10/metrics.txt:MTWV                     =  0.0069,  THRESHOLD  =  0.659
+exp_bnf/sgmm7_mmi_b0.1/decode_fmllr_dev10h.pem_it1/eval_oov_kws_17/metrics.txt:MTWV  =  0.0047,  THRESHOLD  =  0.889000000000001
+exp_bnf/tri7_nnet/decode_dev10h.pem/eval_oov_kws_15/metrics.txt:MTWV                 =  0.0052,  THRESHOLD  =  0.522
+exp/sgmm5_mmi_b0.1/decode_fmllr_dev10h.pem_it1/oov_kws_8/metrics.txt:MTWV       =  0.0173,  THRESHOLD  =  0.809000000000001
+exp/tri6_nnet/decode_dev10h.pem/oov_kws_10/metrics.txt:MTWV                     =  0.0310,  THRESHOLD  =  0.621
+exp_bnf/sgmm7_mmi_b0.1/decode_fmllr_dev10h.pem_it2/oov_kws_21/metrics.txt:MTWV  =  0.0164,  THRESHOLD  =  0.309
+exp_bnf/tri7_nnet/decode_dev10h.pem/oov_kws_20/metrics.txt:MTWV                 =  0.0183,  THRESHOLD  =  0.851000000000001

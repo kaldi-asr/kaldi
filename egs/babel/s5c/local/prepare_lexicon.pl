@@ -27,10 +27,10 @@ use Data::Dumper;
 #       㓤	k_1 i:_1 t_1
 #       兄妹	h_1 i:_1 N_1 m_2 u:j_2
 #       兄妹	h_1 i:_1 N_1 m_6 u:j_6
-#       
+#
 #
 # Write only one pronunciation per line
-# Transfer any tags, prefixed by underscores, to phones in the syllable 
+# Transfer any tags, prefixed by underscores, to phones in the syllable
 # Remove the syllable boundary markers, given by periods or pound signs
 #
 # NOTE: The Romainzation is present only for some languages.  See -r option.
@@ -46,7 +46,7 @@ use Data::Dumper;
        $icu_transform = "";
        $phonemap="";
 #
-#   -  nonsilence_phones.txt: tagged phones from the new lexicon 
+#   -  nonsilence_phones.txt: tagged phones from the new lexicon
 #
 #   -  optional_silence.txt: phones used to model silence in acoustic training
 #
@@ -61,12 +61,12 @@ use Data::Dumper;
 #
 ###############################################################################
 
-GetOptions("add=s" => \$nsWordsFile,  
-           "oov=s" => \$OOV_symbol, 
-           "romanized!" => \$romanized, 
-           "sil=s" => \$sil, 
+GetOptions("add=s" => \$nsWordsFile,
+           "oov=s" => \$OOV_symbol,
+           "romanized!" => \$romanized,
+           "sil=s" => \$sil,
            "icu-transform=s" => \$icu_transform,
-           "phonemap=s" => \$phonemap 
+           "phonemap=s" => \$phonemap
            );
 
 if ($#ARGV == 1) {
@@ -165,7 +165,7 @@ while ($line=<INLEX>) {
                 $syllable =~ s:\s+: :g;
                 @original_phones = split(" ", $syllable);
                 @substituted_original_phones=();
-                
+
                 foreach $phone (@original_phones) {
                   if (defined $phonemap_hash{$phone} ) {
                     #print "Sub: $phone => " . join (' ', @{$phonemap_hash{$phone}}) . "\n";
@@ -205,7 +205,7 @@ while ($line=<INLEX>) {
                         # It is a phone
                         if ( $substituted_phones{phone} ) {
                           die "ERROR, the $new_phone and $phone are both existing phones, so we cannot do automatic map!";
-                        }                        
+                        }
                         $is_original_phone{$phone} = "$phone";
                         $new_phones .= " $phone";
                     }
@@ -277,7 +277,7 @@ close(OUTLEX)
     && print STDERR ("$0: Wrote $numProns pronunciations to $outLex\n");
 
 ###############################################################################
-#   -  nonsilence_phones.txt: tagged phones from the new lexicon, 1 phone/line 
+#   -  nonsilence_phones.txt: tagged phones from the new lexicon, 1 phone/line
 ###############################################################################
 
 foreach $phone (sort keys %is_new_phone) {

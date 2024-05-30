@@ -1,0 +1,35 @@
+"2: "9 "A: "E "E*U "E: "I "O "S "U "Y "a "a*U "b "d "d` "e "e: "f "g "h "i: "j "k "l "l` "m "n "n` "o: "p "r "s "s` "s' "t "t` "u0 "u: "v "y: "}:
+%2: %9 %A: %E %E: %I %O %S %U %Y %a %a*U %b %d %d` %e %e: %f %g %h %i: %j %k %l %l` %m %n %n` %o: %p %r %s %s` %s' %t %t` %u0 %u: %v %y: %}:
+%"j 
+2:
+9
+A:
+E E*U E:
+I
+N
+O
+S
+U
+Y
+a a* a*U
+b
+d d`
+e e:
+f
+g
+h
+i:
+j
+k
+l l`
+m
+n n`
+o:
+p
+r
+s s` s'
+t t`
+u0 u:
+v
+y:
+}:

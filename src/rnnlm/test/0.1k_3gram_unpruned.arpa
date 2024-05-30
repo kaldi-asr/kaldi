@@ -1,0 +1,640 @@
+\data\
+ngram 1=100
+ngram 2=246
+ngram 3=282
+
+\1-grams:
+-99 <s> -0.0544355
+-1.80964 car -0.00984062
+-2.61019 one -0.00984062
+-1.73999 the -0.0517839
+-1.92717 know -0.0273663
+-1.85371 they -0.0606816
+-1.88802 like -0.0273663
+-1.88391 of -0.0345176
+-1.94793 lot -0.0273663
+-1.85772 in -0.0345176
+-1.87965 really -0.00984064
+-1.94211 just -0.00984062
+-1.22836 </s>
+-2.05438 parking -0.0686959
+-1.97919 out -0.00984062
+-1.97919 for -0.0686959
+-1.94211 we -0.00984062
+-1.94211 it's -0.0409123
+-2.09474 had -0.00984062
+-2.18926 to -0.0409811
+-2.14275 not -0.00984062
+-2.14275 our -0.0929816
+-2.09474 what -0.00984062
+-0.566575 <unk> -0.0724442
+-2.14146 oh -0.0409811
+-2.08783 i'd -0.0517839
+-2.08783 smashing -0.0517839
+-2.09474 too -0.00984062
+-2.09474 um -0.00984062
+-2.08783 so -0.0993089
+-2.36738 all -0.00984062
+-2.30164 over -0.0743795
+-2.30164 around -0.00984062
+-2.36738 cheaper -0.00984062
+-1.32963 a -0.0631897
+-2.36738 security -0.00984062
+-2.30164 people -0.00984062
+-2.36738 daylight -0.00984062
+-2.32788 [laughter] -0.0607737
+-2.30164 broad -0.0743795
+-2.36738 bought -0.00984062
+-2.29058 uh-huh -0.0743795
+-2.30164 cars -0.00984062
+-2.30164 into -0.00984062
+-2.30164 right -0.0743795
+-1.44678 and -0.0303061
+-2.36738 there -0.00984062
+-2.30164 me -0.00984062
+-2.30164 ride -0.00984062
+-2.30164 see -0.00984062
+-2.36738 were -0.0607737
+-2.30164 my -0.00984062
+-2.30164 didn't -0.00984062
+-2.30164 comfortable -0.00984062
+-2.30164 as -0.00984062
+-2.36738 windows -0.00984062
+-1.50956 you -0.0646521
+-2.30164 many -0.00984062
+-2.61019 breaking -0.00984062
+-2.61019 office -0.00984062
+-2.61019 league -0.00984062
+-2.61019 looks -0.00984062
+-2.58796 yes -0.00984062
+-2.61019 with -0.00984062
+-2.61019 except -0.00984062
+-2.61019 rash -0.00984062
+-2.61019 window -0.00984062
+-1.65196 have -0.0250986
+-2.61019 going -0.00984062
+-2.61019 pretty -0.00984062
+-2.61019 real -0.00984062
+-2.61019 paying -0.00984062
+-2.61019 sitting -0.00984062
+-2.61019 break -0.00984062
+-2.61019 probably -0.00984062
+-2.61019 bit -0.00984062
+-2.61019 Maxima -0.00984062
+-2.61019 always -0.00984062
+-1.63641 it -0.0370039
+-2.61019 stuff -0.00984062
+-2.61019 heavy -0.00984062
+-2.61019 because -0.00984062
+-2.61019 house -0.00984062
+-2.61019 i'll -0.00984062
+-2.61019 yeah -0.00984062
+-2.61019 up -0.00984062
+-2.61019 lot's -0.00984062
+-2.61019 looking -0.00984062
+-2.61019 new -0.00984062
+-1.6869 i -0.0273228
+-2.58796 sixty -0.00984062
+-2.61019 seventy -0.00984062
+-2.61019 on -0.00984062
+-2.61019 anything -0.00984062
+-2.61019 could -0.00984062
+-2.61019 i'm -0.00984062
+-2.61019 makes -0.00984062
+-2.61019 or -0.00984062
+-2.61019 can't -0.00984062
+-2.61019 nerve -0.00984062
+
+\2-grams:
+-1.87045 <s> they -0.0615336
+-1.89418 <s> really -0.0615336
+-1.43144 <s> oh -0.112377
+-2.07952 <s> i'd -0.0615336
+-2.07952 <s> smashing -0.0615336
+-2.07952 <s> so -0.0615336
+-1.70144 <s> [laughter] -0.14022
+-2.24883 <s> uh-huh -0.0615336
+-1.20624 <s> and -0.0615336
+-1.54653 <s> you -0.0615336
+-2.46872 <s> yes -0.0615336
+-1.31156 <s> i -0.0615336
+-2.46872 <s> sixty -0.0615336
+-1.8267 car just -0.0615336
+-0.570344 car <unk> -0.0615336
+-1.93107 car so -0.0615336
+-2.06474 car around -0.0615336
+-1.41253 car and -0.0615336
+-2.06474 car as -0.0615336
+-1.51727 one i'd -0.0615336
+-1.93684 the parking -0.0615336
+-0.532749 the <unk> -0.0615336
+-1.24967 the windows -0.0615336
+-2.22827 the window -0.0615336
+-1.80891 know it's -0.0615336
+-1.09564 know and -0.0615336
+-2.14857 know break -0.0615336
+-1.57697 know it -0.0615336
+-1.84113 they we -0.0615336
+-1.17592 they were -0.14022
+-1.08438 they have -0.0615336
+-1.27782 like to -0.14022
+-1.9084 like what -0.0615336
+-1.312 like a -0.0615336
+-1.57697 like it -0.0615336
+-1.7259 of car -0.0615336
+-0.503737 of <unk> -0.0615336
+-2.04133 of my -0.0615336
+-2.17089 of nerve -0.0615336
+-1.2296 lot of -0.0615336
+-1.2197 lot </s>
+-1.41611 lot and -0.0615336
+-1.47052 lot you -0.0615336
+-1.67187 in the -0.0615336
+-1.15733 in our -0.14022
+-0.593395 in <unk> -0.0615336
+-2.04133 in broad -0.0615336
+-1.20576 really </s>
+-1.90866 really what -0.0615336
+-1.58057 really have -0.0615336
+-2.16244 really heavy -0.0615336
+-2.16244 really yeah -0.0615336
+-1.71745 just in -0.0615336
+-1.73286 just really -0.0615336
+-1.28933 just a -0.0615336
+-1.97955 just broad -0.0615336
+-0.824432 parking lot -0.0615336
+-2.08609 parking lot's -0.0615336
+-1.63096 out the -0.0615336
+-1.73583 out of -0.0615336
+-0.567339 out <unk> -0.0615336
+-1.97955 out my -0.0615336
+-1.24744 for </s>
+-0.744343 for a -0.112377
+-1.71461 we they -0.0615336
+-1.87092 we had -0.0615336
+-0.567339 we <unk> -0.0615336
+-1.56244 we have -0.0615336
+-1.79589 it's it's -0.0615336
+-1.06929 it's not -0.0615336
+-1.3169 it's a -0.0615336
+-1.7296 had we -0.0615336
+-1.86041 had to -0.0615336
+-1.27382 had a -0.0615336
+-0.593031 to <unk> -0.0615336
+-0.991693 to have -0.0615336
+-1.59761 not the -0.0615336
+-1.18541 not </s>
+-2.00583 not real -0.0615336
+-0.699288 our parking -0.112377
+-0.564355 what <unk> -0.0615336
+-1.90836 what people -0.0615336
+-1.42355 what you -0.0615336
+-1.86363 <unk> car -0.0615336
+-1.79667 <unk> the -0.0615336
+-1.72226 <unk> like -0.0615336
+-1.93455 <unk> of -0.0615336
+-1.70449 <unk> in -0.0615336
+-1.14371 <unk> </s>
+-1.77258 <unk> for -0.14022
+-0.549194 <unk> <unk> -0.0615336
+-2.31918 <unk> over -0.0615336
+-2.31918 <unk> around -0.0615336
+-1.15049 <unk> a -0.0615336
+-1.93423 <unk> security -0.0615336
+-2.31918 <unk> right -0.0615336
+-1.51113 <unk> and -0.0615336
+-1.46618 <unk> you -0.0615336
+-2.57737 <unk> except -0.0615336
+-2.57737 <unk> bit -0.0615336
+-2.57737 <unk> stuff -0.0615336
+-2.57737 <unk> i'll -0.0615336
+-1.74536 <unk> i -0.0615336
+-2.57737 <unk> makes -0.0615336
+-2.57737 <unk> or -0.0615336
+-1.02846 oh really -0.0615336
+-1.88418 oh uh-huh -0.0615336
+-0.933968 i'd like -0.14022
+-2.01566 i'd probably -0.0615336
+-1.62672 smashing the -0.0615336
+-0.901575 smashing it -0.0615336
+-1.81451 too um -0.0615336
+-1.90836 too didn't -0.0615336
+-1.90836 too many -0.0615336
+-1.18541 um </s>
+-1.27382 um a -0.0615336
+-1.55955 um i -0.0615336
+-0.376504 so <unk> -0.0615336
+-1.71983 all had -0.0615336
+-1.48163 all have -0.0615336
+-0.793126 over there -0.0615336
+-1.53773 around the -0.0615336
+-1.71697 around smashing -0.0615336
+-1.57912 cheaper car -0.0615336
+-1.79363 cheaper ride -0.0615336
+-1.35401 a car -0.0615336
+-1.54313 a lot -0.14022
+-0.532736 a <unk> -0.0990973
+-2.08116 a um -0.0615336
+-1.64596 a cheaper -0.0615336
+-1.37863 a a -0.0615336
+-2.24711 a comfortable -0.0615336
+-2.46023 a rash -0.0615336
+-2.46023 a house -0.0615336
+-2.46023 a new -0.0615336
+-1.61799 security really -0.0615336
+-1.86644 security because -0.0615336
+-1.6503 people just -0.0615336
+-1.86644 people sitting -0.0615336
+-1.16124 daylight </s>
+-0.558448 daylight <unk> -0.0615336
+-0.739987 [laughter] </s>
+-0.793126 broad daylight -0.0615336
+-1.86644 bought one -0.0615336
+-1.24438 bought a -0.0615336
+-0.683598 uh-huh </s>
+-1.6503 cars just -0.0615336
+-1.71697 cars i'd -0.0615336
+-1.79363 into cars -0.0615336
+-1.4713 into it -0.0615336
+-0.779261 right out -0.0615336
+-1.40566 and they -0.0615336
+-1.9023 and it's -0.0615336
+-2.06649 and our -0.0615336
+-0.593688 and <unk> -0.0615336
+-2.02848 and um -0.0615336
+-2.18552 and people -0.0615336
+-1.51263 and you -0.0615336
+-1.3208 and it -0.14022
+-1.67686 and i -0.0615336
+-2.3814 and i'm -0.0615336
+-1.71983 there too -0.0615336
+-1.38255 there you -0.0615336
+-1.71983 me too -0.0615336
+-1.71697 me so -0.0615336
+-1.16124 ride </s>
+-1.33586 ride and -0.0615336
+-1.86644 see paying -0.0615336
+-1.86644 see anything -0.0615336
+-0.435991 were <unk> -0.0615336
+-1.86644 my office -0.0615336
+-1.86644 my league -0.0615336
+-1.79363 didn't see -0.0615336
+-1.38255 didn't you -0.0615336
+-1.79363 comfortable ride -0.0615336
+-1.4713 comfortable it -0.0615336
+-0.558448 as <unk> -0.0615336
+-1.38255 as you -0.0615336
+-0.558448 windows <unk> -0.0615336
+-1.33586 windows and -0.0615336
+-0.966317 you know -0.0990973
+-1.94769 you for -0.0615336
+-2.0377 you what -0.0615336
+-1.45372 you all -0.0615336
+-1.66869 you have -0.0615336
+-2.36104 you could -0.0615336
+-1.79363 many cars -0.0615336
+-1.79363 many many -0.0615336
+-1.56407 breaking into -0.0615336
+-1.6055 office looks -0.0615336
+-1.09589 league </s>
+-1.56407 looks right -0.0615336
+-1.09589 yes </s>
+-0.541195 with <unk> -0.0615336
+-1.474 except it's -0.0615336
+-1.45376 rash of -0.0615336
+-1.09589 window </s>
+-1.23218 have </s>
+-1.86695 have we -0.0615336
+-1.98342 have had -0.0615336
+-0.586949 have <unk> -0.0615336
+-1.98342 have too -0.0615336
+-2.12418 have over -0.0615336
+-1.07813 have a -0.0615336
+-1.6055 going on -0.0615336
+-0.541195 pretty <unk> -0.0615336
+-1.56407 real comfortable -0.0615336
+-1.56407 paying as -0.0615336
+-1.6055 sitting up -0.0615336
+-1.56407 break into -0.0615336
+-0.541195 probably <unk> -0.0615336
+-1.48599 bit out -0.0615336
+-1.09589 Maxima </s>
+-1.6055 always looking -0.0615336
+-1.87244 it we -0.0615336
+-0.500045 it <unk> -0.112377
+-1.98199 it smashing -0.0615336
+-1.44676 it and -0.0615336
+-2.28611 it with -0.0615336
+-2.28611 it pretty -0.0615336
+-1.474 stuff just -0.0615336
+-1.44406 heavy in -0.0615336
+-1.44254 because they -0.0615336
+-1.48599 house for -0.0615336
+-0.541195 i'll <unk> -0.0615336
+-1.56407 yeah me -0.0615336
+-1.44406 up in -0.0615336
+-1.53104 lot's not -0.0615336
+-1.48599 looking out -0.0615336
+-1.6055 new Maxima -0.0615336
+-1.8445 i know -0.0615336
+-1.81381 i like -0.0615336
+-1.30979 i bought -0.0615336
+-2.10297 i didn't -0.0615336
+-1.64761 i i -0.0615336
+-2.25927 i can't -0.0615336
+-1.6055 sixty seventy -0.0615336
+-0.541195 seventy <unk> -0.0615336
+-1.24148 on and -0.0615336
+-1.6055 anything going -0.0615336
+-0.541195 could <unk> -0.0615336
+-1.6055 i'm always -0.0615336
+-1.56407 makes me -0.0615336
+-1.6055 or breaking -0.0615336
+-1.56407 can't see -0.0615336
+-1.27864 nerve you -0.0615336
+
+\3-grams:
+-0.691287 <s> they have
+-0.730148 <s> really </s>
+-0.591322 <s> oh really
+-1.26668 <s> oh uh-huh
+-0.632369 <s> i'd like
+-0.618033 <s> smashing it
+-0.303793 <s> so <unk>
+-0.389665 <s> [laughter] </s>
+-0.50593 <s> uh-huh </s>
+-1.10713 <s> and they
+-1.28263 <s> and um
+-1.30367 <s> and people
+-0.646094 <s> you know
+-0.695292 <s> yes </s>
+-1.24833 <s> i know
+-1.24139 <s> i like
+-1.19673 <s> i i
+-0.813516 <s> sixty seventy
+-0.752797 car just a
+-0.791089 car <unk> you
+-0.303793 car so <unk>
+-0.803359 car around the
+-0.760524 car and it
+-0.774498 car as you
+-0.852391 one i'd probably
+-0.581477 the parking lot
+-1.10827 the <unk> car
+-0.507082 the <unk> <unk>
+-0.514355 the windows <unk>
+-0.97427 the windows and
+-0.695292 the window </s>
+-0.835669 know it's it's
+-0.999318 know and they
+-1.13371 know and our
+-0.807468 know break into
+-0.787463 know it and
+-0.43517 they we <unk>
+-0.266592 they were <unk>
+-1.10878 they have we
+-1.12453 they have had
+-0.456259 like to have
+-0.782953 like what you
+-0.773657 like a a
+-0.864556 like it pretty
+-0.437091 of car <unk>
+-0.891462 of <unk> </s>
+-1.15357 of <unk> over
+-0.841907 of my league
+-0.750076 of nerve you
+-0.470886 lot of <unk>
+-1.14322 lot of nerve
+-0.822835 lot and i
+-0.646094 lot you know
+-0.742445 in the windows
+-0.37609 in our parking
+-0.423467 in <unk> <unk>
+-0.565666 in broad daylight
+-0.433257 really what <unk>
+-0.689082 really have a
+-0.786949 really heavy in
+-0.807468 really yeah me
+-0.715524 just in our
+-0.809936 just really have
+-0.412703 just a <unk>
+-0.565666 just broad daylight
+-1.01607 parking lot </s>
+-1.11166 parking lot and
+-1.13425 parking lot you
+-0.802283 parking lot's not
+-0.862527 out the window
+-0.853879 out of my
+-0.835743 out <unk> the
+-0.841907 out my office
+-0.661302 for a car
+-0.567927 for a <unk>
+-0.691287 we they have
+-0.828911 we had we
+-0.865605 we <unk> right
+-0.447621 we have <unk>
+-0.759591 it's it's a
+-1.05564 it's not the
+-1.12716 it's not real
+-0.818963 it's a cheaper
+-0.82725 had we they
+-0.451441 had to <unk>
+-0.804219 had a lot
+-0.847087 to <unk> security
+-1.12453 to have too
+-0.858385 to have a
+-0.412711 not the <unk>
+-0.807468 not real comfortable
+-0.523434 our parking lot
+-1.29785 our parking lot's
+-0.847109 what <unk> of
+-0.819521 what people just
+-0.788779 what you all
+-0.846862 <unk> car so
+-0.847271 <unk> the parking
+-1.11481 <unk> like what
+-0.965107 <unk> like a
+-0.828505 <unk> of car
+-0.541514 <unk> in <unk>
+-1.13109 <unk> in broad
+-0.391069 <unk> for a
+-1.45193 <unk> <unk> like
+-1.44357 <unk> <unk> in
+-1.09038 <unk> <unk> </s>
+-1.47465 <unk> <unk> for
+-1.09558 <unk> <unk> a
+-1.34081 <unk> <unk> and
+-1.6743 <unk> <unk> makes
+-0.565666 <unk> over there
+-0.827515 <unk> around smashing
+-1.47339 <unk> a um
+-1.33693 <unk> a cheaper
+-1.50398 <unk> a comfortable
+-1.53122 <unk> a rash
+-1.53122 <unk> a house
+-1.06063 <unk> security really
+-1.1087 <unk> security because
+-0.558483 <unk> right out
+-0.760524 <unk> and it
+-1.13071 <unk> you what
+-1.0723 <unk> you have
+-0.792513 <unk> except it's
+-0.794655 <unk> bit out
+-0.792513 <unk> stuff just
+-0.418253 <unk> i'll <unk>
+-0.757869 <unk> i bought
+-0.807468 <unk> makes me
+-0.813516 <unk> or breaking
+-1.11484 oh really what
+-1.14252 oh really yeah
+-0.50593 oh uh-huh </s>
+-0.502901 i'd like to
+-0.418253 i'd probably <unk>
+-0.742445 smashing the windows
+-1.12436 smashing it smashing
+-1.15154 smashing it with
+-0.806777 too um i
+-0.774498 too didn't you
+-0.835454 too many many
+-0.412703 um a <unk>
+-0.757869 um i bought
+-1.21834 so <unk> like
+-1.2245 so <unk> i
+-1.33412 so <unk> or
+-0.748833 all had a
+-0.858152 all have over
+-1.08304 over there too
+-0.991309 over there you
+-0.412711 around the <unk>
+-0.816428 around smashing the
+-0.780742 cheaper car and
+-0.764076 cheaper ride and
+-1.24435 a car just
+-1.28809 a car around
+-1.28809 a car as
+-0.496745 a lot of
+-0.709656 a <unk> </s>
+-0.588749 a <unk> <unk>
+-1.45429 a <unk> bit
+-0.748833 a um a
+-1.05096 a cheaper car
+-1.09685 a cheaper ride
+-0.869299 a a new
+-0.835454 a comfortable ride
+-0.788785 a rash of
+-0.794655 a house for
+-0.813516 a new Maxima
+-0.859878 security really heavy
+-0.786658 security because they
+-0.829265 people just really
+-0.813516 people sitting up
+-0.87159 daylight <unk> i'll
+-0.899887 broad daylight </s>
+-0.514355 broad daylight <unk>
+-0.80002 bought one i'd
+-0.768232 bought a car
+-0.850153 cars just broad
+-0.632369 cars i'd like
+-0.819521 into cars just
+-0.842396 into it we
+-0.52131 right out <unk>
+-1.12407 right out my
+-1.10477 and they we
+-0.906804 and they were
+-0.68593 and it's not
+-0.514906 and our parking
+-0.87159 and <unk> stuff
+-0.724141 and um </s>
+-0.841907 and people sitting
+-0.788779 and you all
+-0.296813 and it <unk>
+-0.857131 and i didn't
+-0.813516 and i'm always
+-0.845198 there too didn't
+-0.646094 there you know
+-0.845198 me too many
+-0.303793 me so <unk>
+-0.84474 ride and it's
+-0.807468 see paying as
+-0.813516 see anything going
+-1.07992 were <unk> in
+-1.15357 were <unk> around
+-0.813516 my office looks
+-0.695292 my league </s>
+-0.841907 didn't see anything
+-0.848028 didn't you for
+-0.716747 comfortable ride </s>
+-0.390907 comfortable it <unk>
+-0.833398 as <unk> for
+-0.866825 as you could
+-0.847087 windows <unk> security
+-0.451853 windows and <unk>
+-1.34308 you know it's
+-0.695013 you know and
+-1.41251 you know break
+-0.539906 you for a
+-0.845198 you what people
+-1.08304 you all had
+-1.02372 you all have
+-0.737654 you have </s>
+-0.418253 you could <unk>
+-0.827515 many cars i'd
+-0.835454 many many cars
+-0.792024 breaking into it
+-0.807468 office looks right
+-0.558483 looks right out
+-0.423467 with <unk> <unk>
+-0.68593 except it's not
+-0.393396 rash of <unk>
+-0.842273 have we had
+-0.84141 have had to
+-0.713367 have <unk> a
+-0.837407 have too um
+-0.565666 have over there
+-1.04142 have a lot
+-0.494066 have a <unk>
+-0.740218 going on and
+-0.87159 pretty <unk> except
+-0.792024 real comfortable it
+-0.429457 paying as <unk>
+-0.786949 sitting up in
+-0.835454 break into cars
+-0.423467 probably <unk> <unk>
+-0.829586 bit out of
+-0.794655 always looking out
+-0.807219 it we have
+-0.581663 it <unk> <unk>
+-0.622427 it <unk> a
+-0.618033 it smashing it
+-0.799246 it and you
+-0.418253 it with <unk>
+-0.418253 it pretty <unk>
+-0.827569 stuff just in
+-0.715524 heavy in our
+-0.721272 because they were
+-0.74184 house for </s>
+-0.791089 i'll <unk> you
+-0.827834 yeah me too
+-0.822227 up in the
+-0.724141 lot's not </s>
+-0.816995 looking out the
+-0.695292 new Maxima </s>
+-0.809404 i know it
+-0.809404 i like it
+-1.1087 i bought one
+-0.937441 i bought a
+-0.835454 i didn't see
+-0.863647 i i can't
+-0.807468 i can't see
+-0.418253 sixty seventy <unk>
+-0.423467 seventy <unk> <unk>
+-0.867379 on and i'm
+-0.813516 anything going on
+-0.713367 could <unk> a
+-0.813516 i'm always looking
+-0.827515 makes me so
+-0.807468 or breaking into
+-0.841907 can't see paying
+-0.646094 nerve you know
+
+\end\

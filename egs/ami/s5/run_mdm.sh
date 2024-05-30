@@ -8,9 +8,9 @@ nmics=8 #we use all 8 channels, possible other options are 2 and 4
 mic=mdm$nmics
 
 # Path where AMI gets downloaded (or where locally available):
-AMI_DIR=$PWD/wav_db # Default, 
-case $(hostname -d) in 
-  fit.vutbr.cz) AMI_DIR=/mnt/scratch05/iveselyk/KALDI_AMI_WAV ;; # BUT,
+AMI_DIR=$PWD/wav_db # Default,
+case $(hostname -d) in
+  fit.vutbr.cz) AMI_DIR=/mnt/matylda2/data/AMI_KALDI_DOWNLOAD ;; # BUT,
   clsp.jhu.edu) AMI_DIR=/export/corpora4/ami/amicorpus ;; # JHU,
   cstr.ed.ac.uk) AMI_DIR= ;; # Edinburgh,
 esac
@@ -26,7 +26,7 @@ LM=$final_lm.pr1-7
 stage=0
 . utils/parse_options.sh
 
-# Set bash to 'debug' mode, it prints the commands (option '-x') and exits on : 
+# Set bash to 'debug' mode, it prints the commands (option '-x') and exits on :
 # -e 'error', -u 'undefined variable', -o pipefail 'error in pipeline',
 set -euxo pipefail
 
@@ -41,7 +41,7 @@ fi
 
 # Beamform-it!
 if [ $stage -le 1 ]; then
-  ! hash BeamformIt && echo "Missing BeamformIt, run 'cd ../../../tools/; make beamformit;'" && exit 1
+  ! hash BeamformIt && echo "Missing BeamformIt, run 'cd ../../../tools/; extras/install_beamformit.sh'" && exit 1
   local/ami_beamform.sh --cmd "$train_cmd" --nj 20 $nmics $AMI_DIR $MDM_DIR
 fi
 
@@ -167,18 +167,52 @@ if [ $stage -le 12 ]; then
   local/nnet/run_dnn_lda_mllt.sh $mic
 fi
 
-# TDNN training.
+# nnet3 systems
 if [ $stage -le 13 ]; then
-  local/online/run_nnet2_ms_perturbed.sh \
-    --mic $mic \
-    --hidden-dim 850 \
-    --splice-indexes "layer0/-2:-1:0:1:2 layer1/-1:2 layer2/-3:3 layer3/-7:2 layer4/-3:3" \
-    --use-sat-alignments false
-  
-  local/online/run_nnet2_ms_sp_disc.sh  \
-    --mic $mic  \
-    --gmm-dir exp/$mic/tri3a \
-    --srcdir exp/$mic/nnet2_online/nnet_ms_sp
-fi
+  # Slightly better WERs can be obtained by using --use-sat-alignments true
+  # however the SAT systems have to be built before that
 
+  #TDNN model + xent training
+  local/nnet3/run_tdnn.sh \
+    --mic $mic \
+    --use-sat-alignments false
+
+  #LSTM model + xent training
+  local/nnet3/run_lstm.sh \
+    --mic $mic \
+    --stage 10 \
+    --train-stage -5 \
+    --use-sat-alignments false
+
+  #BLSTM model + xent training
+  local/nnet3/run_blstm.sh \
+    --mic $mic \
+    --stage 10 \
+    --train-stage -5 \
+    --use-sat-alignments false
+
+  # TDNN model + chain training
+  local/chain/run_tdnn_ami_5.sh  --mic sdm1 --affix msl1.5_45wer
+
+fi
+echo "Done."
+
+
+
+
+# Older nnet2 scripts. They are still kept here
+# as we have not yet committed sMBR training scripts for AMI in nnet3
+#if [ $stage -le 13 ]; then
+#  local/online/run_nnet2_ms_perturbed.sh \
+#    --mic $mic \
+#    --hidden-dim 850 \
+#    --splice-indexes "layer0/-2:-1:0:1:2 layer1/-1:2 layer2/-3:3 layer3/-7:2 layer4/-3:3" \
+#    --use-sat-alignments false
+#
+#  local/online/run_nnet2_ms_sp_disc.sh  \
+#    --mic $mic  \
+#    --gmm-dir exp/$mic/tri3a \
+#    --srcdir exp/$mic/nnet2_online/nnet_ms_sp
+#fi
+#
 echo "Done."

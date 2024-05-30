@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2012-2013  Johns Hopkins University (Author: Daniel Povey).
 #           2014       Vijayaditya Peddinti
@@ -47,7 +47,7 @@ if [ $# -ne 3 ]; then
   echo "  --iter <iter>                            # Iteration of model to decode; default is final."
   echo "  --scoring-opts <string>                  # options to local/score.sh"
   echo "  --num-threads <n>                        # number of threads to use, default 1."
-  echo "  --parallel-opts <opts>                   # e.g. '-pe smp 4' if you supply --num-threads 4"
+  echo "  --parallel-opts <opts>                   # e.g. '--num-threads 4' if you supply --num-threads 4"
   exit 1;
 fi
 

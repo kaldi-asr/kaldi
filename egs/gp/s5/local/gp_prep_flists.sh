@@ -60,7 +60,7 @@ do
   esac
 done
 
-[ -f path.sh ] && . path.sh  # Sets the PATH to contain necessary executables
+[ -f path.sh ] && . ./path.sh  # Sets the PATH to contain necessary executables
 
 tmpdir=$(mktemp -d /tmp/kaldi.XXXX);
 trap 'rm -rf "$tmpdir"' EXIT

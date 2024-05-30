@@ -1,7 +1,7 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # source the settings
-. path.sh
+. ./path.sh
 
 . utils/parse_options.sh || exit 1
 

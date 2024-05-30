@@ -1,10 +1,10 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # Copyright  2014 Nickolay V. Shmyrev
 # Apache 2.0
 
 
-if [ -f path.sh ]; then . path.sh; fi
+if [ -f path.sh ]; then . ./path.sh; fi
 
 arpa_lm=db/cantab-TEDLIUM/cantab-TEDLIUM-pruned.lm3.gz
 [ ! -f $arpa_lm ] && echo No such file $arpa_lm && exit 1;
@@ -16,7 +16,7 @@ gunzip -c "$arpa_lm" | arpa2fst --disambig-symbol=#0 \
   --read-symbol-table=data/lang_nosp_test/words.txt - data/lang_nosp_test/G.fst
 
 
-echo  "Checking how stochastic G is (the first of these numbers should be small):"
+echo  "$0: Checking how stochastic G is (the first of these numbers should be small):"
 fstisstochastic data/lang_nosp_test/G.fst
 
 utils/validate_lang.pl data/lang_nosp_test || exit 1;

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2014  Vimal Manohar, Johns Hopkins University (Author: Jan Trmal)
 # Apache 2.0
@@ -35,7 +35,7 @@ if [[ "$nj_max" -lt "$train_nj" ]] ; then
     exit 1;
     train_nj=$nj_max
 fi
-train_data_dir=`readlink -f ./data/raw_train_data`
+train_data_dir=`utils/make_absolute.sh ./data/raw_train_data`
 
 if [ ! -f data/train_seg/.done ]; then
 

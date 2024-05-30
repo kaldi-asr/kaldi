@@ -20,6 +20,7 @@
 #include "nnet2/nnet-compute-discriminative.h"
 #include "hmm/posterior.h"
 #include "lat/lattice-functions.h"
+#include "lat/lattice-functions-transition-model.h"
 
 namespace kaldi {
 namespace nnet2 {
@@ -295,7 +296,7 @@ void NnetDiscriminativeUpdater::LatticeComputations() {
 
   ScalePosterior(eg_.weight, &post);
 
-  double tot_num_post = 0.0, tot_den_post = 0.0;
+  double tot_num_post = 0.0;
   std::vector<MatrixElement<BaseFloat> > sv_labels;
   sv_labels.reserve(answers.size());
   for (int32 t = 0; t < post.size(); t++) {
@@ -303,7 +304,6 @@ void NnetDiscriminativeUpdater::LatticeComputations() {
       int32 pdf_id = post[t][i].first;
       BaseFloat weight = post[t][i].second;
       if (weight > 0.0) { tot_num_post += weight; }
-      else { tot_den_post -= weight; }
       MatrixElement<BaseFloat> elem = {t, pdf_id, weight};
       sv_labels.push_back(elem);
     }

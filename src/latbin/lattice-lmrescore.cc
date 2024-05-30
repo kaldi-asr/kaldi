@@ -75,9 +75,10 @@ int main(int argc, char *argv[]) {
     // with all the cost on the first member of the pair (since it's a graph
     // weight).
     fst::CacheOptions cache_opts(true, num_states_cache);
+    fst::MapFstOptions mapfst_opts(cache_opts);
     fst::StdToLatticeMapper<BaseFloat> mapper;
     fst::MapFst<StdArc, LatticeArc, fst::StdToLatticeMapper<BaseFloat> >
-        lm_fst(*std_lm_fst, mapper, cache_opts);
+        lm_fst(*std_lm_fst, mapper, mapfst_opts);
     delete std_lm_fst;
 
     // The next fifteen or so lines are a kind of optimization and

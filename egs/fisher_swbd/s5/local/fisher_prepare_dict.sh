@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 
 # To be run from one directory above this script.
@@ -10,7 +10,7 @@
 
 # for example /mnt/matylda2/data/SWITCHBOARD_1R2
 
-. path.sh
+. ./path.sh
 
 # The parts of the output of this that will be needed are
 # [in data/local/dict/ ]
@@ -41,8 +41,9 @@ cat $dir/cmudict/cmudict.0.7a.symbols | sed s/[0-9]//g | \
 cat $dir/silence_phones.txt| awk '{printf("%s ", $1);} END{printf "\n";}' > $dir/extra_questions.txt || exit 1;
 
 grep -v ';;;' $dir/cmudict/cmudict.0.7a |  tr '[A-Z]' '[a-z]' | \
- perl -ane 'if(!m:^;;;:){ s:(\S+)\(\d+\) :$1 :; s:  : :; print; }' | \
-   sed s/[0-9]//g | sort | uniq > $dir/lexicon1_raw_nosil.txt || exit 1;
+  perl -ane 'if(!m:^;;;:){ s:(\S+)\(\d+\) :$1 :; s:  : :; print; }' | \
+  perl -ane '@A = split(" ", $_); for ($n = 1; $n<@A;$n++) { $A[$n] =~ s/[0-9]//g; } print join(" ", @A) . "\n";' | \
+  sort | uniq > $dir/lexicon1_raw_nosil.txt || exit 1;
 
 # Add prons for laughter, noise, oov
 for w in `grep -v sil $dir/silence_phones.txt`; do
@@ -116,11 +117,8 @@ cp $srcdict $dir/lexicon0.txt || exit 1;
 patch <local/dict.patch $dir/lexicon0.txt || exit 1;
 
 #(2a) Dictionary preparation:
-# Pre-processing (Upper-case, remove comments)
-awk 'BEGIN{getline}($0 !~ /^#/) {print}' \
-  $dir/lexicon0.txt | sort | awk '($0 !~ /^[[:space:]]*$/) {print}' \
-   > $dir/lexicon1_swbd.txt || exit 1;
-
+# Pre-processing (remove comments)
+grep -v '^#' $dir/lexicon0.txt | awk 'NF>0' | sort > $dir/lexicon1_swbd.txt || exit 1;
 
 cat $dir/lexicon1_swbd.txt | awk '{ for(n=2;n<=NF;n++){ phones[$n] = 1; }} END{for (p in phones) print p;}' | \
   grep -v SIL > $dir/nonsilence_phones_msu.txt  || exit 1;
@@ -143,6 +141,7 @@ cat $dir/acronyms_lex_swbd.txt |\
 
 
 cat $dir/acronyms_lex_swbd_cmuphones.txt $dir/lexicon_fisher.txt | sort -u > $dir/lexicon.txt
+rm $dir/lexiconp.txt 2>/dev/null; # can confuse later script if this exists.
 
 echo Prepared input dictionary and phone-sets for Switchboard phase 1.
 utils/validate_dict_dir.pl $dir

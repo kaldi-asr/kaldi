@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Script for minimum bayes risk decoding.
 
@@ -6,8 +6,8 @@
 
 # begin configuration section.
 cmd=run.pl
-min_lmwt=9
-max_lmwt=20
+min_lmwt=7
+max_lmwt=17
 #end configuration section.
 
 [ -f ./path.sh ] && . ./path.sh
@@ -48,7 +48,7 @@ for inv_acwt in `seq $min_lmwt $max_lmwt`; do
 done
 wait;
 [ -f $dir/.error ] && echo "score_mbr.sh: errror getting MBR outout.";
-     
+
 
 $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/score.LMWT.log \
    cat $dir/scoring/LMWT.tra \| \

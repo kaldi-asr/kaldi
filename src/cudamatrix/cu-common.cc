@@ -18,21 +18,53 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_CUDAMATRIX_COMMON_H_
-#define KALDI_CUDAMATRIX_COMMON_H_
+#if HAVE_CUDA
 
-// This file contains some #includes, forward declarations
-// and typedefs that are needed by all the main header
-// files in this directory.
-#include "base/kaldi-common.h"
-#include "matrix/kaldi-blas.h"
-#include "cudamatrix/cu-device.h"
 #include "cudamatrix/cu-common.h"
+
+#ifdef __IS_HIP_COMPILE__
+#include <hip/hip_runtime_api.h>
+
+#include "hipify.h"
+#define API_NAME_PREFIX "HIP"
+#else
+#include <cuda.h>
+#define API_NAME_PREFIX "CU"
+#endif
+
+#include "base/kaldi-common.h"
 #include "cudamatrix/cu-matrixdim.h"
 
 namespace kaldi {
 
-#if HAVE_CUDA == 1
+#ifdef USE_NVTX
+NvtxTracer::NvtxTracer(const char* name) {
+#ifdef __IS_HIP_COMPILE__
+  roctxRangePushA(name);
+#else
+  const uint32_t colors[] = { 0xff00ff00, 0xff0000ff, 0xffffff00, 0xffff00ff, 0xff00ffff, 0xffff0000, 0xffffffff };
+  const int num_colors = sizeof(colors)/sizeof(uint32_t);
+  int color_id = ((int)name[0])%num_colors;
+	nvtxEventAttributes_t eventAttrib = {0};
+	eventAttrib.version = NVTX_VERSION;
+	eventAttrib.size = NVTX_EVENT_ATTRIB_STRUCT_SIZE;
+	eventAttrib.colorType = NVTX_COLOR_ARGB;
+	eventAttrib.color = colors[color_id];
+	eventAttrib.messageType = NVTX_MESSAGE_TYPE_ASCII;
+	eventAttrib.message.ascii = name;
+	nvtxRangePushEx(&eventAttrib);
+  // nvtxRangePushA(name);
+#endif
+}
+NvtxTracer::~NvtxTracer() {
+#ifdef __IS_HIP_COMPILE__
+  roctxRangePop();
+#else
+        nvtxRangePop();
+#endif
+}
+#endif
+
 cublasOperation_t KaldiTransToCuTrans(MatrixTransposeType kaldi_trans) {
   cublasOperation_t cublas_trans;
 
@@ -53,7 +85,7 @@ void GetBlockSizesForSimpleMatrixOperation(int32 num_rows,
   int32 col_blocksize = 64, row_blocksize = 4;
   while (col_blocksize > 1 &&
          (num_cols + (num_cols / 2) <= col_blocksize ||
-          num_rows > 65536 * row_blocksize)) {
+          num_rows > 65535 * row_blocksize)) {
     col_blocksize /= 2;
     row_blocksize *= 2;
   }
@@ -63,13 +95,116 @@ void GetBlockSizesForSimpleMatrixOperation(int32 num_rows,
   dimBlock->z = 1;
   dimGrid->x = n_blocks(num_cols, col_blocksize);
   dimGrid->y = n_blocks(num_rows, row_blocksize);
-  KALDI_ASSERT(dimGrid->y <= 65536 &&
+  KALDI_ASSERT(dimGrid->y <= 65535 &&
                "Matrix has too many rows to process");
   dimGrid->z = 1;
 }
+
+const char* cublasGetStatusStringK(cublasStatus_t status) {
+  // Defined in CUDA include file: cublas.h or cublas_api.h
+  switch(status) {
+    case CUBLAS_STATUS_SUCCESS:
+      return API_NAME_PREFIX "BLAS_STATUS_SUCCESS";
+    case CUBLAS_STATUS_NOT_INITIALIZED:
+      return API_NAME_PREFIX "BLAS_STATUS_NOT_INITIALIZED";
+    case CUBLAS_STATUS_ALLOC_FAILED:
+      return API_NAME_PREFIX "BLAS_STATUS_ALLOC_FAILED";
+    case CUBLAS_STATUS_INVALID_VALUE:
+      return API_NAME_PREFIX "BLAS_STATUS_INVALID_VALUE";
+    case CUBLAS_STATUS_ARCH_MISMATCH:
+      return API_NAME_PREFIX "BLAS_STATUS_ARCH_MISMATCH";
+    case CUBLAS_STATUS_MAPPING_ERROR:
+      return API_NAME_PREFIX "BLAS_STATUS_MAPPING_ERROR";
+    case CUBLAS_STATUS_EXECUTION_FAILED:
+      return API_NAME_PREFIX "BLAS_STATUS_EXECUTION_FAILED";
+    case CUBLAS_STATUS_INTERNAL_ERROR:
+      return API_NAME_PREFIX "BLAS_STATUS_INTERNAL_ERROR";
+    case CUBLAS_STATUS_NOT_SUPPORTED:
+      return API_NAME_PREFIX "BLAS_STATUS_NOT_SUPPORTED";
+    case CUBLAS_STATUS_LICENSE_ERROR:
+      return API_NAME_PREFIX "BLAS_STATUS_LICENSE_ERROR";
+#ifdef __IS_HIP_COMPILE__
+    case HIPBLAS_STATUS_HANDLE_IS_NULLPTR:
+      return API_NAME_PREFIX "BLAS_STATUS_HANDLE_IS_NULLPTR";
+    case HIPBLAS_STATUS_INVALID_ENUM:
+      return API_NAME_PREFIX "BLAS_STATUS_HANDLE_IS_NULLPTR";
 #endif
+  }
+  return API_NAME_PREFIX "BLAS_STATUS_UNKNOWN_ERROR";
+}
 
-} // namespace
+const char* cusparseGetStatusString(cusparseStatus_t status) {
+  // detail info come from http://docs.nvidia.com/cuda/cusparse/index.html#cusparsestatust
+  // Defined in CUDA include file: cusparse.h
+  switch(status) {
+    case CUSPARSE_STATUS_SUCCESS:
+      return API_NAME_PREFIX "SPARSE_STATUS_SUCCESS";
+    case CUSPARSE_STATUS_NOT_INITIALIZED:
+      return API_NAME_PREFIX "SPARSE_STATUS_NOT_INITIALIZED";
+    case CUSPARSE_STATUS_ALLOC_FAILED:
+      return API_NAME_PREFIX "SPARSE_STATUS_ALLOC_FAILED";
+    case CUSPARSE_STATUS_INVALID_VALUE:
+      return API_NAME_PREFIX "SPARSE_STATUS_INVALID_VALUE";
+    case CUSPARSE_STATUS_ARCH_MISMATCH:
+      return API_NAME_PREFIX "SPARSE_STATUS_ARCH_MISMATCH";
+    case CUSPARSE_STATUS_MAPPING_ERROR:
+      return API_NAME_PREFIX "SPARSE_STATUS_MAPPING_ERROR";
+    case CUSPARSE_STATUS_EXECUTION_FAILED:
+      return API_NAME_PREFIX "SPARSE_STATUS_EXECUTION_FAILED";
+    case CUSPARSE_STATUS_INTERNAL_ERROR:
+      return API_NAME_PREFIX "SPARSE_STATUS_INTERNAL_ERROR";
+    case CUSPARSE_STATUS_MATRIX_TYPE_NOT_SUPPORTED:
+      return API_NAME_PREFIX "SPARSE_STATUS_MATRIX_TYPE_NOT_SUPPORTED";
+    case CUSPARSE_STATUS_ZERO_PIVOT:
+      return API_NAME_PREFIX "SPARSE_STATUS_ZERO_PIVOT";
+#if CUDA_VERSION >= 11000
+    case CUSPARSE_STATUS_NOT_SUPPORTED:
+      return API_NAME_PREFIX "SPARSE_STATUS_NOT_SUPPORTED";
+    case CUSPARSE_STATUS_INSUFFICIENT_RESOURCES:
+      return API_NAME_PREFIX "SPARSE_STATUS_INSUFFICIENT_RESOURCES";
+#endif
+  }
+  return API_NAME_PREFIX "SPARSE_STATUS_UNKNOWN_ERROR";
+}
 
+const char* curandGetStatusString(curandStatus_t status) {
+  // detail info come from http://docs.nvidia.com/cuda/curand/group__HOST.html
+  // Defined in CUDA include file: curand.h
+  switch(status) {
+    case CURAND_STATUS_SUCCESS:
+      return API_NAME_PREFIX "RAND_STATUS_SUCCESS";
+    case CURAND_STATUS_VERSION_MISMATCH:
+      return API_NAME_PREFIX "RAND_STATUS_VERSION_MISMATCH";
+    case CURAND_STATUS_NOT_INITIALIZED:
+      return API_NAME_PREFIX "RAND_STATUS_NOT_INITIALIZED";
+    case CURAND_STATUS_ALLOCATION_FAILED:
+      return API_NAME_PREFIX "RAND_STATUS_ALLOCATION_FAILED";
+    case CURAND_STATUS_TYPE_ERROR:
+      return API_NAME_PREFIX "RAND_STATUS_TYPE_ERROR";
+    case CURAND_STATUS_OUT_OF_RANGE:
+      return API_NAME_PREFIX "RAND_STATUS_OUT_OF_RANGE";
+    case CURAND_STATUS_LENGTH_NOT_MULTIPLE:
+      return API_NAME_PREFIX "RAND_STATUS_LENGTH_NOT_MULTIPLE";
+    case CURAND_STATUS_DOUBLE_PRECISION_REQUIRED:
+      return API_NAME_PREFIX "RAND_STATUS_DOUBLE_PRECISION_REQUIRED";
+    case CURAND_STATUS_LAUNCH_FAILURE:
+      return API_NAME_PREFIX "RAND_STATUS_LAUNCH_FAILURE";
+    case CURAND_STATUS_PREEXISTING_FAILURE:
+      return API_NAME_PREFIX "RAND_STATUS_PREEXISTING_FAILURE";
+    case CURAND_STATUS_INITIALIZATION_FAILED:
+      return API_NAME_PREFIX "RAND_STATUS_INITIALIZATION_FAILED";
+    case CURAND_STATUS_ARCH_MISMATCH:
+      return API_NAME_PREFIX "RAND_STATUS_ARCH_MISMATCH";
+    case CURAND_STATUS_INTERNAL_ERROR:
+      return API_NAME_PREFIX "RAND_STATUS_INTERNAL_ERROR";
+#ifdef __IS_HIP_COMPILE__
+    case HIPRAND_STATUS_NOT_IMPLEMENTED:
+      return API_NAME_PREFIX "RAND_STATUS_NOT_IMPLEMENTED";
+#endif
+  }
+  return API_NAME_PREFIX "RAND_STATUS_UNKNOWN_ERROR";
+}
 
-#endif  // KALDI_CUDAMATRIX_COMMON_H_
+}  // namespace kaldi
+
+#endif  // HAVE_CUDA

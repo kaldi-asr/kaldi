@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2014  Guoguo Chen
 # Apache 2.0
@@ -55,14 +55,16 @@ done
 
 mkdir -p $graph_dir/sub_graphs
 
+utils/lang/check_phones_compatible.sh $lang/phones.txt $model_dir/phones.txt
+
 # If --ngram-order is larger than 1, we will have to use SRILM
 if [ $ngram_order -gt 1 ]; then
   ngram_count=`which ngram-count` || true
   if [ -z $ngram_count ]; then
     if uname -a | grep 64 >/dev/null; then # some kind of 64 bit...
-      sdir=`pwd`/../../../tools/srilm/bin/i686-m64
+      sdir=$KALDI_ROOT/tools/srilm/bin/i686-m64
     else
-      sdir=`pwd`/../../../tools/srilm/bin/i686
+      sdir=$KALDI_ROOT/tools/srilm/bin/i686
     fi
     if [ -f $sdir/ngram-count ]; then
       echo Using SRILM tools from $sdir

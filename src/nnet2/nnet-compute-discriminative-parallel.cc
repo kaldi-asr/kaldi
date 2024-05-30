@@ -18,12 +18,12 @@
 // limitations under the License.
 
 #include <deque>
+#include <mutex>
 #include "nnet2/nnet-compute-discriminative-parallel.h"
 #include "hmm/posterior.h"
 #include "lat/lattice-functions.h"
-#include "thread/kaldi-semaphore.h"
-#include "thread/kaldi-mutex.h"
-#include "thread/kaldi-thread.h"
+#include "util/kaldi-semaphore.h"
+#include "util/kaldi-thread.h"
 
 namespace kaldi {
 namespace nnet2 {
@@ -39,7 +39,7 @@ class DiscriminativeExamplesRepository {
   /// when we're done reading examples; it signals this way to this class
   /// that the stream is now empty
   void ExamplesDone();
-  
+
   /// This function is called by the code that does the training.  If there is
   /// an example available it will provide it, or it will sleep till one is
   /// available.  It returns NULL when there are no examples left and
@@ -53,8 +53,8 @@ class DiscriminativeExamplesRepository {
   int32 buffer_size_;
   Semaphore full_semaphore_;
   Semaphore empty_semaphore_;
-  Mutex examples_mutex_; // mutex we lock to modify examples_.
-  
+  std::mutex examples_mutex_; // mutex we lock to modify examples_.
+
   std::deque<DiscriminativeNnetExample*> examples_;
   bool done_;
   KALDI_DISALLOW_COPY_AND_ASSIGN(DiscriminativeExamplesRepository);
@@ -64,18 +64,18 @@ class DiscriminativeExamplesRepository {
 void DiscriminativeExamplesRepository::AcceptExample(
     const DiscriminativeNnetExample &example) {
   empty_semaphore_.Wait();
-  examples_mutex_.Lock();
+  examples_mutex_.lock();
   examples_.push_back(new DiscriminativeNnetExample(example));
-  examples_mutex_.Unlock();
+  examples_mutex_.unlock();
   full_semaphore_.Signal();
 }
 
 void DiscriminativeExamplesRepository::ExamplesDone() {
   for (int32 i = 0; i < buffer_size_; i++)
     empty_semaphore_.Wait();
-  examples_mutex_.Lock();  
+  examples_mutex_.lock();
   KALDI_ASSERT(examples_.empty());
-  examples_mutex_.Unlock();
+  examples_mutex_.unlock();
   done_ = true;
   full_semaphore_.Signal();
 }
@@ -89,11 +89,11 @@ DiscriminativeExamplesRepository::ProvideExample() {
     // the call by the next thread will not block.
     return NULL; // no examples to return-- all finished.
   } else {
-    examples_mutex_.Lock();  
+    examples_mutex_.lock();
     KALDI_ASSERT(!examples_.empty());
     DiscriminativeNnetExample *ans = examples_.front();
     examples_.pop_front();
-    examples_mutex_.Unlock();
+    examples_mutex_.unlock();
     empty_semaphore_.Signal();
     return ans;
   }
@@ -117,10 +117,11 @@ class DiscTrainParallelClass: public MultiThreadable {
       nnet_to_update_(nnet_to_update),
       nnet_to_update_orig_(nnet_to_update),
       stats_ptr_(stats) { }
-  
+
   // The following constructor is called multiple times within
   // the RunMultiThreaded template function.
   DiscTrainParallelClass(const DiscTrainParallelClass &other):
+  MultiThreadable(other),
   am_nnet_(other.am_nnet_), tmodel_(other.tmodel_), opts_(other.opts_),
   store_separate_gradients_(other.store_separate_gradients_),
   repository_(other.repository_), nnet_to_update_(other.nnet_to_update_),
@@ -137,11 +138,11 @@ class DiscTrainParallelClass: public MultiThreadable {
         // to zero we would end up adding multiple copies of the any initial
         // gradient that "nnet_to_update_" contained when we initialize
         // the first instance of the class.
-        nnet_to_update_->SetZero(true);      
+        nnet_to_update_->SetZero(true);
       } else { // support case where we don't really need a gradient.
         nnet_to_update_ = NULL;
       }
-    }    
+    }
   }
   // This does the main function of the class.
   void operator () () {
@@ -157,9 +158,9 @@ class DiscTrainParallelClass: public MultiThreadable {
         KALDI_VLOG(3) << "Printing local stats for thread " << thread_id_;
         stats_.Print(opts_.criterion);
       }
-    }    
+    }
   }
-  
+
   ~DiscTrainParallelClass() {
     if (nnet_to_update_orig_ != nnet_to_update_) {
       // This branch is only taken if this instance of the class is
@@ -193,11 +194,11 @@ void NnetDiscriminativeUpdateParallel(
     SequentialDiscriminativeNnetExampleReader *example_reader,
     Nnet *nnet_to_update,
     NnetDiscriminativeStats *stats) {
-  
+
   DiscriminativeExamplesRepository repository;
-  
+
   const bool store_separate_gradients = (nnet_to_update != &(am_nnet.GetNnet()));
-  
+
   DiscTrainParallelClass c(am_nnet, tmodel, opts,
                            store_separate_gradients,
                            &repository, nnet_to_update, stats);

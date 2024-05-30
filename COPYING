@@ -56,32 +56,74 @@ contributors and original source material as well as the full text of the Apache
 License v 2.0 are set forth below.
 
 Individual Contributors (in alphabetical order)
-      
-      Mohit Agarwal      
-      Gilles Boulianne
-      Lukas Burget
-      Cisco Corporation
-      Ondrej Glembek
-      Arnab Ghoshal
-      Go Vivace Inc.
-      Mirko Hannemann
-      Navdeep Jaitly
-      Johns Hopkins University
-      Yajie Miao
-      Microsoft Corporation
-      Petr Motlicek
-      Vassil Panayotov
+
+      Albert Vernon
+      Alexander Solovets
+      Allen Guo
       Ariya Rastrow
-      Saarland University
-      Petr Schwarz      
+      Arnab Ghoshal
+      Cisco Corporation
+      Daniel Galvez
+      Daniel Povey
+      Danijel Korzinek
+      David Snyder
+      Dogan Can
+      Eduardo Silva
+      Ewald Enzinger
+      Gaofeng Cheng
+      Gaurav Kumar
       Georg Stemmer
-      Jan Silovsky
-      Phonexia s.r.o.
-      Yanmin Qian
-      Lucas Ondel
-      Karel Vesely
+      Gilles Boulianne
+      Go Vivace Inc.
+      Guoguo Chen
       Haihua Xu
-      
+      Hainan Xu
+      Hendy Irawan
+      Hossein Hadian
+      Ilya Edrenkin
+      Jan "Yenda" Trmal
+      Jan Silovsky
+      Joachim Fainberg
+      Johns Hopkins University
+      Karel Vesely
+      Ke Li
+      Kirill Katsnelson
+      Lucas Ondel
+      Lukas Burget
+      Lv Hang
+      Matthew Maciejewski
+      Microsoft Corporation
+      Minhua Wu
+      Mirko Hannemann
+      Mohit Agarwal
+      Navdeep Jaitly
+      Nickolay V. Shmyrev
+      Omid Sadjadi
+      Ondrej Glembek
+      Ondrej Platek
+      Pavel Denisov
+      Pawel Swietojanski
+      Pegah Ghahremani
+      Peter Smit
+      Petr Motlicek
+      Petr Schwarz
+      Phonexia s.r.o.
+      Saarland University
+      Shinji Watanabe
+      Shiyin Kang
+      Tanel Alumae
+      Tom Ko
+      Vassil Panayotov
+      Vijayaditya Peddinti
+      Vimal Manohar
+      Vincent Nguyen
+      Xiaohui Zhang
+      Xingyu Na
+      Yajie Miao
+      Yanmin Qian
+      Yiming Wang
+      Yiwen Shao
+
 Other Source Material
 
     This project includes a port and modification of materials from JAMA: A Java
@@ -94,9 +136,9 @@ Other Source Material
   "Signal processing with lapped transforms," Artech House, Inc., 1992.  The
   current copyright holder, Henrique S. Malvar, has given his permission for the
   release of this modified version under the Apache License 2.0.
-  
-  This project includes material from the OpenFST Library v1.2.7 available at 
-  http://www.openfst.org and released under the Apache License v. 2.0.   
+
+  This project includes material from the OpenFST Library v1.2.7 available at
+  http://www.openfst.org and released under the Apache License v. 2.0.
 
   [OpenFst COPYING file begins here]
 
@@ -105,7 +147,7 @@ Other Source Material
     You may obtain a copy of the License at
 
        http://www.apache.org/licenses/LICENSE-2.0
- 
+
     Unless required by applicable law or agreed to in writing, software
     distributed under the License is distributed on an "AS IS" BASIS,
     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.

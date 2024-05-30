@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2014  Johns Hopkins University (Author: Daniel Povey)
 # Apache 2.0
@@ -76,8 +76,11 @@ if [ ! -z "$iedir" ]; then
   done
 fi
 
+utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt || exit 1;
+mkdir -p $dir
+cp $lang/phones.txt $dir || exit 1;
 
-dir=$(readlink -f $dir) # Convert $dir to an absolute pathname, so that the
+dir=$(utils/make_absolute.sh $dir) # Convert $dir to an absolute pathname, so that the
                         # configuration files we write will contain absolute
                         # pathnames.
 mkdir -p $dir/conf

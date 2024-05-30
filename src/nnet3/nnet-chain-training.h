@@ -66,18 +66,26 @@ class NnetChainTrainer {
 
   ~NnetChainTrainer();
  private:
-  void ProcessOutputs(const NnetChainExample &eg,
+  // The internal function for doing one step of conventional SGD training.
+  void TrainInternal(const NnetChainExample &eg,
+                     const NnetComputation &computation);
+
+  // The internal function for doing one step of backstitch training. Depending
+  // on whether is_backstitch_step1 is true, It could be either the first
+  // (backward) step, or the second (forward) step of backstitch.
+  void TrainInternalBackstitch(const NnetChainExample &eg,
+                               const NnetComputation &computation,
+                               bool is_backstitch_step1);
+
+  void ProcessOutputs(bool is_backstitch_step2, const NnetChainExample &eg,
                       NnetComputer *computer);
 
   const NnetChainTrainingOptions opts_;
 
   chain::DenominatorGraph den_graph_;
   Nnet *nnet_;
-  Nnet *delta_nnet_;  // Only used if momentum != 0.0 or max-param-change !=
-                      // 0.0.  nnet representing accumulated parameter-change
-                      // (we'd call this gradient_nnet_, but due to
-                      // natural-gradient update, it's better to consider it as
-                      // a delta-parameter nnet.
+  Nnet *delta_nnet_;  // stores the change to the parameters on each training
+                      // iteration.
   CachingOptimizingCompiler compiler_;
 
   // This code supports multiple output layers, even though in the
@@ -85,7 +93,15 @@ class NnetChainTrainer {
   // So we store the objective functions per output layer.
   int32 num_minibatches_processed_;
 
+  // stats for max-change.
+  MaxChangeStats max_change_stats_;
+
   unordered_map<std::string, ObjectiveFunctionInfo, StringHasher> objf_info_;
+
+  // This value is used in backstitch training when we need to ensure
+  // consistent dropout masks.  It's set to a value derived from rand()
+  // when the class is initialized.
+  int32 srand_seed_;
 };
 
 

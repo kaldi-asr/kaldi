@@ -21,7 +21,7 @@ use lib "$Bin";
 use Data::Dumper;
 use Getopt::Long;
 
-my $vsver="vs2013";
+my $vsver="vs2017";
 
 my %ENABLED = (CUDA => 0,
                OPENBLAS => 0,
@@ -33,17 +33,23 @@ GetOptions ("vsver=s" => \$vsver,
 			"enable-mkl" => sub {$ENABLED{OPENBLAS}=0; $ENABLED{MKL}=1;},
 			);
 
-my %TOOLS=( default=>  "4.0",
-            vs2013 => "12.0",
-            vs2015 => "14.0");
+my %TOOLS=( default=> "14.1",
+            vs2015 => "14.0",
+            vs2017 => "14.1",
+            vs2019 => "v14.2"
+            );
 
-my %FORMAT=( default=> "11.00",
-             vs2013 =>  "12.00",
-             vs2015 =>  "14.00");
+my %FORMAT=( default=> "14.10",
+             vs2015 =>  "14.00",
+             vs2017 =>  "14.10",
+             vs2019 => "v14.20"
+             );
 
-my %TOOLSET=( default=> "v100",
-              vs2013 => "v120",
-              vs2015 => "v140");
+my %TOOLSET=( default=> "v141",
+              vs2015 => "v140",
+              vs2017 => "v141",
+              vs2019 => "v142"
+              );
 
 
 unless ((defined $TOOLS{$vsver}) && (defined $FORMAT{$vsver}) && (defined $TOOLSET{$vsver})) {
@@ -82,6 +88,8 @@ my @propsFiles = (
   "$Bin/openfstwin_release.props",
   "$Bin/openfstwin_debug_win32.props",
   "$Bin/openfstwin_release_win32.props",
+  "$Bin/portaudio_release.props",
+  "$Bin/portaudio_debug.props"
 );
 
 my %optionalProps = (
@@ -531,6 +539,7 @@ sub writeProjectFiles {
   print PROJ
 "    <Import Project=\"..\\kaldiwin_win32.props\" />
     <Import Project=\"..\\openfstwin_debug_win32.props\" />
+    <Import Project=\"..\\portaudio_debug.props\" />
   </ImportGroup>
   <ImportGroup Condition=\"'\$(Configuration)|\$(Platform)'=='Debug|x64'\" Label=\"PropertySheets\">
     <Import Project=\"..\\variables.props\" />
@@ -544,6 +553,7 @@ sub writeProjectFiles {
   print PROJ
 "    <Import Project=\"..\\kaldiwin.props\" />
     <Import Project=\"..\\openfstwin_debug.props\" />
+    <Import Project=\"..\\portaudio_debug.props\" />
   </ImportGroup>
   <ImportGroup Condition=\"'\$(Configuration)|\$(Platform)'=='Release|Win32'\" Label=\"PropertySheets\">
     <Import Project=\"..\\variables.props\" />
@@ -557,6 +567,7 @@ sub writeProjectFiles {
   print PROJ
 "    <Import Project=\"..\\kaldiwin_win32.props\" />
     <Import Project=\"..\\openfstwin_release_win32.props\" />
+    <Import Project=\"..\\portaudio_release.props\" />
   </ImportGroup>
   <ImportGroup Condition=\"'\$(Configuration)|\$(Platform)'=='Release|x64'\" Label=\"PropertySheets\">
     <Import Project=\"..\\variables.props\" />
@@ -570,6 +581,7 @@ sub writeProjectFiles {
   print PROJ
 "    <Import Project=\"..\\kaldiwin.props\" />
     <Import Project=\"..\\openfstwin_release.props\" />
+    <Import Project=\"..\\portaudio_release.props\" />
   </ImportGroup>
 ";
 
@@ -960,7 +972,7 @@ while(<M>) {
   # parsing the part of the top-level Makefile that's like:
   # SUBDIRS = base util matrix feat tree model fstext hmm optimization \
   #	    transform lm decoder bin fstbin gmmbin featbin
-  if (s/^(SUBDIRS|EXT_SUBDIRS)\s+=\s+//) {
+  if (s/^(SUBDIRS|EXT_SUBDIRS)\s+:=\s+//) {
     # print STDERR "here\n";
     while ( isValidProjectLine($_) ) { # till we get an empty line or a line starting with EXT_SUBDIRS_LIB..
       s:\\::;

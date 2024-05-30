@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 
 # To be run from one directory above this script.
@@ -112,3 +112,5 @@ fi
 
 
 echo train lm succeeded
+
+exit 0

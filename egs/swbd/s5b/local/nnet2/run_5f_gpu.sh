@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 
 # This runs on the full training set (with duplicates removed), with p-norm units, on top of fMLLR features, on GPU.
@@ -9,7 +9,7 @@ dir=nnet5f_gpu
 . ./cmd.sh
 . ./path.sh
 . utils/parse_options.sh
-parallel_opts="-l gpu=1"  # This is suitable for the CLSP network, you'll likely have to change it.
+parallel_opts="--gpu 1"  # This is suitable for the CLSP network, you'll likely have to change it.
 
 ( 
    if [ ! -f exp/$dir/final.mdl ]; then

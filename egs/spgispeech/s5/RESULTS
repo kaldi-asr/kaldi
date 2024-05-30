@@ -1,0 +1,55 @@
+# In the results below, "tgsmall" is 3-gram LM, which is used for lattice generation.
+# The following language models are then used for rescoring:
+# *) "rescored"- non-pruned maximum entropy 4-gram LM
+
+## for documentation purposes, we include the perplexities of the individual LMs -- see the training script local/train_lms_srilm.sh for details
+data/srilm/7gram.me.gz      file  data/srilm/dev.txt:  196610  sentences,  4726024  words,  0  OOVs  0     zeroprobs,  logprob=  -8902029       ppl=  64.32612  ppl1=  76.49254
+data/srilm/5gram.me.gz      file  data/srilm/dev.txt:  196610  sentences,  4726024  words,  0  OOVs  0     zeroprobs,  logprob=  -8935219       ppl=  65.33255  ppl1=  77.73952
+data/srilm/6gram.me.gz      file  data/srilm/dev.txt:  196610  sentences,  4726024  words,  0  OOVs  0     zeroprobs,  logprob=  -8936829       ppl=  65.38179  ppl1=  77.80054
+data/srilm/4gram.me.gz      file  data/srilm/dev.txt:  196610  sentences,  4726024  words,  0  OOVs  0     zeroprobs,  logprob=  -9050586       ppl=  68.95498  ppl1=  82.23427
+data/srilm/4gram.gt0112.gz  file  data/srilm/dev.txt:  196610  sentences,  4726024  words,  0  OOVs  5187  zeroprobs,  logprob=  -9184350       ppl=  73.74063  ppl1=  88.20471
+data/srilm/4gram.kn0122.gz  file  data/srilm/dev.txt:  196610  sentences,  4726024  words,  0  OOVs  0     zeroprobs,  logprob=  -9196606       ppl=  73.82929  ppl1=  88.29782
+data/srilm/4gram.gt0122.gz  file  data/srilm/dev.txt:  196610  sentences,  4726024  words,  0  OOVs  5187  zeroprobs,  logprob=  -9194675       ppl=  74.09803  ppl1=  88.65006
+data/srilm/4gram.kn0112.gz  file  data/srilm/dev.txt:  196610  sentences,  4726024  words,  0  OOVs  0     zeroprobs,  logprob=  -9207785       ppl=  74.21637  ppl1=  88.78006
+data/srilm/4gram.gt0113.gz  file  data/srilm/dev.txt:  196610  sentences,  4726024  words,  0  OOVs  5187  zeroprobs,  logprob=  -9198757       ppl=  74.23981  ppl1=  88.82675
+data/srilm/4gram.gt0123.gz  file  data/srilm/dev.txt:  196610  sentences,  4726024  words,  0  OOVs  5187  zeroprobs,  logprob=  -9209083       ppl=  74.59962  ppl1=  89.27524
+data/srilm/4gram.kn0222.gz  file  data/srilm/dev.txt:  196610  sentences,  4726024  words,  0  OOVs  0     zeroprobs,  logprob=  -9223550       ppl=  74.76567  ppl1=  89.46459
+data/srilm/4gram.kn0123.gz  file  data/srilm/dev.txt:  196610  sentences,  4726024  words,  0  OOVs  0     zeroprobs,  logprob=  -9235385       ppl=  75.1807   ppl1=  89.98194
+data/srilm/4gram.kn0113.gz  file  data/srilm/dev.txt:  196610  sentences,  4726024  words,  0  OOVs  0     zeroprobs,  logprob=  -9242119       ppl=  75.41787  ppl1=  90.27763
+data/srilm/4gram.gt0222.gz  file  data/srilm/dev.txt:  196610  sentences,  4726024  words,  0  OOVs  5187  zeroprobs,  logprob=  -9237725       ppl=  75.60686  ppl1=  90.53118
+data/srilm/4gram.gt0111.gz  file  data/srilm/dev.txt:  196610  sentences,  4726024  words,  0  OOVs  5187  zeroprobs,  logprob=  -9247490       ppl=  75.95336  ppl1=  90.96339
+data/srilm/4gram.gt0223.gz  file  data/srilm/dev.txt:  196610  sentences,  4726024  words,  0  OOVs  5187  zeroprobs,  logprob=  -9252133       ppl=  76.11867  ppl1=  91.16962
+data/srilm/4gram.kn0223.gz  file  data/srilm/dev.txt:  196610  sentences,  4726024  words,  0  OOVs  0     zeroprobs,  logprob=  -9264101       ppl=  76.19736  ppl1=  91.24972
+data/srilm/4gram.kn0111.gz  file  data/srilm/dev.txt:  196610  sentences,  4726024  words,  0  OOVs  0     zeroprobs,  logprob=  -9268668       ppl=  76.36029  ppl1=  91.45296
+data/srilm/3gram.me.gz      file  data/srilm/dev.txt:  196610  sentences,  4726024  words,  0  OOVs  0     zeroprobs,  logprob=  -9318474       ppl=  78.16015  ppl1=  93.69934
+data/srilm/3gram.kn012.gz   file  data/srilm/dev.txt:  196610  sentences,  4726024  words,  0  OOVs  0     zeroprobs,  logprob=  -9408681       ppl=  81.52866  ppl1=  97.90927
+data/srilm/3gram.gt011.gz   file  data/srilm/dev.txt:  196610  sentences,  4726024  words,  0  OOVs  5187  zeroprobs,  logprob=  -9399744       ppl=  81.56597  ppl1=  97.97564
+data/srilm/3gram.kn011.gz   file  data/srilm/dev.txt:  196610  sentences,  4726024  words,  0  OOVs  0     zeroprobs,  logprob=  -9411733       ppl=  81.64512  ppl1=  98.05495
+data/srilm/3gram.gt012.gz   file  data/srilm/dev.txt:  196610  sentences,  4726024  words,  0  OOVs  5187  zeroprobs,  logprob=  -9410070       ppl=  81.96129  ppl1=  98.47032
+data/srilm/3gram.kn022.gz   file  data/srilm/dev.txt:  196610  sentences,  4726024  words,  0  OOVs  0     zeroprobs,  logprob=  -9435192       ppl=  82.54594  ppl1=  99.18209
+data/srilm/3gram.gt022.gz   file  data/srilm/dev.txt:  196610  sentences,  4726024  words,  0  OOVs  5187  zeroprobs,  logprob=  -9453120       ppl=  83.63024  ppl1=  100.5598
+data/srilm/3gram.kn023.gz   file  data/srilm/dev.txt:  196610  sentences,  4726024  words,  0  OOVs  0     zeroprobs,  logprob=  -9483614       ppl=  84.43693  ppl1=  101.5498
+data/srilm/3gram.gt023.gz   file  data/srilm/dev.txt:  196610  sentences,  4726024  words,  0  OOVs  5187  zeroprobs,  logprob=  -9494343       ppl=  85.26021  ppl1=  102.6022
+data/srilm/2gram.gt01.gz    file  data/srilm/dev.txt:  196610  sentences,  4726024  words,  0  OOVs  5187  zeroprobs,  logprob=  -1.031115e+07  ppl=  124.9826  ppl1=  152.8191
+data/srilm/2gram.me.gz      file  data/srilm/dev.txt:  196610  sentences,  4726024  words,  0  OOVs  0     zeroprobs,  logprob=  -1.033317e+07  ppl=  125.6362  ppl1=  153.6176
+data/srilm/2gram.kn01.gz    file  data/srilm/dev.txt:  196610  sentences,  4726024  words,  0  OOVs  0     zeroprobs,  logprob=  -1.033766e+07  ppl=  125.9001  ppl1=  153.9539
+data/srilm/2gram.kn02.gz    file  data/srilm/dev.txt:  196610  sentences,  4726024  words,  0  OOVs  0     zeroprobs,  logprob=  -1.036267e+07  ppl=  127.3817  ppl1=  155.8414
+data/srilm/2gram.gt02.gz    file  data/srilm/dev.txt:  196610  sentences,  4726024  words,  0  OOVs  5187  zeroprobs,  logprob=  -1.03542e+07   ppl=  127.5276  ppl1=  156.0618
+##
+#
+
+# Bare TDNN-F model
+#for x in exp/chain_cleaned/tdnn_1a_sp/decode_*; do grep WER $x/wer_* | utils/best_wer.sh ; done
+%WER 5.96 [ 56419 / 946469, 11482 ins, 9916 del, 35021 sub ] exp/chain_cleaned/tdnn_1a_sp/decode_val_rescored/wer_10_0.5
+%WER 6.30 [ 59597 / 946469, 14063 ins, 8943 del, 36591 sub ] exp/chain_cleaned/tdnn_1a_sp/decode_val_tgsmall/wer_11_0.0
+#for x in exp/chain_cleaned/tdnn_1a_sp_online/decode_*; do grep WER $x/wer_* | utils/best_wer.sh ; done
+%WER 5.97 [ 56463 / 946469, 11537 ins, 9884 del, 35042 sub ] exp/chain_cleaned/tdnn_1a_sp_online/decode_val_rescored/wer_10_0.5
+%WER 6.30 [ 59616 / 946469, 12326 ins, 10792 del, 36498 sub ] exp/chain_cleaned/tdnn_1a_sp_online/decode_val_tgsmall/wer_11_0.5
+
+#TDNN+LSTM model
+# for x in exp/chain_cleaned/tdnn_lstm_1a_sp/decode_*; do grep WER $x/wer_* | utils/best_wer.sh ; done
+%WER 5.79 [ 54844 / 946469, 9971 ins, 10397 del, 34476 sub ] exp/chain_cleaned/tdnn_lstm_1a_sp/decode_val_rescored/wer_9_0.5
+%WER 6.04 [ 57165 / 946469, 10304 ins, 11651 del, 35210 sub ] exp/chain_cleaned/tdnn_lstm_1a_sp/decode_val_tgsmall/wer_10_0.5
+# for x in exp/chain_cleaned/tdnn_lstm_1a_sp_online/decode_*; do grep WER $x/wer_* | utils/best_wer.sh ; done
+%WER 5.60 [ 53036 / 946469, 10812 ins, 8601 del, 33623 sub ] exp/chain_cleaned/tdnn_lstm_1a_sp_online/decode_val_rescored/wer_10_0.0
+%WER 5.84 [ 55282 / 946469, 9973 ins, 10879 del, 34430 sub ] exp/chain_cleaned/tdnn_lstm_1a_sp_online/decode_val_tgsmall/wer_11_0.5

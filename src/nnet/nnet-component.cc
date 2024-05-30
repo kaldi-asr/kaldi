@@ -35,17 +35,15 @@
 #include "nnet/nnet-average-pooling-component.h"
 #include "nnet/nnet-max-pooling-component.h"
 
-#include "nnet/nnet-convolutional-2d-component.h"
-#include "nnet/nnet-average-pooling-2d-component.h"
-#include "nnet/nnet-max-pooling-2d-component.h"
-
-#include "nnet/nnet-lstm-projected-streams.h"
-#include "nnet/nnet-blstm-projected-streams.h"
+#include "nnet/nnet-lstm-projected.h"
+#include "nnet/nnet-blstm-projected.h"
+#include "nnet/nnet-recurrent.h"
 
 #include "nnet/nnet-sentence-averaging-component.h"
 #include "nnet/nnet-frame-pooling-component.h"
 #include "nnet/nnet-parallel-component.h"
 #include "nnet/nnet-multibasis-component.h"
+#include "nnet/nnet-parametric-relu.h"
 
 namespace kaldi {
 namespace nnet1 {
@@ -54,14 +52,17 @@ const struct Component::key_value Component::kMarkerMap[] = {
   { Component::kAffineTransform, "<AffineTransform>" },
   { Component::kLinearTransform, "<LinearTransform>" },
   { Component::kConvolutionalComponent, "<ConvolutionalComponent>" },
-  { Component::kConvolutional2DComponent, "<Convolutional2DComponent>" },
-  { Component::kLstmProjectedStreams, "<LstmProjectedStreams>" },
-  { Component::kBLstmProjectedStreams, "<BLstmProjectedStreams>" },
+  { Component::kLstmProjected, "<LstmProjected>" },
+  { Component::kLstmProjected, "<LstmProjectedStreams>" }, // bwd compat.
+  { Component::kBlstmProjected, "<BlstmProjected>" },
+  { Component::kBlstmProjected, "<BlstmProjectedStreams>" }, // bwd compat.
+  { Component::kRecurrentComponent, "<RecurrentComponent>" },
   { Component::kSoftmax, "<Softmax>" },
   { Component::kHiddenSoftmax, "<HiddenSoftmax>" },
   { Component::kBlockSoftmax, "<BlockSoftmax>" },
   { Component::kSigmoid, "<Sigmoid>" },
   { Component::kTanh, "<Tanh>" },
+  { Component::kParametricRelu,"<ParametricRelu>" },
   { Component::kDropout, "<Dropout>" },
   { Component::kLengthNormComponent, "<LengthNormComponent>" },
   { Component::kRbm, "<Rbm>" },
@@ -71,9 +72,7 @@ const struct Component::key_value Component::kMarkerMap[] = {
   { Component::kRescale, "<Rescale>" },
   { Component::kKlHmm, "<KlHmm>" },
   { Component::kAveragePoolingComponent, "<AveragePoolingComponent>" },
-  { Component::kAveragePooling2DComponent, "<AveragePooling2DComponent>" },
   { Component::kMaxPoolingComponent, "<MaxPoolingComponent>" },
-  { Component::kMaxPooling2DComponent, "<MaxPooling2DComponent>" },
   { Component::kSentenceAveragingComponent, "<SentenceAveragingComponent>" },
   { Component::kSimpleSentenceAveragingComponent, "<SimpleSentenceAveragingComponent>" },
   { Component::kFramePoolingComponent, "<FramePoolingComponent>" },
@@ -83,6 +82,7 @@ const struct Component::key_value Component::kMarkerMap[] = {
 
 
 const char* Component::TypeToMarker(ComponentType t) {
+  // Retuns the 1st '<string>' corresponding to the type in 'kMarkerMap',
   int32 N = sizeof(kMarkerMap) / sizeof(kMarkerMap[0]);
   for (int i = 0; i < N; i++) {
     if (kMarkerMap[i].key == t) return kMarkerMap[i].value;
@@ -101,7 +101,8 @@ Component::ComponentType Component::MarkerToType(const std::string &s) {
     std::transform(m.begin(), m.end(), m_lowercase.begin(), ::tolower);
     if (s_lowercase == m_lowercase) return kMarkerMap[i].key;
   }
-  KALDI_ERR << "Unknown marker : '" << s << "'";
+  KALDI_ERR << "Unknown 'Component' marker : '" << s << "'\n"
+            << "(isn't the model 'too old' or incompatible?)";
   return kUnknown;
 }
 
@@ -119,14 +120,14 @@ Component* Component::NewComponentOfType(ComponentType comp_type,
     case Component::kConvolutionalComponent :
       ans = new ConvolutionalComponent(input_dim, output_dim);
       break;
-    case Component::kConvolutional2DComponent :
-      ans = new Convolutional2DComponent(input_dim, output_dim);
+    case Component::kLstmProjected :
+      ans = new LstmProjected(input_dim, output_dim);
       break;
-    case Component::kLstmProjectedStreams :
-      ans = new LstmProjectedStreams(input_dim, output_dim);
+    case Component::kBlstmProjected :
+      ans = new BlstmProjected(input_dim, output_dim);
       break;
-    case Component::kBLstmProjectedStreams :
-      ans = new BLstmProjectedStreams(input_dim, output_dim);
+    case Component::kRecurrentComponent :
+      ans = new RecurrentComponent(input_dim, output_dim);
       break;
     case Component::kSoftmax :
       ans = new Softmax(input_dim, output_dim);
@@ -142,6 +143,9 @@ Component* Component::NewComponentOfType(ComponentType comp_type,
       break;
     case Component::kTanh :
       ans = new Tanh(input_dim, output_dim);
+      break;
+    case Component::kParametricRelu :
+      ans = new ParametricRelu(input_dim, output_dim);
       break;
     case Component::kDropout :
       ans = new Dropout(input_dim, output_dim);
@@ -176,14 +180,8 @@ Component* Component::NewComponentOfType(ComponentType comp_type,
     case Component::kAveragePoolingComponent :
       ans = new AveragePoolingComponent(input_dim, output_dim);
       break;
-    case Component::kAveragePooling2DComponent :
-      ans = new AveragePooling2DComponent(input_dim, output_dim);
-      break;
     case Component::kMaxPoolingComponent :
       ans = new MaxPoolingComponent(input_dim, output_dim);
-      break;
-    case Component::kMaxPooling2DComponent :
-      ans = new MaxPooling2DComponent(input_dim, output_dim);
       break;
     case Component::kFramePoolingComponent :
       ans = new FramePoolingComponent(input_dim, output_dim);

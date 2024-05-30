@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2015  Johns Hopkins University (author: Vijayaditya Peddinti)
 # Apache 2.0
 # This script downloads the Aachen impulse response database
@@ -11,8 +11,8 @@ sampling_rate=8000
 DBname=AIR
 file_splitter=  #script to generate job scripts given the command file
 
-. cmd.sh
-. path.sh
+. ./cmd.sh
+. ./path.sh
 . ./utils/parse_options.sh
 
 if [ $# != 3 ]; then
@@ -30,8 +30,8 @@ log_dir=$3
 if [ "$download" = true ]; then
   mkdir -p $RIR_home
   (cd $RIR_home;
-  rm -rf air_database_release_1_4.zip 
-  wget https://www2.ind.rwth-aachen.de/air/air_database_release_1_4.zip || exit 1;
+  rm -rf air_database_release_1_4.zip
+  wget http://www.openslr.org/resources/20/air_database_release_1_4.zip || exit 1;
   unzip air_database_release_1_4.zip > /dev/null
   )
 fi

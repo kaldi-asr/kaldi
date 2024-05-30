@@ -1,7 +1,7 @@
 // fstext/push-special.cc
 
-// Copyright 2012  Johns Hopkins University (authors: Daniel Povey,
-//                 Ehsan Variani, Pegah Ghahrmani)
+// Copyright 2012      Johns Hopkins University (author: Daniel Povey)
+//           2012      Ehsan Variani, Pegah Ghahrmani
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -80,7 +80,7 @@ final-probabilities of the WFST; the details are quite obvious, and the
 equivalence with the original WFST is easy to show.  Our algorithm is in
 practice an order of magnitude faster than the more generic algorithm for
 conventional weight-pushing of \cite{Mohri:02}, when applied to cyclic WFSTs.
-  
+
  */
 
 class PushSpecialClass {
@@ -95,7 +95,7 @@ class PushSpecialClass {
     num_states_ = fst_->NumStates();
     initial_state_ = fst_->Start();
     occ_.resize(num_states_, 1.0 / sqrt(num_states_)); // unit length
-    
+
     pred_.resize(num_states_);
     for (StateId s = 0; s < num_states_; s++) {
       for (ArcIterator<VectorFst<StdArc> > aiter(*fst, s);
@@ -132,21 +132,22 @@ class PushSpecialClass {
         min_sum = std::min(min_sum, sum);
         max_sum = std::max(max_sum, sum);
       }
-    }
+   }
     KALDI_VLOG(4) << "min,max is " << min_sum << " " << max_sum;
     return kaldi::Log(max_sum / min_sum); // In FST world we'll actually
     // dealing with logs, so the log of the ratio is more suitable
     // to compare with delta (makes testing the algorithm easier).
   }
 
-  
+
   void Iterate(float delta) {
     // This is like the power method to find the top eigenvalue of a matrix.
-    // We limit it to 2000 iters max, just in case something unanticipated
+    // We limit it to 200 iters max, just in case something unanticipated
     // happens, but we should exit due to the "delta" thing, usually after
     // several tens of iterations.
-    int iter;
-    for (iter = 0; iter < 2000; iter++) {
+    int iter, max_iter = 200;
+
+    for (iter = 0; iter < max_iter; iter++) {
       std::vector<double> new_occ(num_states_);
       // We initialize new_occ to 0.1 * occ.  A simpler algorithm would
       // initialize them to zero, so it's like the pure power method.  This is
@@ -156,7 +157,7 @@ class PushSpecialClass {
       // ones) all have the same magnitude.
       for (int i = 0; i < num_states_; i++)
         new_occ[i] = 0.1 * occ_[i];
-      
+
       for (int i = 0; i < num_states_; i++) {
         std::vector<std::pair<StateId, double> >::const_iterator iter,
             end = pred_[i].end();
@@ -181,8 +182,8 @@ class PushSpecialClass {
     KALDI_WARN << "push-special: finished " << iter
                << " iterations without converging.  Output will be inaccurate.";
   }
-  
- 
+
+
   // Modifies the FST weights and the final-prob to take account of these potentials.
   void ModifyFst() {
     // First get the potentials as negative-logs, like the values
@@ -210,13 +211,13 @@ class PushSpecialClass {
   StateId initial_state_;
   std::vector<double> occ_; // the top eigenvector of (matrix of weights) transposed.
   double lambda_; // our current estimate of the top eigenvalue.
-  
+
   std::vector<std::vector<std::pair<StateId, double> > > pred_; // List of transitions
   // into each state.  For the start state, this list consists of the list of
   // states with final-probs, each with their final prob.
-  
+
   VectorFst<StdArc> *fst_;
-  
+
 };
 
 
@@ -228,7 +229,7 @@ void PushSpecial(VectorFst<StdArc> *fst, float delta) {
   // gets done in the initializer.
 }
 
-  
+
 } // end namespace fst.
 
 

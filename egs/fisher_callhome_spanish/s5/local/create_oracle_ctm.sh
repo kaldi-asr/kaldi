@@ -21,7 +21,7 @@ if [ ! -f $dir/oracle/oracle.lat.gz ]; then
         lattice-oracle --write-lattices="ark:|gzip -c > $dir/oracle/oracle.lat.gz" \
             "ark:gunzip -c $dir/lat.*.gz|" ark:- ark:- > /dev/null 2>&1
 fi
-        
+
 lattice-align-words $lang/phones/word_boundary.int $model \
     "ark:gunzip -c $dir/oracle/oracle.lat.gz|" ark:- | \
     lattice-1best --lm-scale=$LMWT ark:- ark:- | nbest-to-ctm ark:- - | \

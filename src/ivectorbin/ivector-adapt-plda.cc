@@ -33,18 +33,18 @@ int main(int argc, char *argv[]) {
         "\n"
         "Usage: ivector-adapt-plda [options] <plda-in> <ivectors-rspecifier> <plda-out>\n"
         "e.g.: ivector-adapt-plda plda ark:ivectors.ark plda.adapted\n";
-    
+
     ParseOptions po(usage);
 
     bool binary = true;
     po.Register("binary", &binary, "Write output in binary mode");
     PldaUnsupervisedAdaptorConfig config;
     config.Register(&po);
-    
-    
-    
+
+
+
     po.Read(argc, argv);
-    
+
     if (po.NumArgs() != 3) {
       po.PrintUsage();
       exit(1);
@@ -53,19 +53,19 @@ int main(int argc, char *argv[]) {
     std::string plda_rxfilename = po.GetArg(1),
         ivector_rspecifier = po.GetArg(2),
         plda_wxfilename = po.GetArg(3);
-    
+
     Plda plda;
     ReadKaldiObject(plda_rxfilename, &plda);
 
     SequentialBaseFloatVectorReader ivector_reader(ivector_rspecifier);
-    
+
     int32 num_done = 0;
     PldaUnsupervisedAdaptor adaptor;
     for (; !ivector_reader.Done(); ivector_reader.Next(), num_done++)
       adaptor.AddStats(1.0, ivector_reader.Value());
 
     adaptor.UpdatePlda(config, &plda);
-      
+
     WriteKaldiObject(plda, plda_wxfilename, binary);
 
     return (num_done != 0 ? 0 : 1);

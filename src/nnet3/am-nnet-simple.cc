@@ -79,8 +79,6 @@ void AmNnetSimple::SetPriors(const VectorBase<BaseFloat> &priors) {
 
 std::string AmNnetSimple::Info() const {
   std::ostringstream ostr;
-  ostr << "left-context: " << left_context_ << "\n";
-  ostr << "right-context: " << right_context_ << "\n";
   ostr << "input-dim: " << nnet_.InputDim("input") << "\n";
   ostr << "ivector-dim: " << nnet_.InputDim("ivector") << "\n";
   ostr << "num-pdfs: " << nnet_.OutputDim("output") << "\n";

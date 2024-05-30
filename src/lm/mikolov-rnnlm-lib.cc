@@ -66,7 +66,7 @@ static union {
     int j, i;
   } n;
 } d2i;
-#define EXP_A (1048576/M_LN2)
+#define EXP_A (1048576 / M_LN2)
 #define EXP_C 60801
 #define FAST_EXP(y) (d2i.n.i = EXP_A * (y) + (1072693248 - EXP_C), d2i.d)
 
@@ -147,7 +147,7 @@ CRnnLM::CRnnLM() {
   srand(rand_seed);
 
   vocab_hash_size = 100000000;
-  vocab_hash  =  (int *)calloc(vocab_hash_size, sizeof(int));
+  vocab_hash  =  reinterpret_cast<int *>(calloc(vocab_hash_size, sizeof(int)));
 }
 
 CRnnLM::~CRnnLM() {
@@ -178,7 +178,9 @@ CRnnLM::~CRnnLM() {
     free(syn1b);
     if (syncb != NULL) free(syncb);
 
-    for (i = 0; i < class_size; i++) free(class_words[i]);
+    for (i = 0; i < class_size; i++) {
+      free(class_words[i]);
+    }
     free(class_max_cn);
     free(class_cn);
     free(class_words);
@@ -195,7 +197,7 @@ CRnnLM::~CRnnLM() {
 }
 
 real CRnnLM::random(real min, real max) {
-  return rand()/(real)RAND_MAX*(max-min)+min;
+  return rand() / (real)RAND_MAX * (max - min) + min;
 }
 
 void CRnnLM::setRnnLMFile(const std::string &str) {
@@ -222,7 +224,7 @@ void CRnnLM::readWord(char *word, FILE *fin) {
       }
 
       if (ch == '\n') {
-        strcpy(word, (char *)"</s>");
+        strcpy(word, const_cast<char *>("</s>"));
         return;
       } else {
         continue;
@@ -244,7 +246,9 @@ int CRnnLM::getWordHash(const char *word) {
   unsigned int hash, a;
 
   hash = 0;
-  for (a = 0; a < strlen(word); a++) hash = hash * 237 + word[a];
+  for (a = 0; a < strlen(word); a++) {
+    hash = hash * 237 + word[a];
+  }
   hash = hash % vocab_hash_size;
 
   return hash;
@@ -275,8 +279,9 @@ void CRnnLM::sortVocab() {
 
   for (a = 1; a < vocab_size; a++) {
     max = a;
-    for (b = a + 1; b < vocab_size; b++)
+    for (b = a + 1; b < vocab_size; b++) {
       if (vocab[max].cn < vocab[b].cn) max = b;
+    }
 
     swap = vocab[max];
     vocab[max] = vocab[a];
@@ -307,24 +312,30 @@ void CRnnLM::saveWeights() {      // saves current weights and unit activations
     neu2b[a].er = neu2[a].er;
   }
 
-  for (b = 0; b < layer1_size; b++)
+  for (b = 0; b < layer1_size; b++) {
     for (a = 0; a < layer0_size; a++) {
       syn0b[a + b * layer0_size].weight = syn0[a + b * layer0_size].weight;
     }
+  }
 
   if (layerc_size > 0) {
-    for (b = 0; b < layerc_size; b++) for (a = 0; a < layer1_size; a++) {
-      syn1b[a + b * layer1_size].weight = syn1[a + b * layer1_size].weight;
-    }
-
-    for (b = 0; b < layer2_size; b++) for (a = 0; a < layerc_size; a++) {
-      syncb[a + b * layerc_size].weight = sync[a + b * layerc_size].weight;
-    }
-  } else {
-    for (b = 0; b < layer2_size; b++)
+    for (b = 0; b < layerc_size; b++) {
       for (a = 0; a < layer1_size; a++) {
         syn1b[a + b * layer1_size].weight = syn1[a + b * layer1_size].weight;
       }
+    }
+
+    for (b = 0; b < layer2_size; b++) {
+      for (a = 0; a < layerc_size; a++) {
+        syncb[a + b * layerc_size].weight = sync[a + b * layerc_size].weight;
+      }
+    }
+  } else {
+    for (b = 0; b < layer2_size; b++) {
+      for (a = 0; a < layer1_size; a++) {
+        syn1b[a + b * layer1_size].weight = syn1[a + b * layer1_size].weight;
+      }
+    }
   }
 
   // for (a = 0; a < direct_size; a++) syn_db[a].weight = syn_d[a].weight;
@@ -364,12 +375,14 @@ void CRnnLM::initNet() {
       exit(1);
     }
 
-  syn_d = (direct_t *)calloc((long long)direct_size, sizeof(direct_t));
+  syn_d =
+    reinterpret_cast<direct_t *>(calloc(static_cast<long long>(direct_size),
+                                         sizeof(direct_t)));
 
   if (syn_d == NULL) {
     printf("Memory allocation for direct"
-           " connections failed (requested %lld bytes)\n",
-           (long long)direct_size * (long long)sizeof(direct_t));
+     " connections failed (requested %lld bytes)\n",
+     static_cast<long long>(direct_size) * static_cast<long long>(sizeof(direct_t)));
     exit(1);
   }
 
@@ -418,40 +431,49 @@ void CRnnLM::initNet() {
     neu2[a].er = 0;
   }
 
-  for (b = 0; b < layer1_size; b++)
+  for (b = 0; b < layer1_size; b++) {
     for (a = 0; a < layer0_size; a++) {
       syn0[a + b * layer0_size].weight =
           random(-0.1, 0.1) + random(-0.1, 0.1) + random(-0.1, 0.1);
     }
+  }
 
   if (layerc_size > 0) {
-    for (b = 0; b < layerc_size; b++)
+    for (b = 0; b < layerc_size; b++) {
       for (a = 0; a < layer1_size; a++) {
         syn1[a + b * layer1_size].weight =
             random(-0.1, 0.1) + random(-0.1, 0.1) + random(-0.1, 0.1);
       }
+    }
 
-    for (b = 0; b < layer2_size; b++)
+    for (b = 0; b < layer2_size; b++) {
       for (a = 0; a < layerc_size; a++) {
         sync[a + b * layerc_size].weight =
             random(-0.1, 0.1) + random(-0.1, 0.1) + random(-0.1, 0.1);
       }
+    }
   } else {
-    for (b = 0; b < layer2_size; b++)
+    for (b = 0; b < layer2_size; b++) {
       for (a = 0; a < layer1_size; a++) {
         syn1[a + b * layer1_size].weight =
             random(-0.1, 0.1) + random(-0.1, 0.1) + random(-0.1, 0.1);
       }
+    }
   }
 
   long long aa;
-  for (aa = 0; aa < direct_size; aa++) syn_d[aa] = 0;
+  for (aa = 0; aa < direct_size; aa++) {
+    syn_d[aa] = 0;
+  }
 
   if (bptt > 0) {
-    bptt_history = (int *)calloc((bptt + bptt_block + 10), sizeof(int));
-    for (a = 0; a < bptt + bptt_block; a++) bptt_history[a] = -1;
-    bptt_hidden = (neuron *)calloc((bptt + bptt_block + 1) * layer1_size,
-                                   sizeof(neuron));
+    bptt_history = reinterpret_cast<int *>(calloc((bptt + bptt_block + 10),
+                                                   sizeof(int)));
+    for (a = 0; a < bptt + bptt_block; a++) {
+      bptt_history[a] = -1;
+    }
+    bptt_hidden = reinterpret_cast<neuron *>(calloc(
+                        (bptt + bptt_block + 1) * layer1_size, sizeof(neuron)));
     for (a = 0; a < (bptt + bptt_block) * layer1_size; a++) {
       bptt_hidden[a].ac = 0;
       bptt_hidden[a].er = 0;
@@ -475,11 +497,13 @@ void CRnnLM::initNet() {
   b = 0;
 
   if (old_classes) {    // old classes
-    for (i = 0; i < vocab_size; i++) b += vocab[i].cn;
     for (i = 0; i < vocab_size; i++) {
-      df+= vocab[i].cn / (double)b;
+      b += vocab[i].cn;
+    }
+    for (i = 0; i < vocab_size; i++) {
+      df += vocab[i].cn / static_cast<double>(b);
       if (df > 1) df = 1;
-      if (df > (a + 1) / (double)class_size) {
+      if (df > (a + 1) / static_cast<double>(class_size)) {
         vocab[i].class_index = a;
         if (a < class_size - 1) a++;
       } else {
@@ -487,14 +511,18 @@ void CRnnLM::initNet() {
       }
     }
   } else {      // new classes
-    for (i = 0; i < vocab_size; i++) b += vocab[i].cn;
-    for (i = 0; i < vocab_size; i++) dd += sqrt(vocab[i].cn / (double)b);
     for (i = 0; i < vocab_size; i++) {
-      df += sqrt(vocab[i].cn / (double)b) / dd;
+      b += vocab[i].cn;
+    }
+    for (i = 0; i < vocab_size; i++) {
+      dd += sqrt(vocab[i].cn / static_cast<double>(b));
+    }
+    for (i = 0; i < vocab_size; i++) {
+      df += sqrt(vocab[i].cn / static_cast<double>(b)) / dd;
       if (df > 1) df = 1;
-      if (df > (a + 1) / (double)class_size) {
+      if (df > (a + 1) / static_cast<double>(class_size)) {
         vocab[i].class_index = a;
-        if (a < class_size-1) a++;
+        if (a < class_size - 1) a++;
       } else {
         vocab[i].class_index = a;
       }
@@ -504,14 +532,14 @@ void CRnnLM::initNet() {
   // allocate auxiliary class variables (for faster search when
   // normalizing probability at output layer)
 
-  class_words = (int **)calloc(class_size, sizeof(int *));
-  class_cn = (int *)calloc(class_size, sizeof(int));
-  class_max_cn = (int *)calloc(class_size, sizeof(int));
+  class_words = reinterpret_cast<int **>(calloc(class_size, sizeof(int *)));
+  class_cn = reinterpret_cast<int *>(calloc(class_size, sizeof(int)));
+  class_max_cn = reinterpret_cast<int *>(calloc(class_size, sizeof(int)));
 
   for (i = 0; i < class_size; i++) {
     class_cn[i] = 0;
     class_max_cn[i] = 10;
-    class_words[i] = (int *)calloc(class_max_cn[i], sizeof(int));
+    class_words[i] = reinterpret_cast<int *>(calloc(class_max_cn[i], sizeof(int)));
   }
 
   for (i = 0; i < vocab_size; i++) {
@@ -520,8 +548,8 @@ void CRnnLM::initNet() {
     class_cn[cl]++;
     if (class_cn[cl] + 2 >= class_max_cn[cl]) {
       class_max_cn[cl] += 10;
-      class_words[cl] = (int *)realloc(class_words[cl],
-                                       class_max_cn[cl] * sizeof(int));
+      class_words[cl] = reinterpret_cast<int *>(realloc(class_words[cl],
+                                       class_max_cn[cl] * sizeof(int)));
     }
   }
 }
@@ -540,7 +568,7 @@ void CRnnLM::goToDelimiter(int delim, FILE *fi) {
 
 void CRnnLM::restoreNet() {   // will read whole network structure
   FILE *fi;
-  int a, b, ver;
+  int a, b, ver, unused_size;
   float fl;
   char str[MAX_STRING];
   double d;
@@ -552,7 +580,7 @@ void CRnnLM::restoreNet() {   // will read whole network structure
   }
 
   goToDelimiter(':', fi);
-  fscanf(fi, "%d", &ver);
+  unused_size = fscanf(fi, "%d", &ver);
   if ((ver == 4) && (version == 5)) {
     /* we will solve this later.. */
   } else {
@@ -562,71 +590,71 @@ void CRnnLM::restoreNet() {   // will read whole network structure
     }
   }
   goToDelimiter(':', fi);
-  fscanf(fi, "%d", &filetype);
+  unused_size = fscanf(fi, "%d", &filetype);
   goToDelimiter(':', fi);
   if (train_file_set == 0) {
-    fscanf(fi, "%s", train_file);
+    unused_size = fscanf(fi, "%s", train_file);
   } else {
-    fscanf(fi, "%s", str);
+    unused_size = fscanf(fi, "%s", str);
   }
   goToDelimiter(':', fi);
-  fscanf(fi, "%s", valid_file);
+  unused_size = fscanf(fi, "%s", valid_file);
   goToDelimiter(':', fi);
-  fscanf(fi, "%lf", &llogp);
+  unused_size = fscanf(fi, "%lf", &llogp);
   goToDelimiter(':', fi);
-  fscanf(fi, "%d", &iter);
+  unused_size = fscanf(fi, "%d", &iter);
   goToDelimiter(':', fi);
-  fscanf(fi, "%d", &train_cur_pos);
+  unused_size = fscanf(fi, "%d", &train_cur_pos);
   goToDelimiter(':', fi);
-  fscanf(fi, "%lf", &logp);
+  unused_size = fscanf(fi, "%lf", &logp);
   goToDelimiter(':', fi);
-  fscanf(fi, "%d", &anti_k);
+  unused_size = fscanf(fi, "%d", &anti_k);
   goToDelimiter(':', fi);
-  fscanf(fi, "%d", &train_words);
+  unused_size = fscanf(fi, "%d", &train_words);
   goToDelimiter(':', fi);
-  fscanf(fi, "%d", &layer0_size);
+  unused_size = fscanf(fi, "%d", &layer0_size);
   goToDelimiter(':', fi);
-  fscanf(fi, "%d", &layer1_size);
+  unused_size = fscanf(fi, "%d", &layer1_size);
   goToDelimiter(':', fi);
-  fscanf(fi, "%d", &layerc_size);
+  unused_size = fscanf(fi, "%d", &layerc_size);
   goToDelimiter(':', fi);
-  fscanf(fi, "%d", &layer2_size);
+  unused_size = fscanf(fi, "%d", &layer2_size);
   if (ver > 5) {
     goToDelimiter(':', fi);
-    fscanf(fi, "%lld", &direct_size);
+    unused_size = fscanf(fi, "%lld", &direct_size);
   }
   if (ver > 6) {
     goToDelimiter(':', fi);
-    fscanf(fi, "%d", &direct_order);
+    unused_size = fscanf(fi, "%d", &direct_order);
   }
   goToDelimiter(':', fi);
-  fscanf(fi, "%d", &bptt);
+  unused_size = fscanf(fi, "%d", &bptt);
   if (ver > 4) {
     goToDelimiter(':', fi);
-    fscanf(fi, "%d", &bptt_block);
+    unused_size = fscanf(fi, "%d", &bptt_block);
   } else {
     bptt_block = 10;
   }
   goToDelimiter(':', fi);
-  fscanf(fi, "%d", &vocab_size);
+  unused_size = fscanf(fi, "%d", &vocab_size);
   goToDelimiter(':', fi);
-  fscanf(fi, "%d", &class_size);
+  unused_size = fscanf(fi, "%d", &class_size);
   goToDelimiter(':', fi);
-  fscanf(fi, "%d", &old_classes);
+  unused_size = fscanf(fi, "%d", &old_classes);
   goToDelimiter(':', fi);
-  fscanf(fi, "%d", &independent);
+  unused_size = fscanf(fi, "%d", &independent);
   goToDelimiter(':', fi);
-  fscanf(fi, "%lf", &d);
+  unused_size = fscanf(fi, "%lf", &d);
   starting_alpha = d;
   goToDelimiter(':', fi);
   if (alpha_set == 0) {
-    fscanf(fi, "%lf", &d);
+    unused_size = fscanf(fi, "%lf", &d);
     alpha = d;
   } else {
-    fscanf(fi, "%lf", &d);
+    unused_size = fscanf(fi, "%lf", &d);
   }
   goToDelimiter(':', fi);
-  fscanf(fi, "%d", &alpha_divide);
+  unused_size = fscanf(fi, "%d", &alpha_divide);
 
   // read normal vocabulary
   if (vocab_max_size < vocab_size) {
@@ -638,11 +666,11 @@ void CRnnLM::restoreNet() {   // will read whole network structure
   }
   goToDelimiter(':', fi);
   for (a = 0; a < vocab_size; a++) {
-    // fscanf(fi, "%d%d%s%d", &b, &vocab[a].cn,
+    // unused_size = fscanf(fi, "%d%d%s%d", &b, &vocab[a].cn,
     // vocab[a].word, &vocab[a].class_index);
-    fscanf(fi, "%d%d", &b, &vocab[a].cn);
+    unused_size = fscanf(fi, "%d%d", &b, &vocab[a].cn);
     readWord(vocab[a].word, fi);
-    fscanf(fi, "%d", &vocab[a].class_index);
+    unused_size = fscanf(fi, "%d", &vocab[a].class_index);
     // printf("%d  %d  %s  %d\n", b, vocab[a].cn,
     // vocab[a].word, vocab[a].class_index);
   }
@@ -651,14 +679,14 @@ void CRnnLM::restoreNet() {   // will read whole network structure
   if (filetype == TEXT) {
     goToDelimiter(':', fi);
     for (a = 0; a < layer1_size; a++) {
-      fscanf(fi, "%lf", &d);
+      unused_size = fscanf(fi, "%lf", &d);
       neu1[a].ac = d;
     }
   }
   if (filetype == BINARY) {
     fgetc(fi);
     for (a = 0; a < layer1_size; a++) {
-      fread(&fl, 4, 1, fi);
+      unused_size = fread(&fl, 4, 1, fi);
       neu1[a].ac = fl;
     }
   }
@@ -666,7 +694,7 @@ void CRnnLM::restoreNet() {   // will read whole network structure
     goToDelimiter(':', fi);
     for (b = 0; b < layer1_size; b++) {
       for (a = 0; a < layer0_size; a++) {
-        fscanf(fi, "%lf", &d);
+        unused_size = fscanf(fi, "%lf", &d);
         syn0[a + b * layer0_size].weight = d;
       }
     }
@@ -674,7 +702,7 @@ void CRnnLM::restoreNet() {   // will read whole network structure
   if (filetype == BINARY) {
     for (b = 0; b < layer1_size; b++) {
       for (a = 0; a < layer0_size; a++) {
-        fread(&fl, 4, 1, fi);
+        unused_size = fread(&fl, 4, 1, fi);
         syn0[a + b * layer0_size].weight = fl;
       }
     }
@@ -684,14 +712,14 @@ void CRnnLM::restoreNet() {   // will read whole network structure
     if (layerc_size == 0) {  // no compress layer
       for (b = 0; b < layer2_size; b++) {
         for (a = 0; a < layer1_size; a++) {
-          fscanf(fi, "%lf", &d);
+          unused_size = fscanf(fi, "%lf", &d);
           syn1[a + b * layer1_size].weight = d;
         }
       }
     } else {        // with compress layer
       for (b = 0; b < layerc_size; b++) {
         for (a = 0; a < layer1_size; a++) {
-          fscanf(fi, "%lf", &d);
+          unused_size = fscanf(fi, "%lf", &d);
           syn1[a + b * layer1_size].weight = d;
         }
       }
@@ -700,7 +728,7 @@ void CRnnLM::restoreNet() {   // will read whole network structure
 
       for (b = 0; b < layer2_size; b++) {
         for (a = 0; a < layerc_size; a++) {
-          fscanf(fi, "%lf", &d);
+          unused_size = fscanf(fi, "%lf", &d);
           sync[a + b * layerc_size].weight = d;
         }
       }
@@ -710,47 +738,50 @@ void CRnnLM::restoreNet() {   // will read whole network structure
     if (layerc_size == 0) {  // no compress layer
       for (b = 0; b < layer2_size; b++) {
         for (a = 0; a < layer1_size; a++) {
-          fread(&fl, 4, 1, fi);
+          unused_size = fread(&fl, 4, 1, fi);
           syn1[a + b * layer1_size].weight = fl;
         }
       }
     } else {        // with compress layer
       for (b = 0; b < layerc_size; b++) {
         for (a = 0; a < layer1_size; a++) {
-          fread(&fl, 4, 1, fi);
+          unused_size = fread(&fl, 4, 1, fi);
           syn1[a + b * layer1_size].weight = fl;
         }
       }
 
       for (b = 0; b < layer2_size; b++) {
         for (a = 0; a < layerc_size; a++) {
-          fread(&fl, 4, 1, fi);
+          unused_size = fread(&fl, 4, 1, fi);
           sync[a + b * layerc_size].weight = fl;
         }
       }
     }
   }
   if (filetype == TEXT) {
-    goToDelimiter(':', fi);    // direct conenctions
+    goToDelimiter(':', fi);    // direct connections
     long long aa;
     for (aa = 0; aa < direct_size; aa++) {
-      fscanf(fi, "%lf", &d);
+      unused_size = fscanf(fi, "%lf", &d);
       syn_d[aa] = d;
     }
   }
   if (filetype == BINARY) {
     long long aa;
     for (aa = 0; aa < direct_size; aa++) {
-      fread(&fl, 4, 1, fi);
+      unused_size = fread(&fl, 4, 1, fi);
       syn_d[aa] = fl;
 
-      /*fread(&si, 2, 1, fi);
+      /*unused_size = fread(&si, 2, 1, fi);
         fl = si/(float)(4*256);
         syn_d[aa] = fl;*/
     }
   }
 
   saveWeights();
+
+  // idiom to "use" an unused variable
+  (void) unused_size;
 
   fclose(fi);
 }
@@ -765,15 +796,20 @@ void CRnnLM::netReset() {  // cleans hidden layer activation + bptt history
   copyHiddenLayerToInput();
 
   if (bptt > 0) {
-    for (a = 1; a < bptt + bptt_block; a++) bptt_history[a] = 0;
-    for (a = bptt + bptt_block-1; a > 1; a--)
+    for (a = 1; a < bptt + bptt_block; a++) {
+      bptt_history[a] = 0;
+    }
+    for (a = bptt + bptt_block - 1; a > 1; a--) {
       for (b = 0; b < layer1_size; b++) {
         bptt_hidden[a * layer1_size + b].ac = 0;
         bptt_hidden[a * layer1_size + b].er = 0;
+      }
     }
   }
 
-  for (a = 0; a < MAX_NGRAM_ORDER; a++) history[a] = 0;
+  for (a = 0; a < MAX_NGRAM_ORDER; a++) {
+    history[a] = 0;
+  }
 }
 
 void CRnnLM::matrixXvector(struct neuron *dest, struct neuron *srcvec,
@@ -796,35 +832,35 @@ void CRnnLM::matrixXvector(struct neuron *dest, struct neuron *srcvec,
       val8 = 0;
 
       for (a = from2; a < to2; a++) {
-        val1 += srcvec[a].ac * srcmatrix[a+(b*8+from+0)*matrix_width].weight;
-        val2 += srcvec[a].ac * srcmatrix[a+(b*8+from+1)*matrix_width].weight;
-        val3 += srcvec[a].ac * srcmatrix[a+(b*8+from+2)*matrix_width].weight;
-        val4 += srcvec[a].ac * srcmatrix[a+(b*8+from+3)*matrix_width].weight;
+        val1 += srcvec[a].ac * srcmatrix[a + (b * 8 + from + 0) * matrix_width].weight;
+        val2 += srcvec[a].ac * srcmatrix[a + (b * 8 + from + 1) * matrix_width].weight;
+        val3 += srcvec[a].ac * srcmatrix[a + (b * 8 + from + 2) * matrix_width].weight;
+        val4 += srcvec[a].ac * srcmatrix[a + (b * 8 + from + 3) * matrix_width].weight;
 
-        val5 += srcvec[a].ac * srcmatrix[a+(b*8+from+4)*matrix_width].weight;
-        val6 += srcvec[a].ac * srcmatrix[a+(b*8+from+5)*matrix_width].weight;
-        val7 += srcvec[a].ac * srcmatrix[a+(b*8+from+6)*matrix_width].weight;
-        val8 += srcvec[a].ac * srcmatrix[a+(b*8+from+7)*matrix_width].weight;
+        val5 += srcvec[a].ac * srcmatrix[a + (b * 8 + from + 4) * matrix_width].weight;
+        val6 += srcvec[a].ac * srcmatrix[a + (b * 8 + from + 5) * matrix_width].weight;
+        val7 += srcvec[a].ac * srcmatrix[a + (b * 8 + from + 6) * matrix_width].weight;
+        val8 += srcvec[a].ac * srcmatrix[a + (b * 8 + from + 7) * matrix_width].weight;
       }
-      dest[b*8+from+0].ac += val1;
-      dest[b*8+from+1].ac += val2;
-      dest[b*8+from+2].ac += val3;
-      dest[b*8+from+3].ac += val4;
+      dest[b * 8 + from + 0].ac += val1;
+      dest[b * 8 + from + 1].ac += val2;
+      dest[b * 8 + from + 2].ac += val3;
+      dest[b * 8 + from + 3].ac += val4;
 
-      dest[b*8+from+4].ac += val5;
-      dest[b*8+from+5].ac += val6;
-      dest[b*8+from+6].ac += val7;
-      dest[b*8+from+7].ac += val8;
+      dest[b * 8 + from + 4].ac += val5;
+      dest[b * 8 + from + 5].ac += val6;
+      dest[b * 8 + from + 6].ac += val7;
+      dest[b * 8 + from + 7].ac += val8;
     }
 
-    for (b = b*8; b < to-from; b++) {
+    for (b = b * 8; b < to - from; b++) {
       for (a = from2; a < to2; a++) {
         dest[b+from].ac +=
-            srcvec[a].ac * srcmatrix[a+(b+from)*matrix_width].weight;
+            srcvec[a].ac * srcmatrix[a + (b + from) * matrix_width].weight;
       }
     }
   } else {    // er mod
-    for (a = 0; a < (to2-from2)/8; a++) {
+    for (a = 0; a < (to2 - from2) / 8; a++) {
       val1 = 0;
       val2 = 0;
       val3 = 0;
@@ -836,25 +872,25 @@ void CRnnLM::matrixXvector(struct neuron *dest, struct neuron *srcvec,
       val8 = 0;
 
       for (b = from; b < to; b++) {
-        val1 += srcvec[b].er * srcmatrix[a*8+from2+0+b*matrix_width].weight;
-        val2 += srcvec[b].er * srcmatrix[a*8+from2+1+b*matrix_width].weight;
-        val3 += srcvec[b].er * srcmatrix[a*8+from2+2+b*matrix_width].weight;
-        val4 += srcvec[b].er * srcmatrix[a*8+from2+3+b*matrix_width].weight;
+        val1 += srcvec[b].er * srcmatrix[a * 8 + from2 + 0 + b * matrix_width].weight;
+        val2 += srcvec[b].er * srcmatrix[a * 8 + from2 + 1 + b * matrix_width].weight;
+        val3 += srcvec[b].er * srcmatrix[a * 8 + from2 + 2 + b * matrix_width].weight;
+        val4 += srcvec[b].er * srcmatrix[a * 8 + from2 + 3 + b * matrix_width].weight;
 
-        val5 += srcvec[b].er * srcmatrix[a*8+from2+4+b*matrix_width].weight;
-        val6 += srcvec[b].er * srcmatrix[a*8+from2+5+b*matrix_width].weight;
-        val7 += srcvec[b].er * srcmatrix[a*8+from2+6+b*matrix_width].weight;
-        val8 += srcvec[b].er * srcmatrix[a*8+from2+7+b*matrix_width].weight;
+        val5 += srcvec[b].er * srcmatrix[a * 8 + from2 + 4 + b * matrix_width].weight;
+        val6 += srcvec[b].er * srcmatrix[a * 8 + from2 + 5 + b * matrix_width].weight;
+        val7 += srcvec[b].er * srcmatrix[a * 8 + from2 + 6 + b * matrix_width].weight;
+        val8 += srcvec[b].er * srcmatrix[a * 8 + from2 + 7 + b * matrix_width].weight;
       }
-      dest[a*8+from2+0].er += val1;
-      dest[a*8+from2+1].er += val2;
-      dest[a*8+from2+2].er += val3;
-      dest[a*8+from2+3].er += val4;
+      dest[a * 8 + from2 + 0].er += val1;
+      dest[a * 8 + from2 + 1].er += val2;
+      dest[a * 8 + from2 + 2].er += val3;
+      dest[a * 8 + from2 + 3].er += val4;
 
-      dest[a*8+from2+4].er += val5;
-      dest[a*8+from2+5].er += val6;
-      dest[a*8+from2+6].er += val7;
-      dest[a*8+from2+7].er += val8;
+      dest[a * 8 + from2 + 4].er += val5;
+      dest[a * 8 + from2 + 5].er += val6;
+      dest[a * 8 + from2 + 6].er += val7;
+      dest[a * 8 + from2 + 7].er += val8;
     }
 
     for (a = a * 8; a < to2 - from2; a++) {
@@ -899,15 +935,19 @@ void CRnnLM::computeNet(int last_word, int word) {
   if (last_word != -1) neu0[last_word].ac = 1;
 
   // propagate 0->1
-  for (a = 0; a < layer1_size; a++) neu1[a].ac = 0;
-  for (a = 0; a < layerc_size; a++) neuc[a].ac = 0;
+  for (a = 0; a < layer1_size; a++) {
+    neu1[a].ac = 0;
+  }
+  for (a = 0; a < layerc_size; a++) {
+    neuc[a].ac = 0;
+  }
 
   matrixXvector(neu1, neu0, syn0, layer0_size, 0, layer1_size,
-                layer0_size-layer1_size, layer0_size, 0);
+                layer0_size - layer1_size, layer0_size, 0);
 
   for (b = 0; b < layer1_size; b++) {
     a = last_word;
-    if (a != -1) neu1[b].ac += neu0[a].ac * syn0[a+b*layer0_size].weight;
+    if (a != -1) neu1[b].ac += neu0[a].ac * syn0[a + b * layer0_size].weight;
   }
 
   // activate 1      --sigmoid
@@ -931,7 +971,9 @@ void CRnnLM::computeNet(int last_word, int word) {
   }
 
   // 1->2 class
-  for (b = vocab_size; b < layer2_size; b++) neu2[b].ac = 0;
+  for (b = vocab_size; b < layer2_size; b++) {
+    neu2[b].ac = 0;
+  }
 
   if (layerc_size > 0) {
     matrixXvector(neu2, neuc, sync, layerc_size,
@@ -946,17 +988,20 @@ void CRnnLM::computeNet(int last_word, int word) {
     unsigned long long hash[MAX_NGRAM_ORDER];
     // this will hold pointers to syn_d that contains hash parameters
 
-    for (a = 0; a < direct_order; a++) hash[a] = 0;
+    for (a = 0; a < direct_order; a++) {
+      hash[a] = 0;
+    }
 
     for (a = 0; a < direct_order; a++) {
       b = 0;
-      if (a > 0) if (history[a-1] == -1) break;
+      if (a > 0) if (history[a - 1] == -1) break;
       // if OOV was in history, do not use this N-gram feature and higher orders
-      hash[a] = PRIMES[0]*PRIMES[1];
+      hash[a] = PRIMES[0] * PRIMES[1];
 
-      for (b = 1; b <= a; b++)
+      for (b = 1; b <= a; b++) {
         hash[a] += PRIMES[(a * PRIMES[b] + b) % PRIMES_SIZE]
-            * (unsigned long long)(history[b - 1] + 1);
+            * static_cast<unsigned long long>(history[b - 1] + 1);
+      }
       // update hash value based on words from the history
 
       hash[a] = hash[a] % (direct_size / 2);
@@ -965,7 +1010,7 @@ void CRnnLM::computeNet(int last_word, int word) {
     }
 
     for (a = vocab_size; a < layer2_size; a++) {
-      for (b = 0; b < direct_order; b++)
+      for (b = 0; b < direct_order; b++) {
         if (hash[b]) {
           neu2[a].ac += syn_d[hash[b]];
           // apply current parameter and move to the next one
@@ -974,6 +1019,7 @@ void CRnnLM::computeNet(int last_word, int word) {
         } else {
           break;
         }
+      }
     }
   }
 
@@ -986,7 +1032,9 @@ void CRnnLM::computeNet(int last_word, int word) {
     sum+= val;
     neu2[a].ac = val;
   }
-  for (a = vocab_size; a < layer2_size; a++) neu2[a].ac /= sum;
+  for (a = vocab_size; a < layer2_size; a++) {
+    neu2[a].ac /= sum;
+  }
   // output layer activations now sum exactly to 1
 
   if (gen > 0) return;  // if we generate words, we don't know what current word
@@ -996,8 +1044,9 @@ void CRnnLM::computeNet(int last_word, int word) {
 
   // 1->2 word
   if (word != -1) {
-    for (c = 0; c < class_cn[vocab[word].class_index]; c++)
+    for (c = 0; c < class_cn[vocab[word].class_index]; c++) {
       neu2[class_words[vocab[word].class_index][c]].ac = 0;
+    }
     if (layerc_size > 0) {
       matrixXvector(neu2, neuc, sync, layerc_size,
                     class_words[vocab[word].class_index][0],
@@ -1015,20 +1064,23 @@ void CRnnLM::computeNet(int last_word, int word) {
 
   // apply direct connections to words
   if (word != -1) if (direct_size > 0) {
-    unsigned long long hash[MAX_NGRAM_ORDER];
+    unsigned long long  hash[MAX_NGRAM_ORDER];
 
-    for (a = 0; a < direct_order; a++) hash[a] = 0;
+    for (a = 0; a < direct_order; a++) {
+      hash[a] = 0;
+    }
 
     for (a = 0; a < direct_order; a++) {
       b = 0;
-      if (a > 0) if (history[a-1] == -1) break;
+      if (a > 0) if (history[a - 1] == -1) break;
       hash[a] =
           PRIMES[0] * PRIMES[1] *
-          (unsigned long long)(vocab[word].class_index+1);
+          static_cast<unsigned long long>(vocab[word].class_index + 1);
 
-      for (b = 1; b <= a; b++)
+      for (b = 1; b <= a; b++) {
         hash[a] += PRIMES[(a * PRIMES[b] + b) % PRIMES_SIZE]
-            * (unsigned long long)(history[b - 1] + 1);
+            * static_cast<unsigned long long>(history[b - 1] + 1);
+      }
       hash[a] = (hash[a] % (direct_size / 2)) + (direct_size) / 2;
     }
 
@@ -1056,8 +1108,9 @@ void CRnnLM::computeNet(int last_word, int word) {
       sum+= val;
       neu2[a].ac = val;
     }
-    for (c = 0; c < class_cn[vocab[word].class_index]; c++)
+    for (c = 0; c < class_cn[vocab[word].class_index]; c++) {
       neu2[class_words[vocab[word].class_index][c]].ac /= sum;
+    }
   }
 }
 
@@ -1165,6 +1218,8 @@ float CRnnLM::getUnkPenalty(const std::string &word) {
 }
 
 void CRnnLM::setUnkPenalty(const std::string &filename) {
+  if (filename.empty())
+    return;
   kaldi::SequentialBaseFloatReader unk_reader(filename);
   for (; !unk_reader.Done(); unk_reader.Next()) {
     std::string key = unk_reader.Key();

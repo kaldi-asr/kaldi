@@ -29,6 +29,8 @@ namespace kaldi {
  because "real-time decoding" can also be used to mean decoding whose speed is
  not slower than real time, even if it is applied in batch mode).
 
+ Note: see \subpage online_programs for some now-deprecated online recognizers.
+
  The approach that we took with Kaldi was to focus for the first few years
  on off-line recognition, in order to reach state of the art performance
  as quickly as possible.  Now we are making more of an effort to support
@@ -337,31 +339,16 @@ ngram-count -text train.txt -order 3 -limit-vocab -vocab wordlist -unk \
 Now that we have the ARPA format language model trained, we have to compile it
 into WFST format. Let's first define the following variables
 \verbatim
+dict_dir=data/local/dict                # The dict directory provided by the online-nnet2 models
 lm=srilm.o3g.kn.gz                      # ARPA format LM you just built.
 lang=data/lang                          # Old lang directory provided by the online-nnet2 models
 lang_own=data/lang_own                  # New lang directory we are going to create, which contains the new language model
-lang_own_tmp=data/local/lang_own_tmp/   # Temporary directory.
 \endverbatim
 
 Given the above variables, we can compile an ARPA format language model into
 WFST format using the following commands
 \verbatim
-mkdir -p $lang_own_tmp
-mkdir -p $lang_own
-cp -r $lang/* $lang_own
-gunzip -c $lm | utils/find_arpa_oovs.pl $lang_own/words.txt \
-  > $lang_own_tmp/oovs.txt || exit 1
-gunzip -c $lm | \
-  grep -v '<s> <s>' | \
-  grep -v '</s> <s>' | \
-  grep -v '</s> </s>' | \
-  arpa2fst - | fstprint | \
-  utils/remove_oovs.pl $lang_own_tmp/oovs.txt | \
-  utils/eps2disambig.pl | utils/s2eps.pl | \
-  fstcompile --isymbols=$lang_own/words.txt --osymbols=$lang_own/words.txt  \
-  --keep_isymbols=false --keep_osymbols=false | \
-  fstrmepsilon | fstarcsort --sort_type=ilabel > $lang_own/G.fst
-utils/validate_lang.pl --skip-determinization-check $lang_own || exit 1;
+utils/format_lm.sh $lang $lm $dict_dir/lexicon.txt $lang_own
 \endverbatim
 
 Now, we can compile the decoding graph with the new language model, using the
@@ -406,6 +393,7 @@ just created, and "<SPOKEN_NOISE>" is the word symbol that represents
 out-of-vocabulary words in the lexicon, we can generate the new lang directory
 with the updated lexicon using the following command
 \verbatim
+lang_own_tmp=data/local/lang_own_tmp/   # Temporary directory.
 utils/prepare_lang.sh \
   --phone-symbol-table $lang/phones.txt \
   $dict_own "<SPOKEN_NOISE>" $lang_own_tmp $lang_own
@@ -422,6 +410,119 @@ utils/mkgraph.sh $lang_own $model_dir $graph_own_dir || exit 1;
 where $model_dir is the model directory which contains the model "final.mdl"
 and the tree "tree". We now can use $graph_own_dir/HCLG.fst to replace the old
 HCLG.fst.
+
+
+\section online_decoding_nnet3 Online decoding with nnet3 models
+
+Online decoding with nnet3 models is basically the same as with nnet2
+models as described in \ref online_decoding_nnet2.  However, there are
+some limitations as to the model type you can use.  In Kaldi 5.0 and
+earlier, online nnet3 decoding does not support recurrent models.
+In Kaldi 5.1 and later, online nnet3 decoding supports "forward"
+recurrent models such as LSTMs, but not bidirectional ones like BLSTMs.
+In addition, online nnet3 decoding with recurrent
+models may not give optimal results unless
+you use "Kaldi-5.1-style" configuration, including the "decay-time"
+option and specifying --extra-left-context-initial 0; see
+\ref dnn3_scripts_context for more discussions of these issues.
+
+
+Many of the issues in online nnet3 decoding are the same as in nnet2
+decoding and the command lines are quite similar.  For online nnet3
+decoding with Kaldi 5.1 and later, the best example script for online
+decoding including model training is, at the
+time of writing, egs/tedlium/s5_r2/local/chain/tuning/run_tdnn_lstm_1e.sh
+(at the time of writing this is only available in the 'shortcut' branch,
+as Kaldi 5.1 has not yet been merged to master);
+and downloadable models that can be used with online nnet3 decoding, please
+see http://kaldi-asr.org/models.html (the first model there, the ASPIRE model,
+includes instructions in a README file).
+
+\subsection online_decoding_nnet3_tcp TCP server for nnet3 online decoding
+
+The program to run the TCP sever is online2-tcp-nnet3-decode-faster located in the
+~/src/online2bin folder. The usage is as follows:
+
+\verbatim
+online2-tcp-nnet3-decode-faster <nnet3-in> <fst-in> <word-symbol-table>
+\endverbatim
+
+For example:
+
+\verbatim
+online2-tcp-nnet3-decode-faster model/final.mdl graph/HCLG.fst graph/words.txt
+\endverbatim
+
+The word symbol table is mandatory (unlike other nnet3 online decoding programs) because
+the server outputs word strings. Endpointing is mandatory to make the operation of the
+program reasonable. Other, non-standard options include:
+    - port-num - the port the server listens on (by default 5050)
+    - samp-freq - sampling frequency of audio (usually 8000 for telephony and 16000 for other uses)
+    - chunk-length - length of signal being processed by decoder at each step
+    - output-period - how often we check for changes in the decoding (ie. output refresh rate, default 1s)
+    - num-threads-startup - number of threads used when initializing iVector extractor
+    - read-timeout - it the program doesn't receive data during this timeout, the server terminates the connection.
+		Use -1 to disable this feature.
+
+The TCP protocol simply takes RAW signal on input (16-bit signed integer
+encoding at chosen sampling frequency) and outputs simple text using the following
+logic:
+    - each refresh period (output-freq argument) the current state of decoding is output
+    - each line is terminated by '\r'
+    - once an utterance boundary is detected due to endpointing a '\n' char is output
+
+Each output string (delimited by '\r') should be treated as uncertain and can change
+entirely until the utterance delimiter ('\n') is sent. The delimiter chars are chosen
+specifically in order to make the output look neat in the terminal. It is possible to
+use it with other interfaces and a web demo (HTML/JS AudioAPI+WebSockets) exists.
+
+To run the program from the terminal you can use one of the following commands. First,
+make sure the server is running and accepting connections. Using the Aspire models, the
+command should look like this:
+\verbatim
+online2-tcp-nnet3-decode-faster --samp-freq=8000 --frames-per-chunk=20 --extra-left-context-initial=0
+    --frame-subsampling-factor=3 --config=model/conf/online.conf --min-active=200 --max-active=7000
+    --beam=15.0 --lattice-beam=6.0 --acoustic-scale=1.0 --port-num=5050 model/final.mdl graph/HCLG.fst graph/words.txt
+\endverbatim
+
+Note in order to make the communication as simple as possible, the server has to accept
+any data on input and cannot figure out when the stream is over. It will therefore not
+be able to terminate the connection and it is the client's resposibility to disconnect
+when it is ready to do so. As a fallback for certain situations, the read-timeout option
+was added, which will automatically disconnect if a chosen amount of seconds has passed.
+Keep in mind, that this is not an ideal solution and it's a better idea to design your
+client to properly disconnect the connection when neccessary.
+
+For testing purposes, we will use the netcat program. We will also use sox to reeoncode the
+files properly from any source. Netcat has an issue that, similarly to what was stated above 
+about the server, it cannot always interpret the data and usually it won't automatically
+disconnect the TCP connection. To get around this, we will use the '-N' switch, which kills
+the connection once streaming of the file is complete, but this can have a small sideffect of
+not reading the whole output from the Kaldi server if the discconect comes too fast. Just
+keep this in mind if you intend to implement any of these programs into a production environment.
+
+To send a WAV file into the server, it first needs to be decoded into raw audio, then it can be
+sent to the socket:
+\verbatim
+sox audio.wav -t raw -c 1 -b 16 -r 8k -e signed-integer - | nc -N localhost 5050
+\endverbatim
+
+It is possible to play audio (almost) simultaneously as decoding. It may require installing the
+'pv' program (used to throttle the signal into Kaldi at the same speed as the playback):
+
+\verbatim
+sox audio.wav -t raw -c 1 -b 16 -r 8k -e signed-integer - | \
+    tee >(play -t raw -r 8k -e signed-integer -b 16 -c 1 -q -) | \
+    pv -L 16000 -q | nc -N localhost 5050
+\endverbatim
+
+Finally, it is possible to send audio from the microphone directly into the server:
+
+\verbatim
+rec -r 8k -e signed-integer -c 1 -b 16 -t raw -q - | nc -N localhost 5050
+\endverbatim
+
+
 */
 
 

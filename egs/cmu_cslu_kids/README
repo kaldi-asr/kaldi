@@ -1,0 +1,21 @@
+This is an ASR recipe for children speech using cmu_kids and cslu_kids.
+Both of the corpora can be found on LDC:
+    - cmu_kids : https://catalog.ldc.upenn.edu/LDC97S63
+    - cslu_kids: https://catalog.ldc.upenn.edu/LDC2007S18
+
+To run this recipe, you'll need a copy of both corpora:
+    ./run.sh --cmu_kids <path_to_cmu_corpus> --cslu_kids <path_to_cslu_corpus>
+
+By default, this recipe will download an LM pretrained on LibriSpeech from 
+lm_url=www.openslr.org/resources/11. If you already have a copy of this LM 
+and do not wish to redownload, you can specify the LM path using the --lm_src option:
+    ./run.sh --cmu_kids <path_to_cmu_corpus> --cslu_kids <path_to_cslu_corpus>\
+        --lm_src <path_to_librispeech_lm>
+
+This recipe will also download and clean CMU_Dict by default. If you have a clean copy 
+already, or wish to use your own dictionary, simply copy your version of the dict to 
+        data/local/dict
+
+To run extra features for triphone models or VLTN, set the following options true:
+    ./run.sh --cmu_kids <path_to_cmu_corpus> --cslu_kids <path_to_cslu_corpus>\
+        --vtln true --extra_features true

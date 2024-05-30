@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright  2015 Tokyo Institute of Technology (Authors: Takafumi Moriya and Takahiro Shinozaki)
 #            2015 Mitsubishi Electric Research Laboratories (Author: Shinji Watanabe)
@@ -19,7 +19,7 @@ fi
 
 tdir=$1
 eval_num=$2
-. path.sh
+. ./path.sh
 
 dir=data/local/$eval_num
 mkdir -p $dir

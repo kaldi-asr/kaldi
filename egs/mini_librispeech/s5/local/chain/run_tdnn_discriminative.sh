@@ -1,0 +1,1 @@
+tuning/run_tdnn_1c_discriminative.sh

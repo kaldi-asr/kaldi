@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2015  Johns Hopkins University (Author: Daniel Povey).
 #           2015  Vijayaditya Peddinti
@@ -153,7 +153,7 @@ if [ $stage -le 11 ]; then
   for decode_set in train_dev eval2000; do
       (
       num_jobs=`cat data/${decode_set}_hires/utt2spk|cut -d' ' -f2|sort -u|wc -l`
-      steps/nnet3/lstm/decode.sh --nj 250 --cmd "$decode_cmd" \
+      steps/nnet3/decode.sh --nj 250 --cmd "$decode_cmd" \
           --extra-left-context $extra_left_context  \
           --extra-right-context $extra_right_context  \
           --frames-per-chunk "$frames_per_chunk" \

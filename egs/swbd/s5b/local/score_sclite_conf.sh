@@ -1,12 +1,12 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright Johns Hopkins University (Author: Daniel Povey) 2012.  Apache 2.0.
 
 # begin configuration section.
 cmd=run.pl
 stage=0
 decode_mbr=true
-min_lmwt=9
-max_lmwt=20
+min_lmwt=7
+max_lmwt=17
 #end configuration section.
 
 [ -f ./path.sh ] && . ./path.sh

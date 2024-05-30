@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This script creates the parallel data dir based on ihm data,
 # creates speed perturbed versions of this parallel data
@@ -12,7 +12,7 @@ use_sat_alignments=true
 nj=10
 stage=0
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 

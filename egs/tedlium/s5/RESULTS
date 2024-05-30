@@ -7,46 +7,23 @@ for x in exp/*/decode*; do [ -d $x ] && grep WER $x/wer_* | utils/best_wer.sh; d
   for x in exp/{mono,tri,sgmm,nnet,dnn,lstm}*/decode*; do [ -d $x ] && grep Sum $x/score_*/*.sys | utils/best_wer.sh; done 2>/dev/null | grep $filter_regexp
 exit 0
 
+# GMM results [these are up to date]
+%WER 30.3 | 507 17783 | 73.5 19.5 7.0 3.9 30.3 96.3 | 0.006 | exp/tri1/decode_nosp_dev/score_12_0.0/ctm.filt.filt.sys
+%WER 30.5 | 1155 27500 | 73.3 20.9 5.8 3.8 30.5 93.9 | 0.029 | exp/tri1/decode_nosp_test/score_11_0.0/ctm.filt.filt.sys
+%WER 25.4 | 507 17783 | 78.4 15.8 5.9 3.8 25.4 95.3 | -0.075 | exp/tri2/decode_dev/score_14_0.5/ctm.filt.filt.sys
+%WER 26.2 | 507 17783 | 78.0 16.4 5.6 4.2 26.2 95.3 | -0.066 | exp/tri2/decode_nosp_dev/score_13_0.0/ctm.filt.filt.sys
+%WER 25.2 | 1155 27500 | 78.1 17.0 5.0 3.3 25.2 91.9 | -0.005 | exp/tri2/decode_nosp_test/score_13_0.0/ctm.filt.filt.sys
+%WER 24.5 | 1155 27500 | 78.7 16.5 4.8 3.2 24.5 91.4 | -0.014 | exp/tri2/decode_test/score_13_0.5/ctm.filt.filt.sys
+%WER 21.6 | 507 17783 | 82.4 12.9 4.6 4.0 21.6 92.9 | -0.094 | exp/tri3/decode_dev/score_12_0.5/ctm.filt.filt.sys
+%WER 19.7 | 1155 27500 | 83.6 13.1 3.3 3.3 19.7 89.4 | -0.037 | exp/tri3/decode_test/score_14_0.0/ctm.filt.filt.sys
+%WER 18.5 | 507 17783 | 84.3 11.2 4.5 2.8 18.5 90.5 | -0.104 | exp/tri3_mmi_b0.1/decode_dev_it4/score_10_1.0/ctm.filt.filt.sys
+%WER 17.1 | 1155 27500 | 85.2 11.3 3.5 2.3 17.1 86.7 | 0.049 | exp/tri3_mmi_b0.1/decode_test_it4/score_11_0.5/ctm.filt.filt.sys
 
-#---------------------------------Current results (after fixing the <unk> problem)---------------------------------
-# There was a problem with the language model preparation where the scripts expected <UNK> to represent OOV words while
-# the language model used <unk> to represent them. See `git log tedlium-unk-fix` for details.
-# Fixing this causes a small decrease in WER.
 
-# GMMs
-# DEV SPEAKERS:
-%WER 31.0 | 507 17792 | 73.5 20.2 6.3 4.5 31.0 97.2 | -0.032 | exp/tri1/decode_nosp_dev/score_11_0.0/ctm.filt.filt.sys
-%WER 26.4 | 507 17792 | 77.8 16.7 5.5 4.2 26.4 95.5 | -0.066 | exp/tri2/decode_nosp_dev/score_13_0.0/ctm.filt.filt.sys
-%WER 26.1 | 507 17792 | 77.2 16.3 6.5 3.4 26.1 95.5 | -0.106 | exp/tri2/decode_dev/score_14_1.0/ctm.filt.filt.sys
-%WER 22.0 | 507 17792 | 81.6 13.2 5.2 3.6 22.0 93.9 | -0.189 | exp/tri3/decode_dev/score_13_1.0/ctm.filt.filt.sys
-
-# TEST SPEAKERS:
-%WER 30.9 | 1155 27512 | 72.1 21.0 6.9 3.0 30.9 94.5 | 0.035 | exp/tri1/decode_nosp_test/score_12_0.5/ctm.filt.filt.sys
-%WER 25.5 | 1155 27512 | 78.0 17.4 4.6 3.6 25.5 92.8 | -0.034 | exp/tri2/decode_nosp_test/score_12_0.0/ctm.filt.filt.sys
-%WER 24.9 | 1155 27512 | 78.3 16.7 5.0 3.2 24.9 93.0 | -0.020 | exp/tri2/decode_test/score_14_0.5/ctm.filt.filt.sys
-%WER 20.3 | 1155 27512 | 82.7 13.4 3.9 3.0 20.3 90.0 | -0.063 | exp/tri3/decode_test/score_14_0.5/ctm.filt.filt.sys
-
-#---------------------------------(Pre-<unk> fix for Cantab LM) Provided for reference----------------------------------
-
-# Results from Nikolay, using kaldi scoring:
-# %WER 35.17 [ 9677 / 27512, 1267 ins, 1681 del, 6729 sub ] exp/tri1/decode/wer_13
-# %WER 30.03 [ 8262 / 27512, 1255 ins, 1367 del, 5640 sub ] exp/tri2/decode/wer_15
-# %WER 24.99 [ 6876 / 27512, 1314 ins, 1015 del, 4547 sub ] exp/tri3/decode/wer_14
-# %WER 30.10 [ 8281 / 27512, 1257 ins, 1368 del, 5656 sub ] exp/tri3/decode.si/wer_16
-# %WER 21.31 [ 5863 / 27512, 1121 ins, 875 del, 3867 sub ] exp/tri3_mmi_b0.1/decode_it4/wer_12
-
-# GMMs (Cantab LM)
-# DEV SPEAKERS:
-%WER 30.9 | 507 17792 | 73.6 20.1 6.3 4.4 30.9 96.8 | 0.012 | exp/tri1/decode_dev/score_11/ctm.filt.filt.sys
-%WER 26.8 | 507 17792 | 77.5 17.1 5.4 4.3 26.8 96.1 | -0.057 | exp/tri2/decode_dev/score_13/ctm.filt.filt.sys
-%WER 22.3 | 507 17792 | 81.6 14.0 4.4 3.9 22.3 94.1 | -0.102 | exp/tri3/decode_dev/score_14/ctm.filt.filt.sys
-%WER 19.1 | 507 17792 | 84.1 12.4 3.6 3.2 19.1 92.3 | 0.005 | exp/tri3_mmi_b0.1/decode_dev_it4/score_12/ctm.filt.filt.sys
-
-# TEST SPEAKERS:
-%WER 25.7 | 1155 27512 | 77.7 17.5 4.8 3.4 25.7 91.6 | -0.007 | exp/tri2/decode_test/score_13/ctm.filt.filt.sys
-%WER 20.6 | 1155 27512 | 82.5 13.8 3.7 3.1 20.6 89.4 | -0.038 | exp/tri3/decode_test/score_13/ctm.filt.filt.sys
-%WER 30.9 | 1155 27512 | 73.0 21.4 5.5 4.0 30.9 93.8 | 0.025 | exp/tri1/decode_test/score_11/ctm.filt.filt.sys
-%WER 17.6 | 1155 27512 | 85.1 11.8 3.2 2.7 17.6 87.6 | 0.038 | exp/tri3_mmi_b0.1/decode_test_it4/score_11/ctm.filt.filt.sys
+# ========= Most of the results below this line are little out of date; we made some changes
+#           to the training segmentation (add a little padding), and to the text preparation
+#           (merge all suffixes like 's and 're instead of leaving them separate), and
+#           results below this point were not re-run.
 
 # Karel's DNN
 %WER 15.0 | 1155 27512 | 87.2 9.7 3.0 2.2 15.0 83.6 | -0.014 | exp/dnn4_pretrain-dbn_dnn/decode_test/score_10/ctm.filt.filt.sys
@@ -138,4 +115,3 @@ exit 0
 %WER 20.3 | 1155 27512 | 83.3 13.2 3.5 3.6 20.3 90.7 | -0.176 | exp/lstm4f_ClipGradient5_lrate1e-4/decode_test/score_11/ctm.filt.filt.sys
 # 2xLSTM
 TODO...
-

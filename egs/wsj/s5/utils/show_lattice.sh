@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 format=pdf # pdf svg
 mode=save # display save
@@ -14,7 +14,7 @@ if [ $# != 3 ]; then
    exit 1;
 fi
 
-. path.sh
+. ./path.sh
 
 uttid=$1
 lat=$2

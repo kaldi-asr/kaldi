@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # This script requires that you have run the toplevel run.sh script in TEDLIUM up to stage 7.
 #
@@ -39,7 +39,6 @@ self_repair_scale=0.00001
 num_epochs=4
 initial_effective_lrate=0.001
 final_effective_lrate=0.0001
-leftmost_questions_truncate=-1
 max_param_change=2.0
 final_layer_normalize_target=0.5
 num_jobs_initial=3
@@ -73,8 +72,8 @@ fi
 # run those things.
 
 gmm_dir=exp/tri3
-ali_dir=exp/tri3_ali
-lats_dir=${ali_dir/ali/lats}
+ali_dir=exp/tri3_ali_sp
+lats_dir=${ali_dir/ali/lats} # note, this is a search-and-replace from 'ali' to 'lats'
 treedir=exp/chain/tri3_tree
 lang=data/lang_chain
 
@@ -109,7 +108,6 @@ fi
 if [ $stage -le 11 ]; then
   # Build a tree using our new topology.
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
-      --leftmost-questions-truncate $leftmost_questions_truncate \
       --cmd "$train_cmd" 4000 data/train_sp $lang $ali_dir $treedir
 fi
 
@@ -117,7 +115,7 @@ if [ $stage -le 12 ]; then
   echo "$0: creating neural net configs";
 
   # create the config files for nnet initialization
-  repair_opts=${self_repair_scale:+" --self-repair-scale $self_repair_scale "}
+  repair_opts=${self_repair_scale:+" --self-repair-scale-nonlinearity $self_repair_scale "}
 
   steps/nnet3/tdnn/make_configs.py \
     $repair_opts \

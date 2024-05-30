@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2012 Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 # This script, which will generally be called from other neural-net training
@@ -82,6 +82,10 @@ utils/split_data.sh $data $nj
 mkdir -p $dir/log
 echo $nj > $dir/num_jobs
 cp $alidir/tree $dir
+
+
+utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt || exit 1;
+cp $lang/phones.txt $dir || exit 1;
 
 [ -z "$transform_dir" ] && transform_dir=$alidir
 if [ -z "$cmvn_opts" ]; then

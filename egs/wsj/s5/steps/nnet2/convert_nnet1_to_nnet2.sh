@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2014    Johns Hopkins University (Author: Daniel Povey).
 # Apache 2.0.
@@ -32,6 +32,7 @@ for f in $src/final.mdl $src/final.feature_transform $src/ali_train_pdf.counts; 
   [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1
 done
 
+cp $src/phones.txt $dir 2>/dev/null
 
 $cmd $dir/log/convert_feature_transform.log \
   nnet1-to-raw-nnet $src/final.feature_transform $dir/0.raw || exit 1;

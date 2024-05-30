@@ -171,7 +171,7 @@ making sure have their normal values, begin with KALDI_.  This is a precaution
 to avoid future conflicts with other codebases (since \#defines don't limit themselves
 to the kaldi namespace).  Notice the style of the function names: LikeThis().
 Our style is generally based on
-<a href=http://google-styleguide.googlecode.com/svn/trunk/cppguide.xml> this one </a>,
+<a href=https://google.github.io/styleguide/cppguide.html> this one </a>,
 to conform with OpenFst, but there are some differences.
 
 To see other elements of the style, which will help you to understand Kaldi
@@ -190,7 +190,7 @@ It prints out the usage, which should give you a generic idea of how Kaldi progr
 are called.  Note that while there is a --config option that can be used to
 pass a configuration file, in general Kaldi is not as config-driven as HTK and these
 files are not widely used.  You will see a --binary option.  In general, Kaldi file
-formats come in both binary and test forms, and the --binary option controls how
+formats come in both binary and text forms, and the --binary option controls how
 they are written.  However, this only controls how single objects (e.g. acoustic models)
 are written.  For whole collections of objects (e.g. collections of feature files),
 there is a different mechanism that we will come to later.

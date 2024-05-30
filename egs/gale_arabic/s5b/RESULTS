@@ -1,0 +1,80 @@
+##
+# This file is generated using local/split_wer.sh $galeData  //galeData is a local folder to keep intermediate gale data
+# look at the end of run.sh in the same folder 
+##
+Report Results WER:
+%WER 17.82 [ 3986 / 22363, 315 ins, 618 del, 3053 sub ] exp/sgmm_5a_mmi_b0.1/decode/wer_report_12
+%WER 18.15 [ 4059 / 22363, 335 ins, 589 del, 3135 sub ] exp/sgmm_5a_mmi_b0.1/decode4/wer_report_11
+%WER 18.42 [ 4119 / 22363, 346 ins, 590 del, 3183 sub ] exp/sgmm_5a_mmi_b0.1/decode3/wer_report_11
+%WER 18.69 [ 4179 / 22363, 304 ins, 640 del, 3235 sub ] exp/sgmm_5a_mmi_b0.1/decode2/wer_report_13
+%WER 19.06 [ 4263 / 22363, 348 ins, 611 del, 3304 sub ] exp/sgmm_5a_mmi_b0.1/decode1/wer_report_12
+%WER 19.24 [ 4302 / 22363, 315 ins, 580 del, 3407 sub ] exp/tri2b_mmi_b0.05/decode_it4/wer_report_12
+%WER 19.37 [ 4331 / 22363, 319 ins, 553 del, 3459 sub ] exp/tri2b_mmi/decode_it4/wer_report_12
+%WER 19.61 [ 4386 / 22363, 348 ins, 563 del, 3475 sub ] exp/tri2b_mmi_b0.05/decode_it3/wer_report_12
+%WER 19.71 [ 4408 / 22363, 301 ins, 607 del, 3500 sub ] exp/tri2b_mmi/decode_it3/wer_report_13
+%WER 19.81 [ 4429 / 22363, 349 ins, 667 del, 3413 sub ] exp/sgmm_5a/decode/wer_report_14
+%WER 20.14 [ 4503 / 22363, 399 ins, 647 del, 3457 sub ] exp/tri2b_mpe/decode_it4/wer_report_14
+%WER 20.58 [ 4603 / 22363, 408 ins, 658 del, 3537 sub ] exp/tri2b_mpe/decode_it3/wer_report_14
+%WER 21.64 [ 4839 / 22363, 498 ins, 614 del, 3727 sub ] exp/tri3b/decode/wer_report_17
+%WER 23.32 [ 5214 / 22363, 470 ins, 727 del, 4017 sub ] exp/tri2b/decode/wer_report_16
+%WER 23.54 [ 5265 / 22363, 444 ins, 794 del, 4027 sub ] exp/tri3b/decode.si/wer_report_17
+%WER 25.66 [ 5738 / 22363, 478 ins, 838 del, 4422 sub ] exp/tri2a/decode/wer_report_14
+%WER 26.38 [ 5900 / 22363, 435 ins, 929 del, 4536 sub ] exp/tri1/decode/wer_report_15
+Conversational Results WER:
+%WER 34.10 [ 16133 / 47305, 1903 ins, 3245 del, 10985 sub ] exp/sgmm_5a_mmi_b0.1/decode/wer_conversational_11
+%WER 34.81 [ 16466 / 47305, 2077 ins, 3037 del, 11352 sub ] exp/sgmm_5a_mmi_b0.1/decode4/wer_conversational_10
+%WER 35.19 [ 16648 / 47305, 1933 ins, 3264 del, 11451 sub ] exp/sgmm_5a_mmi_b0.1/decode3/wer_conversational_11
+%WER 35.63 [ 16857 / 47305, 1988 ins, 3247 del, 11622 sub ] exp/sgmm_5a_mmi_b0.1/decode2/wer_conversational_11
+%WER 36.23 [ 17137 / 47305, 2091 ins, 3256 del, 11790 sub ] exp/sgmm_5a_mmi_b0.1/decode1/wer_conversational_11
+%WER 37.40 [ 17691 / 47305, 2150 ins, 3362 del, 12179 sub ] exp/sgmm_5a/decode/wer_conversational_12
+%WER 37.95 [ 17951 / 47305, 1738 ins, 3892 del, 12321 sub ] exp/tri2b_mmi_b0.05/decode_it4/wer_conversational_11
+%WER 37.97 [ 17960 / 47305, 1890 ins, 4212 del, 11858 sub ] exp/tri2b_mpe/decode_it4/wer_conversational_13
+%WER 38.16 [ 18050 / 47305, 1678 ins, 4083 del, 12289 sub ] exp/tri2b_mmi_b0.05/decode_it3/wer_conversational_12
+%WER 38.47 [ 18200 / 47305, 1804 ins, 3698 del, 12698 sub ] exp/tri2b_mmi/decode_it4/wer_conversational_11
+%WER 38.50 [ 18213 / 47305, 1958 ins, 4156 del, 12099 sub ] exp/tri2b_mpe/decode_it3/wer_conversational_13
+%WER 38.51 [ 18215 / 47305, 1993 ins, 3476 del, 12746 sub ] exp/tri2b_mmi/decode_it3/wer_conversational_11
+%WER 39.26 [ 18574 / 47305, 2319 ins, 3963 del, 12292 sub ] exp/tri3b/decode/wer_conversational_17
+%WER 41.40 [ 19586 / 47305, 2140 ins, 4216 del, 13230 sub ] exp/tri3b/decode.si/wer_conversational_15
+%WER 42.23 [ 19979 / 47305, 2153 ins, 4354 del, 13472 sub ] exp/tri2b/decode/wer_conversational_15
+%WER 45.92 [ 21724 / 47305, 1995 ins, 5213 del, 14516 sub ] exp/tri2a/decode/wer_conversational_14
+%WER 46.86 [ 22166 / 47305, 2212 ins, 4819 del, 15135 sub ] exp/tri1/decode/wer_conversational_13
+Combined Results for Reports and Conversational WER:
+%WER 28.89 [ 20127 / 69668, 2244 ins, 3829 del, 14054 sub ] exp/sgmm_5a_mmi_b0.1/decode/wer_11
+%WER 29.48 [ 20541 / 69668, 2243 ins, 3860 del, 14438 sub ] exp/sgmm_5a_mmi_b0.1/decode4/wer_11
+%WER 29.81 [ 20767 / 69668, 2279 ins, 3854 del, 14634 sub ] exp/sgmm_5a_mmi_b0.1/decode3/wer_11
+%WER 30.22 [ 21056 / 69668, 2165 ins, 4095 del, 14796 sub ] exp/sgmm_5a_mmi_b0.1/decode2/wer_12
+%WER 30.74 [ 21417 / 69668, 2273 ins, 4099 del, 15045 sub ] exp/sgmm_5a_mmi_b0.1/decode1/wer_12
+%WER 31.78 [ 22142 / 69668, 2547 ins, 3990 del, 15605 sub ] exp/sgmm_5a/decode/wer_12
+%WER 31.95 [ 22259 / 69668, 2092 ins, 4413 del, 15754 sub ] exp/tri2b_mmi_b0.05/decode_it4/wer_11
+%WER 32.20 [ 22436 / 69668, 2026 ins, 4646 del, 15764 sub ] exp/tri2b_mmi_b0.05/decode_it3/wer_12
+%WER 32.25 [ 22471 / 69668, 2315 ins, 4797 del, 15359 sub ] exp/tri2b_mpe/decode_it4/wer_13
+%WER 32.36 [ 22542 / 69668, 2156 ins, 4184 del, 16202 sub ] exp/tri2b_mmi/decode_it4/wer_11
+%WER 32.50 [ 22640 / 69668, 2393 ins, 3956 del, 16291 sub ] exp/tri2b_mmi/decode_it3/wer_11
+%WER 32.79 [ 22847 / 69668, 2407 ins, 4760 del, 15680 sub ] exp/tri2b_mpe/decode_it3/wer_13
+# WER with train_sat_basis
+%WER 33.35 [ 23233 / 69668, 2385 ins, 5274 del, 15574 sub ] exp/tri3b/decode/wer_16_0.5
+# WER with train_sat
+%WER 33.61 [ 23413 / 69668, 2817 ins, 4577 del, 16019 sub ] exp/tri3b/decode/wer_17
+%WER 35.73 [ 24894 / 69668, 2630 ins, 4944 del, 17320 sub ] exp/tri3b/decode.si/wer_15
+%WER 36.17 [ 25196 / 69668, 2429 ins, 5393 del, 17374 sub ] exp/tri2b/decode/wer_16
+%WER 39.42 [ 27462 / 69668, 2473 ins, 6051 del, 18938 sub ] exp/tri2a/decode/wer_14
+%WER 40.35 [ 28113 / 69668, 2713 ins, 5635 del, 19765 sub ] exp/tri1/decode/wer_13
+
+
+# Effect of GMM seed model (tri2b instead of tri3b).  Using tri3b give a slightly better result
+# as compared to using tri2b as seed.
+%WER 16.66 [ 11610 / 69668, 1233 ins, 2747 del, 7630 sub ] exp/chain/tdnn_1a_3b_sp/decode_test/wer_10_0.0
+%WER 16.71 [ 11642 / 69668, 1145 ins, 2908 del, 7589 sub ] exp/chain/tdnn_1a_2b_sp/decode_test/wer_9_0.0
+
+# Effect of Tree-size (3500, 4500, 7000, 11000)
+%WER 16.66 [ 11610 / 69668, 1233 ins, 2747 del, 7630 sub ] exp/chain/tdnn_1a_3500_sp/decode_test/wer_10_0.0
+%WER 16.59 [ 11557 / 69668, 1234 ins, 2646 del, 7677 sub ] exp/chain/tdnn_1a_4500_sp/decode_test/wer_10_0.0
+%WER 16.47 [ 11474 / 69668, 1421 ins, 2207 del, 7846 sub ] exp/chain/tdnn_1a_7000_sp/decode_test/wer_9_0.0
+%WER 16.62 [ 11580 / 69668, 1164 ins, 2789 del, 7627 sub ] exp/chain/tdnn_1a_11000_sp/decode_test/wer_10_0.0
+
+# Effect of l2-regularization on the output with tree-size=7000. l2 on the output (0.005,0.002)
+%WER 16.54 [ 11522 / 69668, 1123 ins, 2739 del, 7660 sub ] exp/chain/tdnn_1a_7000_005_sp/decode_test/wer_9_0.5
+%WER 16.47 [ 11474 / 69668, 1421 ins, 2207 del, 7846 sub ] exp/chain/tdnn_1a_7000_002_sp/decode_test/wer_9_0.0
+
+#current best 'chain' models  (see local/chain/tuning/run_tdnn_1a.sh)
+%WER 16.47 [ 11474 / 69668, 1421 ins, 2207 del, 7846 sub ] exp/chain/tdnn_1a_sp/decode_test/wer_9_0.0

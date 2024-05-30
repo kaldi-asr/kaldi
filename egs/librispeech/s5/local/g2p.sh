@@ -1,11 +1,11 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2014 Vassil Panayotov
 # Apache 2.0
 
 # Auto-generates pronunciations using Sequitur G2P
 
-. path.sh || exit 1
+. ./path.sh || exit 1
 
 [ -z "$PYTHON" ] && PYTHON=python2.7 
 

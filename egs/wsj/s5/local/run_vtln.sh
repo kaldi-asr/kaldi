@@ -1,11 +1,11 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 lang_suffix=
 
 echo "$0 $@"  # Print the command line for logging
 . utils/parse_options.sh || exit 1;
 
-. cmd.sh
+. ./cmd.sh
 featdir=mfcc_vtln
 num_leaves=2500
 num_gauss=15000

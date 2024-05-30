@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2010-2012  Microsoft Corporation;  Arnab Ghoshal
 
@@ -69,7 +69,7 @@ if [ $# != 5 ]; then
   error_exit $usage
 fi
 
-[ -f path.sh ] && . path.sh
+[ -f path.sh ] && . ./path.sh
 
 oldlang=$1
 newlang=$2

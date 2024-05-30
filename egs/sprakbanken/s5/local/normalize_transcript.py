@@ -1,9 +1,10 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 import codecs
 import sys
 import re
 import writenumbers
-
+from string import maketrans
 
 ## Global vars
 
@@ -16,7 +17,10 @@ normdict = {".": "",
             "\t": " "
             }
 
-t_table = str.maketrans(normdict)
+from_chars = ''.join(list(normdict.keys()))
+to_chars = ''.join(list(normdict.values()))
+
+#t_table = maketrans(from_chars, to_chars)
 
 
 ## Main
@@ -27,10 +31,11 @@ outtext = codecs.open(sys.argv[3], "w", "utf8")
 
 
 for line in transcript:
-    normtext1 = line.translate(t_table)
-    normtext2 = re.sub(r'  +', ' ', normtext1.strip())
-    normtext3 = writenumbers.normNumber(normtext2, numtable)
-    outtext.write(normtext3.upper() + "\n")
+    normtext1 = re.sub(r'[\.,:;\?]', '', line)
+    normtext2 = re.sub(r'[\t\\]', ' ', normtext1)
+    normtext3 = re.sub(r'  +', ' ', normtext2.strip())
+    normtext4 = writenumbers.normNumber(normtext3, numtable)
+    outtext.write(normtext4)
 
 transcript.close()
 outtext.close()

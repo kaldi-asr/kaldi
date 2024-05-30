@@ -26,6 +26,5 @@ do
 
   utils/fix_data_dir.sh $data_dir/$split
   utils/validate_data_dir.sh $data_dir/$split
-  rm $data_dir/$split/*.tmp
 done
 

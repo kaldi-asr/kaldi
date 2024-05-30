@@ -29,6 +29,7 @@
 #include "decoder/decoder-wrappers.h"
 #include "decoder/training-graph-compiler.h"
 #include "nnet3/nnet-am-decodable-simple.h"
+#include "nnet3/nnet-utils.h"
 #include "lat/kaldi-lattice.h"
 
 int main(int argc, char *argv[]) {
@@ -47,8 +48,8 @@ int main(int argc, char *argv[]) {
         "e.g.: \n"
         " nnet3-align-compiled 1.mdl ark:graphs.fsts scp:train.scp ark:1.ali\n"
         "or:\n"
-        " compile-train-graphs tree 1.mdl lex.fst ark:train.tra b, ark:- | \\\n"
-        "   nnet3-align-compiled 1.mdl ark:- scp:train.scp t, ark:1.ali\n";
+        " compile-train-graphs tree 1.mdl lex.fst 'ark:sym2int.pl -f 2- words.txt text|' \\\n"
+        "   ark:- | nnet3-align-compiled 1.mdl ark:- scp:train.scp t, ark:1.ali\n";
 
     ParseOptions po(usage);
     AlignConfig align_config;
@@ -56,6 +57,7 @@ int main(int argc, char *argv[]) {
     std::string use_gpu = "yes";
     BaseFloat transition_scale = 1.0;
     BaseFloat self_loop_scale = 1.0;
+    std::string per_frame_acwt_wspecifier;
 
     std::string ivector_rspecifier,
         online_ivector_rspecifier,
@@ -63,7 +65,7 @@ int main(int argc, char *argv[]) {
     int32 online_ivector_period = 0;
     align_config.Register(&po);
     decodable_opts.Register(&po);
-    
+
     po.Register("use-gpu", &use_gpu,
                 "yes|no|optional|wait, only has effect if compiled with CUDA");
     po.Register("transition-scale", &transition_scale,
@@ -71,6 +73,9 @@ int main(int argc, char *argv[]) {
     po.Register("self-loop-scale", &self_loop_scale,
                 "Scale of self-loop versus non-self-loop "
                 "log probs [relative to acoustics]");
+    po.Register("write-per-frame-acoustic-loglikes", &per_frame_acwt_wspecifier,
+                "Wspecifier for table of vectors containing the acoustic log-likelihoods "
+                "per frame for each utterance. E.g. ark:foo/per_frame_logprobs.1.ark");
     po.Register("ivectors", &ivector_rspecifier, "Rspecifier for "
                 "iVectors as vectors (i.e. not estimated online); per utterance "
                 "by default, or per speaker if you provide the --utt2spk option.");
@@ -101,6 +106,7 @@ int main(int argc, char *argv[]) {
     double tot_like = 0.0;
     kaldi::int64 frame_count = 0;
 
+
     {
       TransitionModel trans_model;
       AmNnetSimple am_nnet;
@@ -110,6 +116,13 @@ int main(int argc, char *argv[]) {
         trans_model.Read(ki.Stream(), binary);
         am_nnet.Read(ki.Stream(), binary);
       }
+      SetBatchnormTestMode(true, &(am_nnet.GetNnet()));
+      SetDropoutTestMode(true, &(am_nnet.GetNnet()));
+      CollapseModel(CollapseModelConfig(), &(am_nnet.GetNnet()));
+      // this compiler object allows caching of computations across
+      // different utterances.
+      CachingOptimizingCompiler compiler(am_nnet.GetNnet(),
+                                         decodable_opts.optimize_config);
 
       RandomAccessBaseFloatMatrixReader online_ivector_reader(
           online_ivector_rspecifier);
@@ -121,7 +134,7 @@ int main(int argc, char *argv[]) {
       RandomAccessBaseFloatMatrixReader feature_reader(feature_rspecifier);
       Int32VectorWriter alignment_writer(alignment_wspecifier);
       BaseFloatWriter scores_writer(scores_wspecifier);
-
+      BaseFloatVectorWriter per_frame_acwt_writer(per_frame_acwt_wspecifier);
 
       for (; !fst_reader.Done(); fst_reader.Next()) {
         std::string utt = fst_reader.Key();
@@ -173,14 +186,14 @@ int main(int argc, char *argv[]) {
         DecodableAmNnetSimple nnet_decodable(
             decodable_opts, trans_model, am_nnet,
             features, ivector, online_ivectors,
-            online_ivector_period);
+            online_ivector_period, &compiler);
 
         AlignUtteranceWrapper(align_config, utt,
                               decodable_opts.acoustic_scale,
                               &decode_fst, &nnet_decodable,
                               &alignment_writer, &scores_writer,
                               &num_done, &num_err, &num_retry,
-                              &tot_like, &frame_count);
+                              &tot_like, &frame_count, &per_frame_acwt_writer);
       }
       KALDI_LOG << "Overall log-likelihood per frame is "
                 << (tot_like/frame_count)
@@ -199,5 +212,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-
-

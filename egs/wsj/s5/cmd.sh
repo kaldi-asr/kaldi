@@ -12,18 +12,12 @@
 
 export train_cmd=queue.pl
 export decode_cmd="queue.pl --mem 2G"
-export mkgraph_cmd="queue.pl --mem 4G"
-# the use of cuda_cmd is deprecated.
+# the use of cuda_cmd is deprecated, used only in 'nnet1',
 export cuda_cmd="queue.pl --gpu 1"
 
-# the rest of this file is present for historical reasons.
-# It's better to use conf/queue.conf for cluster-specific configuration.
-#c) BUT cluster:
 if [ "$(hostname -d)" == "fit.vutbr.cz" ]; then
-  queue="all.q@@blade,all.q@@speech"
-  gpu_queue="long.q@@gpu"
-  storage="matylda5"
-  export train_cmd="queue.pl -q $queue -l ram_free=1.5G,mem_free=1.5G,${storage}=1"
-  export decode_cmd="queue.pl -q $queue -l ram_free=2.5G,mem_free=2.5G,${storage}=0.5"
-  export cuda_cmd="queue.pl -q $gpu_queue -l gpu=1"
+  queue_conf=$HOME/queue_conf/default.conf # see example /homes/kazi/iveselyk/queue_conf/default.conf,
+  export train_cmd="queue.pl --config $queue_conf --mem 2G --matylda 0.2"
+  export decode_cmd="queue.pl --config $queue_conf --mem 3G --matylda 0.1"
+  export cuda_cmd="queue.pl --config $queue_conf --gpu 1 --mem 10G --tmp 40G"
 fi

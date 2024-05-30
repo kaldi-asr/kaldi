@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # this is a basic lstm script
 
@@ -55,7 +55,7 @@ frames_per_chunk=
 
 # End configuration section.
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
@@ -155,7 +155,7 @@ if [ $stage -le 9 ]; then
         ivector_opts=
       fi
 
-      steps/nnet3/lstm/decode.sh --nj $num_jobs --cmd "$decode_cmd" $ivector_opts \
+      steps/nnet3/decode.sh --nj $num_jobs --cmd "$decode_cmd" $ivector_opts \
         --extra-left-context $extra_left_context \
         --frames-per-chunk "$frames_per_chunk" \
         $graph_dir data/${decode_set}_hires $decode_dir || exit 1;

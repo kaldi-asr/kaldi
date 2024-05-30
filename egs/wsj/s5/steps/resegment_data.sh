@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright Johns Hopkins University (Author: Daniel Povey) 2013.  Apache 2.0.
 
@@ -40,6 +40,9 @@ rm $data_out/* 2>/dev/null # Old stuff that's partial can cause problems later i
                            # we call fix_data_dir.sh; it will cause things to be 
                            # thrown out.
 mkdir -p $dir/log || exit 1;
+
+utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt || exit 1;
+cp $alidir/phones.txt $dir || exit 1;
 
 for f in $data/feats.scp $lang/phones.txt $alidir/ali.1.gz $alidir/num_jobs; do
   if [ ! -f $f ]; then 

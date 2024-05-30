@@ -1,9 +1,9 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2014, University of Edinburgh (Author: Pawel Swietojanski)
 # AMI Corpus dev/eval data preparation 
 
-. path.sh
+. ./path.sh
 
 #check existing directories
 if [ $# != 2 ]; then
@@ -68,7 +68,7 @@ sed -e 's?.*/??' -e 's?.wav??' $dir/wav.flist | \
 awk '{print $2}' $dir/segments | sort -u | join - $dir/wav1.scp >  $dir/wav2.scp
 
 #replace path with an appropriate sox command that select single channel only
-awk '{print $1" sox -c 1 -t wavpcm -s "$2" -t wavpcm - |"}' $dir/wav2.scp > $dir/wav.scp
+awk '{print $1" sox -c 1 -t wavpcm -e signed-integer "$2" -t wavpcm - |"}' $dir/wav2.scp > $dir/wav.scp
 
 # (1d) reco2file_and_channel
 cat $dir/wav.scp \
@@ -87,18 +87,15 @@ sort -k 2 $dir/utt2spk | utils/utt2spk_to_spk2utt.pl > $dir/spk2utt || exit 1;
 join $dir/utt2spk $dir/segments | \
    perl -ne '{BEGIN{$pu=""; $pt=0.0;} split;
            if ($pu eq $_[1] && $pt > $_[3]) {
-             print "$_[0] $_[2] $_[3] $_[4]>$_[0] $_[2] $pt $_[4]\n"
+             print "s/^$_[0] $_[2] $_[3] $_[4]\$/$_[0] $_[2] $pt $_[4]/;\n"
            }
-           $pu=$_[1]; $pt=$_[4]; 
+           $pu=$_[1]; $pt=$_[4];
          }' > $dir/segments_to_fix
-if [ `cat $dir/segments_to_fix | wc -l` -gt 0 ]; then
+
+if [ -s $dir/segments_to_fix ]; then
   echo "$0. Applying following fixes to segments"
   cat $dir/segments_to_fix
-  while read line; do
-     p1=`echo $line | awk -F'>' '{print $1}'`
-     p2=`echo $line | awk -F'>' '{print $2}'`
-     sed -ir "s!$p1!$p2!" $dir/segments
-  done < $dir/segments_to_fix
+  perl -i -pf $dir/segments_to_fix $dir/segments
 fi
 
 # Copy stuff into its final locations

@@ -25,7 +25,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "fstext/fstext-lib.h"
-#include "hmm/transition-model.h"
+#include "itf/transition-information.h"
 #include "lat/kaldi-lattice.h"
 
 namespace kaldi {
@@ -59,7 +59,7 @@ struct PhoneAlignLatticeOptions {
 /// everything was OK, false if some kind of error was detected (e.g. the
 /// "reorder" option was incorrectly specified.)
 bool PhoneAlignLattice(const CompactLattice &lat,
-                       const TransitionModel &tmodel,
+                       const TransitionInformation &tmodel,
                        const PhoneAlignLatticeOptions &opts,
                        CompactLattice *lat_out);
 

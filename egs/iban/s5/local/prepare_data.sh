@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2015-2016  Sarah Flora Juan
 # Copyright 2016  Johns Hopkins University (Author: Yenda Trmal)
 # Apache 2.0
@@ -33,7 +33,7 @@ for x in train dev; do
             exit 1
         fi
         # we might want to store physical paths as a general rule
-        filename=$(readlink -f $filename)
+        filename=$(utils/make_absolute.sh $filename)
         echo "$rec $filename"
     done > data/$x/wav.scp
 

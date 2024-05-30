@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2012   Carnegie Mellon University (Author: Yajie Miao)
 #                  Johns Hopkins University (Author: Daniel Povey)
@@ -48,7 +48,7 @@ for f in $data/feats.scp $dir/final.mdl $dir/ali.1.gz; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;
 done
 
-
+utils/lang/check_phones_compatible.sh $lang/phones.txt $dir/phones.txt || exit 1;
 # Set up the unadapted features "$sifeats".
 if [ -f $dir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
 echo "$0: feature type is $feat_type";

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2014  Guoguo Chen
 # Apache 2.0
@@ -109,7 +109,7 @@ cat $output_dir/wav.scp | perl -e '
     @col == 2 || die "Error: bad line $_\n";
     $utt2spk{$col[0]} = $col[1];
   }
-  foreach $seg (keys %seg2wav) {
+  foreach $seg (sort keys %seg2wav) {
     $index = 0;
     $step = $slen - $olen;
     print UMAP "$seg";

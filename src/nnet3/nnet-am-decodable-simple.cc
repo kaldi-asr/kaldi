@@ -24,11 +24,12 @@ namespace kaldi {
 namespace nnet3 {
 
 
-NnetDecodableBase::NnetDecodableBase(
+DecodableNnetSimple::DecodableNnetSimple(
     const NnetSimpleComputationOptions &opts,
     const Nnet &nnet,
     const VectorBase<BaseFloat> &priors,
     const MatrixBase<BaseFloat> &feats,
+    CachingOptimizingCompiler *compiler,
     const VectorBase<BaseFloat> *ivector,
     const MatrixBase<BaseFloat> *online_ivectors,
     int32 online_ivector_period):
@@ -39,13 +40,13 @@ NnetDecodableBase::NnetDecodableBase(
     feats_(feats),
     ivector_(ivector), online_ivector_feats_(online_ivectors),
     online_ivector_period_(online_ivector_period),
-    compiler_(nnet_, opts_.optimize_config),
+    compiler_(*compiler),
     current_log_post_subsampled_offset_(0) {
   num_subsampled_frames_ =
       (feats_.NumRows() + opts_.frame_subsampling_factor - 1) /
       opts_.frame_subsampling_factor;
   KALDI_ASSERT(IsSimpleNnet(nnet));
-  ComputeSimpleNnetContext(nnet, &nnet_left_context_, &nnet_right_context_);
+  compiler_.GetSimpleNnetContext(&nnet_left_context_, &nnet_right_context_);
   KALDI_ASSERT(!(ivector != NULL && online_ivectors != NULL));
   KALDI_ASSERT(!(online_ivectors != NULL && online_ivector_period <= 0 &&
                  "You need to set the --online-ivector-period option!"));
@@ -61,23 +62,26 @@ DecodableAmNnetSimple::DecodableAmNnetSimple(
     const MatrixBase<BaseFloat> &feats,
     const VectorBase<BaseFloat> *ivector,
     const MatrixBase<BaseFloat> *online_ivectors,
-    int32 online_ivector_period):
-    NnetDecodableBase(opts, am_nnet.GetNnet(), am_nnet.Priors(),
-                      feats, ivector, online_ivectors,
-                      online_ivector_period),
-    trans_model_(trans_model) { }
-
-
+    int32 online_ivector_period,
+    CachingOptimizingCompiler *compiler):
+    compiler_(am_nnet.GetNnet(), opts.optimize_config, opts.compiler_config),
+    decodable_nnet_(opts, am_nnet.GetNnet(), am_nnet.Priors(),
+                    feats, compiler != NULL ? compiler : &compiler_,
+                    ivector, online_ivectors,
+                    online_ivector_period),
+    trans_model_(trans_model) {
+  // note: we only use compiler_ if the passed-in 'compiler' is NULL.
+}
 
 
 
 BaseFloat DecodableAmNnetSimple::LogLikelihood(int32 frame,
                                                int32 transition_id) {
-  int32 pdf_id = trans_model_.TransitionIdToPdf(transition_id);
-  return GetOutput(frame, pdf_id);
+  int32 pdf_id = trans_model_.TransitionIdToPdfFast(transition_id);
+  return decodable_nnet_.GetOutput(frame, pdf_id);
 }
 
-int32 NnetDecodableBase::GetIvectorDim() const {
+int32 DecodableNnetSimple::GetIvectorDim() const {
   if (ivector_ != NULL)
     return ivector_->Dim();
   else if (online_ivector_feats_ != NULL)
@@ -86,7 +90,7 @@ int32 NnetDecodableBase::GetIvectorDim() const {
     return 0;
 }
 
-void NnetDecodableBase::EnsureFrameIsComputed(int32 subsampled_frame) {
+void DecodableNnetSimple::EnsureFrameIsComputed(int32 subsampled_frame) {
   KALDI_ASSERT(subsampled_frame >= 0 &&
                subsampled_frame < num_subsampled_frames_);
   int32 feature_dim = feats_.NumCols(),
@@ -105,7 +109,7 @@ void NnetDecodableBase::EnsureFrameIsComputed(int32 subsampled_frame) {
       current_subsampled_offset = current_log_post_subsampled_offset_;
   KALDI_ASSERT(subsampled_frame < current_subsampled_offset ||
                subsampled_frame >= current_subsampled_offset +
-                                   current_subsampled_frames_computed);
+               current_subsampled_frames_computed);
 
   // all subsampled frames pertain to the output of the network,
   // they are output frames divided by opts_.frame_subsampling_factor.
@@ -164,8 +168,8 @@ void NnetDecodableBase::EnsureFrameIsComputed(int32 subsampled_frame) {
 
 // note: in the normal case (with no frame subsampling) you can ignore the
 // 'subsampled_' in the variable name.
-void NnetDecodableBase::GetOutputForFrame(int32 subsampled_frame,
-                                          VectorBase<BaseFloat> *output) {
+void DecodableNnetSimple::GetOutputForFrame(int32 subsampled_frame,
+                                            VectorBase<BaseFloat> *output) {
   if (subsampled_frame < current_log_post_subsampled_offset_ ||
       subsampled_frame >= current_log_post_subsampled_offset_ +
       current_log_post_.NumRows())
@@ -174,9 +178,9 @@ void NnetDecodableBase::GetOutputForFrame(int32 subsampled_frame,
       subsampled_frame - current_log_post_subsampled_offset_));
 }
 
-void NnetDecodableBase::GetCurrentIvector(int32 output_t_start,
-                                          int32 num_output_frames,
-                                          Vector<BaseFloat> *ivector) {
+void DecodableNnetSimple::GetCurrentIvector(int32 output_t_start,
+                                            int32 num_output_frames,
+                                            Vector<BaseFloat> *ivector) {
   if (ivector_ != NULL) {
     *ivector = *ivector_;
     return;
@@ -200,7 +204,7 @@ void NnetDecodableBase::GetCurrentIvector(int32 output_t_start,
                 << ", only available till frame "
                 << online_ivector_feats_->NumRows()
                 << " * ivector-period=" << online_ivector_period_
-                << " (mismatched --ivector-period?)";
+                << " (mismatched --online-ivector-period?)";
     }
     ivector_frame = online_ivector_feats_->NumRows() - 1;
   }
@@ -208,7 +212,7 @@ void NnetDecodableBase::GetCurrentIvector(int32 output_t_start,
 }
 
 
-void NnetDecodableBase::DoNnetComputation(
+void DecodableNnetSimple::DoNnetComputation(
     int32 input_t_start,
     const MatrixBase<BaseFloat> &input_feats,
     const VectorBase<BaseFloat> &ivector,
@@ -219,8 +223,8 @@ void NnetDecodableBase::DoNnetComputation(
   request.store_component_stats = false;
 
   bool shift_time = true; // shift the 'input' and 'output' to a consistent
-                          // time, to take advantage of caching in the compiler.
-                          // An optimization.
+  // time, to take advantage of caching in the compiler.
+  // An optimization.
   int32 time_offset = (shift_time ? -output_t_start : 0);
 
   // First add the regular features-- named "input".
@@ -244,7 +248,7 @@ void NnetDecodableBase::DoNnetComputation(
   request.outputs.resize(1);
   request.outputs[0].Swap(&output_spec);
 
-  const NnetComputation *computation = compiler_.Compile(request);
+  std::shared_ptr<const NnetComputation> computation = compiler_.Compile(request);
   Nnet *nnet_to_update = NULL;  // we're not doing any update.
   NnetComputer computer(opts_.compute_config, *computation,
                         nnet_, nnet_to_update);
@@ -257,7 +261,7 @@ void NnetDecodableBase::DoNnetComputation(
     ivector_feats_cu.Row(0).CopyFromVec(ivector);
     computer.AcceptInput("ivector", &ivector_feats_cu);
   }
-  computer.Forward();
+  computer.Run();
   CuMatrix<BaseFloat> cu_output;
   computer.GetOutputDestructive("output", &cu_output);
   // subtract log-prior (divide by prior)
@@ -271,35 +275,92 @@ void NnetDecodableBase::DoNnetComputation(
   current_log_post_subsampled_offset_ = output_t_start / subsample;
 }
 
-void NnetDecodableBase::CheckAndFixConfigs() {
-  static bool warned_modulus = false,
-      warned_subsampling = false;
+void DecodableNnetSimple::CheckAndFixConfigs() {
+  static bool warned_frames_per_chunk = false;
   int32 nnet_modulus = nnet_.Modulus();
   if (opts_.frame_subsampling_factor < 1 ||
       opts_.frames_per_chunk < 1)
     KALDI_ERR << "--frame-subsampling-factor and --frames-per-chunk must be > 0";
-  if (opts_.frames_per_chunk % opts_.frame_subsampling_factor != 0) {
-    int32 f = opts_.frame_subsampling_factor,
-        frames_per_chunk = f * ((opts_.frames_per_chunk + f - 1) / f);
-    if (!warned_subsampling) {
-      warned_subsampling = true;
-      KALDI_LOG << "Increasing --frames-per-chunk from "
-                << opts_.frames_per_chunk << " to "
-                << frames_per_chunk << " to make it a multiple of "
-                << "--frame-subsampling-factor="
-                << opts_.frame_subsampling_factor;
+  KALDI_ASSERT(nnet_modulus > 0);
+  int32 n = Lcm(opts_.frame_subsampling_factor, nnet_modulus);
+
+  if (opts_.frames_per_chunk % n != 0) {
+    // round up to the nearest multiple of n.
+    int32 frames_per_chunk = n * ((opts_.frames_per_chunk + n - 1) / n);
+    if (!warned_frames_per_chunk) {
+      warned_frames_per_chunk = true;
+      if (nnet_modulus == 1) {
+        // simpler error message.
+        KALDI_LOG << "Increasing --frames-per-chunk from "
+                  << opts_.frames_per_chunk << " to "
+                  << frames_per_chunk << " to make it a multiple of "
+                  << "--frame-subsampling-factor="
+                  << opts_.frame_subsampling_factor;
+      } else {
+        KALDI_LOG << "Increasing --frames-per-chunk from "
+                  << opts_.frames_per_chunk << " to "
+                  << frames_per_chunk << " due to "
+                  << "--frame-subsampling-factor="
+                  << opts_.frame_subsampling_factor << " and "
+                  << "nnet shift-invariance modulus = " << nnet_modulus;
+      }
     }
     opts_.frames_per_chunk = frames_per_chunk;
   }
-  if (opts_.frames_per_chunk % nnet_modulus != 0 && !warned_modulus) {
-    warned_modulus = true;
-    KALDI_WARN << "It may be more efficient to set the --frames-per-chunk "
-               << "(currently " << opts_.frames_per_chunk << " to a "
-               << "multiple of the network's shift-invariance modulus "
-               << nnet_modulus;
+}
+
+
+DecodableAmNnetSimpleParallel::DecodableAmNnetSimpleParallel(
+    const NnetSimpleComputationOptions &opts,
+    const TransitionModel &trans_model,
+    const AmNnetSimple &am_nnet,
+    const MatrixBase<BaseFloat> &feats,
+    const VectorBase<BaseFloat> *ivector,
+    const MatrixBase<BaseFloat> *online_ivectors,
+    int32 online_ivector_period):
+    compiler_(am_nnet.GetNnet(), opts.optimize_config, opts.compiler_config),
+    trans_model_(trans_model),
+    feats_copy_(NULL),
+    ivector_copy_(NULL),
+    online_ivectors_copy_(NULL),
+    decodable_nnet_(NULL) {
+  try {
+    feats_copy_ = new Matrix<BaseFloat>(feats);
+    if (ivector != NULL)
+      ivector_copy_ = new Vector<BaseFloat>(*ivector);
+    if (online_ivectors != NULL)
+      online_ivectors_copy_ = new Matrix<BaseFloat>(*online_ivectors);
+    decodable_nnet_ = new DecodableNnetSimple(opts, am_nnet.GetNnet(),
+                                              am_nnet.Priors(), *feats_copy_,
+                                              &compiler_, ivector_copy_,
+                                              online_ivectors_copy_,
+                                              online_ivector_period);
+
+  } catch (...) {
+    DeletePointers();
+    KALDI_ERR << "Error occurred in constructor (see above)";
   }
 }
 
+void DecodableAmNnetSimpleParallel::DeletePointers() {
+  // delete[] does nothing for null pointers, so we have no checks.
+  delete decodable_nnet_;
+  decodable_nnet_ = NULL;
+  delete feats_copy_;
+  feats_copy_ = NULL;
+  delete ivector_copy_;
+  ivector_copy_ = NULL;
+  delete online_ivectors_copy_;
+  online_ivectors_copy_ = NULL;
+}
+
+
+BaseFloat DecodableAmNnetSimpleParallel::LogLikelihood(int32 frame,
+                                                       int32 transition_id) {
+  int32 pdf_id = trans_model_.TransitionIdToPdfFast(transition_id);
+  return decodable_nnet_->GetOutput(frame, pdf_id);
+}
+
+
 } // namespace nnet3
 } // namespace kaldi
-

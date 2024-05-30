@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 
@@ -54,8 +54,6 @@ $cmd JOB=1:$nj $dir/log/interp.JOB.log \
    "ark,s,cs:gunzip -c $srcdir2/lat.JOB.gz|" ark:- \| \
   lattice-copy-backoff "ark,s,cs:gunzip -c $srcdir1/lat.JOB.gz|" ark,s,cs:- \
    "ark:|gzip -c >$dir/lat.JOB.gz" || exit 1;
-
-cp $srcdir1/final.mdl $dir/final.mdl
 
 if ! $skip_scoring ; then
   [ ! -x local/score.sh ] && \

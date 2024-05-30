@@ -24,19 +24,19 @@ namespace kaldi {
 
  \section hmm_intro Introduction
 
- In this page we describe how HMM topologies are represented by Kaldi and 
+ In this page we describe how HMM topologies are represented by Kaldi and
  how we model and train HMM transitions.  We briefly mention how this interacts
  with decision trees; decision trees are covered more fully in \ref tree_externals and
  \ref tree_internals.  For a list of classes and functions in this group, see
  \ref hmm_group
- 
+
  \section hmm_topology  HMM topologies
 
  The class HmmTopology is the way the user specifies to the toolkit the topology
  of the HMMs the phones.  In the normal recipe, the scripts create
  in a file the text form of the HmmTopology object, which is then given to the
  command-line programs.  To give some idea of what this object contains, below
- is the text format for the HmmTopology object in the "normal" case (the 
+ is the text format for the HmmTopology object in the "normal" case (the
  3-state Bakis model):
 \verbatim
  <Topology>
@@ -45,31 +45,34 @@ namespace kaldi {
  <State> 0 <PdfClass> 0
  <Transition> 0 0.5
  <Transition> 1 0.5
- </State> 
- <State> 1 <PdfClass> 1 
+ </State>
+ <State> 1 <PdfClass> 1
  <Transition> 1 0.5
  <Transition> 2 0.5
- </State>  
+ </State>
  <State> 2 <PdfClass> 2
  <Transition> 2 0.5
  <Transition> 3 0.5
- </State>   
+ </State>
  <State> 3
- </State>   
+ </State>
  </TopologyEntry>
  </Topology>
 \endverbatim
 There is one TopologyEntry in this particular HmmTopology object, and it covers
 phones 1 through 8 (so in this example there are just eight phones and they all
-share the same topology).  There are three emitting states; each has a self-loop
+share the same topology).  There are three emitting states (i.e. states that
+have pdfs associated with them and 'emit' feature vectors); each has a self-loop
 and a transition to the next state.  There is also a fourth, non-emitting state,
-state 3 (there is no \<PdfClass\> entry for it) which has no transitions out of it.  This is
+state 3 (there is no \<PdfClass\> entry for it) which has no transitions out of it
+(implicitly, it connects to the next phone in the sequence).
+This is
 a standard feature of these topology entries; Kaldi treats the first state (state
 zero) as the start state, and the last state, which should always be nonemitting and
 have no transitions out of it, has final-probability one.  You
 can treat the transition-probability to the last state as equivalent to the
-"final-probability" in a HMM.  
-All of emitting the states in this particular example can have different pdf's in 
+"final-probability" in a HMM.
+All of emitting the states in this particular example can have different pdf's in
 them (since the PdfClass numbers are all distinct).  We can enforce tying by
 making the \<PdfClass\> numbers the same.
 The probabilities given in the HmmTopology object are those that are used to
@@ -80,7 +83,7 @@ that the transition probabilities in the HmmTopology object are generally not
 used after initializing the TransitionModel object.  There is an exception to
 this, however; for nonemitting states that are non-final (i.e. those that have
 transitions out of them but no \<PdfClass\> entry), Kaldi does not train the
-transition probabilities and instead it uses the probabilities given in the 
+transition probabilities and instead it uses the probabilities given in the
 HmmTopology object.  The decision not to support trainable transition probabilities
 for non-emitting states simplifies our training mechanisms, and since it is not
 normal to have non-emitting states with transitions, we felt that this was no
@@ -90,9 +93,19 @@ great loss.
 \section pdf_class Pdf-classes
 
 The pdf-class is a concept that relates to the HmmTopology object.  The
-HmmTopology object specifies a prototype HMM for each phone.  Each 
+HmmTopology object specifies a prototype HMM for each phone.  Each
 numbered state of a
-"prototype HMM" has a variable "pdf_class".  If two states have the same
+"prototype HMM" has two variables "forward_pdf_class" and "self_loop_pdf_class".
+The "self_loop_pdf_class" is a kind of pdf-class that is associated
+with self-loop transition. It is by default identical to "forward_pdf_class",
+but it can be used to define less-conventional HMM topologies
+where the pdfs on the self-loop and forward transitions are different.
+The decision to allow the pdf-class on just the self-loop to be different,
+while not embracing a fully "arc-based" representation where the pdfs on
+all transitions in the HMM are potentially independent, was made as a compromise,
+to allow for compatibility with previous versions of Kaldi while supporting the topology
+used in our "chain models" AKA lattice-free MMI.
+If two states have the same
 pdf_class variable, then they will always share the same probability
 distribution function (p.d.f.) if they are in the same phonetic context.  This
 is because the decision-tree code does not get to "see" the HMM-state directly,
@@ -112,8 +125,8 @@ the graph-building code, and does not lead to any loss of generality.
 \section transition_model Transition models (the TransitionModel object)
 
 The TransitionModel object stores the transition probabilities and information
-about HMM topologies (it contains a HmmTopology object).  
-The graph-building code depends on the TransitionModel object to get 
+about HMM topologies (it contains a HmmTopology object).
+The graph-building code depends on the TransitionModel object to get
 the topology and transition probabilities (it also requires a ContextDependencyInterface
 object to get the pdf-ids associated with particular phonetic contexts).
 
@@ -121,11 +134,14 @@ object to get the pdf-ids associated with particular phonetic contexts).
 
 The decision that underlies a lot of the transition-modeling code is as follows:
 we have decided to make the transition probability of a
-context dependent HMM state depend on the following four things (you could view
-them as a 4-tuple):
+context dependent HMM state depend on the following five things (you could view
+them as a 5-tuple):
   - The phone (whose HMM we are in)
   - The source HMM-state (as interpreted by the HmmTopology object, i.e.  normally 0, 1 or 2)
-  - The \ref pdf_id "pdf-id" (i.e. the index of the pdf associated with the state)
+  - The \ref pdf_id "forward-pdf-id"
+    (i.e. the index of the forward transition pdfs associated with the state)
+  - The \ref pdf_id "self-loop-pdf-id"
+    (i.e. the index of the self-loop pdfs associated with the state)
   - The index of the transition in the HmmTopology object.
 
 The last of these four items could be viewed as encoding the destination
@@ -148,11 +164,11 @@ the same thing as transition-ids), and transition states.  The reason we
 have introduced these identifiers and the associated mappings is so that we can
 use a completely FST-based training recipe.  The most "natural" FST-based setups
 would have what we call pdf-ids on the input labels.  However, bearing in mind
-that given our tree-building algorithms it will not always be possible to map 
-uniquely from a pdf-id to a phone, this would make it hard to map from an input-label 
+that given our tree-building algorithms it will not always be possible to map
+uniquely from a pdf-id to a phone, this would make it hard to map from an input-label
 sequence to a phone
 sequence, and this is inconvenient for a number of reasons;
-it would also make it hard in general to train the transition probabilities using 
+it would also make it hard in general to train the transition probabilities using
 the information in the FST alone.  For this reason we put
 identifiers called transition-ids on the input labels of the FST, and these can be mapped
 to the pdf-id but also to the phone and to a particular transition in a
@@ -170,24 +186,24 @@ prototype HMM (as given in the HmmTopology object).
  on FSTs.  Most importantly, transition-ids are one based.
  Since we do not imagine \ref pdf_id "pdf-ids" appearing very frequently as
  FST labels, and since we often use them as C++ array indexes, we have decided
- to make them zero-based but if they appear as FST input symbols (which should be 
+ to make them zero-based but if they appear as FST input symbols (which should be
  rarely) we add one to them.
- When reading the TransitionModel code, be aware that when indexing arrays with 
- one-based quantities there are cases where we subtract one and some cases where we do not; 
+ When reading the TransitionModel code, be aware that when indexing arrays with
+ one-based quantities there are cases where we subtract one and some cases where we do not;
  this is documented where the member variables are declared.  In any case, such code
  is not in the public interface so it should not lead to too much confusion.
  A complete list of the various integer quantities used in TransitionModel are as follows:
 
-    - phone (one-based): this type of identifier is used throughout the toolkit; it 
+    - phone (one-based): this type of identifier is used throughout the toolkit; it
         can be converted to a phone name via an OpenFst symbol table.  Not necessarily
         contiguous (the toolkit allows "skips" in the phone indices).
     - hmm-state (zero-based): this is an index into something of type HmmTopology::TopologyEntry.
         In the normal case, it is one of {0, 1, 2}.
-    - pdf, or pdf-id (zero-based): this is the index of the p.d.f., as 
-       originally allocated by the decision-tree clustering; (see \ref pdf_id). 
+    - pdf, or pdf-id (zero-based): this is the index of the p.d.f., as
+       originally allocated by the decision-tree clustering; (see \ref pdf_id).
        There would normally be several thousand pdf-ids in a system.
-    - transition-state, or trans_state (one-based): this is an index that is defined 
-      by the TransitionModel itself.  Each possible triple of (phone, hmm-state, pdf) 
+    - transition-state, or trans_state (one-based): this is an index that is defined
+      by the TransitionModel itself.  Each possible triple of (phone, hmm-state, pdf)
       maps to a unique transition-state.  Think of it is the finest granularity of
       HMM-state for which transitions are separately estimated.
     - transition-index, or trans_index (zero-based): this is an index into the
@@ -198,7 +214,7 @@ prototype HMM (as given in the HmmTopology object).
       from (transition-state, transition-index) to transition-id, and vice versa.
 
   There are also in the transition-modeling code reference to the following concepts:
-    - A triple means a triple (phone, hmm-state, pdf) which is mappable to and from a transition-state.
+    - A tuple means a 4-tuple (phone, hmm-state, forward pdf, self-loop pdf) which is mappable to and from a transition-state.
     - A pair means a pair (transition-state, transition-index) which is mappable to and from a transition-id.
 
 \section hmm_transition_training Training the transition model
@@ -221,7 +237,7 @@ prototype HMM (as given in the HmmTopology object).
   generally mean something of type  vector<int32>, which contains a sequence
   of transition-ids (c.f. \ref transition_model_identifiers) whose length is
   the same as the utterance the alignment corresponds to.  This sequence of transition-ids
-  would generally be obtained from the decoder as the input-label sequence. 
+  would generally be obtained from the decoder as the input-label sequence.
   Alignments are used in training time for Viterbi training, and in test time
   for adaptation.  Because transition-ids encode
   the phone information, it is possible to work out the phonetic sequence from
@@ -229,7 +245,7 @@ prototype HMM (as given in the HmmTopology object).
 
   We often need to deal with collections of alignments indexed by utterance.
   To do this conveniently, we read and write alignments with tables;
-  see \ref table_examples_ali for more information.  
+  see \ref table_examples_ali for more information.
 
   The function \ref ConvertAlignment() (c.f. the command-line program \ref
   convert-ali.cc "convert-ali") converts alignments from one transition-model to
@@ -237,10 +253,10 @@ prototype HMM (as given in the HmmTopology object).
   transition-model (created from a particular decision tree) and want to convert
   them to be valid for another transition model with a different tree.  It
   optionally takes a mapping from the original phones to a new phone set; this
-  feature is not normally needed but we have used it when dealing with simplified models 
+  feature is not normally needed but we have used it when dealing with simplified models
   based on a reduced (clustered) phone set.
 
-  Programs that read in alignments generally have the suffix "-ali".  
+  Programs that read in alignments generally have the suffix "-ali".
 
  \section hmm_post State-level posteriors
 
@@ -254,7 +270,7 @@ typedef std::vector<std::vector<std::pair<int32, BaseFloat> > > Posterior;
   where if we have an object "post" of type Posterior, post.size() will be equal
   to the length of the utterance in frames, and post[i] is a list of pairs (stored
   as a vector), where each pair consists of a (transition-id, posterior).
- 
+
  In the current programs, there are only two ways to create posteriors: either
    - By converting alignments to posteriors using the program ali-to-post, which
      gives us a rather trivial Posterior object where each frame has a single transition-id
@@ -262,18 +278,18 @@ typedef std::vector<std::vector<std::pair<int32, BaseFloat> > > Posterior;
    - By modifying posteriors using the program weight-silence-post, which is usually
      used to weight down the posteriors corresponding to silence phones.
 
- In future, when lattice generation is added, we will add utilities to create posteriors 
+ In future, when lattice generation is added, we will add utilities to create posteriors
  from lattices.
-  
+
  Programs that read in posteriors don't have a suffix comparable to "-ali", which is the
  suffix for programs that read in alignments.  This is for brevity; reading in
  state-level posteriors is considered the "default" behavior of programs that
- need this type of alignment information.  
+ need this type of alignment information.
 
  \section hmm_gpost Gaussian-level posteriors
 
  A set of Gaussian-level posteriors for an utterance may be stored using the
- following typedef:  
+ following typedef:
 \verbatim
 typedef std::vector<std::vector<std::pair<int32, Vector<BaseFloat> > > > GauPost;
 \endverbatim
@@ -290,9 +306,9 @@ typedef std::vector<std::vector<std::pair<int32, Vector<BaseFloat> > > > GauPost
  with.  Programs that read in Gaussian-level posteriors have the suffix "-gpost".
 
 \section hmm_graph Functions for converting HMMs to FSTs
- 
+
 A complete list of functions and classes involved in converting HMMs to FSTs may
-be found \ref hmm_group_graph "here". 
+be found \ref hmm_group_graph "here".
 
  \subsection hmm_graph_get_h_transducer GetHTransducer()
 
@@ -308,7 +324,7 @@ GetHTransducer (const std::vector<std::vector<int32> > &ilabel_info,
 \endcode
 There are aspects of this function which will be hard to understand
 without having first understood the \ref tree_ilabel "ilabel_info" object,
-the \ref tree_ctxdep "ContextDependencyInterface" interface, and at 
+the \ref tree_ctxdep "ContextDependencyInterface" interface, and at
 least the basics of how FSTs are used in speech recognition.  This function
 returns an FST whose input labels are \ref transition_model_identifiers "transition-ids"
 and whose output labels represent context-dependent phones (they are
@@ -318,12 +334,12 @@ of it have output-labels (for efficient composition with CLG).  Each transition
 out of it will typically enter a structure representing a 3-state HMM, and
 then loop back to the initial state.  The FST returned
 GetHTransducer() will only be valid for the phonetic contexts represented
-in ilabel_info, which the caller can specify.  
+in ilabel_info, which the caller can specify.
 This is useful because for wide-context systems there can
 be a large number of contexts, most of which are never used.  The ilabel_info
 object can be obtained from the ContextFst object (which represents C) after
 composing it with something, and it contains just the contexts that have
-been used.  We would then provide this same ilabel_info object to 
+been used.  We would then provide this same ilabel_info object to
 GetHTransducer() to get an H transducer that covers everything we need.
 
 Note that GetHTransducer() function does not include the self-loops.  These
@@ -333,7 +349,7 @@ to only add the self-loops after all stages of decoding-graph optimization.
 \subsection hmm_graph_config The HTransducerConfig configuration class
 
 The HTransducerConfig configuration class controls the behavior of
-GetHTransducer. 
+GetHTransducer.
 
   - The variable \ref HTransducerConfig::trans_prob_scale
     "trans_prob_scale" is the transition probability scale.  When transition
@@ -341,25 +357,19 @@ GetHTransducer.
     As a command-line option this is called --transition-scale.
     See \ref hmm_scale for a discussion of the appropriate scale to use.
 
-  - There is a variable \ref HTransducerConfig::reverse "reverse" and two
-    other variables that are only accessed if the "reverse" option is true.
-    The "reverse" option is for creating time-reversed FSTs for "backwards"
-    decoding.  To make this useful, we need to add utilities for time-reversing
-    Arpa language models; this will be done later.
-
 \subsection hmm_graph_get_hmm_as_fst The function GetHmmAsFst()
 
-The function GetHmmAsFst() takes a phonetic context window and returns 
+The function GetHmmAsFst() takes a phonetic context window and returns
 the corresponding finite state acceptor with transition-ids as the symbols.
 This is used in GetHTransducer().  A function GetHmmAsFstSimple() that
 takes fewer options is also provided as a form of documentation,
 in order to show in principle how the process works.
 
 \subsection hmm_graph_add_self_loops AddSelfLoops()
-  
+
  The AddSelfLoops() function adds self-loops to a graph that has been
  created without self-loops.  A typical setup is to create the H transducer
- without self-loops, compose with CLG, do determinization and minimization, 
+ without self-loops, compose with CLG, do determinization and minimization,
  and then add the self-loops.  This enables more efficient determinization and
  minimization.  The AddSelfLoops() function has the option to reorder the
  transitions; see below \ref hmm_reorder for more details on this.  It also
@@ -372,9 +382,9 @@ in order to show in principle how the process works.
  The AddTransitionProbs() function adds transition probabilities to an FST.
  The reason this is useful is so that graphs can be created without transition
  probabilities on them (i.e. without the component of the weights that arises
- from the HMM transitions), and these can be added in later; this makes it 
+ from the HMM transitions), and these can be added in later; this makes it
  possible to use the same graph on different iterations of training the
- model, and keep the transition-probabilities in the graph up to date.  
+ model, and keep the transition-probabilities in the graph up to date.
  Creating the graph without transition-probabilities is accomplished by
  using a zero value for trans_prob_scale (command-line option: --transition-scale).
  In training time, our scripts tend to store the
@@ -389,18 +399,18 @@ in order to show in principle how the process works.
  boolean command-line option, e.g. you can do --reorder=true to enable
  reordering during graph creation.  This option makes the "simple" and
  "faster" decoders more efficient (see \ref decoders), although it is
- not compatible with the "kaldi" decoder.  
+ not compatible with the "kaldi" decoder.
 
  The idea of reordering is that we switch the order of the self-loop arcs
  with all the other arcs that come out of a state, so the self-loop is
- located at the destination state of each of the other arcs.  For this 
+ located at the destination state of each of the other arcs.  For this
  to work, we have to ensure that the FST has
  certain properties, namely that all the arcs into a particular state must
  induce the same self-loop (also, a state with a self-loop cannot have
  input arcs with epsilon inputs, or be the start state).  The AddSelfLoops()
  function modifies the graphs to ensure that they have this property.  A similar
  property is required even if the "reorder" option is set to false.
- The graphs created with the "reorder" option are exactly equivalent to the 
+ The graphs created with the "reorder" option are exactly equivalent to the
  non-reordered graphs in terms
  of the acoustic and transition-model probabilities you get when decoding
  an utterance.  The transition-ids on the resulting alignment are in a different
@@ -428,7 +438,7 @@ There are three types of scaling that can be applied in Kaldi:
 
 You may notice that there is no language model scale on this list; everything is
 scaled relative to the language model.  Also we don't support a word insertion
-penalty, in general (although the "kaldi" decoder does support this).  
+penalty, in general (although the "kaldi" decoder does support this).
 The idea is that the language model represents "real"
 probabilities so it makes sense to scale everything else relative to them.
 The scales during training time are the scales we use in decoding to get Viterbi
@@ -438,18 +448,18 @@ test is quite critical and is typically tuned to the task.
 We now explain what these three scales do:
 
   - The acoustic scale is the scale applied to the acoustics (i.e. to the log-likelihood
-    of a frame given an acoustic state).  
+    of a frame given an acoustic state).
   - The transition scale is the scale on the transition probabilities, but this only
    applies to HMM states that have multiple transitions out of them; it applies to the
    relative weight between such transitions.  It does not have any effect for typical
-   topologoes.  
+   topologoes.
   - The self-loop scale is the scale that we apply to the self-loops.  More specifically,
    when we add the self-loop, let the probability mass given to the self-loop be p
    and the mass given to the rest be (1-p).  We add a self-loop with log-probability
-   self_loop_scale * log(p), and add (self_loop_scale * log(1-p)) to all the other 
+   self_loop_scale * log(p), and add (self_loop_scale * log(1-p)) to all the other
    log transition probabilities out of that state.  (Note: in the initial stage of
    graph creation we create a graph without self-loops, and with the non-self-loop
-   transition probabilities renormalized to sum to one).  In typical topologies, the 
+   transition probabilities renormalized to sum to one).  In typical topologies, the
    self-loop scale is the only scale that matters.
 
 The reason we feel it might make sense to apply a different probability scale to
@@ -465,16 +475,16 @@ algorithm.  We expect this to be more of an issue for the self-loops than for
 probabilities that dictate the weight to give entirely different paths through
 the HMM, as in the latter case the acoustic distributions will often be quite
 disjoint, and the difference between forward-backward and Viterbi will be
-small.  
+small.
 
 
 
 
 
-   
+
 
 */
-  
+
 
 /**
   \defgroup hmm_group Classes and functions related to HMM topology and transition modeling

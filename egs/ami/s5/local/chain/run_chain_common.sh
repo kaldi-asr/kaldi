@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # this script has common stages shared across AMI chain recipes
 set -e
@@ -19,7 +19,7 @@ min_seg_len=
 # End configuration section.
 echo "$0 $@"  # Print the command line for logging
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
@@ -74,7 +74,6 @@ fi
 if [ $stage -le 11 ]; then
   # Build a tree using our new topology.
   steps/nnet3/chain/build_tree.sh --frame-subsampling-factor 3 \
-      --leftmost-questions-truncate -1 \
       --cmd "$train_cmd" 4200 data/$mic/$latgen_train_set $lang $ali_dir $treedir
 
 fi
@@ -87,9 +86,8 @@ fi
 
 if [ $stage -le 12 ]; then
   rm -rf data/$mic/${train_set}_min${min_seg_len}_hires
-  steps/cleanup/combine_short_segments.py --minimum-duration $min_seg_len \
-    --input-data-dir data/$mic/${train_set}_hires \
-    --output-data-dir data/$mic/${train_set}_min${min_seg_len}_hires
+  utils/data/combine_short_segments.sh \
+      data/$mic/${train_set}_hires $min_seg_len data/$mic/${train_set}_min${min_seg_len}_hires
 
   #extract ivectors for the new data
   steps/online/nnet2/copy_data_dir.sh --utts-per-spk-max 2 \
@@ -101,9 +99,8 @@ if [ $stage -le 12 ]; then
 
  # combine the non-hires features for alignments/lattices
  rm -rf data/$mic/${latgen_train_set}_min${min_seg_len}
- steps/cleanup/combine_short_segments.py --minimum-duration $min_seg_len \
-                   --input-data-dir data/$mic/${latgen_train_set} \
-                   --output-data-dir data/$mic/${latgen_train_set}_min${min_seg_len}
+ utils/data/combine_short_segments.sh \
+     data/$mic/${latgen_train_set} $min_seg_len data/$mic/${latgen_train_set}_min${min_seg_len}
 fi
 
 train_set=${train_set}_min${min_seg_len}

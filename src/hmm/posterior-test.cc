@@ -33,12 +33,12 @@ void TestVectorToPosteriorEntry() {
 
   std::vector<std::pair<int32, BaseFloat> > post_entry;
 
-  BaseFloat ans = VectorToPosteriorEntry(loglikes, gselect, min_post, &post_entry);
+  VectorToPosteriorEntry(loglikes, gselect, min_post, &post_entry);
 
   KALDI_ASSERT(post_entry.size() <= gselect);
 
   int32 max_elem;
-  BaseFloat max_val = loglikes.Max(&max_elem);
+  loglikes.Max(&max_elem);
   KALDI_ASSERT(post_entry[0].first == max_elem);
 
   KALDI_ASSERT(post_entry.back().second >= min_post);
@@ -48,7 +48,6 @@ void TestVectorToPosteriorEntry() {
   for (size_t i = 0; i < post_entry.size(); i++)
     sum += post_entry[i].second;
   KALDI_ASSERT(fabs(sum - 1.0) < 0.01);
-  KALDI_ASSERT(ans >= max_val);
 }
 
 void TestPosteriorIo() {
@@ -92,4 +91,3 @@ int main() {
   }
   std::cout << "Test OK.\n";
 }
-

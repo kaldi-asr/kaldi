@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Compute scores from RNNLM.  This script takes a directory
 # $dir (e.g. dir=local/rnnlm/rnnlm.voc30.hl30 ),
@@ -18,6 +18,9 @@
 # has, on each line, "word prob".
 
 rnnlm_ver=rnnlm-0.3e
+ensure_normalized_probs=false  # if true then we add the neccesary options to
+                               # normalize the probabilities of RNNLM
+                               # e.g. when using faster-rnnlm in the nce mode
 
 . ./path.sh || exit 1;
 . utils/parse_options.sh
@@ -63,7 +66,11 @@ cat $tempdir/text | awk -v voc=$dir/wordlist.rnn -v unk=$dir/unk.probs \
 # with <RNN_UNK>
 
 if [ $rnnlm_ver == "faster-rnnlm" ]; then
-  $rnnlm -independent -rnnlm $dir/rnnlm -test $tempdir/text.nounk -nbest -debug 0 | \
+  extra_options=
+  if [ "$ensure_normalized_probs" = true ]; then
+    extra_options="--nce-accurate-test 1"
+  fi
+  $rnnlm $extra_options -independent -rnnlm $dir/rnnlm -test $tempdir/text.nounk -nbest -debug 0 | \
      awk '{print $1*log(10);}' > $tempdir/loglikes.rnn
 else
   # add the utterance_id as required by Mikolove's rnnlm

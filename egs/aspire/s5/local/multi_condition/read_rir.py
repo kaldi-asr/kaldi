@@ -29,9 +29,9 @@ if __name__ == "__main__":
   #sys.stderr.write(" ".join(sys.argv)+"\n")
   parser = argparse.ArgumentParser(usage())
   parser.add_argument('--output-sampling-rate', type = int, default = 8000,  help = 'sampling rate of the output')
-  parser.add_argument('type', type = str, default = None,  help = 'database type', choices = ['air'])
-  parser.add_argument('input', type = str, default = None,  help = 'directory containing the multi-channel data for a particular recording, or file name or file-regex-pattern')
-  parser.add_argument('output_filename', type = str, default = None,  help = 'output filename (if "-" then output is written to output pipe)')
+  parser.add_argument('type', default = None,  help = 'database type', choices = ['air'])
+  parser.add_argument('input', default = None,  help = 'directory containing the multi-channel data for a particular recording, or file name or file-regex-pattern')
+  parser.add_argument('output_filename', default = None,  help = 'output filename (if "-" then output is written to output pipe)')
   params = parser.parse_args()
 
   if params.output_filename == "-":
@@ -53,5 +53,5 @@ if __name__ == "__main__":
     data = data.transpose()
     assert(data.shape[1] == 2)
     if params.output_sampling_rate != sr:
-      data = signal.resample(data,  params.output_sampling_rate * float(data.shape[0]) / sr, axis = 0)
+      data = signal.resample(data,  int(params.output_sampling_rate * float(data.shape[0]) / sr), axis = 0)
   wav_write(output, params.output_sampling_rate, data)

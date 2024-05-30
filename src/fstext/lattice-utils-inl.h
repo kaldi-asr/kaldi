@@ -40,7 +40,7 @@ void ConvertLattice(
   typedef ArcTpl<CompactWeight> CompactArc;
 
   VectorFst<ArcTpl<Weight> > ffst;
-  vector<vector<Int> > labels;
+  std::vector<std::vector<Int> > labels;
   if (invert) // normal case: want the ilabels as sequences on the arcs of
     Factor(ifst, &ffst, &labels);  // the output... Factor makes seqs of
                                    // ilabels.
@@ -67,7 +67,7 @@ void ConvertLattice(
   for (StateId s = 0; s < num_states; s++) {
     Weight final_weight = ffst.Final(s);
     if (final_weight != Weight::Zero()) {
-      CompactWeight final_compact_weight(final_weight, vector<Int>());
+      CompactWeight final_compact_weight(final_weight, std::vector<Int>());
       ofst->SetFinal(s, final_compact_weight);
     }
     for (ArcIterator<ExpandedFst<Arc> > iter(ffst, s);
@@ -195,7 +195,7 @@ void ConvertLattice(
 
 template<class Weight, class ScaleFloat>
 void ScaleLattice(
-    const vector<vector<ScaleFloat> > &scale,
+    const std::vector<std::vector<ScaleFloat> > &scale,
     MutableFst<ArcTpl<Weight> > *fst) {
   assert(scale.size() == 2 && scale[0].size() == 2 && scale[1].size() == 2);
   if (scale == DefaultLatticeScale()) // nothing to do.
@@ -209,12 +209,12 @@ void ScaleLattice(
          !aiter.Done();
          aiter.Next()) {
       Arc arc = aiter.Value();
-      arc.weight = ScaleTupleWeight(arc.weight, scale);
+      arc.weight = Weight(ScaleTupleWeight(arc.weight, scale));
       aiter.SetValue(arc);
     }
     Weight final_weight = fst->Final(s);
     if (final_weight != Weight::Zero())
-      fst->SetFinal(s, ScaleTupleWeight(final_weight, scale));
+      fst->SetFinal(s, Weight(ScaleTupleWeight(final_weight, scale)));
   }
 }
 
@@ -267,10 +267,11 @@ void ConvertFstToLattice(
     const ExpandedFst<ArcTpl<TropicalWeight> > &ifst,
     MutableFst<ArcTpl<LatticeWeightTpl<Real> > > *ofst) {
   int32 num_states_cache = 50000;
-  CacheOptions cache_opts(true, num_states_cache);
+  fst::CacheOptions cache_opts(true, num_states_cache);
+  fst::MapFstOptions mapfst_opts(cache_opts);
   StdToLatticeMapper<Real> mapper;
   MapFst<StdArc, ArcTpl<LatticeWeightTpl<Real> >,
-         StdToLatticeMapper<Real> > map_fst(ifst, mapper, cache_opts);
+         StdToLatticeMapper<Real> > map_fst(ifst, mapper, mapfst_opts);
   *ofst = map_fst;
 }
 

@@ -38,9 +38,10 @@
 int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
+    using std::string;
     typedef kaldi::int32 int32;
     using fst::SymbolTable;
-    using fst::VectorFst;
+    using fst::Fst;
     using fst::StdArc;
 
     const char *usage = "Decode features using GMM-based model.  Note: the input\n"
@@ -56,7 +57,7 @@ int main(int argc, char *argv[]) {
     bool binary = true;
     bool allow_partial = true;
     BaseFloat acoustic_scale = 0.1;
-        
+
     std::string word_syms_filename, utt2spk_rspecifier;
     LatticeFasterDecoderConfig decoder_opts;
     decoder_opts.Register(&po);
@@ -109,7 +110,7 @@ int main(int argc, char *argv[]) {
         KALDI_ERR << "Could not open table for writing lattices: "
                   << lattice_wspecifier;
     }
-        
+
     fst::SymbolTable *word_syms = NULL;
     if (word_syms_filename != "") {
       word_syms = fst::SymbolTable::ReadText(word_syms_filename);
@@ -126,7 +127,7 @@ int main(int argc, char *argv[]) {
 
     if (ClassifyRspecifier(fst_in_filename, NULL, NULL) == kNoRspecifier) {
       // Input FST is just one FST, not a table of FSTs.
-      VectorFst<StdArc> *decode_fst = fst::ReadFstKaldi(fst_in_filename);
+      Fst<StdArc> *decode_fst = fst::ReadFstKaldiGeneric(fst_in_filename);
 
       SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
       for (; !feature_reader.Done(); feature_reader.Next()) {
@@ -185,7 +186,7 @@ int main(int argc, char *argv[]) {
         }
         AmDiagGmm am_gmm;
         am_gmm.CopyFromAmDiagGmm(gmms_reader.Value(utt));
-        
+
         Matrix<BaseFloat> features(feature_reader.Value());
         feature_reader.FreeCurrent();
         if (features.NumRows() == 0) {
@@ -210,7 +211,7 @@ int main(int argc, char *argv[]) {
         } else num_fail++;
       }  // end looping over all utterances
     }
-    KALDI_LOG << "Average log-likelihood per frame is " 
+    KALDI_LOG << "Average log-likelihood per frame is "
               << (tot_like / frame_count) << " over " << frame_count << " frames.";
 
     double elapsed = timer.Elapsed();

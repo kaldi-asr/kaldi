@@ -36,11 +36,13 @@ int main(int argc, char *argv[]) {
 
 
     bool binary_write = false;
+    float std_dev = 1.0;
     float var_floor = 1e-10;
     float learn_rate_coef = 0.0;
 
     ParseOptions po(usage);
     po.Register("binary", &binary_write, "Write output in binary mode");
+    po.Register("std-dev", &std_dev, "Standard deviation of the output.");
     po.Register("var-floor", &var_floor,
         "Floor the variance, so the factors in <Rescale> are bounded.");
     po.Register("learn-rate-coef", &learn_rate_coef,
@@ -83,7 +85,7 @@ int main(int argc, char *argv[]) {
         var = var_floor;
       }
       shift(d) = -mean;
-      scale(d) = 1.0 / sqrt(var);
+      scale(d) = std_dev / sqrt(var);
     }
 
     // create empty nnet,

@@ -42,20 +42,20 @@ NnetDiscriminativeTrainer::NnetDiscriminativeTrainer(
     KALDI_ASSERT(opts.nnet_config.momentum >= 0.0 &&
                  opts.nnet_config.max_param_change >= 0.0);
     delta_nnet_ = nnet_->Copy();
-    bool is_gradient = false;  // setting this to true would disable the
-                               // natural-gradient updates.
-    SetZero(is_gradient, delta_nnet_);
+    ScaleNnet(0.0, delta_nnet_);
   }
   if (opts.nnet_config.read_cache != "") {
     bool binary;
-    try {
-      Input ki(opts.nnet_config.read_cache, &binary);
+    Input ki;
+    if (ki.Open(opts.nnet_config.read_cache, &binary)) {
       compiler_.ReadCache(ki.Stream(), binary);
-    } catch (...) {
+      KALDI_LOG << "Read computation cache from "
+                << opts.nnet_config.read_cache;
+    } else {
       KALDI_WARN << "Could not open cached computation. "
                     "Probably this is the first training iteration.";
     }
-  } 
+  }
   log_priors_.ApplyLog();
 }
 
@@ -70,17 +70,17 @@ void NnetDiscriminativeTrainer::Train(const NnetDiscriminativeExample &eg) {
                                       use_xent_regularization,
                                       need_model_derivative,
                                       &request);
-  const NnetComputation *computation = compiler_.Compile(request);
+  std::shared_ptr<const NnetComputation> computation = compiler_.Compile(request);
 
   NnetComputer computer(nnet_config.compute_config, *computation,
                         *nnet_,
                         (delta_nnet_ == NULL ? nnet_ : delta_nnet_));
   // give the inputs to the computer object.
   computer.AcceptInputs(*nnet_, eg.inputs);
-  computer.Forward();
+  computer.Run();
 
   this->ProcessOutputs(eg, &computer);
-  computer.Backward();
+  computer.Run();
 
   if (delta_nnet_ != NULL) {
     BaseFloat scale = (1.0 - nnet_config.momentum);
@@ -90,7 +90,7 @@ void NnetDiscriminativeTrainer::Train(const NnetDiscriminativeExample &eg) {
       if (param_delta > nnet_config.max_param_change) {
         if (param_delta - param_delta != 0.0) {
           KALDI_WARN << "Infinite parameter change, will not apply.";
-          SetZero(false, delta_nnet_);
+          ScaleNnet(0.0, delta_nnet_);
         } else {
           scale *= nnet_config.max_param_change / param_delta;
           KALDI_LOG << "Parameter change too big: " << param_delta << " > "
@@ -124,7 +124,7 @@ void NnetDiscriminativeTrainer::ProcessOutputs(const NnetDiscriminativeExample &
     CuMatrix<BaseFloat> nnet_output_deriv(nnet_output.NumRows(),
                                           nnet_output.NumCols(),
                                           kUndefined);
-    
+
     bool use_xent = (opts_.discriminative_config.xent_regularize != 0.0);
     std::string xent_name = sup.name + "-xent";  // typically "output-xent".
     CuMatrix<BaseFloat> xent_deriv;
@@ -138,14 +138,14 @@ void NnetDiscriminativeTrainer::ProcessOutputs(const NnetDiscriminativeExample &
       objf_info_[sup.name].stats.Configure(opts_.discriminative_config);
       objf_info_[sup.name].stats.Reset();
     }
-    
-    ComputeDiscriminativeObjfAndDeriv(opts_.discriminative_config, 
+
+    ComputeDiscriminativeObjfAndDeriv(opts_.discriminative_config,
                                       tmodel_, log_priors_,
                                       sup.supervision, nnet_output,
-                                      &stats, 
+                                      &stats,
                                       &nnet_output_deriv,
                                       (use_xent ? &xent_deriv : NULL));
-    
+
     if (use_xent) {
       // this block computes the cross-entropy objective.
       const CuMatrixBase<BaseFloat> &xent_output = computer->GetOutput(xent_name);
@@ -173,23 +173,24 @@ void NnetDiscriminativeTrainer::ProcessOutputs(const NnetDiscriminativeExample &
         xent_deriv.MulRowsVec(cu_deriv_weights);
     }
 
-    computer->AcceptOutputDeriv(sup.name, &nnet_output_deriv);
+    computer->AcceptInput(sup.name, &nnet_output_deriv);
 
     objf_info_[sup.name].UpdateStats(sup.name, opts_.discriminative_config.criterion,
                                      opts_.nnet_config.print_interval,
                                      num_minibatches_processed_++,
                                      stats);
-    
+
     if (use_xent) {
       xent_deriv.Scale(opts_.discriminative_config.xent_regularize);
-      computer->AcceptOutputDeriv(xent_name, &xent_deriv);
+      computer->AcceptInput(xent_name, &xent_deriv);
     }
   }
 }
 
 
 bool NnetDiscriminativeTrainer::PrintTotalStats() const {
-  unordered_map<std::string, DiscriminativeObjectiveFunctionInfo>::const_iterator
+  unordered_map<std::string, DiscriminativeObjectiveFunctionInfo,
+    StringHasher>::const_iterator
       iter = objf_info_.begin(),
       end = objf_info_.end();
   bool ans = false;
@@ -238,6 +239,19 @@ void DiscriminativeObjectiveFunctionInfo::PrintStatsForThisPhase(
 bool DiscriminativeObjectiveFunctionInfo::PrintTotalStats(const std::string &name,
                 const std::string &criterion) const {
   BaseFloat objf = stats.TotalObjf(criterion) /stats.tot_t_weighted;
+
+  double avg_gradients = (stats.tot_num_count + stats.tot_den_count) /
+                         stats.tot_t_weighted;
+  KALDI_LOG << "Average num+den count of stats is " << avg_gradients
+              << " per frame, over "
+              << stats.tot_t_weighted << " frames.";
+  if (stats.tot_l2_term != 0.0) {
+    KALDI_LOG << "Average l2 norm of output per frame is "
+              << (stats.tot_l2_term / stats.tot_t_weighted) << " over "
+              << stats.tot_t_weighted << " frames.";
+  }
+
+
   KALDI_LOG << "Overall average objective function for '" << name << "' is "
             << objf << " over " << stats.tot_t_weighted << " frames.";
   KALDI_LOG << "[this line is to be parsed by a script:] "
@@ -249,14 +263,13 @@ bool DiscriminativeObjectiveFunctionInfo::PrintTotalStats(const std::string &nam
 
 NnetDiscriminativeTrainer::~NnetDiscriminativeTrainer() {
   delete delta_nnet_;
-  
+
   if (opts_.nnet_config.write_cache != "") {
     Output ko(opts_.nnet_config.write_cache, opts_.nnet_config.binary_write_cache);
     compiler_.WriteCache(ko.Stream(), opts_.nnet_config.binary_write_cache);
-  } 
+  }
 }
 
 
 } // namespace nnet3
 } // namespace kaldi
-

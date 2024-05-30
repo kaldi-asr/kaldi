@@ -21,6 +21,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "fstext/fstext-lib.h"
+#include "hmm/posterior.h"
 #include "lat/kaldi-lattice.h"
 #include "lat/lattice-functions.h"
 

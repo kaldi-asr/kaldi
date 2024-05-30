@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+# This script is deprecated, please use ../xconfig_to_configs.py
+
 from __future__ import print_function
 import os
 import argparse
@@ -9,8 +11,8 @@ import copy
 import imp
 
 nodes = imp.load_source('nodes', 'steps/nnet3/components.py')
-nnet3_train_lib = imp.load_source('ntl', 'steps/nnet3/nnet3_train_lib.py')
-chain_lib = imp.load_source('ncl', 'steps/nnet3/chain/nnet3_chain_lib.py')
+sys.path.insert(0, 'steps')
+import libs.common as common_lib
 
 def GetArgs():
     # we add compulsary arguments as named arguments for readability
@@ -48,8 +50,14 @@ def GetArgs():
                         help="For chain models, if nonzero, add a separate output for cross-entropy "
                         "regularization (with learning-rate-factor equal to the inverse of this)",
                         default=0.0)
-    parser.add_argument("--include-log-softmax", type=str, action=nnet3_train_lib.StrToBoolAction,
+    parser.add_argument("--include-log-softmax", type=str, action=common_lib.StrToBoolAction,
                         help="add the final softmax layer ", default=True, choices = ["false", "true"])
+    parser.add_argument("--max-change-per-component", type=float,
+                        help="Enforces per-component max change (except for the final affine layer). "
+                        "if 0 it would not be enforced.", default=0.75)
+    parser.add_argument("--max-change-per-component-final", type=float,
+                        help="Enforces per-component max change for the final affine layer. "
+                        "if 0 it would not be enforced.", default=1.5)
 
     # LSTM options
     parser.add_argument("--num-lstm-layers", type=int,
@@ -70,14 +78,22 @@ def GetArgs():
                         help="options to be supplied to NaturalGradientAffineComponent", default="")
 
     # Gradient clipper options
-    parser.add_argument("--norm-based-clipping", type=str, action=nnet3_train_lib.StrToBoolAction,
-                        help="use norm based clipping in ClipGradient components ", default=True, choices = ["false", "true"])
+    parser.add_argument("--norm-based-clipping", type=str, action=common_lib.StrToBoolAction,
+                        help="Outdated option retained for back compatibility, has no effect.",
+                        default=True, choices = ["false", "true"])
     parser.add_argument("--clipping-threshold", type=float,
-                        help="clipping threshold used in ClipGradient components, if clipping-threshold=0 no clipping is done", default=30)
+                        help="clipping threshold used in BackpropTruncation components, "
+                        "if clipping-threshold=0 no clipping is done", default=30)
+    parser.add_argument("--zeroing-threshold", type=float,
+                        help="zeroing threshold used in BackpropTruncation components, "
+                        "if zeroing-threshold=0 no periodic zeroing is done", default=15.0)
+    parser.add_argument("--zeroing-interval", type=int,
+                        help="zeroing interval used in BackpropTruncation components", default=20)
     parser.add_argument("--self-repair-scale-nonlinearity", type=float,
                         help="A non-zero value activates the self-repair mechanism in the sigmoid and tanh non-linearities of the LSTM", default=0.00001)
     parser.add_argument("--self-repair-scale-clipgradient", type=float,
-                        help="A non-zero value activates the self-repair mechanism in the ClipGradient component of the LSTM", default=1.0)
+                        help="Outdated option retained for back compatibility, has no effect.",
+                        default=1.0)
 
     # Delay options
     parser.add_argument("--label-delay", type=int, default=None,
@@ -102,15 +118,15 @@ def CheckArgs(args):
 
     ## Check arguments.
     if args.feat_dir is not None:
-        args.feat_dim = nnet3_train_lib.GetFeatDim(args.feat_dir)
+        args.feat_dim = common_lib.get_feat_dim(args.feat_dir)
 
     if args.ali_dir is not None:
-        args.num_targets = nnet3_train_lib.GetNumberOfLeaves(args.ali_dir)
+        args.num_targets = common_lib.get_number_of_leaves_from_tree(args.ali_dir)
     elif args.tree_dir is not None:
-        args.num_targets = chain_lib.GetNumberOfLeaves(args.tree_dir)
+        args.num_targets = common_lib.get_number_of_leaves_from_tree(args.tree_dir)
 
     if args.ivector_dir is not None:
-        args.ivector_dim = nnet3_train_lib.GetIvectorDim(args.ivector_dir)
+        args.ivector_dim = common_lib.get_ivector_dim(args.ivector_dir)
 
     if not args.feat_dim > 0:
         raise Exception("feat-dim has to be postive")
@@ -122,10 +138,15 @@ def CheckArgs(args):
     if not args.ivector_dim >= 0:
         raise Exception("ivector-dim has to be non-negative")
 
+    if not args.max_change_per_component >= 0 or not args.max_change_per_component_final >= 0:
+        raise Exception("max-change-per-component and max_change-per-component-final should be non-negative")
+
     if (args.num_lstm_layers < 1):
         sys.exit("--num-lstm-layers has to be a positive integer")
-    if (args.clipping_threshold < 0):
-        sys.exit("--clipping-threshold has to be a non-negative")
+    if (args.clipping_threshold < 0 or args.zeroing_threshold < 0):
+        sys.exit("--clipping-threshold and --zeroing-threshold have to be non-negative")
+    if not args.zeroing_interval > 0:
+        raise Exception("--zeroing-interval has to be positive")
     if args.lstm_delay is None:
         args.lstm_delay = [[-1]] * args.num_lstm_layers
     else:
@@ -160,7 +181,7 @@ def ParseSpliceString(splice_indexes, label_delay=None):
     splice_array = []
     try:
         for i in range(len(split1)):
-            indexes = map(lambda x: int(x), split1[i].strip().split(","))
+            indexes = [int(x) for x in split1[i].strip().split(",")]
             print(indexes)
             if len(indexes) < 1:
                 raise ValueError("invalid --splice-indexes argument, too-short element: "
@@ -193,12 +214,12 @@ def ParseLstmDelayString(lstm_delay):
     lstm_delay_array = []
     try:
         for i in range(len(split1)):
-            indexes = map(lambda x: int(x), split1[i].strip().lstrip('[').rstrip(']').strip().split(","))
+            indexes = [int(x) for x in split1[i].strip().lstrip('[').rstrip(']').strip().split(",")]
             if len(indexes) < 1:
                 raise ValueError("invalid --lstm-delay argument, too-short element: "
                                 + lstm_delay)
             elif len(indexes) == 2 and indexes[0] * indexes[1] >= 0:
-                raise ValueError('Warning: ' + str(indexes) + ' is not a standard BLSTM mode. There should be a negative delay for the forward, and a postive delay for the backward.')
+                raise ValueError('Warning: {} is not a standard BLSTM mode. There should be a negative delay for the forward, and a postive delay for the backward.'.format(indexes))
             if len(indexes) == 2 and indexes[0] > 0: # always a negative delay followed by a postive delay
                 indexes[0], indexes[1] = indexes[1], indexes[0]
             lstm_delay_array.append(indexes)
@@ -212,10 +233,11 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
                 splice_indexes, lstm_delay, cell_dim, hidden_dim,
                 recurrent_projection_dim, non_recurrent_projection_dim,
                 num_lstm_layers, num_hidden_layers,
-                norm_based_clipping, clipping_threshold,
+                norm_based_clipping, clipping_threshold, zeroing_threshold, zeroing_interval,
                 ng_per_element_scale_options, ng_affine_options,
                 label_delay, include_log_softmax, xent_regularize,
-                self_repair_scale_nonlinearity, self_repair_scale_clipgradient):
+                self_repair_scale_nonlinearity, self_repair_scale_clipgradient,
+                max_change_per_component, max_change_per_component_final):
 
     config_lines = {'components':[], 'component-nodes':[]}
 
@@ -233,27 +255,44 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
 
     for i in range(num_lstm_layers):
         if len(lstm_delay[i]) == 2: # add a bi-directional LSTM layer
-            prev_layer_output = nodes.AddBLstmLayer(config_lines, "BLstm{0}".format(i+1),
-                                                    prev_layer_output, cell_dim,
-                                                    recurrent_projection_dim, non_recurrent_projection_dim,
-                                                    clipping_threshold, norm_based_clipping,
-                                                    ng_per_element_scale_options, ng_affine_options,
-                                                    lstm_delay = lstm_delay[i], self_repair_scale_nonlinearity = self_repair_scale_nonlinearity, self_repair_scale_clipgradient = self_repair_scale_clipgradient)
+            prev_layer_output = nodes.AddBLstmLayer(config_lines = config_lines,
+                                                    name = "BLstm{0}".format(i+1),
+                                                    input = prev_layer_output,
+                                                    cell_dim = cell_dim,
+                                                    recurrent_projection_dim = recurrent_projection_dim,
+                                                    non_recurrent_projection_dim = non_recurrent_projection_dim,
+                                                    clipping_threshold = clipping_threshold,
+                                                    zeroing_threshold = zeroing_threshold,
+                                                    zeroing_interval = zeroing_interval,
+                                                    ng_per_element_scale_options = ng_per_element_scale_options,
+                                                    ng_affine_options = ng_affine_options,
+                                                    lstm_delay = lstm_delay[i],
+                                                    self_repair_scale_nonlinearity = self_repair_scale_nonlinearity,
+                                                    max_change_per_component = max_change_per_component)
         else: # add a uni-directional LSTM layer
-            prev_layer_output = nodes.AddLstmLayer(config_lines, "Lstm{0}".format(i+1),
-                                                   prev_layer_output, cell_dim,
-                                                   recurrent_projection_dim, non_recurrent_projection_dim,
-                                                   clipping_threshold, norm_based_clipping,
-                                                   ng_per_element_scale_options, ng_affine_options,
-                                                   lstm_delay = lstm_delay[i][0], self_repair_scale_nonlinearity = self_repair_scale_nonlinearity, self_repair_scale_clipgradient = self_repair_scale_clipgradient)
+            prev_layer_output = nodes.AddLstmLayer(config_lines = config_lines,
+                                                   name = "Lstm{0}".format(i+1),
+                                                   input = prev_layer_output,
+                                                   cell_dim = cell_dim,
+                                                   recurrent_projection_dim = recurrent_projection_dim,
+                                                   non_recurrent_projection_dim = non_recurrent_projection_dim,
+                                                   clipping_threshold = clipping_threshold,
+                                                   zeroing_threshold = zeroing_threshold,
+                                                   zeroing_interval = zeroing_interval,
+                                                   ng_per_element_scale_options = ng_per_element_scale_options,
+                                                   ng_affine_options = ng_affine_options,
+                                                   lstm_delay = lstm_delay[i][0],
+                                                   self_repair_scale_nonlinearity = self_repair_scale_nonlinearity,
+                                                   max_change_per_component = max_change_per_component)
         # make the intermediate config file for layerwise discriminative
         # training
-        nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets, ng_affine_options, label_delay = label_delay, include_log_softmax = include_log_softmax)
+        nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets, ng_affine_options, max_change_per_component = max_change_per_component_final, label_delay = label_delay, include_log_softmax = include_log_softmax)
 
 
         if xent_regularize != 0.0:
             nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets,
-                                include_log_softmax = True,
+                                include_log_softmax = True, label_delay = label_delay,
+                                max_change_per_component = max_change_per_component_final,
                                 name_affix = 'xent')
 
         config_files['{0}/layer{1}.config'.format(config_dir, i+1)] = config_lines
@@ -262,14 +301,15 @@ def MakeConfigs(config_dir, feat_dim, ivector_dim, num_targets,
     for i in range(num_lstm_layers, num_hidden_layers):
         prev_layer_output = nodes.AddAffRelNormLayer(config_lines, "L{0}".format(i+1),
                                                prev_layer_output, hidden_dim,
-                                               ng_affine_options, self_repair_scale = self_repair_scale_nonlinearity)
+                                               ng_affine_options, self_repair_scale = self_repair_scale_nonlinearity, max_change_per_component = max_change_per_component)
         # make the intermediate config file for layerwise discriminative
         # training
-        nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets, ng_affine_options, label_delay = label_delay, include_log_softmax = include_log_softmax)
+        nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets, ng_affine_options, max_change_per_component = max_change_per_component_final, label_delay = label_delay, include_log_softmax = include_log_softmax)
 
         if xent_regularize != 0.0:
             nodes.AddFinalLayer(config_lines, prev_layer_output, num_targets,
-                                include_log_softmax = True,
+                                include_log_softmax = True, label_delay = label_delay,
+                                max_change_per_component = max_change_per_component_final,
                                 name_affix = 'xent')
 
         config_files['{0}/layer{1}.config'.format(config_dir, i+1)] = config_lines
@@ -295,9 +335,9 @@ def ProcessSpliceIndexes(config_dir, splice_indexes, label_delay, num_lstm_layer
 
     # write the files used by other scripts like steps/nnet3/get_egs.sh
     f = open(config_dir + "/vars", "w")
-    print('model_left_context=' + str(left_context), file=f)
-    print('model_right_context=' + str(right_context), file=f)
-    print('num_hidden_layers=' + str(num_hidden_layers), file=f)
+    print('model_left_context={}'.format(left_context), file=f)
+    print('model_right_context={}'.format(right_context), file=f)
+    print('num_hidden_layers={}'.format(num_hidden_layers), file=f)
     # print('initial_right_context=' + str(splice_array[0][-1]), file=f)
     f.close()
 
@@ -320,13 +360,17 @@ def Main():
                 num_hidden_layers = num_hidden_layers,
                 norm_based_clipping = args.norm_based_clipping,
                 clipping_threshold = args.clipping_threshold,
+                zeroing_threshold = args.zeroing_threshold,
+                zeroing_interval = args.zeroing_interval,
                 ng_per_element_scale_options = args.ng_per_element_scale_options,
                 ng_affine_options = args.ng_affine_options,
                 label_delay = args.label_delay,
                 include_log_softmax = args.include_log_softmax,
                 xent_regularize = args.xent_regularize,
                 self_repair_scale_nonlinearity = args.self_repair_scale_nonlinearity,
-                self_repair_scale_clipgradient = args.self_repair_scale_clipgradient)
+                self_repair_scale_clipgradient = args.self_repair_scale_clipgradient,
+                max_change_per_component = args.max_change_per_component,
+                max_change_per_component_final = args.max_change_per_component_final)
 
 if __name__ == "__main__":
     Main()

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2015  Johns Hopkins University (author: Vijayaditya Peddinti)
 # Apache 2.0
 # This script downloads the RWCP impulse responses and ambient noise
@@ -18,8 +18,8 @@ output_bit=16
 DBname=RWCP
 file_splitter=  #script to generate job scripts given the command file
 
-. cmd.sh
-. path.sh
+. ./cmd.sh
+. ./path.sh
 . ./utils/parse_options.sh
 
 if [ $# != 3 ]; then

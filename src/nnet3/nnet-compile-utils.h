@@ -32,16 +32,36 @@ namespace nnet3 {
 
 
 /**
-   The input to this function is a vector of lists of pairs, and this function
-   splits it up into a list of vectors of pairs.  In order to make the lists all
-   the same length it may have to insert "dummy" pairs with value (-1, -1).
-   In addition, this function implement certain heuristics to break up the
-   list into pairs in a particular desirable way, as we will describe below.
+   The input to this function is a vector (indexed by matrix-row-index) of lists
+   of pairs (submat_index, row_index), and this function splits it up into a
+   list of vectors of pairs, where those vectors are indexed by
+   matrix-row-index.
 
-   submat_lists.dim() may be large e.g. 1024 (it usually represents a minibatch
-   size), but the maximum size of the lists will usually be fairly small e.g. no
-   more than 4 or so, as it represents the number of terms in a hand-coded
-   summation expression.
+   In order to make the lists all the same length it may have to insert "dummy"
+   pairs with value (-1, -1).  In addition, this function implement certain
+   heuristics to break up the list into pairs in a particular desirable way,
+   which we will describe below.
+
+   Let the input be `submat_lists`, and let `num_rows = submat_lists.size()`.
+   The value -1 is not expected to appear as either the .first or .second
+   element of pairs in `submat_lists`.
+
+   Heuristics aside, what this function guarantees is as follows.  Each pair p
+   that is in an element of list `submat_lists[i]` (say `p =
+   submat_lists[i][k]`), will be present as `(*split_lists)[j][i] == p`.
+   Because we don't ban submat_lists[i] from containing duplicates, the
+   technical definition is a little more complicated: that the count of any
+   given pair p != (-1, -1) in `submat_lists[i][*]` is equal
+   to the count of that same pair in `(*split_lists)[*][i]`.
+
+   Each pair present in split_lists is either (-1, -1), or will correspond to an
+   element of submat_lists; thus the total number of pairs, excluding (-1, -1),
+   in split_lists will be the same as the total number of pairs in submat_lists.
+
+   Note on expected input: submat_lists.dim() may be large e.g. 1024 (it usually
+   represents a minibatch size), but the maximum size of the lists will usually
+   be fairly small e.g. no more than 4 or so, as it represents the number of
+   terms in a hand-coded summation expression.
 
    The use of this function is in interpreting a command to set each row of
    a matrix to a sum of terms.  Each pair represents an input term, interpreted
@@ -58,7 +78,6 @@ namespace nnet3 {
 
    See documentation here: \ref dnn3_compile_compiler_split_locations
  */
-
 void SplitLocations(
     const std::vector<std::vector<std::pair<int32, int32> > > &submat_lists,
     std::vector<std::vector<std::pair<int32, int32> > > *split_lists);
@@ -131,6 +150,31 @@ void EnsureContiguousProperty(
     const std::vector<int32> &indexes,
     std::vector<std::vector<int32> > *indexes_out);
 
+/**
+   This function outputs a sorted, unique list of the 't' values that are
+   encountered in the provided list of Indexes
+   If 't' values equal to kNoTime are encountered, they are ignored and
+   are not output.
+*/
+void GetTList(const std::vector<Index> &indexes,
+              std::vector<int32> *t_values);
+
+
+/**
+   This function outputs a sorted, unique list of the 't' values that are
+   encountered in the provided list of Indexes
+   If 't' values equal to kNoTime are encountered, they are ignored and
+   are not output.
+*/
+void GetTList(const std::vector<Index> &indexes,
+              std::vector<int32> *t_values);
+
+/**
+   This function outputs a unique, lexicographically sorted list of the pairs of
+   (n, x) values that are encountered in the provided list of Indexes.
+*/
+void GetNxList(const std::vector<Index> &indexes,
+               std::vector<std::pair<int32, int32> > *pairs);
 
 
 } // namespace nnet3
@@ -138,4 +182,3 @@ void EnsureContiguousProperty(
 
 
 #endif
-

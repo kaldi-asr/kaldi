@@ -25,7 +25,7 @@
 #include "feat/feature-window.h"
 
 namespace kaldi {
-/// @addtogroup  feat FeatureCommon
+/// @addtogroup  feat FeatureExtraction
 /// @{
 
 
@@ -53,12 +53,12 @@ class ExampleFeatureComputer {
   }
 
   /// Returns the feature dimension
-  int32 Dim();
+  int32 Dim() const;
 
   /// Returns true if this function may inspect the raw log-energy of the signal
   /// (before windowing and pre-emphasis); it's safe to always return true, but
   /// setting it to false enables an optimization.
-  bool NeedRawLogEnergy() { return true; }
+  bool NeedRawLogEnergy() const { return true; }
 
   /// constructor from options class; it should not store a reference or pointer
   /// to the options class but should copy it.
@@ -89,7 +89,7 @@ class ExampleFeatureComputer {
      @param [out] feature  Pointer to a vector of size this->Dim(), to which
          the computed feature will be written.
   */
-  void Compute(BaseFloat signal_log_energy,
+  void Compute(BaseFloat signal_raw_log_energy,
                BaseFloat vtln_warp,
                VectorBase<BaseFloat> *signal_frame,
                VectorBase<BaseFloat> *feature);
@@ -118,25 +118,40 @@ class OfflineFeatureTpl {
       computer_(opts),
       feature_window_function_(computer_.GetFrameOptions()) { }
 
-  // Computes the features for one file (one sequence of features).
-  // Use of the 'deprecatd_wave_remainder' argument is highly deprecated; it is
-  // only provided for back-compatibility for code that may have
-  // relied on the older interface.  It's deprecated because it
-  // doesn't support the --snip-edges=false option, and because
-  // we plan to eventually remove this argument so that there
-  // will be only one way to do online feature extraction.
+  // Internal (and back-compatibility) interface for computing features, which
+  // requires that the user has already checked that the sampling frequency
+  // of the waveform is equal to the sampling frequency specified in
+  // the frame-extraction options.
   void Compute(const VectorBase<BaseFloat> &wave,
                BaseFloat vtln_warp,
-               Matrix<BaseFloat> *output,
-               Vector<BaseFloat> *deprecated_wave_remainder = NULL);
+               Matrix<BaseFloat> *output);
 
   // This const version of Compute() is a wrapper that
   // calls the non-const version on a temporary object.
   // It's less efficient than the non-const version.
   void Compute(const VectorBase<BaseFloat> &wave,
                BaseFloat vtln_warp,
-               Matrix<BaseFloat> *output,
-               Vector<BaseFloat> *deprecated_wave_remainder = NULL) const;
+               Matrix<BaseFloat> *output) const;
+
+  /**
+     Computes the features for one file (one sequence of features).
+     This is the newer interface where you specify the sample frequency
+     of the input waveform.
+       @param [in] wave   The input waveform
+       @param [in] sample_freq  The sampling frequency with which
+                                'wave' was sampled.
+                                if sample_freq is higher than the frequency
+                                specified in the config, we will downsample
+                                the waveform, but if lower, it's an error.
+     @param [in] vtln_warp  The VTLN warping factor (will normally
+                            be 1.0)
+     @param [out]  output  The matrix of features, where the row-index
+                           is the frame index.
+  */
+  void ComputeFeatures(const VectorBase<BaseFloat> &wave,
+                       BaseFloat sample_freq,
+                       BaseFloat vtln_warp,
+                       Matrix<BaseFloat> *output);
 
   int32 Dim() const { return computer_.Dim(); }
 

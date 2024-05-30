@@ -1,12 +1,12 @@
-#!/bin/bash 
+#!/usr/bin/env bash
 #set -e
 # this script is based on local/online/run_nnet2_comman.sh
 # but it operates on corrupted training/dev/test data sets
 
-. cmd.sh
 
 stage=1
-snrs="20:10:15:5:0"
+foreground_snrs="20:10:15:5:0"
+background_snrs="20:10:15:5:0"
 num_data_reps=3
 ali_dir=exp/
 db_string="'air' 'rwcp' 'rvb2014'" # RIR dbs to be used in the experiment
@@ -15,7 +15,7 @@ RIR_home=db/RIR_databases/ # parent directory of the RIR databases files
 download_rirs=true # download the RIR databases from the urls or assume they are present in the RIR_home directory
 
 set -e
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 
@@ -31,28 +31,31 @@ if [ $stage -le 1 ]; then
     --RIR-home $RIR_home \
     data/impulses_noises || exit 1;
     
-  # corrupt the fisher data to generate multi-condition data 
-  # for data_dir in train dev test; do
+  # Generate the rir_list and noise_list for the reverberate_data_dir.py to corrupt the data
+  # this script just assumes air rwcp rvb2014 databases
+  python local/multi_condition/aspire_prep_rir_noise_list.py data/impulses_noises data/impulses_noises/info
+
+  # corrupt the fisher data to generate multi-condition data
   for data_dir in train dev test; do
     if [ "$data_dir" == "train" ]; then
       num_reps=$num_data_reps
     else
       num_reps=1
     fi
-    reverb_data_dirs=
-    for i in `seq 1 $num_reps`; do
-      cur_dest_dir=" data/temp_${data_dir}_${i}" 
-      local/multi_condition/reverberate_data_dir.sh --random-seed $i \
-        --snrs "$snrs" --log-dir exp/make_corrupted_wav \
-        data/${data_dir}  data/impulses_noises $cur_dest_dir
-      reverb_data_dirs+=" $cur_dest_dir" 
-    done
-    utils/combine_data.sh --extra-files utt2uniq data/${data_dir}_rvb $reverb_data_dirs
-    rm -rf $reverb_data_dirs
+    python steps/data/reverberate_data_dir.py \
+      --prefix "rev" \
+      --rir-list-file data/impulses_noises/info/rir_list \
+      --noise-list-file data/impulses_noises/info/noise_list \
+      --foreground-snrs $foreground_snrs \
+      --background-snrs $background_snrs \
+      --speech-rvb-probability 1 \
+      --pointsource-noise-addition-probability 1 \
+      --isotropic-noise-addition-probability 1 \
+      --num-replications $num_reps \
+      --max-noises-per-minute 1 \
+      --random-seed 1 \
+      data/${data_dir} data/${data_dir}_rvb
   done
-
-  # create the dev, test and eval sets from the aspire recipe
-  local/multi_condition/aspire_data_prep.sh 
 
   # copy the alignments for the newly created utterance ids
   ali_dirs=
@@ -60,9 +63,8 @@ if [ $stage -le 1 ]; then
     local/multi_condition/copy_ali_dir.sh --utt-prefix "rev${i}_" exp/tri5a exp/tri5a_temp_$i || exit 1;
     ali_dirs+=" exp/tri5a_temp_$i"
   done
-  local/multi_condition/combine_ali_dirs.sh --ref-data-dir data/train_rvb \
-    exp/tri5a_rvb_ali $ali_dirs || exit 1;
-   
+  steps/combine_ali_dirs.sh data/train_rvb exp/tri5a_rvb_ali $ali_dirs || exit 1;
+
   # copy the alignments for training the 100k system (from tri4a)
   local/multi_condition/copy_ali_dir.sh --utt-prefix "rev1_" exp/tri4a exp/tri4a_rvb || exit 1;
 fi

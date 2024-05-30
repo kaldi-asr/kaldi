@@ -42,7 +42,7 @@ namespace nnet3 {
   context required to compute an output should be expressible as a left-context
   and right-context sufficient to cover all cases (for instance, the output
   can't depend on the input at 2*t).
-  
+
 */
 
 
@@ -55,24 +55,26 @@ class AmNnetSimple {
     priors_(other.priors_),
     left_context_(other.left_context_),
     right_context_(other.right_context_) { }
-  
+
   explicit AmNnetSimple(const Nnet &nnet):
     nnet_(nnet) { SetContext(); }
-  
+
   int32 NumPdfs() const;
-  
+
   void Write(std::ostream &os, bool binary) const;
-  
+
   void Read(std::istream &is, bool binary);
 
   const Nnet &GetNnet() const { return nnet_; }
-  
+
+  /// Caution: if you structurally change the nnet, you should
+  /// call SetContext() afterward.
   Nnet &GetNnet() { return nnet_; }
 
   void SetNnet(const Nnet &nnet);
 
   void SetPriors(const VectorBase<BaseFloat> &priors);
-  
+
   const VectorBase<BaseFloat> &Priors() const { return priors_; }
 
   std::string Info() const;
@@ -80,7 +82,7 @@ class AmNnetSimple {
   /// Minimum left context required to compute an output.
   int32 LeftContext() const { return left_context_; }
 
-  /// Minimum right context required to compute an output. 
+  /// Minimum right context required to compute an output.
   int32 RightContext() const { return right_context_; }
 
   /// Returns the input feature dim.
@@ -88,10 +90,14 @@ class AmNnetSimple {
 
   /// Returns the iVector dimension, or -1 if there is no such input.
   int32 IvectorDim() const { return nnet_.InputDim("ivector"); }
-  
- private:
+
+  /// This function works out the left_context_ and right_context_ variables
+  /// from the network (it's a rather complex calculation).  You should call
+  /// this if you have structurally changed the nnet without calling SetNnet(),
+  /// e.g. using non-const GetNnet().
   void SetContext();
-               
+ private:
+
   const AmNnetSimple &operator = (const AmNnetSimple &other); // Disallow.
   Nnet nnet_;
   Vector<BaseFloat> priors_;
@@ -99,7 +105,7 @@ class AmNnetSimple {
   // The following variables are derived; they are re-computed
   // when we read the network or when it is changed.
   int32 left_context_;
-  int32 right_context_;  
+  int32 right_context_;
 };
 
 

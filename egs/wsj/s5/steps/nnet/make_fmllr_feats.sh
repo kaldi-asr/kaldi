@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2012-2015  Brno University of Technology (author: Karel Vesely),
 #                 
@@ -88,7 +88,7 @@ name=`basename $data`
 $cmd JOB=1:$nj $logdir/make_fmllr_feats.JOB.log \
   copy-feats "$feats" \
   ark,scp:$feadir/feats_fmllr_$name.JOB.ark,$feadir/feats_fmllr_$name.JOB.scp || exit 1;
-   
+
 # Merge the scp,
 for n in $(seq 1 $nj); do
   cat $feadir/feats_fmllr_$name.$n.scp 

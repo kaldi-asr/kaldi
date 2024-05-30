@@ -46,7 +46,7 @@ void Optimize(const NnetOptimizeConfig &config,
               NnetComputation *computation);
 \endverbatim
 Internally, this performs various different types of optimizations, which we will
-go through below. 
+go through below.
 We also discuss code analysis, which is used in the optimization code to help figure out which changes to the code
 are permissible; and code checking.
 
@@ -54,7 +54,7 @@ This page is organized as:
   - \ref dnn3_optimize_analysis
   - \ref dnn3_optimize_checking
   - \ref dnn3_optimize_optimization
- 
+
 \section dnn3_optimize_analysis Code analysis
 
 As mentioned, we have in nnet-analyze.h various utilities for analyzing code.
@@ -64,7 +64,7 @@ on some compiled code:
 struct Analyzer {
   ComputationVariables variables;
   std::vector<CommandAttributes> command_attributes;
-  std::vector<std::vector<Access> > variable_accesses;  
+  std::vector<std::vector<Access> > variable_accesses;
   std::vector<MatrixAccesses> matrix_accesses;
   void Init(const Nnet &nnet, const NnetComputation &computation);
 };
@@ -123,13 +123,13 @@ class ComputationVariables {
       std::vector<int32> *variable_indexes) const;
   int32 NumVariables() const { return num_variables_; }
   int32 GetMatrixForVariable(int32 variable) const;
-  
+
  private:
    ...
 };
 \endverbatim
 The \ref ComputationVariables::RecordAccessForSubmatrix() "RecordAccessForSubmatrix()" function
-won't be very self-explanatory because we haven't yet introduced struct CommandAttributes.  
+won't be very self-explanatory because we haven't yet introduced struct CommandAttributes.
 We'll say more about it below.
 
 \subsection dnn3_optimize_analysis_attributes  Command attributes
@@ -138,12 +138,12 @@ Struct CommandAttributes records which variables are read and which variables
 written, and also which matrices are read and written.
 \verbatim
 struct CommandAttributes {
-  // variables read 
+  // variables read
   std::vector<int32> variables_read;
   // variables written
   std::vector<int32> variables_written;
 
-  // matrices read 
+  // matrices read
   std::vector<int32> matrices_read;
   // matrices written
   std::vector<int32> matrices_written;
@@ -171,12 +171,12 @@ for updating the CommandAttributes variable for commands; it is declared as foll
       CommandAttributes *ca) const;
 \endverbatim
 where <code>AccessType</code> is an enum that can take values <code>kReadAccess</code>,
-<code>kWriteAccess</code> and <code>kReadWriteAccess</code>. 
+<code>kWriteAccess</code> and <code>kReadWriteAccess</code>.
 
 
 \subsection dnn3_optimize_analysis_attributes_computing Computing the command attributes
 
-After initializing the ComputationVariables object, the 
+After initializing the ComputationVariables object, the
 next stage in analysis of a computation is to obtain a vector of CommandAttributes,
 one for each command in the computation.  The function \ref ComputeCommandAttributes()
 is responsible for this.  This function is mostly a big switch statement, and we
@@ -198,7 +198,7 @@ void ComputeCommandAttributes(
       case NnetComputation::kAllocMatrixZeroed:
         vars.AppendVariablesForMatrix(c.arg1, &attr.variables_written);
         break;
-      case NnetComputation::kAllocMatrixUndefined: // nothing is written here. 
+      case NnetComputation::kAllocMatrixUndefined: // nothing is written here.
         break;
       case NnetComputation::kDeallocMatrix: // ditto.
         break;
@@ -207,12 +207,12 @@ void ComputeCommandAttributes(
         if (nnet.GetComponent(c.arg1)->Properties() & kPropagateAdds)
           vars.RecordAccessForSubmatrix(c.arg4, kReadWriteAccess, &attr);
         else
-          vars.RecordAccessForSubmatrix(c.arg4, kWriteAccess, &attr);        
+          vars.RecordAccessForSubmatrix(c.arg4, kWriteAccess, &attr);
         break;
         ...
 \endverbatim
 
-\subsection dnn3_optimize_analysis_variable Computing the variable accesses
+\subsection dnn3_optimize_analysis_variable_accesses Computing the variable accesses
 
 The next stage in analysis is to compute the variable accesses.  This
 takes the information we stored in the CommandAttributes, and list it
@@ -238,7 +238,7 @@ as we consolidate them- for example, a combination of a read and write access
 would be consolidated into a single <code>kReadWrite</code> access.
 
 
-\subsection dnn3_optimize_analysis_variable Computing the matrix accesses
+\subsection dnn3_optimize_analysis_variable_matrix Computing the matrix accesses
 
 Struct MatrixAccesses stores all the information we record for a single
 matrix, relating to how it is allocated and accessed:
@@ -258,7 +258,7 @@ struct MatrixAccesses {
   std::vector<Access> accesses;
   // true if this matrix is an input to the computation.
   bool is_input;
-  // true if this matrix is an output of the computation.  
+  // true if this matrix is an output of the computation.
   bool is_output;
   MatrixAccesses(): allocate_command(-1), deallocate_command(-1),
                     is_input(false), is_output(false) { }
@@ -283,7 +283,7 @@ class ComputationChecker {
                      const Nnet &nnet,
                      const ComputationRequest &request,
                      const NnetComputation &computation);
-  void Check(); 
+  void Check();
  private:
   // various dimension consistency checks and checks on properties.
   void CheckComputationIndexes() const;
@@ -319,7 +319,7 @@ struct NnetOptimizeConfig {
 };
 \endverbatim
 The top-level call to the optimization code is just a function call.
-We show the code for this function below:
+We show some partial code for this function below:
 \verbatim
 void Optimize(const NnetOptimizeConfig &config,
               const Nnet &nnet,

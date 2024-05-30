@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This script creates speed perturbed versions of the training data
 # and generates the corresponding alignments
@@ -8,7 +8,7 @@ nj=10
 stage=0
 use_sat_alignments=true
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 

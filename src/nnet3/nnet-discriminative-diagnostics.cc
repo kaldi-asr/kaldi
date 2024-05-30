@@ -42,8 +42,8 @@ NnetDiscriminativeComputeObjf::NnetDiscriminativeComputeObjf(
   log_priors_.ApplyLog();
   if (nnet_config_.compute_deriv) {
     deriv_nnet_ = new Nnet(nnet_);
-    bool is_gradient = true;  // force simple update
-    SetZero(is_gradient, deriv_nnet_);
+    ScaleNnet(0.0, deriv_nnet_);
+    SetNnetAsGradient(deriv_nnet_); // force simple update
   }
 }
 
@@ -61,8 +61,8 @@ void NnetDiscriminativeComputeObjf::Reset() {
   num_minibatches_processed_ = 0;
   objf_info_.clear();
   if (deriv_nnet_) {
-    bool is_gradient = true;
-    SetZero(is_gradient, deriv_nnet_);
+    ScaleNnet(0.0, deriv_nnet_);
+    SetNnetAsGradient(deriv_nnet_);
   }
 }
 
@@ -73,20 +73,20 @@ void NnetDiscriminativeComputeObjf::Compute(const NnetDiscriminativeExample &eg)
       use_xent_derivative = false;
 
   ComputationRequest request;
-  GetDiscriminativeComputationRequest(nnet_, eg, 
+  GetDiscriminativeComputationRequest(nnet_, eg,
                                       need_model_derivative,
                                       store_component_stats,
                                       use_xent_regularization, use_xent_derivative,
                                       &request);
-  const NnetComputation *computation = compiler_.Compile(request);
+  std::shared_ptr<const NnetComputation> computation = compiler_.Compile(request);
   NnetComputer computer(nnet_config_.compute_config, *computation,
                         nnet_, deriv_nnet_);
   // give the inputs to the computer object.
   computer.AcceptInputs(nnet_, eg.inputs);
-  computer.Forward();
+  computer.Run();
   this->ProcessOutputs(eg, &computer);
   if (nnet_config_.compute_deriv)
-    computer.Backward();
+    computer.Run();
 }
 
 void NnetDiscriminativeComputeObjf::ProcessOutputs(
@@ -104,7 +104,7 @@ void NnetDiscriminativeComputeObjf::ProcessOutputs(
       KALDI_ERR << "Network has no output named " << sup.name;
 
     const CuMatrixBase<BaseFloat> &nnet_output = computer->GetOutput(sup.name);
-    
+
     bool use_xent = (discriminative_config_.xent_regularize != 0.0);
     std::string xent_name = sup.name + "-xent";  // typically "output-xent".
     CuMatrix<BaseFloat> nnet_output_deriv, xent_deriv;
@@ -112,18 +112,18 @@ void NnetDiscriminativeComputeObjf::ProcessOutputs(
     if (nnet_config_.compute_deriv)
       nnet_output_deriv.Resize(nnet_output.NumRows(), nnet_output.NumCols(),
                                kUndefined);
-    
+
     if (use_xent)
       xent_deriv.Resize(nnet_output.NumRows(), nnet_output.NumCols(),
                         kUndefined);
 
     if (objf_info_.count(sup.name) == 0)
-      objf_info_.insert(std::make_pair(sup.name, 
+      objf_info_.insert(std::make_pair(sup.name,
           discriminative::DiscriminativeObjectiveInfo(discriminative_config_)));
 
     discriminative::DiscriminativeObjectiveInfo *stats = &(objf_info_[sup.name]);
 
-    discriminative::ComputeDiscriminativeObjfAndDeriv(discriminative_config_, 
+    discriminative::ComputeDiscriminativeObjfAndDeriv(discriminative_config_,
                                                       tmodel_, log_priors_,
                                                       sup.supervision, nnet_output,
                                                       stats,
@@ -132,11 +132,11 @@ void NnetDiscriminativeComputeObjf::ProcessOutputs(
                                                       (use_xent ? &xent_deriv : NULL));
 
     if (nnet_config_.compute_deriv)
-      computer->AcceptOutputDeriv(sup.name, &nnet_output_deriv);
-    
+      computer->AcceptInput(sup.name, &nnet_output_deriv);
+
     if (use_xent) {
       if (objf_info_.count(xent_name) == 0)
-        objf_info_.insert(std::make_pair(xent_name, 
+        objf_info_.insert(std::make_pair(xent_name,
           discriminative::DiscriminativeObjectiveInfo(discriminative_config_)));
       discriminative::DiscriminativeObjectiveInfo &xent_stats = objf_info_[xent_name];
 
@@ -149,7 +149,7 @@ void NnetDiscriminativeComputeObjf::ProcessOutputs(
       xent_stats.tot_t_weighted += stats->tot_t_weighted;
       xent_stats.tot_objf += xent_objf;
     }
-    
+
     num_minibatches_processed_++;
   }
 }
@@ -168,21 +168,21 @@ bool NnetDiscriminativeComputeObjf::PrintTotalStats() const {
     BaseFloat tot_weight = info.tot_t_weighted;
     BaseFloat tot_objective = info.TotalObjf(
         discriminative_config_.criterion);
-    
+
     info.PrintAll(discriminative_config_.criterion);
 
     if (info.tot_l2_term == 0.0) {
       KALDI_LOG << "Overall " << discriminative_config_.criterion
                 << " objective for '"
                 << name << "' is "
-                << (tot_objective / tot_weight) 
+                << (tot_objective / tot_weight)
                 << " per frame, "
                 << "over " << tot_weight << " frames.";
     } else {
       KALDI_LOG << "Overall " << discriminative_config_.criterion
                 << " objective for '"
                 << name << "' is "
-                << (tot_objective / tot_weight) 
+                << (tot_objective / tot_weight)
                 << " + " << (info.tot_l2_term / tot_weight)
                 << " per frame, "
                 << "over " << tot_weight << " frames.";
@@ -206,4 +206,3 @@ const discriminative::DiscriminativeObjectiveInfo* NnetDiscriminativeComputeObjf
 
 } // namespace nnet3
 } // namespace kaldi
-

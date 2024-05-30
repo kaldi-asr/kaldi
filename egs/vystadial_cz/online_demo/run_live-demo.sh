@@ -1,7 +1,7 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # source the settings
-. path.sh
+. ./path.sh
 
 batch_size=4560
 beam=12.0

@@ -1,0 +1,29 @@
+# Number of days of inactivity before an issue becomes stale.
+daysUntilStale: 60
+# Number of days of inactivity before a stale issue is closed.
+# TODO(kkm): Re-enable auto-closing when done with the current heap of old PRs.
+daysUntilClose: false
+# Issues with these labels will never be considered stale.
+exemptLabels:
+  - discussion
+  - enhancement
+  - help-wanted
+  - in progress
+  - low-priority
+  - newbie
+  - stale-exclude
+  - stopped development
+# Label to use when marking an issue as stale.
+staleLabel: stale
+# Comment to post when marking an issue as stale.
+markComment: >
+  This issue has been automatically marked as stale by a bot solely because it
+  has not had recent activity. Please add any comment (simply 'ping' is enough)
+  to prevent the issue from being closed for 60 more days if you believe it
+  should be kept open.
+# Comment to post when closing a stale issue.
+closeComment: >
+  This issue has been automatically closed by a bot strictly because of
+  inactivity. This does not mean that we think that this issue is not
+  important! If you believe it has been closed hastily, add a comment
+  to the issue and mention @kkm000, and I'll gladly reopen it.

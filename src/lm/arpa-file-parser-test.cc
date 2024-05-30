@@ -18,7 +18,7 @@
 // limitations under the License.
 
 /**
- * @file lm-lib-test.cc
+ * @file arpa-file-parser-test.cc
  * @brief Unit tests for language model code.
  */
 
@@ -73,7 +73,8 @@ inline CountedArray<T> MakeCountedArray(T(&array)[N]) {
 
 class TestableArpaFileParser : public ArpaFileParser {
  public:
-  TestableArpaFileParser(ArpaParseOptions options, fst::SymbolTable *symbols)
+  TestableArpaFileParser(const ArpaParseOptions &options,
+                         fst::SymbolTable *symbols)
       : ArpaFileParser(options, symbols),
         header_available_(false),
         read_complete_(false),
@@ -89,7 +90,7 @@ class TestableArpaFileParser : public ArpaFileParser {
   bool header_available_;
   bool read_complete_;
   int32 last_order_;
-  std::vector <NGramTestData> ngrams_;
+  std::vector<NGramTestData> ngrams_;
 };
 
 void TestableArpaFileParser::HeaderAvailable() {
@@ -149,7 +150,7 @@ void TestableArpaFileParser::Validate(
   //                           expect_ngrams.array, CompareNgrams);
   // if (mpos.first != ngrams_.end())
   //   KALDI_ERR << "Maismatch at index " << mpos.first - ngrams_.begin();
-  //TODO:auto above requres C++11, and I cannot spell out the type!!!
+  // TODO: auto above requres C++11, and I cannot spell out the type!!!
   KALDI_ASSERT(std::equal(ngrams_.begin(), ngrams_.end(),
                           expect_ngrams.array, CompareNgrams));
 }
@@ -165,18 +166,18 @@ ngram 2=2\n\
 ngram 3=2\n\
 \n\
 \\1-grams:\n\
--5.2      4 -3.3\n\
--3.4      5\n\
-0         1 -2.5\n\
--4.3      2\n\
+-5.2\t4\t-3.3\n\
+-3.4\t5\n\
+0\t1\t-2.5\n\
+-4.3\t2\n\
 \n\
 \\2-grams:\n\
--1.4       4 5 -3.2\n\
--1.3       1 4 -4.2\n\
+-1.4\t4 5\t-3.2\n\
+-1.3\t1 4\t-4.2\n\
 \n\
 \\3-grams:\n\
--0.3       1 4 5\n\
--0.2       4 5 2\n\
+-0.3\t1 4 5\n\
+-0.2\t4 5 2\n\
 \n\
 \\end\\";
 
@@ -199,7 +200,7 @@ ngram 3=2\n\
 
   TestableArpaFileParser parser(options, NULL);
   std::istringstream stm(integer_lm, std::ios_base::in);
-  parser.Read(stm, false);
+  parser.Read(stm);
   parser.Validate(MakeCountedArray(expect_counts),
                   MakeCountedArray(expect_ngrams));
 }
@@ -219,19 +220,19 @@ ngram 1=4\n\
 ngram 2=2\n\
 ngram 3=2\n\
 \n\
-\\1-grams:\n\
--5.2	a -3.3\n\
--3.4	\xCE\xB2\n\
-0.0	<s> -2.5\n\
--4.3	</s>\n\
+\\1-grams: \n\
+-5.2\ta\t-3.3\n\
+-3.4\t\xCE\xB2\n\
+0.0\t<s>\t-2.5\n\
+-4.3\t</s>\n\
 \n\
-\\2-grams:\n\
--1.5	a \xCE\xB2 -3.2\n\
--1.3	<s> a -4.2\n\
+\\2-grams:\t\n\
+-1.5\ta \xCE\xB2\t-3.2\n\
+-1.3\t<s> a\t-4.2\n\
 \n\
 \\3-grams:\n\
--0.3	<s> a \xCE\xB2\n\
--0.2	<s> a </s>\n\
+-0.3\t<s> a \xCE\xB2\n\
+-0.2\t<s> a </s>\n\
 \\end\\";
 
 // Symbol table that is created with predefined test symbols, "a" but no "b".
@@ -273,7 +274,7 @@ void ReadSymbolicLmNoOovImpl(ArpaParseOptions::OovHandling oov) {
   options.oov_handling = oov;
   TestableArpaFileParser parser(options, &symbols);
   std::istringstream stm(symbolic_lm, std::ios_base::in);
-  parser.Read(stm, false);
+  parser.Read(stm);
   parser.Validate(MakeCountedArray(expect_counts),
                   MakeCountedArray(expect_symbolic_full));
   KALDI_ASSERT(symbols.NumSymbols() == 6);
@@ -303,7 +304,7 @@ void ReadSymbolicLmWithOovImpl(
   options.oov_handling = oov;
   TestableArpaFileParser parser(options, symbols);
   std::istringstream stm(symbolic_lm, std::ios_base::in);
-  parser.Read(stm, false);
+  parser.Read(stm);
   parser.Validate(MakeCountedArray(expect_counts), expect_ngrams);
 }
 

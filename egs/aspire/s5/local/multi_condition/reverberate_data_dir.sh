@@ -1,4 +1,4 @@
-#!/bin/bash 
+#!/usr/bin/env bash
 
 # Copyright 2014  Johns Hopkins University (Author: Vijayaditya Peddinti)
 #           2015  Tom Ko
@@ -36,14 +36,18 @@ spk_prefix="rev${random_seed}_"
 # create the distorted wave files
 utils/copy_data_dir.sh --spk-prefix "$spk_prefix" --utt-prefix "$utt_prefix" \
   $src_dir $dest_dir
-cat $src_dir/utt2spk | awk -v p=$utt_prefix '{printf("%s%s %s\n", p, $1, $1);}' > $dest_dir/utt2uniq
+if [ ! -f $src_dir/utt2uniq ]; then
+  cat $src_dir/utt2spk | awk -v p=$utt_prefix '{printf("%s%s %s\n", p, $1, $1);}' > $dest_dir/utt2uniq
+else
+  cat $src_dir/utt2uniq | awk -v p=$utt_prefix '{printf("%s%s %s\n", p, $1, $2);}' > $dest_dir/utt2uniq
+fi
 
 # create the wav.scp files
 cat $src_dir/wav.scp | sed -e "s/^\s*//g" | \
   cut -d' ' -f1 | \
   awk -v p2=$wav_prefix \
   '{printf("%s%s\n", p2, $1);}'> $log_dir/corrupted_${random_seed}.list
-  
+
 # modify segments file to point to the new wav files
 cat $dest_dir/segments | awk -v p=$wav_prefix \
   '{printf("%s %s%s %s %s\n", $1, p, $2, $3, $4);}' > $log_dir/segments_temp

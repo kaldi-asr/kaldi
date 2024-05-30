@@ -28,10 +28,13 @@
 namespace kaldi {
 namespace nnet3 {
 
-/// @file  This file contains declarations of components that are not "simple",
+/// @file  nnet-general-component.h
+/// This file contains declarations of components that are not "simple",
 ///   meaning they care about the indexes they are operating on, don't return
 ///   the kSimpleComponent flag in their Properties(), and may return a different
 ///   number of outputs than inputs.
+///   Also see nnet-convolutional-component.h, which also contains
+///   number of convolution-related 'general' components.
 
 
 
@@ -62,8 +65,8 @@ class DistributeComponent: public Component {
   // use the default Info() function.
   virtual void InitFromConfig(ConfigLine *cfl);
   virtual std::string Type() const { return "DistributeComponent"; }
-  virtual int32 Properties() const { return kLinearInInput; }
-  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+  virtual int32 Properties() const { return 0; }
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
                          CuMatrixBase<BaseFloat> *out) const;
   virtual void Backprop(const std::string &debug_info,
@@ -71,6 +74,7 @@ class DistributeComponent: public Component {
                         const CuMatrixBase<BaseFloat> &in_value,
                         const CuMatrixBase<BaseFloat> &out_value,
                         const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
                         Component *, // to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
 
@@ -155,9 +159,9 @@ class DistributeComponentPrecomputedIndexes:
   StatisticsPoolingComponent to extract moving-average mean and
   standard-deviation statistics.
 
-  StatisticsExtractionExomponent designed to extract statistics-- 0th-order,
+  StatisticsExtractionComponent is designed to extract statistics-- 0th-order,
   1st-order and optionally diagonal 2nd-order stats-- from small groups of
-  frames, such as 10 frame.  The statistics will then be further processed by
+  frames, such as 10 frames.  The statistics will then be further processed by
   StatisticsPoolingComponent to compute moving-average means and (if configured)
   standard deviations.  The reason for the two-component way of doing this is
   efficiency, particularly in the graph-compilation phase.  (Otherwise there
@@ -184,7 +188,7 @@ class DistributeComponentPrecomputedIndexes:
   An output of this component will be 'computable' any time at least one of
   the corresponding inputs is computable.
 
-   In all cases the first dimension of the output will be a count (between 1 and
+  In all cases the first dimension of the output will be a count (between 1 and
   10 inclusive in this example).  If include-variance=false, then the output
   dimension will be input-dim + 1.  and the output dimensions >0 will be
   1st-order statistics (sums of the input).  If include-variance=true, then the
@@ -213,7 +217,7 @@ class StatisticsExtractionComponent: public Component {
     return kPropagateAdds|kReordersIndexes|
         (include_variance_ ? kBackpropNeedsInput : 0);
   }
-  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
                          CuMatrixBase<BaseFloat> *out) const;
   virtual void Backprop(const std::string &debug_info,
@@ -221,6 +225,7 @@ class StatisticsExtractionComponent: public Component {
                         const CuMatrixBase<BaseFloat> &in_value,
                         const CuMatrixBase<BaseFloat> &out_value,
                         const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
                         Component *, // to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
 
@@ -276,7 +281,7 @@ class StatisticsExtractionComponentPrecomputedIndexes:
   // element is a (start, end) range of inputs, that is summed over.
   CuArray<Int32Pair> forward_indexes;
 
-  // this vector stores the number of inputs for each output.  Normally this will be
+  // This vector stores the number of inputs for each output.  Normally this will be
   // the same as the component's output_period_ / input_period_, but could be less
   // due to edge effects at the utterance boundary.
   CuVector<BaseFloat> counts;
@@ -326,7 +331,8 @@ class StatisticsExtractionComponentPrecomputedIndexes:
  or whatever, instead of just component-name, because its output is only defined at multiples
  of its input-period.
 
- The output of StatisticsPoolingComponent will only be defined if at least one input was defined.
+ The output of StatisticsPoolingComponent will only be defined if at least one
+ input was defined.
  */
 class StatisticsPoolingComponent: public Component {
  public:
@@ -348,7 +354,7 @@ class StatisticsPoolingComponent: public Component {
          kBackpropNeedsOutput : 0) |
         (num_log_count_features_ == 0 ? kBackpropNeedsInput : 0);
   }
-  virtual void Propagate(const ComponentPrecomputedIndexes *indexes,
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
                          const CuMatrixBase<BaseFloat> &in,
                          CuMatrixBase<BaseFloat> *out) const;
   virtual void Backprop(const std::string &debug_info,
@@ -356,6 +362,7 @@ class StatisticsPoolingComponent: public Component {
                         const CuMatrixBase<BaseFloat> &in_value,
                         const CuMatrixBase<BaseFloat> &out_value,
                         const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
                         Component *, // to_update,
                         CuMatrixBase<BaseFloat> *in_deriv) const;
 
@@ -390,6 +397,11 @@ class StatisticsPoolingComponent: public Component {
       const std::vector<Index> &output_indexes,
       bool need_backprop) const;
 
+  // Used in computing the 'real' context of networks involving this component;
+  // with the default value of false, the left/right context will always appear
+  // to be 0.
+  void SetRequireDirectInput(bool b) { require_direct_input_ = b; }
+
  private:
   // Checks that the parameters are valid.
   void Check() const;
@@ -405,6 +417,13 @@ class StatisticsPoolingComponent: public Component {
   int32 num_log_count_features_;
   bool output_stddevs_;
   BaseFloat variance_floor_;
+  // If require_direct_input_ is set to true, in order for a particular 't'
+  // value to be available at the output of this component, it will require that
+  // 't' value to be computable at the input.  This is used in computing the
+  // "real" left/right context of the network, but this member isn't currently
+  // written to disk and will default to false when read.
+  bool require_direct_input_;
+
 };
 
 class StatisticsPoolingComponentPrecomputedIndexes:
@@ -438,6 +457,664 @@ class StatisticsPoolingComponentPrecomputedIndexes:
 
   virtual std::string Type() const { return "StatisticsPoolingComponentPrecomputedIndexes"; }
 };
+
+// BackpropTruncationComponent zeroes out the gradients every certain number
+// of frames, as well as having gradient-clipping functionality as
+// ClipGradientComponent.
+// This component will be used to prevent gradient explosion problem in
+// recurrent neural networks
+class BackpropTruncationComponent: public Component {
+ public:
+  BackpropTruncationComponent(int32 dim,
+                              BaseFloat scale,
+                              BaseFloat clipping_threshold,
+                              BaseFloat zeroing_threshold,
+                              int32 zeroing_interval,
+                              int32 recurrence_interval) {
+    Init(dim, scale, clipping_threshold, zeroing_threshold,
+        zeroing_interval, recurrence_interval);}
+
+  BackpropTruncationComponent(): dim_(0), scale_(1.0), clipping_threshold_(-1),
+    zeroing_threshold_(-1), zeroing_interval_(0), recurrence_interval_(0),
+    num_clipped_(0), num_zeroed_(0), count_(0), count_zeroing_boundaries_(0) { }
+
+  virtual int32 InputDim() const { return dim_; }
+  virtual int32 OutputDim() const { return dim_; }
+  virtual void InitFromConfig(ConfigLine *cfl);
+  void Init(int32 dim, BaseFloat scale, BaseFloat clipping_threshold,
+            BaseFloat zeroing_threshold, int32 zeroing_interval,
+            int32 recurrence_interval);
+
+  virtual std::string Type() const { return "BackpropTruncationComponent"; }
+
+  virtual int32 Properties() const {
+    return kPropagateInPlace|kBackpropInPlace;
+  }
+
+  virtual void ZeroStats();
+
+  virtual Component* Copy() const;
+
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &, // in_value,
+                        const CuMatrixBase<BaseFloat> &, // out_value,
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
+                        Component *to_update,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+
+  virtual ComponentPrecomputedIndexes* PrecomputeIndexes(
+      const MiscComputationInfo &misc_info,
+      const std::vector<Index> &input_indexes,
+      const std::vector<Index> &output_indexes,
+      bool need_backprop) const;
+
+  virtual void Scale(BaseFloat scale);
+  virtual void Add(BaseFloat alpha, const Component &other);
+  virtual void Read(std::istream &is, bool binary); // This Read function
+  // requires that the Component has the correct type.
+  /// Write component to stream
+  virtual void Write(std::ostream &os, bool binary) const;
+  virtual std::string Info() const;
+  virtual ~BackpropTruncationComponent() {
+  }
+ private:
+  // input/output dimension
+  int32 dim_;
+
+  // Scale that is applied in the forward propagation (and of course in the
+  // backprop to match.  Expected to normally be 1, but setting this to other
+  // values (e.g.  slightly less than 1) can be used to produce variants of
+  // LSTMs where the activations are bounded.
+  BaseFloat scale_;
+
+  // threshold (e.g., 30) to be used for clipping corresponds to max-row-norm
+  BaseFloat clipping_threshold_;
+
+  // threshold (e.g., 3) to be used for zeroing corresponds to max-row-norm
+  BaseFloat zeroing_threshold_;
+
+  // interval (e.g., 20, in number of frames) at which we would zero the
+  // gradient if the norm of the gradient is above zeroing_threshold_
+  int32 zeroing_interval_;
+
+  // recurrence_interval_ should be the absolute recurrence offset used in RNNs
+  // (e.g., 3). It is used to see whether the index the component is processing,
+  // crosses a boundary that's a multiple of zeroing_interval_ frames.
+  int32 recurrence_interval_;
+
+  // component-node name, used in the destructor to print out stats of
+  // self-repair
+  std::string debug_info_;
+
+  BackpropTruncationComponent &operator =
+      (const BackpropTruncationComponent &other); // Disallow.
+
+ protected:
+  // variables to store stats
+  // An element corresponds to rows of derivative matrix
+  double num_clipped_;  // number of elements which were clipped
+  double num_zeroed_;   // number of elements which were zeroed
+  double count_;  // number of elements which were processed
+  double count_zeroing_boundaries_; // number of zeroing boundaries where we had
+                                    // the opportunity to perform zeroing
+                                    // the gradient
+
+};
+
+class BackpropTruncationComponentPrecomputedIndexes:
+      public ComponentPrecomputedIndexes {
+ public:
+
+  // zeroing has the same dimension as the number of rows of out-deriv.
+  // Each element in zeroing can take two possible values: -1.0, meaning its
+  // corresponding frame is one that we need to consider zeroing the
+  // gradient of, and 0.0 otherwise
+  CuVector<BaseFloat> zeroing;
+
+  // caches the negative sum of elements in zeroing for less CUDA calls
+  // (the sum is computed by CPU). Note that this value would be positive.
+  BaseFloat zeroing_sum;
+
+  BackpropTruncationComponentPrecomputedIndexes(): zeroing_sum(0.0) {}
+
+  // this class has a virtual destructor so it can be deleted from a pointer
+  // to ComponentPrecomputedIndexes.
+  virtual ~BackpropTruncationComponentPrecomputedIndexes() { }
+
+  virtual ComponentPrecomputedIndexes* Copy() const {
+    return new BackpropTruncationComponentPrecomputedIndexes(*this);
+  }
+
+  virtual void Write(std::ostream &ostream, bool binary) const;
+
+  virtual void Read(std::istream &istream, bool binary);
+
+  virtual std::string Type() const {
+    return "BackpropTruncationComponentPrecomputedIndexes";
+  }
+};
+
+
+/*
+   ConstantComponent returns a constant value for all requested
+   indexes, and it has no dependencies on any input.
+   It's like a ConstantFunctionComponent, but done the "right"
+   way without requiring an unnecessary input.
+   It is optionally trainable, and optionally you can use natural
+   gradient.
+
+   Configuration values accepted by this component, with defaults if
+   applicable:
+
+      output-dim              Dimension that this component outputs.
+      is-updatable=true       True if you want this to be updatable.
+      use-natural-gradient=true  True if you want the update to use natural gradient.
+      output-mean=0.0         Mean of the parameters at initialization (the parameters
+                              are what it outputs).
+      output-stddev=0.0       Standard deviation of the parameters at initialization.
+
+
+  Values inherited from UpdatableComponent (see its declaration in
+  nnet-component-itf for details):
+     learning-rate
+     learning-rate-factor
+     max-change
+*/
+class ConstantComponent: public UpdatableComponent {
+ public:
+  // actually this component requires no inputs; this value
+  // is really a don't-care.
+  virtual int32 InputDim() const { return output_.Dim(); }
+
+  virtual int32 OutputDim() const { return output_.Dim(); }
+
+  virtual std::string Info() const;
+
+  // possible parameter values with their defaults:
+  // is-updatable=true use-natural-gradient=true output-dim=-1
+  // output-mean=0 output-stddev=0
+  virtual void InitFromConfig(ConfigLine *cfl);
+
+  ConstantComponent();
+
+  ConstantComponent(const ConstantComponent &other);
+
+  virtual std::string Type() const { return "ConstantComponent"; }
+  virtual int32 Properties() const {
+    return
+        (is_updatable_ ? kUpdatableComponent : 0);
+  }
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
+                         const CuMatrixBase<BaseFloat> &in,
+                         CuMatrixBase<BaseFloat> *out) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &, // in_value
+                        const CuMatrixBase<BaseFloat> &, // out_value
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
+                        Component *to_update,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+
+  virtual Component* Copy() const;
+
+  // Some functions that are only to be reimplemented for GeneralComponents.
+  virtual void GetInputIndexes(const MiscComputationInfo &misc_info,
+                               const Index &output_index,
+                               std::vector<Index> *desired_indexes) const {
+    desired_indexes->clear();  // requires no inputs.
+  }
+
+  // This function returns true if at least one of the input indexes used to
+  // compute this output index is computable.
+  // it's simple because this component requires no inputs.
+  virtual bool IsComputable(const MiscComputationInfo &misc_info,
+                            const Index &output_index,
+                            const IndexSet &input_index_set,
+                            std::vector<Index> *used_inputs) const {
+    if (used_inputs) used_inputs->clear();
+    return true;
+  }
+
+  // Some functions from base-class UpdatableComponent.
+  virtual void Scale(BaseFloat scale);
+  virtual void Add(BaseFloat alpha, const Component &other);
+  virtual void PerturbParams(BaseFloat stddev);
+  virtual BaseFloat DotProduct(const UpdatableComponent &other) const;
+  virtual int32 NumParameters() const;
+  virtual void Vectorize(VectorBase<BaseFloat> *params) const;
+  virtual void UnVectorize(const VectorBase<BaseFloat> &params);
+
+  virtual void ConsolidateMemory();
+ private:
+
+  // the output value-- a vector.
+  CuVector<BaseFloat> output_;
+
+  bool is_updatable_;
+  // if true, and if updatable, do natural-gradient update.
+  bool use_natural_gradient_;
+  OnlineNaturalGradient preconditioner_;
+
+  const ConstantComponent &operator
+  = (const ConstantComponent &other); // Disallow.
+};
+
+
+
+// DropoutMaskComponent outputs a random zero-or-one value for all dimensions of
+// all requested indexes, and it has no dependencies on any input.  It's like a
+// ConstantComponent, but with random output that has value zero
+// a proportion (dropout_proportion) of the time, and otherwise one.
+// This is not the normal way to implement dropout; you'd normally use a
+// DropoutComponent (see nnet-simple-component.h).  This component is used while
+// implementing per-frame dropout with the LstmNonlinearityComponent; we
+// generate a two-dimensional output representing dropout
+//
+class DropoutMaskComponent: public RandomComponent {
+ public:
+  // actually this component requires no inputs; this value
+  // is really a don't-care.
+  virtual int32 InputDim() const { return output_dim_; }
+
+  virtual int32 OutputDim() const { return output_dim_; }
+
+  virtual std::string Info() const;
+
+  // possible parameter values with their defaults:
+  // dropout-proportion=0.5 output-dim=-1 continuous=false
+  // With the 'continous=false' option (the default), it generates
+  // 0 with probability 'dropout-proportion' and 1 otherwise.
+  // With 'continuous=true' it outputs 1 plus dropout-proportion times
+  //  a value uniformly distributed on [-2, 2].  (e.g. if dropout-proportion is
+  // 0.5, this would amount to a value uniformly distributed on [0,2].)
+  virtual void InitFromConfig(ConfigLine *cfl);
+
+  DropoutMaskComponent();
+
+  DropoutMaskComponent(const DropoutMaskComponent &other);
+
+  virtual std::string Type() const { return "DropoutMaskComponent"; }
+  virtual int32 Properties() const { return kRandomComponent; }
+  // note: the matrix 'in' will be empty.
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
+                          const CuMatrixBase<BaseFloat> &in,
+                          CuMatrixBase<BaseFloat> *out) const;
+  // backprop does nothing, there is nothing to backprop to and nothing
+  // to update.
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &, // in_value
+                        const CuMatrixBase<BaseFloat> &, // out_value
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
+                        Component *to_update,
+                        CuMatrixBase<BaseFloat> *in_deriv) const { }
+
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+
+  virtual Component* Copy() const;
+
+  // Some functions that are only to be reimplemented for GeneralComponents.
+  virtual void GetInputIndexes(const MiscComputationInfo &misc_info,
+                               const Index &output_index,
+                               std::vector<Index> *desired_indexes) const {
+    desired_indexes->clear();  // requires no inputs.
+  }
+
+  // This function returns true if at least one of the input indexes used to
+  // compute this output index is computable.
+  // it's simple because this component requires no inputs.
+  virtual bool IsComputable(const MiscComputationInfo &misc_info,
+                            const Index &output_index,
+                            const IndexSet &input_index_set,
+                            std::vector<Index> *used_inputs) const {
+    if (used_inputs) used_inputs->clear();
+    return true;
+  }
+
+  void SetDropoutProportion(BaseFloat p) { dropout_proportion_ = p; }
+
+ private:
+
+  // The output dimension
+  int32 output_dim_;
+
+  BaseFloat dropout_proportion_;
+
+  bool continuous_;
+
+  const DropoutMaskComponent &operator
+  = (const DropoutMaskComponent &other); // Disallow.
+};
+
+
+
+/**
+   GeneralDropoutComponent implements dropout, including a continuous
+   variant where the thing we multiply is not just zero or one, but may
+   be a continuous value.  It is intended for the case where you want to
+   either share the dropout mask across all of time, or across groups
+   of 't' values (e.g. the first block of 10 values gets one dropout
+   mask, the second block of 10 gets another one, and so on).
+
+   It also has support for the frequency component of SpecAugment.
+
+   Configuration values accepted on the command line, with defaults:
+
+       dim        Dimension of the input and output of this component,
+                  e.g. 512
+
+       block-dim  Block size if you want the dropout mask to repeat,
+                  e.g. if dim=512 and you sent block-dim=128, there will
+                  be a mask of dimension 128 repeated 4 times.  This can
+                  be useful in convolutional setups.  If not specified,
+                  block-dim defaults to 'dim'; if specified, it must be
+                  a divisor of 'dim'.
+
+       dropout-proportion=0.5   For conventional dropout, this is the proportion
+                  of mask values that (in expectation) are zero; it would
+                  normally be between 0 and 0.5.  The nonzero mask values
+                  will be given values 1.0 / dropout_proportion, so that the
+                  expected value is 1.0.  This behavior is different from
+                  DropoutComponent and DropoutMaskComponent.
+
+                  For continuous dropout (continuous==true), the dropout scales
+                  will have values (1.0 + 2 * dropout-proportion *
+                  Uniform[-1,1]).  This might seem like a strange choice, but it
+                  means that dropout-proportion=0.5 gives us a kind of
+                  'extremal' case where the dropout scales are distributed as
+                  Uniform[0, 2] and we can pass in the dropout scale as if it
+                  were a conventional dropout scale.
+
+       time-period=0   This determines how the dropout mask interacts
+                  with the time index (t).  In all cases, different sequences
+                  (different 'n' values) get different dropout masks.
+                  If time-period==0, then the dropout mask is shared across
+                  all time values.  If you set time-period > 0, then the
+                  dropout mask is shared across blocks of time values: for
+                  instance if time-period==10, then we'll use one dropout
+                  mask for t values 0 through 9, another for 10 through 19,
+                  and so on.  In all cases, the dropout mask will be shared
+                  across all 'x' values, although in most setups the x values
+                  are just zero so this isn't very interesting.
+                  If you set time-period==1 it would be similar to regular
+                  dropout, and it would probably make more sense to just use the
+                  normal DropoutComponent.
+
+       specaugment-max-proportion=0  If nonzero, causes this component to
+                 implement SpecAugment.  (Note: you probably would want this
+                 after a batch-norm component so the average at input is
+                 zero), and the input dim will be interpreted as some kind of
+                 frequency space, e.g. linear or mel.  specaugment-max-proportion
+                 will be the maximum proportion of the frequency
+                 space that this component might zero out (so multiply this by
+                 by input dim to get the maximum columns that might be zeroed out);
+                 the actual number of columns zeroed out for each sequence will
+                 be randomly chosen between zero and the maximum.  Note: the
+                 non-zeroed frequencies won't be multiplied by a constant more
+                 than one as we would in the normal dropout mode.
+
+       specaugment-max-regions=1  This can be set to a value greater than one
+                 (e.g., 2) to implement a variant of SpecAugment where instead
+                 of zeroing out a single region of the frequency spectrum
+                 we zero out a randomly chosen number of regions, from one to
+                 this number.  The maximum proportion of the frequency spectrum
+                 that we remove is unaffected.
+
+ */
+class GeneralDropoutComponent: public RandomComponent {
+ public:
+  virtual int32 InputDim() const { return dim_; }
+
+  virtual int32 OutputDim() const { return dim_; }
+
+  virtual std::string Info() const;
+
+  virtual void InitFromConfig(ConfigLine *cfl);
+
+  GeneralDropoutComponent();
+
+  GeneralDropoutComponent(const GeneralDropoutComponent &other);
+
+  virtual std::string Type() const { return "GeneralDropoutComponent"; }
+  virtual int32 Properties() const {
+    return kRandomComponent|kPropagateInPlace|kBackpropInPlace|kUsesMemo|
+        (block_dim_ != dim_ ? (kInputContiguous|kOutputContiguous) : 0);
+  }
+
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
+                          const CuMatrixBase<BaseFloat> &in,
+                          CuMatrixBase<BaseFloat> *out) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &, // in_value
+                        const CuMatrixBase<BaseFloat> &, // out_value
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
+                        Component *to_update,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+
+  virtual void DeleteMemo(void *memo) const {
+    delete static_cast<CuMatrix<BaseFloat>*>(memo);
+  }
+
+  virtual ComponentPrecomputedIndexes* PrecomputeIndexes(
+      const MiscComputationInfo &misc_info,
+      const std::vector<Index> &input_indexes,
+      const std::vector<Index> &output_indexes,
+      bool need_backprop) const;
+
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+
+  virtual Component* Copy() const;
+
+  void SetDropoutProportion(BaseFloat p) { dropout_proportion_ = p; }
+
+ private:
+
+  // Returns a random matrix reflecting the masking we are applying.
+  // In the normal case where we are doing a
+  // of dimension 'num_mask_rows' by 'block_dim_'.  This
+  // should not be called if test_mode_ is true or dropout_proportion_ is zero.
+  CuMatrix<BaseFloat> *GetMemo(int32 num_mask_rows) const;
+
+
+  // The input and output dimension
+  int32 dim_;
+
+  // block_dim_ must divide dim_.
+  int32 block_dim_;
+
+  // time_period_ can be zero if we want all 't' values to share the same
+  // dropout mask, and a value more than zero if we want blocks of 't' values to
+  // share the dropout mask.  For example, if time_period_ is 10, blocks of size
+  // 10 frames will share the same dropout mask.
+  int32 time_period_;
+
+  BaseFloat dropout_proportion_;
+
+  BaseFloat specaugment_max_proportion_;
+
+  int32 specaugment_max_regions_;
+
+  bool continuous_;
+
+  const GeneralDropoutComponent &operator
+  = (const GeneralDropoutComponent &other); // Disallow.
+};
+
+// This stores some precomputed indexes for GeneralDropoutComponent.
+// This object is created for every instance of the Propagate()
+// function in the compiled computation.
+class GeneralDropoutComponentPrecomputedIndexes:
+      public ComponentPrecomputedIndexes {
+ public:
+
+
+  // num_mask_rows is the number of rows in the dropout-mask matrix, which will
+  // in the normal case equal the number of sequences we are processing.  Its
+  // num-cols is the block_dim_ of the component (e.g. might be the InputDim()
+  // (which is the same as OutputDim()), or maybe less if the block-dim option
+  // was specified.
+  int32 num_mask_rows;
+
+  // 'indexes' is of dimension (the number of rows in the matrix we're doing
+  // Propagate() or Backprop() on) times the (dim_ / block_dim_) of the
+  // GeneralDropoutComponent.  Each value is in the range [0, num_mask_rows-1],
+  // and each value is repeated (dim_ / block_dim_) times.  This array is used
+  // to multiply the reshaped values or derivatives by the appropriate rows of
+  // the dropout matrix.
+  CuArray<int32> indexes;
+
+  virtual ~GeneralDropoutComponentPrecomputedIndexes() { }
+
+  ComponentPrecomputedIndexes *Copy() const {
+    return new GeneralDropoutComponentPrecomputedIndexes(*this);
+  }
+
+  virtual void Write(std::ostream &os, bool binary) const;
+
+  virtual void Read(std::istream &is, bool binary);
+
+  virtual std::string Type() const {
+    return "GeneralDropoutComponentPrecomputedIndexes";
+  }
+};
+
+
+class SpecAugmentTimeMaskComponentPrecomputedIndexes;
+
+/**
+   SpecAugmentTimeMaskComponent implements the time part of SpecAugment.
+   Instead of zeroing out a single time-region of the input, though,
+   it zeroes out multiple smaller time-regions.
+
+   Configuration values accepted on the command line, with defaults:
+
+       dim        Dimension of the input and output of this component,
+                  e.g. 512
+
+
+       zeroed-proportion=0.25  Proportion of the input that is to be zeroed;
+                  should be in the range (0, 1).
+
+       time-mask-max-frames=10   The maximum time duration of the *zeroed*
+                  regions.  The non-zeroed regions in between will have maximum
+                 duration equal to this times (1-z)/z, where z
+                 is zeroed-proportion.
+ */
+class SpecAugmentTimeMaskComponent: public RandomComponent {
+ public:
+  virtual int32 InputDim() const { return dim_; }
+
+  virtual int32 OutputDim() const { return dim_; }
+
+  virtual std::string Info() const;
+
+  virtual void InitFromConfig(ConfigLine *cfl);
+
+  SpecAugmentTimeMaskComponent();
+
+  SpecAugmentTimeMaskComponent(const SpecAugmentTimeMaskComponent &other);
+
+  virtual std::string Type() const { return "SpecAugmentTimeMaskComponent"; }
+  virtual int32 Properties() const {
+    return kRandomComponent|kPropagateInPlace|kBackpropInPlace|kUsesMemo;
+  }
+
+  virtual void* Propagate(const ComponentPrecomputedIndexes *indexes,
+                          const CuMatrixBase<BaseFloat> &in,
+                          CuMatrixBase<BaseFloat> *out) const;
+  virtual void Backprop(const std::string &debug_info,
+                        const ComponentPrecomputedIndexes *indexes,
+                        const CuMatrixBase<BaseFloat> &, // in_value
+                        const CuMatrixBase<BaseFloat> &, // out_value
+                        const CuMatrixBase<BaseFloat> &out_deriv,
+                        void *memo,
+                        Component *to_update,
+                        CuMatrixBase<BaseFloat> *in_deriv) const;
+
+  virtual void DeleteMemo(void *memo) const {
+    delete static_cast<CuVector<BaseFloat>*>(memo);
+  }
+
+  virtual ComponentPrecomputedIndexes* PrecomputeIndexes(
+      const MiscComputationInfo &misc_info,
+      const std::vector<Index> &input_indexes,
+      const std::vector<Index> &output_indexes,
+      bool need_backprop) const;
+
+  virtual void Read(std::istream &is, bool binary);
+  virtual void Write(std::ostream &os, bool binary) const;
+
+  virtual Component* Copy() const;
+
+ private:
+
+  // Returns a random vector reflecting the masking we are applying.
+  CuVector<BaseFloat> *GetMemo(
+      const SpecAugmentTimeMaskComponentPrecomputedIndexes &indexes) const;
+
+
+  // The input and output dimension
+  int32 dim_;
+
+  BaseFloat zeroed_proportion_;
+
+  int32 time_mask_max_frames_;
+
+  const SpecAugmentTimeMaskComponent &operator
+  = (const SpecAugmentTimeMaskComponent &other); // Disallow.
+};
+
+// This stores some precomputed indexes for SpecAugmentTimeMaskComponent.
+// This object is created for every instance of the Propagate()
+// function in the compiled computation.
+class SpecAugmentTimeMaskComponentPrecomputedIndexes:
+      public ComponentPrecomputedIndexes {
+ public:
+
+  // 'indexes' is indexed first by sequence and then by time within that
+  // sequence; each list indexes[s] is a consecutive list of the elements of
+  // that sequence (e.g. t=0, t=1, and so on).  The int32 values inside these
+  // lists are row-indexes into the matrix that is at the input and output of
+  // this component.
+  std::vector<std::vector<int32> > indexes;
+
+  // 'tot_size' is the total number of elements in 'indexes', equal to the
+  // num-rows of the matrix we're doing dropout on.
+  int32 tot_size;
+
+  virtual ~SpecAugmentTimeMaskComponentPrecomputedIndexes() { }
+
+  ComponentPrecomputedIndexes *Copy() const {
+    return new SpecAugmentTimeMaskComponentPrecomputedIndexes(*this);
+  }
+
+  virtual void Write(std::ostream &os, bool binary) const;
+
+  virtual void Read(std::istream &is, bool binary);
+
+  virtual std::string Type() const {
+    return "SpecAugmentTimeMaskComponentPrecomputedIndexes";
+  }
+};
+
+
+
+
+
 
 } // namespace nnet3
 } // namespace kaldi

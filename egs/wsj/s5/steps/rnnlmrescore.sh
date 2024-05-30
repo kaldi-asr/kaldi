@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # please see lmrescore_rnnlm_lat.sh which is a newer script using lattices.
 
@@ -71,9 +71,11 @@ for f in $rnndir/rnnlm $data/feats.scp $indir/lat.1.gz; do
 done
 
 nj=`cat $indir/num_jobs` || exit 1;
+mkdir -p $dir;
+cp $indir/num_jobs $dir/num_jobs
+
 adir=$dir/archives
 
-mkdir -p $dir;
 phi=`grep -w '#0' $oldlang/words.txt | awk '{print $2}'`
 
 rm $dir/.error 2>/dev/null
@@ -181,7 +183,7 @@ if [ $stage -le 5 ]; then
   done
 fi
 if [ $stage -le 6 ]; then
-  echo "$0: invoking rnnlm_compute_scores.sh which calls rnnlm, to get RNN LM scores."
+  echo "$0: invoking utils/rnnlm_compute_scores.sh which calls rnnlm, to get RNN LM scores."
   $cmd JOB=1:$nj $dir/log/rnnlm_compute_scores.JOB.log \
     utils/rnnlm_compute_scores.sh --rnnlm_ver $rnnlm_ver $rnndir $adir.JOB/temp $adir.JOB/words_text $adir.JOB/lmwt.rnn \
     || exit 1;

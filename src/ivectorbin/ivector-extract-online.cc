@@ -22,7 +22,7 @@
 #include "util/common-utils.h"
 #include "gmm/am-diag-gmm.h"
 #include "ivector/ivector-extractor.h"
-#include "thread/kaldi-task-sequence.h"
+#include "util/kaldi-thread.h"
 
 int main(int argc, char *argv[]) {
   using namespace kaldi;
@@ -68,7 +68,7 @@ int main(int argc, char *argv[]) {
                 "this value as a number of frames multiplied by your "
                 "posterior scale (so typically 0.1 times a number of frames).");
     po.Read(argc, argv);
-    
+
     if (po.NumArgs() != 4) {
       po.PrintUsage();
       exit(1);
@@ -78,18 +78,18 @@ int main(int argc, char *argv[]) {
         feature_rspecifier = po.GetArg(2),
         posteriors_rspecifier = po.GetArg(3),
         ivectors_wspecifier = po.GetArg(4);
-    
+
     IvectorExtractor extractor;
     ReadKaldiObject(ivector_extractor_rxfilename, &extractor);
-    
+
     double tot_objf_impr = 0.0, tot_t = 0.0, tot_length = 0.0,
         tot_length_utt_end = 0.0;
     int32 num_done = 0, num_err = 0;
-    
+
     SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
     RandomAccessPosteriorReader posteriors_reader(posteriors_rspecifier);
     BaseFloatMatrixWriter ivector_writer(ivectors_wspecifier);
-    
+
 
     for (; !feature_reader.Done(); feature_reader.Next()) {
       std::string utt = feature_reader.Key();
@@ -100,7 +100,7 @@ int main(int argc, char *argv[]) {
       }
       const Matrix<BaseFloat> &feats = feature_reader.Value();
       const Posterior &posterior = posteriors_reader.Value(utt);
-      
+
       if (static_cast<int32>(posterior.size()) != feats.NumRows()) {
         KALDI_WARN << "Size mismatch between posterior " << posterior.size()
                    << " and features " << feats.NumRows() << " for utterance "
@@ -110,16 +110,16 @@ int main(int argc, char *argv[]) {
       }
 
 
-      Matrix<BaseFloat> ivectors;      
+      Matrix<BaseFloat> ivectors;
       double objf_impr_per_frame;
       objf_impr_per_frame = EstimateIvectorsOnline(feats, posterior, extractor,
                                                    ivector_period, num_cg_iters,
                                                    max_count, &ivectors);
-      
+
       BaseFloat offset = extractor.PriorOffset();
       for (int32 i = 0 ; i < ivectors.NumRows(); i++)
         ivectors(i, 0) -= offset;
-      
+
       double tot_post = TotalPosterior(posterior);
 
       KALDI_VLOG(2) << "For utterance " << utt << " objf impr/frame is "
@@ -127,7 +127,7 @@ int main(int argc, char *argv[]) {
                     << tot_post << " frames (weighted).";
 
       ivector_writer.Write(utt, ivectors);
-      
+
       tot_t += tot_post;
       tot_objf_impr += objf_impr_per_frame * tot_post;
       tot_length_utt_end += ivectors.Row(ivectors.NumRows() - 1).Norm(2.0) *

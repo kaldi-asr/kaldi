@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Inherited from the WSJ nnet3 recipe, modified for use with ECA
 
@@ -11,7 +11,7 @@ mfccdir=mfcc
 
 stage=1
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 

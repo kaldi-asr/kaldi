@@ -101,7 +101,7 @@ static void UnitTestSimple() {
   // use default parameters
 
   // compute mfccs.
-  mfcc.Compute(v, 1.0, &m, NULL);
+  mfcc.Compute(v, 1.0, &m);
 
   // possibly dump
   //   std::cout << "== Output features == \n" << m;
@@ -143,7 +143,7 @@ static void UnitTestHTKCompare1() {
 
   // calculate kaldi features
   Matrix<BaseFloat> kaldi_raw_features;
-  mfcc.Compute(waveform, 1.0, &kaldi_raw_features, NULL);
+  mfcc.Compute(waveform, 1.0, &kaldi_raw_features);
 
   DeltaFeaturesOptions delta_opts;
   Matrix<BaseFloat> kaldi_features;
@@ -227,7 +227,7 @@ static void UnitTestHTKCompare2() {
 
   // calculate kaldi features
   Matrix<BaseFloat> kaldi_raw_features;
-  mfcc.Compute(waveform, 1.0, &kaldi_raw_features, NULL);
+  mfcc.Compute(waveform, 1.0, &kaldi_raw_features);
 
   DeltaFeaturesOptions delta_opts;
   Matrix<BaseFloat> kaldi_features;
@@ -312,7 +312,7 @@ static void UnitTestHTKCompare3() {
 
   // calculate kaldi features
   Matrix<BaseFloat> kaldi_raw_features;
-  mfcc.Compute(waveform, 1.0, &kaldi_raw_features, NULL);
+  mfcc.Compute(waveform, 1.0, &kaldi_raw_features);
 
   DeltaFeaturesOptions delta_opts;
   Matrix<BaseFloat> kaldi_features;
@@ -395,7 +395,7 @@ static void UnitTestHTKCompare4() {
 
   // calculate kaldi features
   Matrix<BaseFloat> kaldi_raw_features;
-  mfcc.Compute(waveform, 1.0, &kaldi_raw_features, NULL);
+  mfcc.Compute(waveform, 1.0, &kaldi_raw_features);
 
   DeltaFeaturesOptions delta_opts;
   Matrix<BaseFloat> kaldi_features;
@@ -483,7 +483,7 @@ static void UnitTestHTKCompare5() {
 
   // calculate kaldi features
   Matrix<BaseFloat> kaldi_raw_features;
-  mfcc.Compute(waveform, vtln_warp, &kaldi_raw_features, NULL);
+  mfcc.Compute(waveform, vtln_warp, &kaldi_raw_features);
 
   DeltaFeaturesOptions delta_opts;
   Matrix<BaseFloat> kaldi_features;
@@ -568,7 +568,7 @@ static void UnitTestHTKCompare6() {
 
   // calculate kaldi features
   Matrix<BaseFloat> kaldi_raw_features;
-  mfcc.Compute(waveform, 1.0, &kaldi_raw_features, NULL);
+  mfcc.Compute(waveform, 1.0, &kaldi_raw_features);
 
   DeltaFeaturesOptions delta_opts;
   Matrix<BaseFloat> kaldi_features;

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This is p-norm neural net training, with the "fast" script, on top of adapted
 # 40-dimensional features.
@@ -7,7 +7,7 @@
 train_stage=-10
 use_gpu=true
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . utils/parse_options.sh
 

@@ -46,19 +46,32 @@ struct NnetIo {
   GeneralMatrix features;
 
   /// This constructor creates NnetIo with name "name", indexes with n=0, x=0,
-  /// and t values ranging from t_begin to t_begin + feats.NumRows() - 1, and
+  /// and t values ranging from t_begin to 
+  /// (t_begin + t_stride * feats.NumRows() - 1) with a stride t_stride, and
   /// the provided features.  t_begin should be the frame that feats.Row(0)
   /// represents.
   NnetIo(const std::string &name,
-         int32 t_begin, const MatrixBase<BaseFloat> &feats);
+         int32 t_begin, const MatrixBase<BaseFloat> &feats,
+         int32 t_stride = 1);
+
+  /// This constructor creates NnetIo with name "name", indexes with n=0, x=0,
+  /// and t values ranging from t_begin to 
+  /// (t_begin + t_stride * feats.NumRows() - 1) with a stride t_stride, and
+  /// the provided features.  t_begin should be the frame that the first row
+  /// of 'feats' represents.
+  NnetIo(const std::string &name,
+         int32 t_begin, const GeneralMatrix &feats,
+         int32 t_stride = 1);
 
   /// This constructor sets "name" to the provided string, sets "indexes" with
-  /// n=0, x=0, and t from t_begin to t_begin + labels.size() - 1, and the labels
+  /// n=0, x=0, and t from t_begin to (t_begin + t_stride * labels.size() - 1)
+  /// with a stride t_stride, and the labels
   /// as provided.  t_begin should be the frame to which labels[0] corresponds.
   NnetIo(const std::string &name,
          int32 dim,
          int32 t_begin,
-         const Posterior &labels);
+         const Posterior &labels,
+         int32 t_stride = 1);
 
   void Swap(NnetIo *other);
 
@@ -72,6 +85,22 @@ struct NnetIo {
   // this comparison is not very efficient, especially for sparse supervision.
   // It's only used in testing code.
   bool operator == (const NnetIo &other) const;
+};
+
+
+/// This hashing object hashes just the structural aspects of the NnetIo object
+/// (name, indexes, feature dimension) without looking at the value of features.
+/// It will be used in combining egs into batches of all similar structure.
+struct NnetIoStructureHasher {
+  size_t operator () (const NnetIo &a) const noexcept;
+};
+/// This comparison object compares just the structural aspects of the NnetIo
+/// object (name, indexes, feature dimension) without looking at the value of
+/// features.  It will be used in combining egs into batches of all similar
+/// structure.
+struct NnetIoStructureCompare {
+  bool operator () (const NnetIo &a,
+                    const NnetIo &b) const;
 };
 
 
@@ -102,6 +131,40 @@ struct NnetExample {
   /// testing code.
   bool operator == (const NnetExample &other) const { return io == other.io; }
 };
+
+
+/// This hashing object hashes just the structural aspects of the NnetExample
+/// without looking at the value of the features.  It will be used in combining
+/// egs into batches of all similar structure.  Note: the hash value is
+/// sensitive to the order in which the NnetIo elements (input and outputs)
+/// appear, even though the merging is capable of dealing with
+/// differently-ordered inputs and outputs (e.g.  "input" appearing before
+/// vs. after "ivector" or "output").  We don't think anyone would ever have to
+/// deal with differently-ordered, but otherwise identical, egs in practice so
+/// we don't bother making the hashing function independent of this order.
+struct NnetExampleStructureHasher {
+  size_t operator () (const NnetExample &eg) const noexcept;
+  // We also provide a version of this that works from pointers.
+  size_t operator () (const NnetExample *eg) const noexcept {
+    return (*this)(*eg);
+  }
+};
+
+
+/// This comparator object compares just the structural aspects of the
+/// NnetExample without looking at the value of the features.  Like
+/// NnetExampleStructureHasher, it is sensitive to the order in which the
+/// differently-named NnetIo elements appear.  This hashing object will be used
+/// in combining egs into batches of all similar structure.
+struct NnetExampleStructureCompare {
+  bool operator () (const NnetExample &a,
+                    const NnetExample &b) const;
+  // We also provide a version of this that works from pointers.
+  bool operator () (const NnetExample *a,
+                    const NnetExample *b) const { return (*this)(*a, *b); }
+
+};
+
 
 
 typedef TableWriter<KaldiObjectHolder<NnetExample > > NnetExampleWriter;

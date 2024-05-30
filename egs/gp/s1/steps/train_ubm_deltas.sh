@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2012  Arnab Ghoshal
 # Copyright 2010-2011  Microsoft Corporation
@@ -68,7 +68,7 @@ if [ $# != 4 ]; then
   error_exit $usage;
 fi
 
-[ -f path.sh ] && . path.sh
+[ -f path.sh ] && . ./path.sh
 
 numcomps=$1
 data=$2

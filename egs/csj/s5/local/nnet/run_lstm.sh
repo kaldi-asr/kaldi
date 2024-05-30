@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # 2016 Modified by Takafumi Moriya at Tokyo Institute of Technology
 # for Japanese speech recognition using CSJ.
@@ -34,10 +34,10 @@ stage=0
         steps/make_fbank_pitch.sh --cmd "$train_cmd" --nj 10 $dir $dir/log $dir/data || exit 1;
         steps/compute_cmvn_stats.sh $dir $dir/log $dir/data || exit 1;
     done
-    
+
   # Training set
   utils/copy_data_dir.sh $train_original $train || exit 1; rm $train/{cmvn,feats}.scp
-  steps/make_fbank_pitch.sh --nj 10 --cmd "$train_cmd -tc 10" \
+  steps/make_fbank_pitch.sh --nj 10 --cmd "$train_cmd --max-jobs-run 10" \
      $train $train/log $train/data || exit 1;
   steps/compute_cmvn_stats.sh $train $train/log $train/data || exit 1;
   # Split the training set

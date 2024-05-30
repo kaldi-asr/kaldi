@@ -43,9 +43,9 @@ int main(int argc, char *argv[]) {
         "Usage: lattice-mbr-decode [options]  lattice-rspecifier "
         "transcriptions-wspecifier [ bayes-risk-wspecifier "
         "[ sausage-stats-wspecifier [ times-wspecifier] ] ] \n"
-        " e.g.: lattice-mbr-decode --acoustic-scale=0.1 ark:1.lats ark:1.tra "
-        "ark:/dev/null ark:1.sau\n";
-    
+        " e.g.: lattice-mbr-decode --acoustic-scale=0.1 ark:1.lats "
+        "'ark,t:|int2sym.pl -f 2- words.txt > text' ark:/dev/null ark:1.sau\n";
+
     ParseOptions po(usage);
     BaseFloat acoustic_scale = 1.0;
     BaseFloat lm_scale = 1.0;
@@ -60,7 +60,7 @@ int main(int argc, char *argv[]) {
                 "words [for debug output]");
     po.Register("one-best-times", &one_best_times, "If true, output times "
                 "corresponding to one-best, not whole sausage.");
-    
+
     po.Read(argc, argv);
 
     if (po.NumArgs() < 2 || po.NumArgs() > 5) {
@@ -73,7 +73,7 @@ int main(int argc, char *argv[]) {
         bayes_risk_wspecifier = po.GetOptArg(3),
         sausage_stats_wspecifier = po.GetOptArg(4),
         times_wspecifier = po.GetOptArg(5);
-    
+
     // Read as compact lattice.
     SequentialCompactLatticeReader clat_reader(lats_rspecifier);
 
@@ -84,16 +84,16 @@ int main(int argc, char *argv[]) {
     PosteriorWriter sausage_stats_writer(sausage_stats_wspecifier);
 
     BaseFloatPairVectorWriter times_writer(times_wspecifier);
-    
+
     fst::SymbolTable *word_syms = NULL;
-    if (word_syms_filename != "") 
+    if (word_syms_filename != "")
       if (!(word_syms = fst::SymbolTable::ReadText(word_syms_filename)))
         KALDI_ERR << "Could not read symbol table from file "
                    << word_syms_filename;
 
     int32 n_done = 0, n_words = 0;
     BaseFloat tot_bayes_risk = 0.0;
-    
+
     for (; !clat_reader.Done(); clat_reader.Next()) {
       std::string key = clat_reader.Key();
       CompactLattice clat = clat_reader.Value();
@@ -111,7 +111,7 @@ int main(int argc, char *argv[]) {
       if (times_wspecifier != "")
         times_writer.Write(key, one_best_times ? mbr.GetOneBestTimes() :
                            mbr.GetSausageTimes());
-      
+
       n_done++;
       n_words += mbr.GetOneBest().size();
       tot_bayes_risk += mbr.GetBayesRisk();
@@ -121,7 +121,7 @@ int main(int argc, char *argv[]) {
     KALDI_LOG << "Average Bayes Risk per sentence is "
               << (tot_bayes_risk / n_done) << " and per word, "
               << (tot_bayes_risk / n_words);
-    
+
     delete word_syms;
     return (n_done != 0 ? 0 : 1);
   } catch(const std::exception &e) {

@@ -28,7 +28,7 @@ namespace kaldi {
 
 // returns true if successfully appended.
 bool AppendFeats(const std::vector<Matrix<BaseFloat> > &in,
-                 std::string utt,
+                 const std::string &utt,
                  int32 tolerance,
                  Matrix<BaseFloat> *out) {
   // Check the lengths
@@ -73,13 +73,14 @@ int main(int argc, char *argv[]) {
     using namespace std;
 
     const char *usage =
-        "Paste feature files (assuming they have the same lengths);  think of the\n"
-        "unix command paste a b.\n"
+        "Paste feature files (assuming they have about the same durations,\n"
+        "see --length-tolerance), appending the features on each frame;\n"
+        "think of the unix command 'paste'.\n"
         "Usage: paste-feats <in-rspecifier1> <in-rspecifier2> [<in-rspecifier3> ...] <out-wspecifier>\n"
         " or: paste-feats <in-rxfilename1> <in-rxfilename2> [<in-rxfilename3> ...] <out-wxfilename>\n"
         " e.g. paste-feats ark:feats1.ark \"ark:select-feats 0-3 ark:feats2.ark ark:- |\" ark:feats-out.ark\n"
         "  or: paste-feats foo.mat bar.mat baz.mat\n"
-        "See also: copy-feats, copy-matrix, append-vector-to-feats\n";
+        "See also: copy-feats, copy-matrix, append-vector-to-feats, concat-feats\n";
 
     ParseOptions po(usage);
 

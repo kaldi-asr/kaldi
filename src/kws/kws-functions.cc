@@ -17,6 +17,7 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
+#include <algorithm>
 
 #include "lat/lattice-functions.h"
 #include "kws/kws-functions.h"
@@ -34,22 +35,23 @@ bool CompareInterval(const Interval &i1,
   return (i1.Start() < i2.Start() ? true :
           i1.Start() > i2.Start() ? false:
           i1.End() < i2.End() ? true: false);
-
 }
 
 bool ClusterLattice(CompactLattice *clat,
-                    const vector<int32> &state_times) {
+                    const std::vector<int32> &state_times) {
   using namespace fst;
   typedef CompactLattice::StateId StateId;
 
   // Hashmap to store the cluster heads.
-  unordered_map<StateId, vector<Interval> > head;
+  unordered_map<StateId, std::vector<Interval> > head;
 
   // Step 1: Iterate over the lattice to get the arcs
   StateId max_id = 0;
-  for (StateIterator<CompactLattice> siter(*clat); !siter.Done(); siter.Next()) {
+  for (StateIterator<CompactLattice> siter(*clat); !siter.Done();
+                                                    siter.Next()) {
     StateId state_id = siter.Value();
-    for (ArcIterator<CompactLattice> aiter(*clat, state_id); !aiter.Done(); aiter.Next()) {
+    for (ArcIterator<CompactLattice> aiter(*clat, state_id); !aiter.Done();
+                                                             aiter.Next()) {
       CompactLatticeArc arc = aiter.Value();
       if (state_id >= state_times.size() || arc.nextstate >= state_times.size())
         return false;
@@ -57,7 +59,8 @@ bool ClusterLattice(CompactLattice *clat,
         max_id = state_id;
       if (arc.nextstate > max_id)
         max_id = arc.nextstate;
-      head[arc.ilabel].push_back(Interval(state_times[state_id], state_times[arc.nextstate]));
+      head[arc.ilabel].push_back(Interval(state_times[state_id],
+                                          state_times[arc.nextstate]));
     }
   }
   // Check if alignments and the states match
@@ -69,11 +72,11 @@ bool ClusterLattice(CompactLattice *clat,
   //   the cluster heads is to take the first one as a cluster head; then go
   //   till we find the next one that doesn't overlap in time with the current
   //   cluster head, and so on.
-  unordered_map<StateId, vector<Interval> >::iterator iter;
+  unordered_map<StateId, std::vector<Interval> >::iterator iter;
   for (iter = head.begin(); iter != head.end(); ++iter) {
     // For this ilabel, sort all the arcs on time, from first to last.
     sort(iter->second.begin(), iter->second.end(), CompareInterval);
-    vector<Interval> tmp;
+    std::vector<Interval> tmp;
     tmp.push_back(iter->second[0]);
     for (int32 i = 1; i < iter->second.size(); i++) {
       if (tmp.back().End() <= iter->second[i].Start())
@@ -85,9 +88,11 @@ bool ClusterLattice(CompactLattice *clat,
   // Step 3: Cluster arcs according to the maximum overlap: attach
   //   each arc to the cluster-head (as identified in Step 2) which
   //   has the most temporal overlap with the current arc.
-  for (StateIterator<CompactLattice> siter(*clat); !siter.Done(); siter.Next()) {
+  for (StateIterator<CompactLattice> siter(*clat); !siter.Done();
+                                                   siter.Next()) {
     CompactLatticeArc::StateId state_id = siter.Value();
-    for (MutableArcIterator<CompactLattice> aiter(clat, state_id); !aiter.Done(); aiter.Next()) {
+    for (MutableArcIterator<CompactLattice> aiter(clat, state_id);
+                                            !aiter.Done(); aiter.Next()) {
       CompactLatticeArc arc = aiter.Value();
       // We don't cluster the epsilon arcs
       if (arc.ilabel == 0)
@@ -100,7 +105,7 @@ bool ClusterLattice(CompactLattice *clat,
         int32 overlap = interval.Overlap(head[arc.ilabel][i]);
         if (overlap > max_overlap) {
           max_overlap = overlap;
-          olabel = i + 1; // need non-epsilon label.
+          olabel = i + 1;  // need non-epsilon label.
         }
       }
       arc.olabel = olabel;
@@ -134,18 +139,26 @@ class CompactLatticeToKwsProductFstMapper {
                  arc.nextstate);
   }
 
-  fst::MapFinalAction FinalAction() const { return fst::MAP_NO_SUPERFINAL; }
+  fst::MapFinalAction FinalAction() const {
+    return fst::MAP_NO_SUPERFINAL;
+  }
 
-  fst::MapSymbolsAction InputSymbolsAction() const { return fst::MAP_COPY_SYMBOLS; }
+  fst::MapSymbolsAction InputSymbolsAction() const {
+    return fst::MAP_COPY_SYMBOLS;
+  }
 
-  fst::MapSymbolsAction OutputSymbolsAction() const { return fst::MAP_COPY_SYMBOLS;}
+  fst::MapSymbolsAction OutputSymbolsAction() const {
+    return fst::MAP_COPY_SYMBOLS;
+  }
 
-  uint64 Properties(uint64 props) const { return props; }
+  uint64 Properties(uint64 props) const {
+    return props;
+  }
 };
 
 
 bool CreateFactorTransducer(const CompactLattice &clat,
-                            const vector<int32> &state_times,
+                            const std::vector<int32> &state_times,
                             int32 utterance_id,
                             KwsProductFst *factor_transducer) {
   using namespace fst;
@@ -153,8 +166,8 @@ bool CreateFactorTransducer(const CompactLattice &clat,
 
   // We first compute the alphas and betas
   bool success = false;
-  vector<double> alpha;
-  vector<double> beta;
+  std::vector<double> alpha;
+  std::vector<double> beta;
   success = ComputeCompactLatticeAlphas(clat, &alpha);
   success = success && ComputeCompactLatticeBetas(clat, &beta);
   if (!success)
@@ -234,10 +247,12 @@ bool CreateFactorTransducer(const CompactLattice &clat,
 
   for (StateId s = 0; s < ns; s++) {
     // Add arcs from initial state to current state
-    if (!has_epsilon_property || (state_properties[s] & kStateHasNonEpsilonArcsLeaving))
+    if (!has_epsilon_property ||
+        (state_properties[s] & kStateHasNonEpsilonArcsLeaving))
       factor_transducer->AddArc(ss, KwsProductArc(0, 0, KwsProductWeight(-alpha[s], StdXStdprimeWeight(state_times[s], ArcticWeight::One())), s));
     // Add arcs from current state to final state
-    if (!has_epsilon_property || (state_properties[s] & kStateHasNonEpsilonArcsEntering))
+    if (!has_epsilon_property ||
+        (state_properties[s] & kStateHasNonEpsilonArcsEntering))
       factor_transducer->AddArc(s, KwsProductArc(0, utterance_id, KwsProductWeight(0, StdXStdprimeWeight(TropicalWeight::One(), state_times[s])), fs));
     // The old final state is not final any more
     if (factor_transducer->Final(s) != KwsProductWeight::Zero())
@@ -248,7 +263,7 @@ bool CreateFactorTransducer(const CompactLattice &clat,
 }
 
 void RemoveLongSilences(int32 max_silence_frames,
-                        const vector<int32> &state_times,
+                        const std::vector<int32> &state_times,
                         KwsProductFst *factor_transducer) {
   using namespace fst;
   typedef KwsProductArc::StateId StateId;
@@ -300,8 +315,8 @@ static void DifferenceWrapper(const fst::VectorFst<Arc> &fst1,
     Decode(difference, encoder);
   } else {
     VectorFst<Arc> fst2_copy(fst2);
-    RmEpsilon(&fst2_copy); // or Difference will crash.
-    RemoveWeights(&fst2_copy); // or Difference will crash.
+    RmEpsilon(&fst2_copy);  // or Difference will crash.
+    RemoveWeights(&fst2_copy);  // or Difference will crash.
     Difference(fst1, fst2_copy, difference);
   }
 }
@@ -337,7 +352,8 @@ void MaybeDoSanityCheck(const KwsLexicographicFst &index_transducer) {
   for (size_t i = 0; i < isymbols.size(); i++)
     os2 << isymbols[i] << ' ';
   BaseFloat second_best_cost = weight.Value1().Value();
-  KALDI_VLOG(3) << "Second-best path: " << isymbols.size() << " isymbols " << ", "
+  KALDI_VLOG(3) << "Second-best path: " << isymbols.size()
+                << " isymbols " << ", "
                 << osymbols.size() << " osymbols, isymbols are " << os2.str()
                 << ", second-best cost is " << second_best_cost;
   if (second_best_cost < -0.01) {
@@ -349,10 +365,12 @@ void MaybeDoSanityCheck(const KwsLexicographicFst &index_transducer) {
 void MaybeDoSanityCheck(const KwsProductFst &product_transducer) {
   if (GetVerboseLevel() < 2) return;
   KwsLexicographicFst index_transducer;
-  Map(product_transducer, &index_transducer, KwsProductFstToKwsLexicographicFstMapper());
+
+  Map(product_transducer,
+      &index_transducer,
+      KwsProductFstToKwsLexicographicFstMapper());
+
   MaybeDoSanityCheck(index_transducer);
 }
 
-
-
-} // end namespace kaldi
+}  // end namespace kaldi

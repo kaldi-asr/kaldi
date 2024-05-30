@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2013  Johns Hopkins University (Author: Daniel Povey)
 # Apache 2.0
 
@@ -58,8 +58,8 @@ mkdir -p $dir/log
 utils/split_data.sh $data $nj # Make sure split data-dir exists.
 sdata=$data/split$nj
 
-
-mkdir -p $dir/log
+utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt || exit 1;
+cp $lang/phones.txt $dir || exit 1;
 
 if [ $stage -le 0 ]; then
 
@@ -176,7 +176,7 @@ else
     echo "$0: compiling training graphs"
     tra="ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt $sdata/JOB/text|";   
     $cmd JOB=1:$nj $dir/log/compile_graphs.JOB.log  \
-      compile-train-graphs $dir/tree $dir/final.mdl  $lang/L.fst "$tra" \
+      compile-train-graphs --read-disambig-syms=$lang/phones/disambig.int $dir/tree $dir/final.mdl  $lang/L.fst "$tra" \
         "ark:|gzip -c >$dir/fsts.JOB.gz" || exit 1;
   fi
 fi

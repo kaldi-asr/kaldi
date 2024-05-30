@@ -17,7 +17,7 @@ set -euxo pipefail
 # Path where AMI gets downloaded (or where locally available):
 AMI_DIR=$PWD/wav_db # Default,
 case $(hostname -d) in
-  fit.vutbr.cz) AMI_DIR=/mnt/scratch05/iveselyk/KALDI_AMI_WAV ;; # BUT,
+  fit.vutbr.cz) AMI_DIR=/mnt/matylda2/data/AMI_KALDI_DOWNLOAD ;; # BUT,
   clsp.jhu.edu) AMI_DIR=/export/corpora4/ami/amicorpus ;; # JHU,
   cstr.ed.ac.uk) AMI_DIR= ;; # Edinburgh,
 esac
@@ -156,45 +156,55 @@ if [ $stage -le 12 ]; then
   local/nnet/run_dnn_lda_mllt.sh $mic
 fi
 
-# TDNN training.
+# nnet3 systems
 if [ $stage -le 13 ]; then
-  local/online/run_nnet2_ms_perturbed.sh \
-    --mic $mic \
-    --hidden-dim 850 \
-    --splice-indexes "layer0/-2:-1:0:1:2 layer1/-1:2 layer2/-3:3 layer3/-7:2 layer4/-3:3" \
-    --use-sat-alignments false
+  # Slightly better WERs can be obtained by using --use-sat-alignments true
+  # however the SAT systems (see below) have to be built before that
 
-  local/online/run_nnet2_ms_sp_disc.sh  \
-    --mic $mic  \
-    --gmm-dir exp/$mic/tri3a \
-    --srcdir exp/$mic/nnet2_online/nnet_ms_sp
-fi
-
-#TDNN training (nnet3)
-if [ $stage -le 14 ]; then
+  #TDNN model + xent training
   local/nnet3/run_tdnn.sh \
     --mic $mic \
-    --speed-perturb true \
-    --stage 9 \
     --use-sat-alignments false
-fi
-exit 1;
 
-#LSTM training (nnet3)
-if [ $stage -le 15 ]; then
+  #LSTM model + xent training
   local/nnet3/run_lstm.sh \
     --mic $mic \
-    --train-stage -5 \
-    --speed-perturb true \
+    --stage 10 \
     --use-sat-alignments false
-fi
 
+   #BLSTM model + xent training
+   local/nnet3/run_blstm.sh \
+     --mic $mic \
+     --stage 10 \
+     --use-sat-alignments false
+
+  # TDNN model + chain training
+  local/chain/run_tdnn_ami_5.sh  --mic sdm1 --affix msl1.5_45wer
+
+fi
 echo "Done."
+
+exit 0;
+
+# Older nnet2 scripts. They are still kept here
+# as we have not yet committed sMBR training scripts for AMI in nnet3
+#if [ $stage -le 13 ]; then
+#  local/online/run_nnet2_ms_perturbed.sh \
+#    --mic $mic \
+#    --hidden-dim 850 \
+#    --splice-indexes "layer0/-2:-1:0:1:2 layer1/-1:2 layer2/-3:3 layer3/-7:2 layer4/-3:3" \
+#    --use-sat-alignments false
+#
+#  local/online/run_nnet2_ms_sp_disc.sh  \
+#    --mic $mic  \
+#    --gmm-dir exp/$mic/tri3a \
+#    --srcdir exp/$mic/nnet2_online/nnet_ms_sp
+#fi
 
 
 # By default we do not build systems adapted to sessions for AMI in distant scnearios
 # as this does not help a lot (around 1%), but one can do this by running below code:
-exit;
+exit 0;
 
 # Train tri4a, which is LDA+MLLT+SAT,
 steps/align_fmllr.sh --nj $nj --cmd "$train_cmd" \

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
 # Apache 2.0
 
@@ -6,7 +6,7 @@
 
 cmd=run.pl
 min_lmwt=5
-max_lmwt=20
+max_lmwt=17
 #end configuration section.
 
 [ -f ./path.sh ] && . ./path.sh

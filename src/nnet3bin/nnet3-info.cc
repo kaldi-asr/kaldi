@@ -35,18 +35,18 @@ int main(int argc, char *argv[]) {
         "e.g.:\n"
         " nnet3-info 0.raw\n"
         "See also: nnet3-am-info\n";
-    
+
     ParseOptions po(usage);
-    
+
     po.Read(argc, argv);
-    
+
     if (po.NumArgs() != 1) {
       po.PrintUsage();
       exit(1);
     }
 
     std::string raw_nnet_rxfilename = po.GetArg(1);
-    
+
     Nnet nnet;
     ReadKaldiObject(raw_nnet_rxfilename, &nnet);
 
@@ -72,6 +72,6 @@ component-node name=affine1_node component=affine1 input=Append(Offset(input, -4
 component-node name=nonlin1 component=relu1 input=affine1_node
 component-node name=final_affine component=final_affine input=nonlin1
 component-node name=output_nonlin component=logsoftmax input=final_affine
-output-node name=output input=output_nonlin  
+output-node name=output input=output_nonlin
 EOF
 */

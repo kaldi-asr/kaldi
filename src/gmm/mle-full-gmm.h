@@ -1,7 +1,7 @@
 // gmm/mle-full-gmm.h
 
 // Copyright 2009-2011  Jan Silovsky;  Saarland University;
-//                      Microsoft Corporation; 
+//                      Microsoft Corporation;
 //                      Univ. Erlangen Nuremberg, Korbinian Riedhammer
 
 // See ../../COPYING for clarification regarding multiple authors
@@ -91,7 +91,7 @@ class AccumFullGmm {
   void Resize(int32 num_components, int32 dim, GmmFlagsType flags);
   /// Calls Resize with arguments based on gmm_ptr_
   void Resize(const FullGmm &gmm, GmmFlagsType flags);
-  
+
   void ResizeVarAccumulator(int32 num_comp, int32 dim);
   /// Returns the number of mixture components
   int32 NumGauss() const { return num_comp_; }
@@ -122,8 +122,8 @@ class AccumFullGmm {
                                const VectorBase<BaseFloat> &data,
                                BaseFloat frame_posterior);
 
-  /// Accessors  
-  const GmmFlagsType Flags() const { return flags_; }
+  /// Accessors
+  GmmFlagsType Flags() const { return flags_; }
   const Vector<double> &occupancy() const { return occupancy_; }
   const Matrix<double> &mean_accumulator() const { return mean_accumulator_; }
   const std::vector<SpMatrix<double> > &covariance_accumulator() const { return covariance_accumulator_; }

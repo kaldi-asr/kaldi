@@ -1,6 +1,6 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-. path.sh || exit 1
+. ./path.sh || exit 1
 
 # use to skip some of steps in this script
 stage=1
@@ -12,7 +12,7 @@ makejobs=4
 # see: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=667377
 apply_gcc_patch=true
 
-. path.sh || exit 1
+. ./path.sh || exit 1
 . utils/parse_options.sh || exit 1
 
 mkdir -p $FEST_ROOT
@@ -35,8 +35,11 @@ fi
 
 if [ "$stage" -le 2 ]; then
   echo "Untarring the downloaded files..."
-  for f in `ls ./*.tar.*`; do
-    tar xf $f;
+  for f in `ls ./*.tar.gz`; do
+    tar -xzf $f;
+  done
+  for f in `ls ./*.tar.bz2`; do
+    tar -xf $f;
   done
 fi
 

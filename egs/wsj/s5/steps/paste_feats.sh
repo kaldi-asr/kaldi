@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2014  Brno University of Technology (Author: Karel Vesely)
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
@@ -59,9 +59,9 @@ for data_src in ${data_src_arr[@]}; do
 done
 
 for n in $(seq $nj); do
-  # the next command does nothing unless $arkdir/storage/ exists, see
+  # the next command does nothing unless $ark_dir/storage/ exists, see
   # utils/create_data_link.pl for more info.
-  utils/create_data_link.pl $arkdir/pasted_$name.$n.ark
+  utils/create_data_link.pl $ark_dir/pasted_$name.$n.ark
 done
 
 $cmd JOB=1:$nj $logdir/append.JOB.log \

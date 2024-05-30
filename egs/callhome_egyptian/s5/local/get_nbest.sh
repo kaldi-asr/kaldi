@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
-# Author : Gaurav Kumar, Johns Hopkins University 
+# Author : Gaurav Kumar, Johns Hopkins University
 # Creates n-best lists from Kaldi lattices
 # This script needs to be run from one level above this directory
 
-. path.sh
+. ./path.sh
 
 if [ $# -lt 3 ]; then
   echo "Enter the latdir (where the n-best will be put), the decode dir containing lattices and the acoustic scale"
@@ -28,7 +28,7 @@ then
   runningProcesses=0
 
   for l in $decode_dir/lat.*.gz
-  do	
+  do
     (
     # Extract file name and unzip the file first
     bname=${l##*/}
@@ -54,7 +54,7 @@ then
     fi
 
     echo "Done getting n-best"
-    ) &	
+    ) &
     runningProcesses=$((runningProcesses+1))
     echo "#### Processes running = " $runningProcesses " ####"
     if [ $runningProcesses -eq $maxProcesses ]; then

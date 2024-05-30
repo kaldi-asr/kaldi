@@ -20,12 +20,10 @@
 #ifndef KALDI_NNET3_NATURAL_GRADIENT_ONLINE_H_
 #define KALDI_NNET3_NATURAL_GRADIENT_ONLINE_H_
 
+#include <iostream>
 #include "base/kaldi-common.h"
 #include "matrix/matrix-lib.h"
 #include "cudamatrix/cu-matrix-lib.h"
-#include "thread/kaldi-mutex.h"
-
-#include <iostream>
 
 namespace kaldi {
 namespace nnet3 {
@@ -84,7 +82,10 @@ namespace nnet3 {
 
    T_t =(def) \eta S_t + (1-\eta) F_t
 
-  we'll use this in place of the observed scatter S_t, to slow down the update.
+  [note: F_{t+1} will be set to a low-rank approximation of T_t, which is where
+   the recursion comes in.]
+
+  We'll use this in place of the observed scatter S_t, to slow down the update.
   Defining
 
    Y_t =(def) R_t T_t
@@ -374,8 +375,8 @@ namespace nnet3 {
    * Initialization *
 
    Now, a note on what we do on time t = 0, i.e. for the first minibatch.  We
-   initialize X_0 to the top R eigenvectors of 1/N X_0 X_0^T, where N is the
-   minibatch size (num-rows of R0).  If L is the corresponding RxR diagonal
+   initialize R_0 to the top R eigenvectors of 1/N X_0 X_0^T, where N is the
+   minibatch size (num-rows of X0).  If L is the corresponding RxR diagonal
    matrix of eigenvalues, then we will set D_0 = L - \rho_0 I.  We set \rho_0
    to ensure that
                       tr(F_0) = 1/N tr(X_0 X_0^T),
@@ -418,40 +419,72 @@ class OnlineNaturalGradient {
   void SetUpdatePeriod(int32 update_period);
   // num_samples_history is a time-constant (in samples) that determines eta.
   void SetNumSamplesHistory(BaseFloat num_samples_history);
+  // num_minibatches_history is a time-constant measured in minibatches that
+  // provides an alternative way to set eta (the constant that determines how
+  // fast we update the Fisher matrix).  If set to a value >0, it overrides any
+  // value of 'num_samples_history' that is present.
+  void SetNumMinibatchesHistory(BaseFloat num_minibatches_history);
+
   void SetAlpha(BaseFloat alpha);
   void TurnOnDebug() { self_debug_ = true; }
   BaseFloat GetNumSamplesHistory() const { return num_samples_history_; }
+  BaseFloat GetNumMinibatchesHistory() const { return num_minibatches_history_; }
   BaseFloat GetAlpha() const { return alpha_; }
   int32 GetRank() const { return rank_; }
   int32 GetUpdatePeriod() const { return update_period_; }
 
-  // The "R" pointer is both the input (R in the comment) and the output (P in
-  // the comment; equal to the preconditioned directions before scaling by
-  // gamma).  If the pointer "row_prod" is supplied, it's set to the inner product
-  // of each row of the preconditioned directions P, at output, with itself.
-  // You would need to apply "scale" to R and "scale * scale" to row_prod, to
-  // get the preconditioned directions; we don't do this ourselves, in order to
-  // save CUDA calls.
-  void PreconditionDirections(CuMatrixBase<BaseFloat> *R,
-                              CuVectorBase<BaseFloat> *row_prod,
+  // see comment where 'frozen_' is declared.
+  inline void Freeze(bool frozen) { frozen_ = frozen; }
+
+  /**
+     This call implements the main functionality of this class.
+
+     @param [in,out] R  The "R" pointer is both the input (R in the
+            comment, X in the paper), and the output (P in the comment,
+            X with a hat on it in the paper).  Each row of R is viewed
+            as a vector in some space, where we're estimating a smoothed
+            Fisher matrix and then multiplying by the inverse of that
+            smoothed Fisher matrix.
+
+    @param [out] scale  If non-NULL, a scaling factor is written to here,
+            and the output 'R' should be multiplied by this factor by
+            the user (we don't do it internally, to save an operation).
+            The factor is chosen so that the vector 2-norm of R is the
+            same after the natural gradient as it was before.  (The pointer
+            being NULL or non-NULL doesn't affect the magnitude of R;
+            in any case the user will probably want to do this rescaling,
+            the question being whether they want to do so manually or
+            not.
+
+  */
+  void PreconditionDirections(CuMatrixBase<BaseFloat> *X,
                               BaseFloat *scale);
+
+
 
   // Copy constructor.
   explicit OnlineNaturalGradient(const OnlineNaturalGradient &other);
   // Assignent operator
   OnlineNaturalGradient &operator = (const OnlineNaturalGradient &other);
+
+  // Shallow swap
+  void Swap(OnlineNaturalGradient *other);
  private:
 
-  // This does the work of PreconditionDirections (the top-level
-  // function handles some multithreading issues and then calls this function).
+
+  // This is an internal function called from PreconditionDirections().
   // Note: WJKL_t (dimension 2*R by D + R) is [ W_t L_t; J_t K_t ].
-  void PreconditionDirectionsInternal(const int32 t,
-                                      const BaseFloat rho_t,
+  void PreconditionDirectionsInternal(const BaseFloat rho_t,
+                                      const BaseFloat tr_X_Xt,
+                                      bool updating,
                                       const Vector<BaseFloat> &d_t,
                                       CuMatrixBase<BaseFloat> *WJKL_t,
-                                      CuMatrixBase<BaseFloat> *X_t,
-                                      CuVectorBase<BaseFloat> *row_prod,
-                                      BaseFloat *scale);
+                                      CuMatrixBase<BaseFloat> *X_t);
+
+
+  // Works out from t_ and various class variables whether we will update
+  // the parameters on this iteration (returns true if so).
+  bool Updating() const;
 
   void ComputeEt(const VectorBase<BaseFloat> &d_t,
                  BaseFloat beta_t,
@@ -482,7 +515,7 @@ class OnlineNaturalGradient {
   // This function is called if C_t has high condition number; it makes sure
   // that R_{t+1} is orthogonal.  See the section in the extended comment above
   // on "keeping R_t orthogonal".
-  void ReorthogonalizeXt1(const VectorBase<BaseFloat> &d_t1,
+  void ReorthogonalizeRt1(const VectorBase<BaseFloat> &d_t1,
                           BaseFloat rho_t1,
                           CuMatrixBase<BaseFloat> *W_t1,
                           CuMatrixBase<BaseFloat> *temp_W,
@@ -500,10 +533,14 @@ class OnlineNaturalGradient {
   // or columns.
   static void InitOrthonormalSpecial(CuMatrixBase<BaseFloat> *R);
 
-  // Returns the learning rate eta as the function of the number of samples
-  // (actually, N is the number of vectors we're preconditioning, which due to
-  // context is not always exactly the same as the number of samples).  The
-  // value returned depends on num_samples_history_.
+  // Returns the value eta (with 0 < eta < 1) which reflects how fast we update
+  // the estimate of the Fisher matrix (larger == faster).  This is a function
+  // rather than a constant because we set this indirectly, via
+  // num_samples_history_ or num_minibatches_history_.  The argument N is the
+  // number of vectors we're preconditioning, which is the number of rows in the
+  // argument R to PreconditionDirections(); you can think of it as the number
+  // of vectors we're preconditioning (and in the common case it's some multiple
+  // of the minibatch size)
   BaseFloat Eta(int32 N) const;
 
   // called if self_debug_ = true, makes sure the members satisfy certain
@@ -520,11 +557,26 @@ class OnlineNaturalGradient {
   // this saves time.
   int32 update_period_;
 
+
   // num_samples_history_ determines the value of eta, which in turn affects how
   // fast we update our estimate of the covariance matrix.  We've done it this
   // way in order to make it easy to have a single configuration value that
   // doesn't have to be changed when we change the minibatch size.
+  // Note: if num_minibatches_history_ is >0.0, it overrides this.
   BaseFloat num_samples_history_;
+
+
+  // num_minibatches_history_ is simpler alternative to num_samples_history_ for
+  // determining the value of eta, which in turn affects how fast we update our
+  // estimate of the covariance matrix.  eta will be set to 1.0 /
+  // num_minibatches_history_.  We require that num_minibatches_history_ > 0.0;
+  // it will normally be something like 10.0, if set.  It makes sense to set
+  // 'num_minibatches_history_' when the rows of the matrix we are
+  // preconditioning can't be interpreted as independent samples, so the number
+  // of rows is not relevant to determining how fast to update the covariance
+  // matrix.
+  BaseFloat num_minibatches_history_;
+
 
   // alpha controls how much we smooth the Fisher matrix with the unit matrix.
   // e.g. alpha = 4.0.
@@ -542,14 +594,17 @@ class OnlineNaturalGradient {
   // floor to the eigenvalues in D_t.
   BaseFloat delta_;
 
-  // t is a counter that measures how many updates we've done.
-  int32 t_;
+  // this is set to true if the user has called the function Freeze(true), until
+  // they call  Freeze(false).  It's used to disable the natural gradient
+  // update (and stop incrementing t_).  However, if the object is uninitialized
+  // (t_ == 0) it doesn't prevent it from being initialized.  This is used
+  // in adversarial training to ensure that the Fisher matrix is updated only
+  // the *second* time we see the same data (to avoid biasing the update).
+  bool frozen_;
 
-  // This keeps track of how many minibatches we've skipped updating the parameters,
-  // since the most recent update; it's used in enforcing "update_period_", which
-  // is a mechanism to avoid spending too much time updating the subspace (which can
-  // be wasteful).
-  int32 num_updates_skipped_;
+  // t is a counter that measures how many times the user has previously called
+  // PreconditionDirections(); it's 0 if that has never been called.
+  int32 t_;
 
   // If true, activates certain checks.
   bool self_debug_;
@@ -557,14 +612,6 @@ class OnlineNaturalGradient {
   CuMatrix<BaseFloat> W_t_;
   BaseFloat rho_t_;
   Vector<BaseFloat> d_t_;
-
-
-  // Used to prevent parameters being read or written in an inconsistent state.
-  Mutex read_write_mutex_;
-
-  // This mutex is used to control which thread gets to update the
-  // parameters, in multi-threaded code.
-  Mutex update_mutex_;
 };
 
 } // namespace nnet3

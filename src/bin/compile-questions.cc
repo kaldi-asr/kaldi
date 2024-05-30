@@ -67,8 +67,7 @@ int main(int argc, char *argv[]) {
         " compile-questions questions.txt questions.qst\n";
     bool binary = true;
     int32 P = 1, N = 3;
-    int32 num_iters_refine = 0,
-        leftmost_questions_truncate = -1;
+    int32 num_iters_refine = 0;
 
 
     ParseOptions po(usage);
@@ -81,9 +80,6 @@ int main(int argc, char *argv[]) {
     po.Register("num-iters-refine", &num_iters_refine,
                 "Number of iters of refining questions at each node.  >0 --> questions "
                 "not refined");
-    po.Register("leftmost-questions-truncate", &leftmost_questions_truncate,
-                "If > 0, the questions for the left-most context position will be "
-                "truncated to the specified number.");
 
     po.Read(argc, argv);
 
@@ -129,15 +125,7 @@ int main(int argc, char *argv[]) {
     // represent the phonetic context positions (including the central phone).
     for (int32 n = 0; n < N; n++) {
       KALDI_LOG << "Setting questions for phonetic-context position "<< n;
-      if (n == 0 && leftmost_questions_truncate > 0 &&
-          leftmost_questions_truncate < questions.size()) {
-        KALDI_LOG << "Truncating " << questions.size() << " to "
-                  << leftmost_questions_truncate << " for position 0.";
-        phone_opts.initial_questions.assign(
-            questions.begin(), questions.begin() + leftmost_questions_truncate);
-      } else {
-        phone_opts.initial_questions = questions;
-      }
+      phone_opts.initial_questions = questions;
       qo.SetQuestionsOf(n, phone_opts);
     }
 

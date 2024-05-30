@@ -1,11 +1,11 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Making dictionary using CSJ data with morpheme analysis.
 # from the one in Kaldi s5 recipe in that it uses lower-case --Arnab (Jan 2013)
 
 # To be run from one directory above this script.
 
-. path.sh
+. ./path.sh
 
 #check existing directories
 [ $# != 0 ] && echo "Usage: local/csj_data_prep.sh" && exit 1;

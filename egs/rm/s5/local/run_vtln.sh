@@ -1,10 +1,10 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # This scripts tests the VTLN estimation where the system used to get the
 # VTLN warps is based on delta+delta-deltas.
 # see also run_vtln2.sh where the system uses LDA+MLLT instead.
 
-. cmd.sh
+. ./cmd.sh
 featdir=mfcc
 set -e
 

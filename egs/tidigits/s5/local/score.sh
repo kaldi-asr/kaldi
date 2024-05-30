@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
 # Apache 2.0
 
@@ -6,7 +6,7 @@
 
 # begin configuration section.
 cmd=run.pl
-min_lmwt=9
+min_lmwt=7
 max_lmwt=19
 #end configuration section.
 

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 #
 # Copyright 2014 University of Tehran (Author: Bagher BabaAli)
@@ -8,7 +8,7 @@
 # farsdat, description of the database:
 # http://www.assta.org/sst/SST-94-Vol-ll/cache/SST-94-VOL2-Chapter15-p20.pdf
 
-. ./cmd.sh 
+. ./cmd.sh
 [ -f path.sh ] && . ./path.sh
 set -e
 
@@ -54,7 +54,7 @@ echo ===========================================================================
 # Now make MFCC features.
 mfccdir=mfcc
 
-for x in train dev test; do 
+for x in train dev test; do
   steps/make_mfcc.sh --cmd "$train_cmd" --nj $feats_nj data/$x exp/make_mfcc/$x $mfccdir
   steps/compute_cmvn_stats.sh data/$x exp/make_mfcc/$x $mfccdir
 done
@@ -65,7 +65,7 @@ echo ===========================================================================
 
 steps/train_mono.sh  --nj "$train_nj" --cmd "$train_cmd" data/train data/lang exp/mono
 
-utils/mkgraph.sh --mono data/lang_test_bg exp/mono exp/mono/graph
+utils/mkgraph.sh data/lang_test_bg exp/mono exp/mono/graph
 
 steps/decode.sh --nj "$decode_nj" --cmd "$decode_cmd" \
  exp/mono/graph data/dev exp/mono/decode_dev

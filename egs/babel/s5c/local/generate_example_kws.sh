@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2012  Johns Hopkins University (Author: Guoguo Chen)
 # Apache 2.0.
@@ -71,7 +71,7 @@ cat $text | perl -e '
     }
     $min_count++;
   }
-  
+
   $total = 20;
   $current = 0;
   $min_count = 4;
@@ -88,7 +88,7 @@ cat $text | perl -e '
     }
     $min_count++;
   }
-  
+
   $total = 10;
   $current = 0;
   $min_count = 3;

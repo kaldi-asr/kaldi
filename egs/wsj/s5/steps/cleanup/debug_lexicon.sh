@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2014  Johns Hopkins University (Author: Daniel Povey)
 # Apache 2.0
 
@@ -44,6 +44,10 @@ for f in $data/feats.scp $lang/phones.txt $src/final.mdl $srcdict; do
   [ ! -f $f ] && echo "$0: expected file $f to exist" && exit 1;
 done
 
+mkdir -p $dir
+utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt
+cp $lang/phones.txt $dir
+
 if [ -z $alidir ]; then
   alidir=${src}_ali_$(basename $data)
   if [ $stage -le 1 ]; then
@@ -54,7 +58,7 @@ fi
 phone_lang=data/$(basename $lang)_phone_bg
 
 if [ $stage -le 2 ]; then
-  utils/make_phone_bigram_lang.sh $lang $alidir $phone_lang
+  utils/lang/make_phone_bigram_lang.sh $lang $alidir $phone_lang
 fi
 
 if [ $stage -le 3 ]; then
@@ -109,27 +113,39 @@ if [ $stage -le 8 ]; then
   grep -v '<eps>' $phone_lang/phones.txt | awk '{print $1, $1}' | \
     sed 's/_B$//' | sed 's/_I$//' | sed 's/_E$//' | sed 's/_S$//' >$dir/phone_map.txt
 
-  cat $dir/phone.ctm | utils/apply_map.pl -f 5 $dir/phone_map.txt > $dir/phone_text.ctm > $dir/phone_mapped.ctm
 
   export LC_ALL=C
 
-  cat $dir/word.ctm | awk '{printf("%s-%s %09d START %s\n", $1, $2, 100*$3, $5); printf("%s-%s %09d END %s\n", $1, $2, 100*($3+$4), $5);}' | \
-     sort >$dir/word_processed.ctm
+  cat $dir/phone.ctm | utils/apply_map.pl -f 5 $dir/phone_map.txt > $dir/phone_mapped.ctm
 
-  cat $dir/phone_mapped.ctm | awk '{printf("%s-%s %09d PHONE %s\n", $1, $2, 100*($3+(0.5*$4)), $5);}' | \
-     sort >$dir/phone_processed.ctm
+  cat $dir/word.ctm  | awk '{printf("%s-%s %010.0f START %s\n", $1, $2, 1000*$3, $5); printf("%s-%s %010.0f END %s\n", $1, $2, 1000*($3+$4), $5);}' | \
+    sort > $dir/word_processed.ctm
+
+  # filter out those utteraces which only appea in phone_processed.ctm but not in word_processed.ctm
+  cat $dir/phone_mapped.ctm | awk '{printf("%s-%s %010.0f PHONE %s\n", $1, $2, 1000*($3+(0.5*$4)), $5);}' | \
+    awk 'NR==FNR{a[$1] = 1; next} {if($1 in a) print $0}' $dir/word_processed.ctm - | \
+    sort > $dir/phone_processed.ctm
 
   # merge-sort both ctm's
   sort -m $dir/word_processed.ctm $dir/phone_processed.ctm > $dir/combined.ctm
-
 fi
 
+# after merge-sort of the two ctm's, we add <eps> to cover "deserted" phones due to precision limits, and then merge all consecutive <eps>'s.
 if [ $stage -le 9 ]; then
-  awk '{print $3, $4}' $dir/combined.ctm | \
-     perl -e ' while (<>) { chop; @A = split(" ", $_); ($a,$b) = @A;
+  awk '{print $1, $3, $4}' $dir/combined.ctm | \
+     perl -e ' while (<>) { chop; @A = split(" ", $_); ($utt, $a,$b) = @A;
      if ($a eq "START") { $cur_word = $b; @phones = (); }
-     if ($a eq "END") { print $cur_word, " ", join(" ", @phones), "\n"; }
-     if ($a eq "PHONE") { push @phones, $b; }} ' | sort | uniq -c | sort -nr > $dir/prons.txt
+     if ($a eq "END") { print $utt, " ", $cur_word, " ", join(" ", @phones), "\n"; }
+     if ($a eq "PHONE") { if ($prev eq "END") {print $utt, " ", "<eps>", " ", $b, "\n";} else {push @phones, $b;}} $prev = $a;} ' |\
+     awk 'BEGIN{merge_prev=0;} {utt=$1;word=$2;pron=$3;for (i=4;i<=NF;i++) pron=pron" "$i;
+     if (word_prev == "<eps>" && word == "<eps>" && utt_prev == utt) {merge=0;pron_prev=pron_prev" "pron;} else {merge=1;}
+     if(merge_prev==1) {print utt_prev, word_prev, pron_prev;};
+     merge_prev=merge; utt_prev=utt; word_prev=word; pron_prev=pron;}
+     END{if(merge_prev==1) {print utt_prev, word_prev, pron_prev;}}' > $dir/ctm_prons.txt
+
+  steps/cleanup/internal/get_non_scored_words.py $lang > $dir/non_scored_words
+  steps/cleanup/internal/get_pron_stats.py $dir/ctm_prons.txt $phone_lang/phones/silence.txt $phone_lang/phones/optional_silence.txt $dir/non_scored_words - | \
+    sort -nr > $dir/prons.txt
 fi
 
 if [ $stage -le 10 ]; then
@@ -197,4 +213,3 @@ if [ $stage -le 11 ]; then
 
 
 fi
-

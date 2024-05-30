@@ -60,7 +60,8 @@ int main(int argc, char *argv[]) {
     using namespace std;
 
     const char *usage =
-        "Concatenate feature files (assuming they have the same dimensions)\n"
+        "Concatenate feature files (assuming they have the same dimensions),\n"
+        "so the output file has the sum of the num-frames of the inputs.\n"
         "Usage: concat-feats <in-rxfilename1> <in-rxfilename2> [<in-rxfilename3> ...] <out-wxfilename>\n"
         " e.g. concat-feats mfcc/foo.ark:12343 mfcc/foo.ark:56789 -\n"
         "See also: copy-feats, append-vector-to-feats, paste-feats\n";
@@ -94,4 +95,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-

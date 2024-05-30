@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright Johns Hopkins University (Author: Daniel Povey) 2012-2013.
 #           Hong Kong University of Science and Technology (Ricky Chan) 2013. Apache 2.0.
 
@@ -9,8 +9,8 @@ for x in "$@"; do orig_args="$orig_args '$x'"; done
 # score_basic.sh might need, or parse_options.sh will die.
 cmd=run.pl
 stage=0
-min_lmwt=9
-max_lmwt=20
+min_lmwt=7
+max_lmwt=17
 #end configuration section.
 
 [ -f ./path.sh ] && . ./path.sh

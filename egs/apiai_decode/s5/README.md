@@ -1,11 +1,11 @@
 # Api.ai model decoding example scripts
-This directory contains scripts on how to use a pre-trained chain enlgish model and kaldi base code to recognize any number of wav files.
+This directory contains scripts on how to use a pre-trained chain english model and kaldi base code to recognize any number of wav files.
 
 IMPORTANT: wav files must be in 16kHz, 16 bit little-endian format.
 
 ## Model
 English pretrained model were released by Api.ai under Creative Commons Attribution-ShareAlike 4.0 International Public License. 
-- Acustic data is mostly mobile recorded data
+- Acoustic data is mostly mobile recorded data
 - Language model is based on Assistant.ai logs and good for understanding short commands, like "Wake me up at 7 am"
 For more details, visit https://github.com/api-ai/api-ai-english-asr-model
 

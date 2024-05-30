@@ -2,6 +2,7 @@
 
 // Copyright 2012  Johns Hopkins University (Author: Daniel Povey)
 //           2015  Guoguo Chen
+//           2019  Dogan Can
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -25,7 +26,7 @@ namespace kaldi {
 
 // this is Figure 6 in the paper.
 void MinimumBayesRisk::MbrDecode() {
-  
+
   for (size_t counter = 0; ; counter++) {
     NormalizeEps(&R_);
     AccStats(); // writes to gamma_
@@ -33,13 +34,13 @@ void MinimumBayesRisk::MbrDecode() {
 
     one_best_times_.clear();
     one_best_confidences_.clear();
-    
+
     // Caution: q in the line below is (q-1) in the algorithm
     // in the paper; both R_ and gamma_ are indexed by q-1.
     for (size_t q = 0; q < R_.size(); q++) {
-      if (do_mbr_) { // This loop updates R_ [indexed same as gamma_]. 
+      if (opts_.decode_mbr) { // This loop updates R_ [indexed same as gamma_].
         // gamma_[i] is sorted in reverse order so most likely one is first.
-        const vector<pair<int32, BaseFloat> > &this_gamma = gamma_[q];
+        const std::vector<std::pair<int32, BaseFloat> > &this_gamma = gamma_[q];
         double old_gamma = 0, new_gamma = this_gamma[0].second;
         int32 rq = R_[q], rhat = this_gamma[0].first; // rq: old word, rhat: new.
         for (size_t j = 0; j < this_gamma.size(); j++)
@@ -50,11 +51,47 @@ void MinimumBayesRisk::MbrDecode() {
           KALDI_VLOG(2) << "Changing word " << rq << " to " << rhat;
         R_[q] = rhat;
       }
-      if (R_[q] != 0) {
-        one_best_times_.push_back(times_[q]);
+      // build the outputs (time, confidences),
+      if (R_[q] != 0 || opts_.print_silence) {
+        // see which 'item' from the sausage-bin should we select,
+        // (not necessarily the 1st one when MBR decoding disabled)
+        int32 s = 0;
+        for (int32 j=0; j<gamma_[q].size(); j++) {
+          if (gamma_[q][j].first == R_[q]) {
+            s = j;
+            break;
+          }
+        }
+        one_best_times_.push_back(times_[q][s]);
+        // post-process the times,
+        size_t i = one_best_times_.size();
+        if (i > 1 && one_best_times_[i-2].second > one_best_times_[i-1].first) {
+          // It's quite possible for this to happen, but it seems like it would
+          // have a bad effect on the downstream processing, so we fix it here.
+          // We resolve overlaps by redistributing the available time interval.
+          BaseFloat prev_right = i > 2 ? one_best_times_[i-3].second : 0.0;
+          BaseFloat left = std::max(prev_right,
+                                    std::min(one_best_times_[i-2].first,
+                                             one_best_times_[i-1].first));
+          BaseFloat right = std::max(one_best_times_[i-2].second,
+                                     one_best_times_[i-1].second);
+          BaseFloat first_dur =
+              one_best_times_[i-2].second - one_best_times_[i-2].first;
+          BaseFloat second_dur =
+              one_best_times_[i-1].second - one_best_times_[i-1].first;
+          BaseFloat mid = first_dur > 0 ? left + (right - left) * first_dur /
+                                     (first_dur + second_dur) : left;
+          one_best_times_[i-2].first = left;
+          one_best_times_[i-2].second = one_best_times_[i-1].first = mid;
+          one_best_times_[i-1].second = right;
+        }
         BaseFloat confidence = 0.0;
-        for (int32 j = 0; j < gamma_[q].size(); j++)
-          if (gamma_[q][j].first == R_[q]) confidence = gamma_[q][j].second;
+        for (int32 j = 0; j < gamma_[q].size(); j++) {
+          if (gamma_[q][j].first == R_[q]) {
+            confidence = gamma_[q][j].second;
+            break;
+          }
+        }
         one_best_confidences_.push_back(confidence);
       }
     }
@@ -65,13 +102,13 @@ void MinimumBayesRisk::MbrDecode() {
       break;
     }
   }
-  RemoveEps(&R_);
+  if (!opts_.print_silence) RemoveEps(&R_);
 }
 
 struct Int32IsZero {
   bool operator() (int32 i) { return (i == 0); }
 };
-// static 
+// static
 void MinimumBayesRisk::RemoveEps(std::vector<int32> *vec) {
   Int32IsZero pred;
   vec->erase(std::remove_if (vec->begin(), vec->end(), pred),
@@ -96,7 +133,7 @@ double MinimumBayesRisk::EditDistance(int32 N, int32 Q,
                                       Vector<double> &alpha_dash_arc) {
   alpha(1) = 0.0; // = log(1).  Line 5.
   alpha_dash(1, 0) = 0.0; // Line 5.
-  for (int32 q = 1; q <= Q; q++) 
+  for (int32 q = 1; q <= Q; q++)
     alpha_dash(1, q) = alpha_dash(1, q-1) + l(0, r(q)); // Line 7.
   for (int32 n = 2; n <= N; n++) {
     double alpha_n = kLogZeroDouble;
@@ -113,11 +150,11 @@ double MinimumBayesRisk::EditDistance(int32 N, int32 Q,
       for (int32 q = 0; q <= Q; q++) {
         if (q == 0) {
           alpha_dash_arc(q) = // line 15.
-              alpha_dash(s_a, q) + l(w_a, 0) + delta();
+              alpha_dash(s_a, q) + l(w_a, 0, true);
         } else {  // a1,a2,a3 are the 3 parts of min expression of line 17.
           int32 r_q = r(q);
           double a1 = alpha_dash(s_a, q-1) + l(w_a, r_q),
-              a2 = alpha_dash(s_a, q) + l(w_a, 0) + delta(),
+              a2 = alpha_dash(s_a, q) + l(w_a, 0, true),
               a3 = alpha_dash_arc(q-1) + l(0, r_q);
           alpha_dash_arc(q) = std::min(a1, std::min(a2, a3));
         }
@@ -132,7 +169,7 @@ double MinimumBayesRisk::EditDistance(int32 N, int32 Q,
 // Figure 5 in the paper.
 void MinimumBayesRisk::AccStats() {
   using std::map;
-  
+
   int32 N = static_cast<int32>(pre_.size()) - 1,
       Q = static_cast<int32>(R_.size());
 
@@ -141,17 +178,17 @@ void MinimumBayesRisk::AccStats() {
   Vector<double> alpha_dash_arc(Q+1); // index 0...Q
   Matrix<double> beta_dash(N+1, Q+1); // index (1...N, 0...Q)
   Vector<double> beta_dash_arc(Q+1); // index 0...Q
-  vector<char> b_arc(Q+1); // integer in {1,2,3}; index 1...Q
-  vector<map<int32, double> > gamma(Q+1); // temp. form of gamma.
+  std::vector<char> b_arc(Q+1); // integer in {1,2,3}; index 1...Q
+  std::vector<map<int32, double> > gamma(Q+1); // temp. form of gamma.
   // index 1...Q [word] -> occ.
 
-  // The tau arrays below are the sums over words of the tau_b
-  // and tau_e timing quantities mentioned in Appendix C of
-  // the paper... we are using these to get averaged times for
-  // the sausage bins, not specifically for the 1-best output.
-  Vector<double> tau_b(Q+1), tau_e(Q+1);
+  // The tau maps below are the sums over arcs with the same word label
+  // of the tau_b and tau_e timing quantities mentioned in Appendix C of
+  // the paper... we are using these to get averaged times for both the
+  // the sausage bins and the 1-best output.
+  std::vector<map<int32, double> > tau_b(Q+1), tau_e(Q+1);
 
-  double Ltmp = EditDistance(N, Q, alpha, alpha_dash, alpha_dash_arc); 
+  double Ltmp = EditDistance(N, Q, alpha, alpha_dash, alpha_dash_arc);
   if (L_ != 0 && Ltmp > L_) { // L_ != 0 is to rule out 1st iter.
     KALDI_WARN << "Edit distance increased: " << Ltmp << " > "
                << L_;
@@ -165,11 +202,11 @@ void MinimumBayesRisk::AccStats() {
       const Arc &arc = arcs_[pre_[n][i]];
       int32 s_a = arc.start_node, w_a = arc.word;
       BaseFloat p_a = arc.loglike;
-      alpha_dash_arc(0) = alpha_dash(s_a, 0) + l(w_a, 0) + delta(); // line 14.
+      alpha_dash_arc(0) = alpha_dash(s_a, 0) + l(w_a, 0, true); // line 14.
       for (int32 q = 1; q <= Q; q++) { // this loop == lines 15-18.
         int32 r_q = r(q);
         double a1 = alpha_dash(s_a, q-1) + l(w_a, r_q),
-            a2 = alpha_dash(s_a, q) + l(w_a, 0) + delta(),
+            a2 = alpha_dash(s_a, q) + l(w_a, 0, true),
             a3 = alpha_dash_arc(q-1) + l(0, r_q);
         if (a1 <= a2) {
           if (a1 <= a3) { b_arc[q] = 1; alpha_dash_arc(q) = a1; }
@@ -189,8 +226,8 @@ void MinimumBayesRisk::AccStats() {
             // next: gamma(q, w(a)) += beta_dash_arc(q)
             AddToMap(w_a, beta_dash_arc(q), &(gamma[q]));
             // next: accumulating times, see decl for tau_b,tau_e
-            tau_b(q) += state_times_[s_a] * beta_dash_arc(q);
-            tau_e(q) += state_times_[n] * beta_dash_arc(q);
+            AddToMap(w_a, state_times_[s_a] * beta_dash_arc(q), &(tau_b[q]));
+            AddToMap(w_a, state_times_[n] * beta_dash_arc(q), &(tau_e[q]));
             break;
           case 2:
             beta_dash(s_a, q) += beta_dash_arc(q);
@@ -203,8 +240,8 @@ void MinimumBayesRisk::AccStats() {
             // WARNING: there was an error in Appendix C.  If we followed
             // the instructions there the next line would say state_times_[sa], but
             // it would be wrong.  I will try to publish an erratum.
-            tau_b(q) += state_times_[n] * beta_dash_arc(q);
-            tau_e(q) += state_times_[n] * beta_dash_arc(q);
+            AddToMap(0, state_times_[n] * beta_dash_arc(q), &(tau_b[q]));
+            AddToMap(0, state_times_[n] * beta_dash_arc(q), &(tau_e[q]));
             break;
           default:
             KALDI_ERR << "Invalid b_arc value"; // error in code.
@@ -221,8 +258,8 @@ void MinimumBayesRisk::AccStats() {
     AddToMap(0, beta_dash_arc(q), &(gamma[q]));
     // the statements below are actually redundant because
     // state_times_[1] is zero.
-    tau_b(q) += state_times_[1] * beta_dash_arc(q);
-    tau_e(q) += state_times_[1] * beta_dash_arc(q);
+    AddToMap(0, state_times_[1] * beta_dash_arc(q), &(tau_b[q]));
+    AddToMap(0, state_times_[1] * beta_dash_arc(q), &(tau_e[q]));
   }
   for (int32 q = 1; q <= Q; q++) { // a check (line 35)
     double sum = 0.0;
@@ -239,7 +276,8 @@ void MinimumBayesRisk::AccStats() {
   for (int32 q = 1; q <= Q; q++) {
     for (map<int32, double>::iterator iter = gamma[q].begin();
          iter != gamma[q].end(); ++iter)
-      gamma_[q-1].push_back(std::make_pair(iter->first, static_cast<BaseFloat>(iter->second)));
+      gamma_[q-1].push_back(
+          std::make_pair(iter->first, static_cast<BaseFloat>(iter->second)));
     // sort gamma_[q-1] from largest to smallest posterior.
     GammaCompare comp;
     std::sort(gamma_[q-1].begin(), gamma_[q-1].end(), comp);
@@ -249,20 +287,34 @@ void MinimumBayesRisk::AccStats() {
   // indexing.
   times_.clear();
   times_.resize(Q);
+  sausage_times_.clear();
+  sausage_times_.resize(Q);
   for (int32 q = 1; q <= Q; q++) {
-    times_[q-1].first = tau_b(q);
-    times_[q-1].second = tau_e(q);
-    if (times_[q-1].first > times_[q-1].second) // this is quite bad.
-      KALDI_WARN << "Times out of order";
-    if (q > 1 && times_[q-2].second > times_[q-1].first) {
+    double t_b = 0.0, t_e = 0.0;
+    for (std::vector<std::pair<int32, BaseFloat>>::iterator iter = gamma_[q-1].begin();
+         iter != gamma_[q-1].end(); ++iter) {
+      double w_b = tau_b[q][iter->first], w_e = tau_e[q][iter->first];
+      if (w_b > w_e)
+        KALDI_WARN << "Times out of order";  // this is quite bad.
+      times_[q-1].push_back(
+          std::make_pair(static_cast<BaseFloat>(w_b / iter->second),
+                         static_cast<BaseFloat>(w_e / iter->second)));
+      t_b += w_b;
+      t_e += w_e;
+    }
+    sausage_times_[q-1].first = t_b;
+    sausage_times_[q-1].second = t_e;
+    if (sausage_times_[q-1].first > sausage_times_[q-1].second)
+      KALDI_WARN << "Times out of order";  // this is quite bad.
+    if (q > 1 && sausage_times_[q-2].second > sausage_times_[q-1].first) {
       // We previously had a warning here, but now we'll just set both
       // those values to their average.  It's quite possible for this
       // condition to happen, but it seems like it would have a bad effect
       // on the downstream processing, so we fix it.
-      double avg = 0.5 * (times_[q-2].second + times_[q-1].first);
-      times_[q-2].second = times_[q-1].first = avg;
+      sausage_times_[q-2].second = sausage_times_[q-1].first =
+          0.5 * (sausage_times_[q-2].second + sausage_times_[q-1].first);
     }
-  }  
+  }
 }
 
 void MinimumBayesRisk::PrepareLatticeAndInitStats(CompactLattice *clat) {
@@ -271,7 +323,7 @@ void MinimumBayesRisk::PrepareLatticeAndInitStats(CompactLattice *clat) {
   CreateSuperFinal(clat); // Add super-final state to clat... this is
   // one of the requirements of the MBR algorithm, as mentioned in the
   // paper (i.e. just one final state).
-  
+
   // Topologically sort the lattice, if not already sorted.
   kaldi::uint64 props = clat->Properties(fst::kFstProperties, false);
   if (!(props & fst::kTopSorted)) {
@@ -283,7 +335,7 @@ void MinimumBayesRisk::PrepareLatticeAndInitStats(CompactLattice *clat) {
   state_times_.push_back(0); // we'll convert to 1-based numbering.
   for (size_t i = state_times_.size()-1; i > 0; i--)
     state_times_[i] = state_times_[i-1];
-  
+
   // Now we convert the information in "clat" into a special internal
   // format (pre_, post_ and arcs_) which allows us to access the
   // arcs preceding any given state.
@@ -314,8 +366,8 @@ void MinimumBayesRisk::PrepareLatticeAndInitStats(CompactLattice *clat) {
   }
 }
 
-MinimumBayesRisk::MinimumBayesRisk(const CompactLattice &clat_in, bool do_mbr):
-    do_mbr_(do_mbr) {
+MinimumBayesRisk::MinimumBayesRisk(const CompactLattice &clat_in,
+                                   MinimumBayesRiskOptions opts) : opts_(opts) {
   CompactLattice clat(clat_in); // copy.
 
   PrepareLatticeAndInitStats(&clat);
@@ -343,14 +395,14 @@ MinimumBayesRisk::MinimumBayesRisk(const CompactLattice &clat_in, bool do_mbr):
     L_ = 0.0; // Set current edit-distance to 0 [just so we know
     // when we're on the 1st iter.]
   }
-  
+
   MbrDecode();
-  
+
 }
 
 MinimumBayesRisk::MinimumBayesRisk(const CompactLattice &clat_in,
                                    const std::vector<int32> &words,
-                                   bool do_mbr): do_mbr_(do_mbr) {
+                                   MinimumBayesRiskOptions opts) : opts_(opts) {
   CompactLattice clat(clat_in); // copy.
 
   PrepareLatticeAndInitStats(&clat);
@@ -360,5 +412,21 @@ MinimumBayesRisk::MinimumBayesRisk(const CompactLattice &clat_in,
 
   MbrDecode();
 }
+
+MinimumBayesRisk::MinimumBayesRisk(const CompactLattice &clat_in,
+                                   const std::vector<int32> &words,
+                                   const std::vector<std::pair<BaseFloat,BaseFloat> > &times,
+                                   MinimumBayesRiskOptions opts) : opts_(opts) {
+  CompactLattice clat(clat_in); // copy.
+
+  PrepareLatticeAndInitStats(&clat);
+
+  R_ = words;
+  sausage_times_ = times;
+  L_ = 0.0;
+
+  MbrDecode();
+}
+
 
 }  // namespace kaldi

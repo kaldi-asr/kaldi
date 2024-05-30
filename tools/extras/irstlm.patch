@@ -1,0 +1,47 @@
+diff --git a/configure.ac b/configure.ac
+index 2b20543..7b4acb5 100644
+--- a/configure.ac
++++ b/configure.ac
+@@ -160,21 +160,21 @@ else
+     AC_MSG_NOTICE([optimization disabled (default)])
+ fi
+ 
+-if test "x$enable_cxx0" != 'xno'
+-then
+-    AC_MSG_NOTICE([c++x0 dialect is enabled (default), compilation with "-DHAVE_CXX0 -std=c++0x "])
+-    CPPFLAGS="$CPPFLAGS -DHAVE_CXX0 -std=c++0x";
+-else
+-    AC_MSG_NOTICE([c++x0 dialect is disabled, compilation without "-std=c++0x" and with "-UHAVE_CXX0"])
+-    CPPFLAGS="$CPPFLAGS -UHAVE_CXX0";
+-fi
+-
+ if test "x$with_zlib" != 'xno'
+ then
+   CPPFLAGS="$CPPFLAGS -I${with_zlib}/include"
+   LDFLAGS="$LDFLAGS -L${with_zlib}/lib"
+ fi
+ 
++if test "x$enable_cxx0" != 'xno'
++then
++    AC_MSG_NOTICE([c++x0 dialect is enabled (default), compilation with "-DHAVE_CXX0 -std=c++0x "])
++    CXXFLAGS="$CXXFLAGS -DHAVE_CXX0 -std=c++0x";
++else
++    AC_MSG_NOTICE([c++x0 dialect is disabled, compilation without "-std=c++0x" and with "-UHAVE_CXX0"])
++    CXXFLAGS="$CXXFLAGS -UHAVE_CXX0";
++fi
++
+ LIBS="$LIBS -lz"
+ 
+ AC_CONFIG_FILES([
+diff --git a/src/Makefile.am b/src/Makefile.am
+index 6169e64..e08adbc 100644
+--- a/src/Makefile.am
++++ b/src/Makefile.am
+@@ -1,6 +1,6 @@
+ lib_LTLIBRARIES = libirstlm.la
+ 
+-AM_CXXFLAGS = -static -isystem/usr/include -W -Wall -ffor-scope -D_FILE_OFFSET_BITS=64 -D_LARGE_FILES $(BOOST_CPPFLAGS) -DMYCODESIZE=3
++AM_CXXFLAGS = -static -W -Wall -ffor-scope -D_FILE_OFFSET_BITS=64 -D_LARGE_FILES $(BOOST_CPPFLAGS) -DMYCODESIZE=3
+ 
+ libirstlm_ladir = ${includedir}
+ 

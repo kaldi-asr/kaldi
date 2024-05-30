@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Hub-5 Eval 1997 data preparation
 # Author:  Arnab Ghoshal (Jan 2013)
@@ -26,7 +26,7 @@ sdir=$1
 [ ! -d $sdir/transcr ] \
   && echo Expecting directory $sdir/transcr to be present && exit 1;
 
-. path.sh 
+. ./path.sh
 
 dir=data/local/eval1997
 mkdir -p $dir

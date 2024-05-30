@@ -139,12 +139,10 @@ void test_flags_driven_update(const DiagGmm &gmm,
 
   // now both models gmm_all_update, gmm_all_update have the same params updated
   // compute loglike for models for check
-  double loglike0 = 0.0;
   double loglike1 = 0.0;
   double loglike2 = 0.0;
   for (int32 i = 0; i < feats.NumRows(); i++) {
-    loglike0 += static_cast<double>(
-      gmm.LogLikelihood(feats.Row(i)));
+    gmm.LogLikelihood(feats.Row(i));
     loglike1 += static_cast<double>(
       gmm_all_update.LogLikelihood(feats.Row(i)));
     loglike2 += static_cast<double>(
@@ -194,7 +192,7 @@ test_io(const DiagGmm &gmm, const AccumDiagGmm &est_gmm, bool binary,
   }
 
   AssertEqual(loglike1, loglike2, 1.0e-6);
-  
+
   unlink("tmp_stats");
 }
 
@@ -278,7 +276,7 @@ UnitTestEstimateDiagGmm() {
     DiagGmm rgmm;
     rgmm.Resize(1, dim);
     ngmm.CopyToDiagGmm(&rgmm);
-    
+
     // check contents
     KALDI_ASSERT(ApproxEqual(weights(0), 1.0F, 1e-6));
     KALDI_ASSERT(ApproxEqual(gmm->weights()(0), rgmm.weights()(0), 1e-6));
@@ -329,7 +327,7 @@ UnitTestEstimateDiagGmm() {
       lastloglike = loglike;
       lastloglike_nM = gmm->NumGauss();
     }
-    
+
     // binary write
     est_gmm.Write(Output("tmp_stats", true).Stream(), true);
 
@@ -366,9 +364,8 @@ UnitTestEstimateDiagGmm() {
     est_gmm.Resize(gmm->NumGauss(),
       gmm->Dim(), flags_all);
     est_gmm.SetZero(flags_all);
-    float loglike = 0.0;
     for (size_t i = 0; i < counter; i++) {
-      loglike += est_gmm.AccumulateFromDiag(*gmm, feats.Row(i), 1.0F);
+      est_gmm.AccumulateFromDiag(*gmm, feats.Row(i), 1.0F);
     }
     test_io(*gmm, est_gmm, false, feats);  // ASCII mode
     test_io(*gmm, est_gmm, true, feats);   // Binary mode
@@ -384,7 +381,7 @@ UnitTestEstimateDiagGmm() {
     for (size_t i = 0; i < counter; i++)
       weights(i) = 0.5 + 0.1 * (Rand() % 10);
 
-    
+
     float loglike = 0.0;
     for (size_t i = 0; i < counter; i++) {
       loglike += weights(i) *
@@ -398,9 +395,9 @@ UnitTestEstimateDiagGmm() {
     est_gmm.AssertEqual(est_gmm2);
   }
 
-  
+
   delete gmm;
-  
+
   unlink("tmp_stats");
 }
 
@@ -410,4 +407,3 @@ int main() {
     UnitTestEstimateDiagGmm();
   std::cout << "Test OK.\n";
 }
-

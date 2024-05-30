@@ -22,6 +22,7 @@
 #include <vector>
 #include <algorithm>
 #include <utility>
+#include <random>
 
 namespace kaldi {
 namespace nnet1 {
@@ -37,7 +38,10 @@ const std::vector<int32>& RandomizerMask::Generate(int32 mask_size) {
   mask_.resize(mask_size);
   for (int32 i = 0; i < mask_size; i++) mask_[i] = i;
   // shuffle using built-in random generator:
-  std::random_shuffle(mask_.begin(), mask_.end());
+  std::random_device rd;
+  std::mt19937 g(rd());
+
+  std::shuffle(mask_.begin(), mask_.end(), g);
   return mask_;
 }
 
@@ -64,9 +68,11 @@ void MatrixRandomizer::AddData(const CuMatrixBase<BaseFloat>& m) {
   }
   // extend the buffer if necessary,
   if (data_.NumRows() < data_end_ + m.NumRows()) {
-    CuMatrix<BaseFloat> data_aux(data_);
-    // Add extra 1000 rows, so we don't reallocate soon:
-    data_.Resize(data_end_ + m.NumRows() + 1000, data_.NumCols());
+    // CuMatrix -> Matrix -> CuMatrix (needs less GPU memory),
+    Matrix<BaseFloat> data_aux(data_);
+    // Add extra 3% rows, so we don't reallocate soon:
+    int32 extra_rows = 0.03 * data_.NumRows();
+    data_.Resize(data_end_ + m.NumRows() + extra_rows, data_.NumCols());
     data_.RowRange(0, data_aux.NumRows()).CopyFromMat(data_aux);
   }
   // copy the data

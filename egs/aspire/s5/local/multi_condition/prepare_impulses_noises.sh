@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # set -e
 
 # Copyright 2014  Johns Hopkins University (Author: Vijayaditya Peddinti)
@@ -22,8 +22,8 @@ log_dir=log # directory to store the log files
 RIR_home=db/RIR_databases/ # parent directory of the RIR databases files
 db_string="'aalto' 'air' 'rwcp' 'rvb2014' 'c4dm' 'varechoic' 'mardy' 'openair'" # RIR dbs to be used in the experiment
 
-. cmd.sh
-. path.sh
+. ./cmd.sh
+. ./path.sh
 . utils/parse_options.sh
 
 echo $*
@@ -114,7 +114,7 @@ cp ${output_dir}_non_normalized/info/* $output_dir/info
 
 # rename file location in the noise-rir pairing files 
 for file in `ls $output_dir/info/noise_impulse*`; do
-  sed -i "s/_non_normalized//g" $file
+  perl -i -pe "s/_non_normalized//g" $file
 done
 
 # generating the rir-list with probabilities alloted for each rir

@@ -1,21 +1,21 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2012-2014  Brno University of Technology (Author: Karel Vesely)
 # Apache 2.0
 
-# This example script trains a DNN on top of FBANK features. 
+# This example script trains a DNN on top of FBANK features.
 # The training is done in 3 stages,
 #
 # 1) RBM pre-training:
-#    in this unsupervised stage we train stack of RBMs, 
+#    in this unsupervised stage we train stack of RBMs,
 #    a good starting point for frame cross-entropy trainig.
 # 2) frame cross-entropy training:
 #    the objective is to classify frames to correct pdfs.
-# 3) sequence-training optimizing sMBR: 
-#    the objective is to emphasize state-sequences with better 
+# 3) sequence-training optimizing sMBR:
+#    the objective is to emphasize state-sequences with better
 #    frame accuracy w.r.t. reference alignment.
 
-# Note: With DNNs in RM, the optimal LMWT is 2-6. Don't be tempted to try acwt's like 0.2, 
+# Note: With DNNs in RM, the optimal LMWT is 2-6. Don't be tempted to try acwt's like 0.2,
 # the value 0.1 is better both for decoding and sMBR.
 
 . ./cmd.sh ## You'll want to change cmd.sh to something that will work on your system.
@@ -79,7 +79,7 @@ fi
 
 
 # Sequence training using sMBR criterion, we do Stochastic-GD with per-utterance updates.
-# Note: With DNNs in RM, the optimal LMWT is 2-6. Don't be tempted to try acwt's like 0.2, 
+# Note: With DNNs in RM, the optimal LMWT is 2-6. Don't be tempted to try acwt's like 0.2,
 # the value 0.1 is better both for decoding and sMBR.
 dir=exp/dnn4d-fbank_pretrain-dbn_dnn_smbr
 srcdir=exp/dnn4d-fbank_pretrain-dbn_dnn
@@ -94,7 +94,7 @@ if [ $stage -le 3 ]; then
 fi
 
 if [ $stage -le 4 ]; then
-  # Re-train the DNN by 6 iterations of sMBR 
+  # Re-train the DNN by 6 iterations of sMBR
   steps/nnet/train_mpe.sh --cmd "$cuda_cmd" --num-iters 6 --acwt $acwt --do-smbr true \
     $train data/lang $srcdir ${srcdir}_ali ${srcdir}_denlats $dir || exit 1
   # Decode
@@ -102,7 +102,7 @@ if [ $stage -le 4 ]; then
     steps/nnet/decode.sh --nj 20 --cmd "$decode_cmd" --config conf/decode_dnn.config \
       --nnet $dir/${ITER}.nnet --acwt $acwt \
       $gmm/graph $dev $dir/decode_it${ITER} || exit 1
-  done 
+  done
 fi
 
 echo Success

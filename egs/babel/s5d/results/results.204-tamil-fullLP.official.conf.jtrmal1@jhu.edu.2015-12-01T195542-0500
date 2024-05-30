@@ -1,0 +1,8 @@
+#Created on 2015-12-01T19:55:42-0500
+#
+# STT Task performance (WER), evaluated on 2016-02-18T11:51:14-0500
+%WER 74.2 | 22178 60033 | 30.1 51.6 18.3 4.3 74.2 36.3 | -1.744 | exp/tri5/decode_dev10h.pem/score_12/dev10h.pem.ctm.sys
+%WER 67.8 | 22178 60033 | 36.1 47.5 16.4 3.8 67.8 35.0 | -1.220 | exp/sgmm5_mmi_b0.1/decode_fmllr_dev10h.pem_it3/score_10/dev10h.pem.ctm.sys
+%WER 68.1 | 22178 60033 | 35.2 46.5 18.2 3.3 68.1 35.5 | -0.900 | exp/tri6b_nnet/decode_dev10h.pem/score_10/dev10h.pem.ctm.sys
+%WER 65.1 | 22178 60033 | 38.0 44.1 18.0 3.1 65.1 34.6 | -0.759 | exp/tri6_nnet_mpe/decode_dev10h.pem_epoch4/score_10/dev10h.pem.ctm.sys
+%WER 66.8 | 22178 60033 | 37.2 46.9 16.0 4.0 66.8 34.8 | -1.137 | exp_bnf/sgmm7_mmi_b0.1/decode_fmllr_dev10h.pem_it4/score_15/dev10h.pem.ctm.sys

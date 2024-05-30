@@ -22,6 +22,7 @@
 
 #include "itf/options-itf.h"
 #include "decoder/lattice-faster-decoder.h"
+#include "decoder/lattice-incremental-decoder.h"
 #include "decoder/lattice-simple-decoder.h"
 
 // This header contains declarations from various convenience functions that are called
@@ -69,7 +70,8 @@ void AlignUtteranceWrapper(
     int32 *num_error,
     int32 *num_retried,
     double *tot_like,
-    int64 *frame_count);
+    int64 *frame_count,
+    BaseFloatVectorWriter *per_frame_acwt_writer = NULL);
 
 
 
@@ -87,17 +89,12 @@ void AlignUtteranceWrapper(
 void ModifyGraphForCarefulAlignment(
     fst::VectorFst<fst::StdArc> *fst);
 
-
-/// This function DecodeUtteranceLatticeFaster is used in several decoders, and
-/// we have moved it here.  Note: this is really "binary-level" code as it
-/// involves table readers and writers; we've just put it here as there is no
-/// other obvious place to put it.  If determinize == false, it writes to
-/// lattice_writer, else to compact_lattice_writer.  The writers for
-/// alignments and words will only be written to if they are open.
-bool DecodeUtteranceLatticeFaster(
-    LatticeFasterDecoder &decoder, // not const but is really an input.
+/// TODO
+template <typename FST>
+bool DecodeUtteranceLatticeIncremental(
+    LatticeIncrementalDecoderTpl<FST> &decoder, // not const but is really an input.
     DecodableInterface &decodable, // not const but is really an input.
-    const TransitionModel &trans_model,
+    const TransitionInformation &trans_model,
     const fst::SymbolTable *word_syms,
     std::string utt,
     double acoustic_scale,
@@ -109,12 +106,39 @@ bool DecodeUtteranceLatticeFaster(
     LatticeWriter *lattice_writer,
     double *like_ptr);  // puts utterance's likelihood in like_ptr on success.
 
+
+/// This function DecodeUtteranceLatticeFaster is used in several decoders, and
+/// we have moved it here.  Note: this is really "binary-level" code as it
+/// involves table readers and writers; we've just put it here as there is no
+/// other obvious place to put it.  If determinize == false, it writes to
+/// lattice_writer, else to compact_lattice_writer.  The writers for
+/// alignments and words will only be written to if they are open.
+///
+/// Caution: this will only link correctly if FST is either fst::Fst<fst::StdArc>,
+/// or fst::GrammarFst, as the template function is defined in the .cc file and
+/// only instantiated for those two types.
+template <typename FST>
+bool DecodeUtteranceLatticeFaster(
+    LatticeFasterDecoderTpl<FST> &decoder, // not const but is really an input.
+    DecodableInterface &decodable, // not const but is really an input.
+    const TransitionInformation &trans_model,
+    const fst::SymbolTable *word_syms,
+    std::string utt,
+    double acoustic_scale,
+    bool determinize,
+    bool allow_partial,
+    Int32VectorWriter *alignments_writer,
+    Int32VectorWriter *words_writer,
+    CompactLatticeWriter *compact_lattice_writer,
+    LatticeWriter *lattice_writer,
+    double *like_ptr);  // puts utterance's likelihood in like_ptr on success.
+
+
 /// This class basically does the same job as the function
 /// DecodeUtteranceLatticeFaster, but in a way that allows us
-/// to build a multi-threaded command line program more easily,
-/// using code in ../thread/kaldi-task-sequence.h.  The main
-/// computation takes place in operator (), and the output happens
-/// in the destructor.
+/// to build a multi-threaded command line program more easily.
+/// The main computation takes place in operator (), and the output
+/// happens in the destructor.
 class DecodeUtteranceLatticeFasterClass {
  public:
   // Initializer sets various variables.
@@ -123,9 +147,9 @@ class DecodeUtteranceLatticeFasterClass {
   DecodeUtteranceLatticeFasterClass(
       LatticeFasterDecoder *decoder,
       DecodableInterface *decodable,
-      const TransitionModel &trans_model,
+      const TransitionInformation &trans_model,
       const fst::SymbolTable *word_syms,
-      std::string utt,
+      const std::string &utt,
       BaseFloat acoustic_scale,
       bool determinize,
       bool allow_partial,
@@ -144,7 +168,7 @@ class DecodeUtteranceLatticeFasterClass {
   // The following variables correspond to inputs:
   LatticeFasterDecoder *decoder_;
   DecodableInterface *decodable_;
-  const TransitionModel *trans_model_;
+  const TransitionInformation *trans_model_;
   const fst::SymbolTable *word_syms_;
   std::string utt_;
   BaseFloat acoustic_scale_;
@@ -177,7 +201,7 @@ class DecodeUtteranceLatticeFasterClass {
 bool DecodeUtteranceLatticeSimple(
     LatticeSimpleDecoder &decoder, // not const but is really an input.
     DecodableInterface &decodable, // not const but is really an input.
-    const TransitionModel &trans_model,
+    const TransitionInformation &trans_model,
     const fst::SymbolTable *word_syms,
     std::string utt,
     double acoustic_scale,

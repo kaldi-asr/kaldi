@@ -3,7 +3,7 @@
 // Copyright 2009-2012  Microsoft Corporation, Karel Vesely
 //                2013  Johns Hopkins University (author: Daniel Povey)
 //                2014  Guoguo Chen
- 
+
 // See ../../COPYING for clarification regarding multiple authors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -35,7 +35,7 @@ int main(int argc, char *argv[]) {
     using namespace kaldi;
     typedef kaldi::int32 int32;
     using fst::SymbolTable;
-    using fst::VectorFst;
+    using fst::Fst;
     using fst::StdArc;
 
     const char *usage =
@@ -48,14 +48,14 @@ int main(int argc, char *argv[]) {
     bool allow_partial = false;
     BaseFloat acoustic_scale = 0.1;
     LatticeFasterDecoderConfig config;
-    
+
     std::string word_syms_filename;
     config.Register(&po);
     po.Register("acoustic-scale", &acoustic_scale, "Scaling factor for acoustic likelihoods");
 
     po.Register("word-symbol-table", &word_syms_filename, "Symbol table for words [for debug output]");
     po.Register("allow-partial", &allow_partial, "If true, produce output even if end state was not reached.");
-    
+
     po.Read(argc, argv);
 
     if (po.NumArgs() < 4 || po.NumArgs() > 6) {
@@ -69,7 +69,7 @@ int main(int argc, char *argv[]) {
         lattice_wspecifier = po.GetArg(4),
         words_wspecifier = po.GetOptArg(5),
         alignment_wspecifier = po.GetOptArg(6);
-    
+
     TransitionModel trans_model;
     ReadKaldiObject(model_in_filename, &trans_model);
 
@@ -86,7 +86,7 @@ int main(int argc, char *argv[]) {
     Int32VectorWriter alignment_writer(alignment_wspecifier);
 
     fst::SymbolTable *word_syms = NULL;
-    if (word_syms_filename != "") 
+    if (word_syms_filename != "")
       if (!(word_syms = fst::SymbolTable::ReadText(word_syms_filename)))
         KALDI_ERR << "Could not read symbol table from file "
                    << word_syms_filename;
@@ -98,11 +98,12 @@ int main(int argc, char *argv[]) {
     if (ClassifyRspecifier(fst_in_str, NULL, NULL) == kNoRspecifier) {
       SequentialBaseFloatMatrixReader loglike_reader(feature_rspecifier);
       // Input FST is just one FST, not a table of FSTs.
-      VectorFst<StdArc> *decode_fst = fst::ReadFstKaldi(fst_in_str);
+      Fst<StdArc> *decode_fst = fst::ReadFstKaldiGeneric(fst_in_str);
+      timer.Reset();
 
       {
         LatticeFasterDecoder decoder(*decode_fst, config);
-    
+
         for (; !loglike_reader.Done(); loglike_reader.Next()) {
           std::string utt = loglike_reader.Key();
           Matrix<BaseFloat> loglikes (loglike_reader.Value());
@@ -112,7 +113,7 @@ int main(int argc, char *argv[]) {
             num_fail++;
             continue;
           }
-      
+
           DecodableMatrixScaledMapped decodable(trans_model, loglikes, acoustic_scale);
 
           double like;
@@ -130,7 +131,7 @@ int main(int argc, char *argv[]) {
       delete decode_fst; // delete this only after decoder goes out of scope.
     } else { // We have different FSTs for different utterances.
       SequentialTableReader<fst::VectorFstHolder> fst_reader(fst_in_str);
-      RandomAccessBaseFloatMatrixReader loglike_reader(feature_rspecifier);          
+      RandomAccessBaseFloatMatrixReader loglike_reader(feature_rspecifier);
       for (; !fst_reader.Done(); fst_reader.Next()) {
         std::string utt = fst_reader.Key();
         if (!loglike_reader.HasKey(utt)) {
@@ -158,7 +159,7 @@ int main(int argc, char *argv[]) {
         } else num_fail++;
       }
     }
-      
+
     double elapsed = timer.Elapsed();
     KALDI_LOG << "Time taken "<< elapsed
               << "s: real-time factor assuming 100 frames/sec is "

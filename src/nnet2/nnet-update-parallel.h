@@ -22,8 +22,8 @@
 
 #include "nnet2/nnet-nnet.h"
 #include "util/table-types.h"
-#include "thread/kaldi-semaphore.h"
-#include "thread/kaldi-thread.h"
+#include "util/kaldi-semaphore.h"
+#include "util/kaldi-thread.h"
 #include "itf/options-itf.h"
 #include "nnet2/nnet-update.h"
 

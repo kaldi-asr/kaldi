@@ -1,8 +1,11 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright Johns Hopkins University (Author: Daniel Povey) 2012.  Apache 2.0.
 
-# This script produces CTM files from a decoding directory that has lattices
-# present.
+# This script produces CTM files from a decoding directory that has lattices                                                                         
+# present. It does this for a range of language model weights; see also 
+# get_ctm_fast.sh which does it for just one LM weight and also supports
+# the word insertion penalty, and get_ctm_conf.sh which outputs CTM files
+# with confidence scores.
 
 
 # begin configuration section.
@@ -13,6 +16,7 @@ min_lmwt=5
 max_lmwt=20
 use_segments=true # if we have a segments file, use it to convert
                   # the segments to be relative to the original files.
+print_silence=false
 #end configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -33,7 +37,8 @@ if [ $# -ne 3 ]; then
   echo "                                    # not equal to 0.01 seconds"
   echo "e.g.:"
   echo "$0 data/train data/lang exp/tri4a/decode/"
-  echo "See also: steps/get_train_ctm.sh"
+  echo "See also: steps/get_train_ctm.sh, steps/get_ctm_fast.sh, steps/get_ctm_conf.sh"
+
   exit 1;
 fi
 
@@ -61,28 +66,28 @@ if [ $stage -le 0 ]; then
     filter_cmd=cat
   fi
 
+  nj=$(cat $dir/num_jobs)
+  lats=$(for n in $(seq $nj); do echo -n "$dir/lat.$n.gz "; done)
   if [ -f $lang/phones/word_boundary.int ]; then
     $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/get_ctm.LMWT.log \
       set -o pipefail '&&' mkdir -p $dir/score_LMWT/ '&&' \
-      lattice-1best --lm-scale=LMWT "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
+      lattice-1best --lm-scale=LMWT "ark:gunzip -c $lats|" ark:- \| \
       lattice-align-words $lang/phones/word_boundary.int $model ark:- ark:- \| \
-      nbest-to-ctm --frame-shift=$frame_shift ark:- - \| \
+      nbest-to-ctm --frame-shift=$frame_shift --print-silence=$print_silence ark:- - \| \
+      utils/int2sym.pl -f 5 $lang/words.txt \| \
+      $filter_cmd '>' $dir/score_LMWT/$name.ctm || exit 1;
+  elif [ -f $lang/phones/align_lexicon.int ]; then
+    $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/get_ctm.LMWT.log \
+      set -o pipefail '&&' mkdir -p $dir/score_LMWT/ '&&' \
+      lattice-1best --lm-scale=LMWT "ark:gunzip -c $lats|" ark:- \| \
+      lattice-align-words-lexicon $lang/phones/align_lexicon.int $model ark:- ark:- \| \
+      lattice-1best ark:- ark:- \| \
+      nbest-to-ctm --frame-shift=$frame_shift --print-silence=$print_silence ark:- - \| \
       utils/int2sym.pl -f 5 $lang/words.txt \| \
       $filter_cmd '>' $dir/score_LMWT/$name.ctm || exit 1;
   else
-    if [ ! -f $lang/phones/align_lexicon.int ]; then
-      echo "$0: neither $lang/phones/word_boundary.int nor $lang/phones/align_lexicon.int exists: cannot align."
-      exit 1;
-    fi
-
-    $cmd LMWT=$min_lmwt:$max_lmwt $dir/scoring/log/get_ctm.LMWT.log \
-      set -o pipefail '&&' mkdir -p $dir/score_LMWT/ '&&' \
-      lattice-1best --lm-scale=LMWT "ark:gunzip -c $dir/lat.*.gz|" ark:- \| \
-      lattice-align-words-lexicon $lang/phones/align_lexicon.int $model ark:- ark:- \| \
-      nbest-to-ctm --frame-shift=$frame_shift ark:- - \| \
-      utils/int2sym.pl -f 5 $lang/words.txt \| \
-      $filter_cmd '>' $dir/score_LMWT/$name.ctm || exit 1;
+    echo "$0: neither $lang/phones/word_boundary.int nor $lang/phones/align_lexicon.int exists: cannot align."
+    exit 1;
   fi
 fi
-
 

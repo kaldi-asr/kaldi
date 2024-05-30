@@ -1,3 +1,9 @@
+#!/bin/bash
+
+if [ $0 != "doc/README" ]; then
+   echo "$0:  this should be run from one level up (in src/)."
+   exit 1
+fi
 
 #This directory contains some of the source for the Doxygen documentation (the
 #code itself, and its comments, is the rest of the source).  Doxygen will create
@@ -6,7 +12,7 @@
 #not work, search for "Kaldi main page" online and you will hopefully get a
 #version of the documentation.
 
-# Note: I generally run this file by typing ". doc/README" from src/,
+# Note: I generally run this file by typing "doc/README" from src/,
 # but this relies on having dsa encryption set up  with Sourceforge.
 # instructions (from Vassil Panayotov) on how to do this:
 # type
@@ -20,6 +26,13 @@
 
 # cd to src/
 doc/make_tools.sh
+
+echo "$0: running doc/get_version_info.sh"
+doc/get_version_info.sh
+echo "$0: done"
+
+
+rm -r html
 doxygen
 cp doc/*.pptx html/;
 # get the style sheet in the html/ directory.
@@ -28,7 +41,6 @@ cp doc/*.pptx html/;
 doxygen -w html header.html footer.html stylesheet.css
 rm header.html footer.html
 mv stylesheet.css html/
-
 
 if [[ $(hostname -f) == *.clsp.jhu.edu ]]; then
    cp ../misc/logo/KaldiIco.png html/favicon.ico
@@ -61,4 +73,3 @@ fi
 # moved the header.html to doc/ and edited it to include the following snippet,
 # and added it to the repo.
 #<link rel="icon" type="image/png" href="http://kaldi.sf.net/favicon.ico">
-

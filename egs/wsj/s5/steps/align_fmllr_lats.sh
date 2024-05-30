@@ -1,13 +1,13 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # Copyright 2012-2015  Johns Hopkins University (Author: Daniel Povey)
 # Apache 2.0
 
 # Version of align_fmllr.sh that generates lattices (lat.*.gz) with
 # alignments of alternative pronunciations in them.  Mainly intended
-# as a precursor to CTC training for now.
+# as a precursor to LF-MMI/chain training for now.
 
-# Begin configuration section.  
+# Begin configuration section.
 stage=0
 nj=4
 cmd=run.pl
@@ -23,6 +23,8 @@ final_beam=20  # For the lattice-generation phase there is no retry-beam.  This
                # gmm-latgen-faster defaults to may help.)
 boost_silence=1.0 # factor by which to boost silence during alignment.
 fmllr_update_type=full
+generate_ali_from_lats=false # If true, alingments generated from lattices.
+max_active=7000
 # End configuration options.
 
 echo "$0 $@"  # Print the command line for logging
@@ -53,6 +55,9 @@ sdata=$data/split$nj
 mkdir -p $dir/log
 echo $nj > $dir/num_jobs
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
+
+utils/lang/check_phones_compatible.sh $lang/phones.txt $srcdir/phones.txt || exit 1;
+cp $lang/phones.txt $dir || exit 1;
 
 cp $srcdir/{tree,final.mdl} $dir || exit 1;
 cp $srcdir/final.alimdl $dir 2>/dev/null
@@ -93,9 +98,9 @@ mdl_cmd="gmm-boost-silence --boost=$boost_silence `cat $lang/phones/optional_sil
 ## because the other scripts write them without transition probs.
 if [ $stage -le 0 ]; then
   echo "$0: compiling training graphs"
-  tra="ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt $sdata/JOB/text|";   
+  tra="ark:utils/sym2int.pl --map-oov $oov -f 2- $lang/words.txt $sdata/JOB/text|";
   $cmd JOB=1:$nj $dir/log/compile_graphs.JOB.log  \
-    compile-train-graphs $scale_opts $dir/tree $dir/final.mdl  $lang/L.fst "$tra" \
+    compile-train-graphs --read-disambig-syms=$lang/phones/disambig.int $scale_opts $dir/tree $dir/final.mdl  $lang/L.fst "$tra" \
     "ark:|gzip -c >$dir/fsts.JOB.gz" || exit 1;
 fi
 
@@ -137,7 +142,7 @@ if [ $stage -le 3 ]; then
   # Warning: gmm-latgen-faster doesn't support a retry-beam so you may get more
   # alignment errors (however, it does have a default min-active=200 so this
   # will tend to reduce alignment errors).
-  # --allow_partial=false makes sure we reach the end of the decoding graph.  
+  # --allow_partial=false makes sure we reach the end of the decoding graph.
   # --word-determinize=false makes sure we retain the alternative pronunciations of
   #   words (including alternatives regarding optional silences).
   #  --lattice-beam=$beam keeps all the alternatives that were within the beam,
@@ -145,13 +150,20 @@ if [ $stage -le 3 ]; then
   #    will be small anyway).
   echo "$0: generating lattices containing alternate pronunciations."
   $cmd JOB=1:$nj $dir/log/generate_lattices.JOB.log \
-    gmm-latgen-faster --acoustic-scale=$acoustic_scale --beam=$final_beam \
+    gmm-latgen-faster --max-active=$max_active --acoustic-scale=$acoustic_scale --beam=$final_beam \
         --lattice-beam=$final_beam --allow-partial=false --word-determinize=false \
       "$mdl_cmd" "ark:gunzip -c $dir/fsts.JOB.gz|" "$feats" \
       "ark:|gzip -c >$dir/lat.JOB.gz" || exit 1;
 fi
 
-rm $dir/pre_ali.*.gz
+if [ $stage -le 4 ] && $generate_ali_from_lats; then
+  # If generate_alignments is true, ali.*.gz is generated in lats dir
+  $cmd JOB=1:$nj $dir/log/generate_alignments.JOB.log \
+    lattice-best-path --acoustic-scale=$acoustic_scale "ark:gunzip -c $dir/lat.JOB.gz |" \
+    ark:/dev/null "ark:|gzip -c >$dir/ali.JOB.gz" || exit 1;
+fi
+
+rm $dir/pre_ali.*.gz 2>/dev/null || true
 
 echo "$0: done generating lattices from training transcripts."
 

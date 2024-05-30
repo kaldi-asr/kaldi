@@ -1,6 +1,6 @@
 // chain/chain-kernels.cu
 
-// Copyright  2015  Johns Hopkins University (author: Daniel Povey)
+// Copyright  2015-2019  Johns Hopkins University (author: Daniel Povey)
 
 
 // Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,29 +20,45 @@
 #include <cfloat>
 #include "chain/chain-kernels-ansi.h"
 
+#ifdef __IS_HIP_COMPILE__
+#define __CUDA_ARCH__ 800
+#include <hip/hip_runtime.h>
+#endif
+
+#if defined(__CUDA_ARCH__) && __CUDA_ARCH__ < 200
+#error - Kaldi no longer supports CC1.x devices. Please use a newer GPU or \
+         configure with --use-cuda=no (this will disable the use of GPU).
+#endif
 
 
-template <typename Real>
-__device__ inline void atomic_add(Real* address, Real value) {
-  Real old = value;
-  Real ret = atomicExch(address, 0.0f);
-  Real new_old = ret + old;
-  while ((old = atomicExch(address, new_old)) != 0.0f) {
-    new_old = atomicExch(address, 0.0f);
-    new_old += old;
-  }
-}
-
-template<>
-__device__ inline void atomic_add(double* address, double val) {
-  unsigned long long int* address_as_ull =
-    reinterpret_cast<unsigned long long int*>(address);
+#ifdef __CUDACC__
+#if ( __CUDACC_VER_MAJOR__ >= 8 ) && ( !defined(__CUDA_ARCH__) || __CUDA_ARCH__ >= 600 )
+// native implementation available
+#else
+#if __CUDA_ARCH__ >= 600
+#error using CAS implementation of double atomicAdd
+#endif
+__device__ double atomicAdd(double* address, double val) {
+  unsigned long long int* address_as_ull = (unsigned long long int*) address;
   unsigned long long int old = *address_as_ull, assumed;
+
   do {
     assumed = old;
     old = atomicCAS(address_as_ull, assumed,
                     __double_as_longlong(val + __longlong_as_double(assumed)));
+
+    // Note: uses integer comparison to avoid hang in case of NaN (since NaN != NaN)
   } while (assumed != old);
+
+  return __longlong_as_double(old);
+}
+#endif
+#endif
+
+
+template <typename Real>
+__device__ inline void atomic_add(Real* address, Real value) {
+  atomicAdd(address, value);
 }
 
 template <typename Real>
@@ -277,3 +293,31 @@ void cuda_chain_hmm_backward(dim3 Gr, dim3 Bl,
                                       log_prob_deriv_stride);
 }
 
+
+// See documentation for PenalizeOutOfRange() in chain-training.cc to see what
+// this is about.
+__global__
+static void _penalize_out_of_range(
+    BaseFloat limit, BaseFloat scale, const BaseFloat *in_data, MatrixDim dim,
+    int out_stride, BaseFloat *out_deriv) {
+  int i = blockIdx.x * blockDim.x + threadIdx.x;
+  int j = blockIdx.y * blockDim.y + threadIdx.y;
+  int in_index = i + j * dim.stride,
+      out_index = i + j * out_stride;
+  if (i < dim.cols && j < dim.rows) {
+    BaseFloat val = in_data[in_index];
+    if (val < -limit) {
+      out_deriv[out_index] -= scale * (val + limit);
+    } else if (val > limit) {
+      out_deriv[out_index] -= scale * (val - limit);
+    }
+  }
+}
+
+void cuda_penalize_out_of_range(dim3 Gr, dim3 Bl, BaseFloat limit,
+                                BaseFloat scale, const BaseFloat *in_data,
+                                MatrixDim dim, int out_stride,
+                                BaseFloat *out_deriv) {
+  _penalize_out_of_range<<<Gr,Bl>>>(limit, scale, in_data,
+                                    dim, out_stride, out_deriv);
+}

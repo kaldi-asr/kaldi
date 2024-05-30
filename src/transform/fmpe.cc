@@ -43,8 +43,8 @@ void Fmpe::SetContexts(std::string context_str) {
       SplitStringToVector(pair_vec[j], ",", false, &one_pair);
       KALDI_ASSERT(one_pair.size() == 2 &&
                    "Mal-formed context string: bad --context-expansion option?");
-      int32 pos;
-      BaseFloat weight;
+      int32 pos = 0;
+      BaseFloat weight = BaseFloat(0);
       bool ok = ConvertStringToInteger(one_pair[0], &pos);
       ok = ConvertStringToReal(one_pair[1], &weight) && ok;
       if (!ok)

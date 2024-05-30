@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright Johns Hopkins University (Author: Daniel Povey, Vijayaditya Peddinti) 2015.  Apache 2.0.
 # This script generates the ctm files for dev_aspire, test_aspire and eval_aspire 
 # for scoring with ASpIRE scoring server.
@@ -31,7 +31,7 @@ pass2_decode_opts=
 filter_ctm=true
 weights_file=
 silence_weight=0.00001
-. cmd.sh
+. ./cmd.sh
 
 [ -f ./path.sh ] && . ./path.sh
 . parse_options.sh || exit 1;

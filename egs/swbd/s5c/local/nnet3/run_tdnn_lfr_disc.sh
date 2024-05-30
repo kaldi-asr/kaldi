@@ -1,0 +1,1 @@
+tuning/run_tdnn_lfr1c_disc.sh

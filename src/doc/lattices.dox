@@ -28,15 +28,15 @@ namespace kaldi {
 
  A lattice is a representation of the alternative word-sequences that are "sufficiently likely" for
  a particular utterance.  In order to understand lattices properly you have to understand decoding
- graphs in the WFST framework (see \ref graph).  
+ graphs in the WFST framework (see \ref graph).
  In this section we summarize the issues relating to Kaldi lattices, and in the rest of this page
  we will explain them more precisely.  The reader may also want to read the paper
- <a href=https://sites.google.com/site/dpovey/2012_icassp_lattices.pdf?attredirects=0> 
+ <a href=https://www.danielpovey.com/files/2012_icassp_lattices.pdf>
 "Generating exact lattices in the WFST framework", D. Povey, M. Hannemann et. al, ICASSP 2012 (submitted)</a>,
  which provides more context as to how our lattices relate to previously published algorithms.
- This page gives more focus to the programming aspects. 
+ This page gives more focus to the programming aspects.
 
- There are two representations of lattices in Kaldi.  
+ There are two representations of lattices in Kaldi.
  The first representation is the Lattice type.  This is an FST whose weight type contains two
  floating point weights (the graph cost and the acoustic cost), whose input
  symbols are \ref transition_model_identifiers "transition-ids" (these are roughly like
@@ -58,17 +58,17 @@ namespace kaldi {
  SequentialLatticeReader to read sets of lattices indexed by utterance-id, it will work
  the same whether it was actually a Lattice or a CompactLattice in the archive.
  However, we typically write lattices out as CompactLattice.  Many programs read as Lattice
- because 
+ because
  To convert between lattice types, there is a function ConvertLattice()
-  that you can use.  
+  that you can use.
 
- The weights in both the CompactLattice and Lattice types contain two floats, which 
+ The weights in both the CompactLattice and Lattice types contain two floats, which
  are interpreted as the graph cost and the acoustic cost respectively.  The graph cost
  is a sum of the LM cost, the (weighted) transition probabilities, and any pronunciation cost.  Since
  these are all mixed together, in order to do things like LM rescoring we typically first subtract
  the "old" LM cost and then add in the "new" LM cost, to avoid touching the other parts
- of the cost.  If we call these two floating point values (a,b), the semiring in Lattice 
- is like the lexicographic semiring on (a+b, a-b) (see OpenFst documentation for explanation).   
+ of the cost.  If we call these two floating point values (a,b), the semiring in Lattice
+ is like the lexicographic semiring on (a+b, a-b) (see OpenFst documentation for explanation).
  That is, when we "add" (in the semiring)
  two of these pairs, we get the pair that has the lowest (graph + acoustic) cost; if they are the
  same we break ties using the difference (graph - acoustic).  This makes sense in terms of
@@ -76,26 +76,26 @@ namespace kaldi {
  scaled.  Our convention is to keep lattices externally (e.g. on disk) with the
  acoustic costs unscaled, and to apply
  the scale before any algorithm that compares the weights (and un-scale them again before
- we write the lattices out).  
+ we write the lattices out).
 
  The Lattice and CompactLattice types are used as data-structures to represent conventional lattices, and
  also to represent N-best lists.  The lattice generation algorithm we use has
  quite precise properties.  Let lattice-delta be a number (typically 10 or so).
  Our lattice generation algorithm ensures (modulo beam pruning) that every
  word-sequence whose best alignment has cost within lattice-delta of the best
- path is present in the lattice, and has the best possible alignment and weight.  
+ path is present in the lattice, and has the best possible alignment and weight.
  Also, each word-sequence must be present in the lattice only once.  We achieve this by
  first creating a state-level lattice and appropriately pruning it, and then
  determinizing it using a special semiring (or if you like, you can view this as
  a special determinization algorithm that handles non-functional FSTs by always
  picking the most likely alternative path).  We'll explain below below exactly
- how this works.  
+ how this works.
 
  We always ensure that for lattices that we write out to disk,
  each word-sequence has only one path through the lattice.  This is required for
  certain algorithms (such as LM rescoring) to work properly.  Being determinized
  (on the word labels, in the CompactLattice format) is a sufficient condition for this.
- 
+
  We never attach symbol tables to FSTs in any Kaldi code.  In order to view
  archives containing lattices in their most natural form with actual words
  in them, we use scripts to do the conversion (an example is in egs/rm/s1/steps/decode_tri1_latgen.sh).
@@ -162,28 +162,28 @@ does automatic conversion.  So the code:
      Lattice lat = lattice_reader.Value();
      ...
   }
-\endverbatim  
-would be valid even if the archive or script file specified in "lats_rspecifier" 
+\endverbatim
+would be valid even if the archive or script file specified in "lats_rspecifier"
 contained the CompactLattice format-- which it normally would, because that is how
 we normally write lattices.  An example of lattice type conversion is:
 \verbatim
-  Lattice lat; 
+  Lattice lat;
   // initialize lat.
   CompactLattice compact_lat;
   ConvertLattice(lat, &compact_lat);
-\endverbatim  
+\endverbatim
 Conversion to the CompactLattice type involves a "factoring" operation, the function
-fst::Factor() (defined by us in fstext/factor.h), that identifies chains of states 
+fst::Factor() (defined by us in fstext/factor.h), that identifies chains of states
 that can be combined into a single CompactLattice arc.
 A typical example of appying an OpenFst algorithm to a lattice is as follows
 (this code, modified from latbin/lattice-best-path.cc, finds the best path
 through a lattice):
 \verbatim
-  Lattice lat; 
+  Lattice lat;
   // initialize lat.
   Lattice best_path;
   fst::ShortestPath(lat, &best_path);
-\endverbatim  
+\endverbatim
 
 
  \section lattices_compact Compact lattices (the CompactLattice type)
@@ -202,14 +202,14 @@ The CompactLatticeWeight type is a typedef as follows:
  typedef fst::CompactLatticeWeightTpl<LatticeWeight, int32> CompactLatticeWeight;
 \endverbatim
 The template arguments are the underlying weight type (LatticeWeight), and an
-integer type (int32) that is used to store the sequences of transition-ids. 
+integer type (int32) that is used to store the sequences of transition-ids.
 Note that in Kaldi code (such as above), we tend to prefer to define concrete types,
 for understandability, whereas the OpenFst style is to define templates, and when coding inside the
 fst namespace we tend to follow this convention.  Thus, we define a template in the
 fst namespace and turn it into a fully-specified type (CompactLatticeWeight) in the
 kaldi namespace.
 
-The template arguments of CompactLatticeWeightTpl are an underlying weight (here, 
+The template arguments of CompactLatticeWeightTpl are an underlying weight (here,
 LatticeWeight) and an integer type (here, int32).  It contains two data members: a weight and
 a sequence of integers:
 \verbatim
@@ -218,16 +218,16 @@ class CompactLatticeWeightTpl {
    ...
  private:
   WeightType weight_;
-  vector<IntType> string_; 
+  vector<IntType> string_;
 };
 \endverbatim
 These can be accessed using the member functions \ref fst::CompactLatticeWeightTpl::Weight() "Weight()"
-and \ref fst::CompactLatticeWeightTpl::String() "String()".  The semiring used by 
+and \ref fst::CompactLatticeWeightTpl::String() "String()".  The semiring used by
 \ref fst::CompactLatticeWeightTpl "CompactLatticeWeightTpl" does not correspond to any
 semiring used in OpenFst, as far as we are aware.  Multiplication corresponds to multiplying
 the weights and appending the strings together.  When adding two CompactLatticeWeights,
 we first compare the weight component.  If one of the weights is "more" than the other one, we take that weight
-and its corresponding string.  If not (i.e. if the two weights are the same), we use an ordering 
+and its corresponding string.  If not (i.e. if the two weights are the same), we use an ordering
 on the strings to break ties.  The ordering if we use is to take the shortest string if
 they have different length, and otherwise use lexical order (we can't just use lexical order, or it
 would violate one of the semiring axioms which is distributivity of multiplication over
@@ -236,7 +236,7 @@ addition).
 Note that we talked above about one of the weights being "more" than the other one, and we
 assumed that if neither is more than the other, then they are equal.  This is only true if there
 is a total order on the semiring, and this is a requirement on the weight component of
-the template (this requirement is fulfilled for LatticeWeight and TropicalWeight).  
+the template (this requirement is fulfilled for LatticeWeight and TropicalWeight).
 The "OpenFst" way to access this ordering is using the template "NaturalLess", which given
 a and b, looks for whether (a+b) is equal to a or to b.  For efficiency reasons, we don't
 do it this way: we assume that there is a Compare() function defined on the weight type
@@ -256,16 +256,18 @@ In the current case, we are dealing with an acceptor so there is really only sym
 (the word sequence).  The point is that when we sum the (weight, string) pairs
 in this semiring, we just get the single (weight, string) pair that
 has the best "weight component", i.e. the lowest cost.  If we were to remove
-epsilons and determinize, in this semiring, we would get a lattice that only had a 
+epsilons and determinize, in this semiring, we would get a lattice that only had a
 single path for each word sequence, and that path would have the best possible
 cost for that word sequence.  This wouldn't be very efficient, so we actually use
-a specialized determinization algorithm that removes epsilons and that is optimized for this case, but it 
+a specialized determinization algorithm that removes epsilons and that is optimized for this case, but it
 has the same effect as calling that the normal OpenFst RemoveEps() and Determinize() algorithms would.
 
  \section lattices_generation Lattice generation
 
-Currently, the only decoder that generates lattices is the class
-LatticeSimpleDecoder, defined in decoder/lattice-simple-decoder.h, and invoked by gmm-latgen-simple.cc.
+Command-line decoding programs that have 'latgen' in their names generate lattices.
+Currently most of these use LatticeFasterDecoder.  For purposes of exposition we will
+focus instead on LatticeSimpleDecoder, whose operation is simpler.
+This is defined in decoder/lattice-simple-decoder.h, and invoked by gmm-latgen-simple.cc.
 As the name suggests, LatticeSimpleDecoder is a lattice-generating decoder that is modified from SimpleDecoder.
 SimpleDecoder is a straightforwardly implemented Viterbi beam search algorithm with only a single
 tunable parameter: the pruning beam (see \ref decoders_simple).  LatticeSimpleDecoder has
@@ -273,16 +275,16 @@ one more important tunable parameter: the lattice beam (or lattice-delta), which
 less than the pruning beam.
 The basic picture is that LatticeSimpleDecoder first produces a state-level lattice, and prunes
 it with the lattice-delta, and then at the end it runs a special determinization algorithm
-that results in only keeping the best path for each word sequence.  
+that results in only keeping the best path for each word sequence.
 
-In SimpleDecoder, there are reference-counted tracebacks.  In LatticeSimpleDecoder, 
+In SimpleDecoder, there are reference-counted tracebacks.  In LatticeSimpleDecoder,
 a single traceback isn't enough because the lattice has a more complicated structure.
 In fact, it turned out to be more convenient to store <EM> forward </EM> instead of
 backward links.  We need to do more than just do reference counting in order to
 free un-needed links, because of the lattice-delta pruning; in fact there is no reference counting.
 
 The final objective of the pruning algorithm is as follows (call this the
-"naive" approach.  
+"naive" approach.
 Firstly, suppose that for each
 frame, for each state that was active on that frame we created a structure or token
 of some kind, and for each arc out of it (to a state that was not pruned), we
@@ -300,7 +302,7 @@ we could turn the state-level traceback into an FST and use OpenFst's \ref fst::
 "Prune()" algorithm.  Unfortunately this wouldn't be a very practical algorithm
 because we would soon run out of memory: on each frame there are typically
 many thousands of states active, and we can't afford to wait till the end of the
-utterance to prune them.  
+utterance to prune them.
 
 Fortunately there is an efficient way to prune away these tokens without waiting
 until the end of the utterance.  Periodically (every 25 frames by default), we do
@@ -335,7 +337,7 @@ final frame specially, because we need to take into account the final
 probabilities.
 
 
-\subsection lattices_generation Getting the raw lattice, and converting it into the final form.
+\subsection lattices_generation_raw Getting the raw lattice, and converting it into the final form.
 
 When we have reached the end of the utterance, we produce the lattice in two phases.
 The first phase is to create the
@@ -345,7 +347,7 @@ word sequence.  Creation of the "raw lattice" is very trivial, and consists of
 taking our token and link structures and translating them into OpenFst
 structures.  If we are asked for the best path (e.g. for getting the transcript),
 we would just run OpenFst's ShortestPath algorithm on this raw lattice.  If we
-are asked for the lattice, there are two options.  
+are asked for the lattice, there are two options.
 
 The first option is: the
 decoder supports outputting the raw state-level lattice directly (set --determinize-lattice=false);
@@ -357,7 +359,7 @@ lattice-determinize program, before storing the lattices on disk for an extended
 Let's assume instead that we're outputting
 the determinized lattice (the second option).  The determinized lattice is supposed to have only one
 path through it for every word sequence that is allowed in the original raw
-lattice.  We can acheive this by creating a CompactLattice, removing epsilons and
+lattice.  We can achieve this by creating a CompactLattice, removing epsilons and
 determinizing, but this would be very inefficient.  Instead, we run a special
 determinization algorithm called \ref fst::DeterminizeLattice()
 "DeterminizeLattice()".  This algorithm does epsilon removal and
@@ -387,7 +389,7 @@ is, it preserves equivalence only when viewing it as an operation on a CompactLa
  After this, we could look at the lattice as follows:
 \verbatim
 gunzip -c exp/decode_tri2a_bg_latgen_eval92/7.lats.gz | \
-  scripts/int2sym.pl --field 3 data/words.txt | head
+  utils/int2sym.pl -f 3 data/words.txt | head
 444c0410
 0 1 <s> 5.27832,0,
 1 2 <UNK> 8.08116,1099.84,
@@ -402,12 +404,12 @@ _1_1_1_1_1_1_1_1_1_1_1_1_1_1_1_1_1_1_1_1_1_1_1_1_1_1_1_1_1_12_18_17_17_17_1856\
 ...
 \endverbatim
 It might seem slightly disconcerting that the label \<UNK\> appears on
-a transition that has graph and acoustic scores but with no input labels 
+a transition that has graph and acoustic scores but with no input labels
 (these would appear after the final comma, if they
 were present).  It must be appreciated that graph and acoustic scores and input-label
 sequences are only valid when summed (or appended) over entire paths through the
 FST.  There is no guarantee that they will be synchronized with respect to each other
-or with respect to the word labels.  
+or with respect to the word labels.
 
 Lattices are normally stored in the CompactLattice format in the archive, and
 as mentioned before, we use the convention that the acoustic weights in the
@@ -435,7 +437,7 @@ programs.
  to CompactLattice before writing the lattice out.
 
  \subsection lattices_operations_best_path Computing the best path through a lattice
- 
+
  The program lattice-best-path computes the best path through a lattice, and outputs
  the corresponding input-symbol sequence (alignment) and output-symbol sequence (transcription).
  As usual, the input and outputs are in the form of archives.  An example command line is:
@@ -446,9 +448,9 @@ programs.
  \subsection lattices_operations_nbest Computing the N-best hypotheses
 
  The program lattice-nbest computes the N best paths through the lattice (using
- OpenFst's \ref fst::ShortestPath() "ShortestPath()" function), and outputs 
+ OpenFst's \ref fst::ShortestPath() "ShortestPath()" function), and outputs
  the result as a lattice (a CompactLattice), but with a special structure.
- As documented for the \ref fst::ShortestPath() "ShortestPath()" function in 
+ As documented for the \ref fst::ShortestPath() "ShortestPath()" function in
  OpenFst, the start state will have (up to) n arcs out of it, each one to the
  start of a separate path.  Note that these paths may share suffixes.
  An example command line is:
@@ -459,13 +461,13 @@ programs.
  \subsection lattices_operations_lmrescore Language model rescoring
 
  Because the "graph part" (the first component) of LatticeWeight contains the
- language model score mixed together with the transition-model score and any 
+ language model score mixed together with the transition-model score and any
  pronunciation or silence probabilities, we can't just replace it with
  the new language model score or we would lose the transition probabilities
- and pronunciation probabilities.  Instead we have to first subtract the 
+ and pronunciation probabilities.  Instead we have to first subtract the
  "old" LM probabilities and then add in the new LM probabilities.  The
  central operation in both of these phases is composition (there is some
- scaling of weights going on, also).  The command line for doing this 
+ scaling of weights going on, also).  The command line for doing this
  is: first, to remove the old LM probabilities:
 \verbatim
  lattice-lmrescore --lm-scale=-1.0 ark:in.lats G_old.fst ark:nolm.lats
@@ -474,18 +476,21 @@ programs.
 \verbatim
  lattice-lmrescore --lm-scale=1.0 ark:nolm.lats G_new.fst ark:out.lats
 \endverbatim
-Note that there are other ways to do this; see 
+Note: the above examples are slightly simplified; actually you would have
+to "project" the G.fst FST's on the output to remove disambiguation symbols
+using `fstproject` with `--project_output=true`, see steps/lmrescore.sh for examples.
+Also there are other ways to do this; see
 the documentation for lattice-compose below.
 What the program \ref lattice-lmrescore.cc "lattice-lmrescore" does is this...
-actually, we will first first escribe the simple version that is not exactly what
-happens.  Suppose that we are given an LM-scale S and a LM G.fst.  
+actually, we will first first describe the simple version that is not exactly what
+happens.  Suppose that we are given an LM-scale S and a LM G.fst.
 We first multiply all the costs in G.fst by S.  Then for each lattice,
 we compose it on the right with G, lattice-determinize it (to keep only the
 best path through G for each word sequence) and write it out.  This would
 work fine for positive S, but for negative S it would be equivalent to taking
 the <EM> worst </EM> path through G, for each word sequence.  To fix this,
 we instead do it as follows.
-For each input lattice, we first 
+For each input lattice, we first
 scale the lattice's graph (or LM) costs by the inverse of S; we then compose
 on the right with G.fst; we run lattice-determinization (see above) on the resulting lattice
 which retains only the best path through the lattice for each word sequence;
@@ -517,7 +522,7 @@ to the LatticeWeight weight type.
  acoustic weights in archives should be unscaled;  programs that need to apply an acoustic
  scale generally accept an --acoustic-scale option.   Such programs generally apply the scale,
  do an operation (such as determinization or pruning) that is sensitive to it, and then apply
- the inverse of the scale.  
+ the inverse of the scale.
  For most operations we do not
  want to scale the LM probabilities; however, it might sometimes be useful to do so, e.g.
  in discriminative training it might be useful to tune both the LM and acoustic scale.
@@ -529,7 +534,7 @@ to the LatticeWeight weight type.
  \subsection lattices_union Lattice union
 
  The program lattice-union computes the union of two lattices (as with other programs,
- this program iterates over sets of lattices in archives).  The main envisaged use of 
+ this program iterates over sets of lattices in archives).  The main envisaged use of
  this is in discriminative training (especially MMI), to ensure that the correct
  transcription is present in the denominator lattice.  An example command line is:
 \verbatim
@@ -568,7 +573,7 @@ to the LatticeWeight weight type.
 \endverbatim
  This is a simplified example; you'd do further processing
  to remove the original "graph scores" from the lattices and
- add back in the grammar and transition scores.  Also, 
+ add back in the grammar and transition scores.  Also,
  Ldet.fst is a specially processed version of the lexicon:
  the lexicon with disambiguation symbols (but without the
  loop that converts \#0 to \#0 to pass through the language
@@ -576,7 +581,7 @@ to the LatticeWeight weight type.
  disambiguation symbols then removed.
 
  The mode described above can also be useful for language model
- rescoring; however, it also comes in a different version, 
+ rescoring; however, it also comes in a different version,
  illustrated below (this is useful for adding in LM scores to lattices, assuming
  we had removed the old LM scores):
 \verbatim
@@ -586,7 +591,7 @@ to the LatticeWeight weight type.
  \#0 on the input side, and 13461 is the numeric label of the backoff symbol.
 This form of composition treats the backoff symbol as a failure transition
  (using OpenFst's PhiMatcher), which is only taken in case the
- requested label did not exist: thus, we treat G.fst as a backoff 
+ requested label did not exist: thus, we treat G.fst as a backoff
  language model.  This form of composition is more exact than
  turning the \#0 into epsilon and compsoing normally, because it
  prevents us taking backoff arcs when a non-backoff arc exists
@@ -596,8 +601,8 @@ This form of composition treats the backoff symbol as a failure transition
  of the way final-probabilities are treated.  Because Compose doesn't use
  the matcher when computing final probabilities, we can fail to take the
  backoff arc when computing final probabilities.   Therefore the
- lattice-compose program has to modify the final probabilities 
- by "following through" the phi arcs, before calling the composition 
+ lattice-compose program has to modify the final probabilities
+ by "following through" the phi arcs, before calling the composition
  algorithm.  Note that this problem would not exist if we had the end-of-sentence
  symbol as a label in G, but in some scripts we prefer to remove it.
 Note also that "phi composition" would not work properly in general, if
@@ -617,11 +622,11 @@ in the first archive.  Note that this program will not output
 any lattice if the composition is empty because the two lattices
 had no paths in common, so the final archive may
 have "gaps" in it.  You have to build in some mechanism to produce
-output for such utterances, into your decoding scripts (e.g. 
+output for such utterances, into your decoding scripts (e.g.
 see egs/rm/s3/steps/decode_combine.sh).  The behavior of this
 program can be simulated by combining the programs
 lattice-scale, lattice-project and lattice-compose.
-  
+
  \subsection lattices_operations_phones Conversion of lattices to phones
 
   The program lattice-to-phone-lattice removes the word labels from the
@@ -635,7 +640,7 @@ lattice-scale, lattice-project and lattice-compose.
 \endverbatim
 
  \subsection lattices_operations_project Lattice projection
- 
+
   Projection is an FST operation that turns an FST into an acceptor, either
   by copying the output symbols to the input, or the input symbols to the output,
  so they are both the same.  The default for lattice-project is to copy the
@@ -646,9 +651,9 @@ lattice-scale, lattice-project and lattice-compose.
      lattice-compose ark:- ark:2.lats ark:3.lats
 \endverbatim
 
- \subsection lattices_operations_equivalent Lattice equivalence testing  
+ \subsection lattices_operations_equivalent Lattice equivalence testing
 
-  The program lattice-equivalent is mostly useful as a debugging tool.  It 
+  The program lattice-equivalent is mostly useful as a debugging tool.  It
  tests the equivalence of sets of lattices.  It returns with exit status 0
  only if all pairs of lattices in two supplied tables (e.g. archives) are
  equivalent.  It uses a randomized equivalence testing algorithm to do this.
@@ -694,7 +699,7 @@ appeared to help; we have not investigated its exact effect on boosted MMI.
  forward-backward type of algorithm.  Since, by convention, we store lattices
  without any acoustic scaling, it will normally be necessary to supply an
  acoustic scale to be used in the forward-backward algorithm.  It also accepts
- a language model scale, but the default (1.0) will often be most appropriate.  
+ a language model scale, but the default (1.0) will often be most appropriate.
   An example of
  using this program is:
 \verbatim
@@ -712,7 +717,7 @@ appeared to help; we have not investigated its exact effect on boosted MMI.
  in a "word-level" way, i.e. each word-sequence still has only one transition-id
  sequence, then the acoustic scale doesn't matter.   The only time the acoustic
  scale is likely to matter is if you generate state-level lattices, e.g. you
- do lattice generation with --determinize-lattice=false.  
+ do lattice generation with --determinize-lattice=false.
  This program has other options, that are mostly related to what to do if
  determinization "blows up", i.e. exhausts memory, but in general you can just
  leave these at their default values.   These are mostly there because a previous
@@ -740,7 +745,7 @@ or:
 
  The program lattice-oracle takes two tables: the first of lattices, the second
  of transcriptions (C++ representation: vector<int32>), and outputs the oracle
- word-sequence of the lattices; it prints out the corresponding WERs in its 
+ word-sequence of the lattices; it prints out the corresponding WERs in its
  logging output.  This is done by constructing an "edit-distance FST" and
  composing this with unweighted acceptors constructed from the lattice and
  from the reference.
@@ -772,15 +777,15 @@ or:
  FSTs, in the same format used by the code that compiles the training
   graphs.  The resulting FSTs will be weighted word acceptors (although
  in current use of this program we apply a scale of zero so there are
- actually no weights).  These may be used as input to the program 
+ actually no weights).  These may be used as input to the program
  compile-train-graphs-fsts to produce decoding graphs that only include
  the paths present in the lattice.  The main use of this is to do
  lattice rescoring across different models that don't share the same tree.
  An example of usage is:
 \verbatim
   lattice-to-fst --lm-scale=0.0 --acoustic-scale=0.0 ark:1.lats ark:1.words
-\endverbatim 
- 
+\endverbatim
+
 
  \subsection lattices_operations_copy Copying lattices
 
@@ -803,7 +808,7 @@ or:
 \verbatim
   lattice-to-nbest --acoustic-scale=0.1 --n=10 ark:1.lats ark:1.nbest
 \endverbatim
- then the archive 1.nbest will contain lattices for uttA-1, uttA-2, ... uttA-2,
+ then the archive 1.nbest will contain lattices for uttA-1, uttA-2, ... uttA-10,
  for uttB-1 ... uttB-10, and so on.  Of course some of the utterances may not
  have that many N-best entries if the lattice did not contain that many distinct
  word sequences.  The program lattice-to-nbest needs the acoustic scale as this
@@ -816,7 +821,7 @@ or:
  nbest-to-linear ark:1.nbest ark:1.ali ark:1.words ark:1.lmscore ark:1.acscore
 \endverbatim
  This program reads in an archive of lattices, which must each be a linear FST,
- and outputs 4 archives, corresponding to the input symbol sequences, the output 
+ and outputs 4 archives, corresponding to the input symbol sequences, the output
  symbol sequences, and the acoustic and LM scores.   The format (assuming
  you write in text mode, e.g. with "ark,t:my_file") is as one would
  expect, e.g.:
@@ -827,7 +832,7 @@ utt-A-2 7890  420 10244
 ...
 \endverbatim
 Remember that Kaldi always deals with integer id's; you can convert to words
-using the symbol table and scripts/int2sym.pl.  The reverse transformation
+using the symbol table and "utils/int2sym.pl -f 2-".  The reverse transformation
 can be accomplished with linear-to-nbest.
 
  A program that might also be useful is lattice-to-1best, which is not the same

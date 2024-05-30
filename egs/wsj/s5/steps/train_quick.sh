@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 
 
@@ -67,6 +67,9 @@ cp $alidir/splice_opts $dir 2>/dev/null
 cp $alidir/cmvn_opts $dir 2>/dev/null # cmn/cmvn option.
 cp $alidir/delta_opts $dir 2>/dev/null
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;
+
+utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt || exit 1;
+cp $lang/phones.txt $dir || exit 1;
 
 ## Set up features.
 if [ -f $alidir/final.mat ]; then feat_type=lda; else feat_type=delta; fi
@@ -148,7 +151,7 @@ fi
 if [ $stage -le 0 ]; then
   echo "$0: compiling training graphs"
   $cmd JOB=1:$nj $dir/log/compile_graphs.JOB.log \
-    compile-train-graphs --batch-size=$batch_size $dir/tree $dir/1.mdl $lang/L.fst  \
+    compile-train-graphs --read-disambig-syms=$lang/phones/disambig.int --batch-size=$batch_size $dir/tree $dir/1.mdl $lang/L.fst  \
     "ark:sym2int.pl --map-oov $oov -f 2- $lang/words.txt < $sdata/JOB/text |" \
     "ark:|gzip -c >$dir/fsts.JOB.gz" || exit 1;
 fi

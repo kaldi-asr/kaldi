@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # Based mostly on the Switchboard recipe. The training database is TED-LIUM,
 # it consists of TED talks with cleaned automatic transcripts:
@@ -15,8 +15,8 @@
 # Apache 2.0
 #
 
-. cmd.sh
-. path.sh
+. ./cmd.sh
+. ./path.sh
 
 nj=32
 njdec=11

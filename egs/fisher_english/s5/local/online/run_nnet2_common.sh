@@ -1,13 +1,13 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Make the features, build the iVector extractor
 
 
-. cmd.sh
+. ./cmd.sh
 
 stage=1
 set -e
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 

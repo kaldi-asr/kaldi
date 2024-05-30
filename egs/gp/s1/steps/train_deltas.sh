@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2012  Arnab Ghoshal
 # Copyright 2010-2011  Microsoft Corporation
@@ -111,7 +111,7 @@ if [ $# != 6 ]; then
   error_exit $usage;
 fi
 
-[ -f path.sh ] && . path.sh
+[ -f path.sh ] && . ./path.sh
 
 numleaves=$1
 totgauss=$2

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2010-2011 Microsoft Corporation
 
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -49,7 +49,7 @@ if [ $# != 3 ]; then
    exit 1;
 fi
 
-if [ -f path.sh ]; then . path.sh; fi
+if [ -f path.sh ]; then . ./path.sh; fi
 
 lang=$1
 tree=$2/tree

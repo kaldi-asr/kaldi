@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Hub-5 Eval 2001 data preparation 
 # Author:  Arnab Ghoshal (March 2013)
@@ -25,7 +25,7 @@ glm=$3
 [ ! -d $sdir/english ] \
   && echo Expecting directory $sdir/english to be present && exit 1;
 
-. path.sh 
+. ./path.sh
 
 dir=data/local/eval2001
 mkdir -p $dir

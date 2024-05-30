@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2013  Arnab Ghoshal
 #                 Johns Hopkins University (author: Daniel Povey)
@@ -47,7 +47,7 @@ shift 3
 fisher_dirs=( $@ )
 
 for f in "$text" "$lexicon"; do
-  [ ! -f $x ] && echo "$0: No such file $f" && exit 1;
+  [ ! -f $f ] && echo "$0: No such file $f" && exit 1;
 done
 
 loc=`which ngram-count`;
@@ -75,7 +75,7 @@ export LC_ALL=C
 
 heldout_sent=10000
 cut -d' ' -f2- $text | gzip -c > $dir/train.all.gz
-cut -d' ' -f2- $text | tail -n +$heldout_sent | gzip -c > $dir/train.gz
+cut -d' ' -f2- $text | tail -n +$(($heldout_sent+1)) | gzip -c > $dir/train.gz
 cut -d' ' -f2- $text | head -n $heldout_sent > $dir/heldout
 
 cut -d' ' -f1 $lexicon > $dir/wordlist

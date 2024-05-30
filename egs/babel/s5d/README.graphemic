@@ -1,0 +1,173 @@
+Graphemic Lexicon from Unicode
+================================================================================
+
+General Description
+----------------------------------------
+Given some form of word list in an unknown language, we must find pronunciations
+for each word. When the language is written alphabetically, the letters
+themselves can be in place of phonemes for word pronunciations. In English for
+instance there would be 26 "phones", and possibly a few extra for the rarely
+occuring letters,
+
+  "ö","é","è","â", ...
+
+which occur primarily in foreign loan words. When the "phones" are derived from
+the orthography of the word, we refer to them as graphemic-acoustic-units. They
+are different from phonemes in that they are a noisy approximation of the true
+phonemic pronunciation of a word. Traditionally these gold standard
+pronunciation dictionaries are what are used to link the acoustic and written
+forms of words and they are manually generated. Using the orthography of the
+word to derive approximate pronunciations in terms of (graphemic-acoustc-units)
+provides an alternative that requires only a word list.
+
+Some languages use syllabic systems or partially alphabetic scripts, for which
+nothing close to a 1-1 mapping from graphemes to phonemes exists. Examples of
+such are Abougidas and Abjads.
+
+The premise of this system is that for most languages, there exists a unicode
+description of the graphemes from which the phonetics may be recovered.
+
+While non-alphabetic scripts present an obvious challenge, we find that even
+for languages such as English and French, the issue of whether or not to treat
+each accented character as a separate phone presents a problem. After all,
+pâté, pâte, and pate are all English words with different pronunciations.
+Resume, and résumé, are also examples. And this for a language that is generally
+considered unaccented. In French, which is known to have many diacritics
+affecting pronunciation, we nonetheless find words such as forêt, and bosquet,
+with essentially the same meaning whose "e" sounds have very much the same
+pronunciation. In some scripts, such diacritics are vowel markers, indicators
+of tone, or stress, and probably many other linguistic phenomena we have not
+yet encounted.
+
+Fortunately, the unicode representation of such graphemes has an alternate
+normalization, "NFKD", which decomposes a grapheme into its constituent parts.
+In this implementation we treat such marks as modifying the preceding grapheme.
+When the grapheme occurs frequently enough, the accented grapheme is
+automatically considered a separate phoneme. For infrequent accented graphemes
+we treat the accent as a tag and use the tag as an extra question in the tree
+building step.
+
+The issue of syllable boundaries in words is mostly important for keyword-seach.
+Syllables can be created by training a morphological analyser on the
+conversational transcripts, and then segmenting each word into its learned
+morphemes.
+
+Usage
+----------------------------------------
+All the scripts for creating the graphemic lexicon are located in local/lexion,
+except for prepare_unicode_lexicon.py. Run ...
+
+./run-1-main-unicode.sh --morfessor true
+
+for a full system run using a unicode-lexicon and morfessor.
+
+The general structure is.
+
+1. Generate list of unqiue words in the training data. Just use the word
+   entries of the filtered_lexicon if available. Do not include words present in
+   in conversation transcriptions such as <v-noise> <unk>, etc.. This will be
+   included in a separate lexicon of non-speech words. We do this for extra
+   flexibility on the types of non-speech words we want to include. Also
+   collect the word counts for training morfessor.
+
+local/lexicon/train_morphs.sh
+local/lexicon/apply_morphs.sh
+
+2. Use morfessor to create somewhat logical syllabic units. Train the system
+   on the conversational transcriptions for instance, though any body of text
+   in the language should do. The conversational transcriptions were used in
+   this script however.
+
+3. Segment each word in the word list into its morphemes. The result of this
+   is a file with words one column and the morpheme-segmented words, using '.'
+   as the morpheme separator in the other column.
+
+local/lexicon/make_unicode_lexicon.py
+
+4. Use the morphemic lexicon created in step 3. as input.
+
+5. Get the unicode representation for each grapheme in each word. Convert the
+   unicode representation of each word into actual units with which we derive
+   an entry in the lexicon. Store the mapping for possible use on new words
+   in data/local/grapheme_map.txt for instance. 
+
+local/prepare_unicode_lexicon.py
+6. This creates the rest of the data/local directory. It also adds the extra
+   questions derived from the unicode-derived tags to extra_questions.txt.
+
+
+local/lexicon/make_unicode_lexicon.py --apply-map data/local/grapheme_map.txt
+                                      --extra-lexicon data/local/lexicon.txt
+7. Apply the existing grapheme map to a new set of words. It takes the original
+   lexicon (data/local/lexicon.txt) and adds to it the entries derived from
+   a new wordlist. This is how to generate new entries in the lexicon without
+   retraining the acoustic models. 
+
+run-unicode-lexicon.sh
+
+for example scripts.
+
+
+
+Script Descriptions
+------------------------------------------------------------------------------
+local/lexicon/make_word_list.py
+usage: make_word_list.py [-h] [--misprons MISPRONS]
+                         transcripts_list transcripts_dir word_list
+
+positional arguments:
+  transcripts_list     Path to list of training transcripts
+  transcripts_dir      Path to the training transcripts directory
+  word_list            Path to the generated word list of training words
+
+optional arguments:
+  -h, --help           show this help message and exit
+  --misprons MISPRONS  Path to the generated word list of mispronounced words
+
+
+
+
+local/lexicon/make_unicode_lexicon.py
+usage: make_unicode_lexicon.py [-h] [-T TAG_PERCENTAGE]
+                             [--silence-lexicon SILENCE_LEXICON]
+                             [--extra-lexicon EXTRA_LEXICON] [-V VERBOSE]
+                             [--apply-map APPLY_MAP]
+                             word2baseform lexicon_out map_out
+
+positional arguments:
+  word2baseform         File with word list optionally paired with a baseform.
+  1 word per line with the baseform separated by a tab
+  lexicon_out           Path of output graphemc lexicon
+  map_out               Path of output grapheme-to-graphemic-acoustic units
+                        map
+
+optional arguments:
+  -h, --help            show this help message and exit
+  -T TAG_PERCENTAGE, --tag-percentage TAG_PERCENTAGE
+                        Percentage of least frequently occurring graphemes to
+                        be tagged
+  --silence-lexicon SILENCE_LEXICON
+                          File with silence words and pronunciations
+  --extra-lexicon EXTRA_LEXICON
+                          File with extra speech words and pronunciations
+  -V VERBOSE, --verbose VERBOSE
+                          Directory for storing useful log files
+  --apply-map APPLY_MAP
+                          Map to apply to wordlist
+
+
+
+
+local/prepare_unicode_lexicon.py
+usage: prepare_unicode_lexicon.py [-h] [--silence-lexicon SILENCE_LEXICON]
+                                  lexicon lexicon_dir
+
+positional arguments:
+  lexicon               A kaldi format lexicon.
+  lexicon_dir           Directory to which all files should be written
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --silence-lexicon SILENCE_LEXICON
+                            File with silence words and tab-separated
+                            pronunciations

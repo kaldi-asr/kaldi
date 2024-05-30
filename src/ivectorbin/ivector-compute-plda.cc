@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
         "<plda-out>\n"
         "e.g.: \n"
         " ivector-compute-plda ark:spk2utt ark,s,cs:ivectors.ark plda\n";
-    
+
     ParseOptions po(usage);
 
     bool binary = true;
@@ -45,9 +45,9 @@ int main(int argc, char *argv[]) {
     plda_config.Register(&po);
 
     po.Register("binary", &binary, "Write output in binary mode");
-    
+
     po.Read(argc, argv);
-    
+
     if (po.NumArgs() != 3) {
       po.PrintUsage();
       exit(1);
@@ -56,15 +56,15 @@ int main(int argc, char *argv[]) {
     std::string spk2utt_rspecifier = po.GetArg(1),
         ivector_rspecifier = po.GetArg(2),
         plda_wxfilename = po.GetArg(3);
-    
+
     int64 num_spk_done = 0, num_spk_err = 0,
         num_utt_done = 0, num_utt_err = 0;
 
     SequentialTokenVectorReader spk2utt_reader(spk2utt_rspecifier);
     RandomAccessBaseFloatVectorReader ivector_reader(ivector_rspecifier);
-    
+
     PldaStats plda_stats;
-    
+
     for (; !spk2utt_reader.Done(); spk2utt_reader.Next()) {
       std::string spk = spk2utt_reader.Key();
       const std::vector<std::string> &uttlist = spk2utt_reader.Value();
@@ -85,6 +85,7 @@ int main(int argc, char *argv[]) {
           num_utt_done++;
         }
       }
+
       if (ivectors.size() == 0) {
         KALDI_WARN << "Not producing output for speaker " << spk
                    << " since no utterances had iVectors";
@@ -100,25 +101,29 @@ int main(int argc, char *argv[]) {
         num_spk_done++;
       }
     }
-      
+
+    if (num_utt_done <= plda_stats.Dim())
+      KALDI_ERR << "Number of training iVectors is not greater than their "
+                << "dimension, unable to estimate PLDA.";
+
     KALDI_LOG << "Accumulated stats from " << num_spk_done << " speakers ("
               << num_spk_err << " with no utterances), consisting of "
               << num_utt_done << " utterances (" << num_utt_err
               << " absent from input).";
-    
+
     if (num_spk_done == 0)
       KALDI_ERR << "No stats accumulated, unable to estimate PLDA.";
     if (num_spk_done == num_utt_done)
       KALDI_ERR << "No speakers with multiple utterances, "
                 << "unable to estimate PLDA.";
-    
+
     plda_stats.Sort();
     PldaEstimator plda_estimator(plda_stats);
     Plda plda;
     plda_estimator.Estimate(plda_config, &plda);
 
     WriteKaldiObject(plda, plda_wxfilename, binary);
-    
+
     return (num_spk_done != 0 ? 0 : 1);
   } catch(const std::exception &e) {
     std::cerr << e.what();

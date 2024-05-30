@@ -20,7 +20,7 @@
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"
 #include "nnet3/nnet-chain-training.h"
-
+#include "cudamatrix/cu-allocator.h"
 
 int main(int argc, char *argv[]) {
   try {
@@ -40,18 +40,26 @@ int main(int argc, char *argv[]) {
         "\n"
         "nnet3-chain-train 1.raw den.fst 'ark:nnet3-merge-egs 1.cegs ark:-|' 2.raw\n";
 
+    int32 srand_seed = 0;
     bool binary_write = true;
     std::string use_gpu = "yes";
     NnetChainTrainingOptions opts;
 
     ParseOptions po(usage);
+    po.Register("srand", &srand_seed, "Seed for random number generator ");
     po.Register("binary", &binary_write, "Write output in binary mode");
     po.Register("use-gpu", &use_gpu,
                 "yes|no|optional|wait, only has effect if compiled with CUDA");
 
     opts.Register(&po);
+#if HAVE_CUDA==1
+    CuDevice::RegisterDeviceOptions(&po);
+#endif
+    RegisterCuAllocatorOptions(&po);
 
     po.Read(argc, argv);
+
+    srand(srand_seed);
 
     if (po.NumArgs() != 4) {
       po.PrintUsage();

@@ -1,0 +1,18 @@
+#!/bin/bash
+
+for x in exp/*/decode*; do [ -d $x ] && [[ $x =~ "$1" ]] && grep WER $x/wer_* | utils/best_wer.sh; done
+
+for x in exp/chain*/*/decode*; do [ -d $x ] && [[ $x =~ "$1" ]] && grep WER $x/wer_* | utils/best_wer.sh; done
+exit 0
+
+# Results on on dev_clean_2
+%WER 13.45 [ 2708 / 20138, 358 ins, 330 del, 2020 sub ] exp/tri3b/decode_nosp_tglarge_dev_clean_2/wer_17_0.0
+%WER 16.25 [ 3273 / 20138, 332 ins, 485 del, 2456 sub ] exp/tri3b/decode_nosp_tgmed_dev_clean_2/wer_16_0.0
+%WER 18.10 [ 3645 / 20138, 332 ins, 603 del, 2710 sub ] exp/tri3b/decode_nosp_tgsmall_dev_clean_2/wer_16_0.0
+
+%WER 18.58 [ 3742 / 20138, 366 ins, 763 del, 2613 sub ] exp/chain/tdnn1a_sp/decode_tgsmall_dev_clean_2/wer_10_0.0
+%WER 13.35 [ 2689 / 20138, 318 ins, 491 del, 1880 sub ] exp/chain/tdnn1a_sp/decode_tglarge_dev_clean_2/wer_9_0.5
+
+# Results with chain2 recipe. Results are w/o final model combination
+%WER 21.38 [ 4305 / 20138, 449 ins, 740 del, 3116 sub ] exp/chain2/tdnn1a_sp/decode_tgsmall_dev_clean_2//wer_10_0.0
+%WER 15.64 [ 3150 / 20138, 395 ins, 584 del, 2171 sub ] exp/chain2/tdnn1a_sp/decode_tglarge_dev_clean_2//wer_11_0.0

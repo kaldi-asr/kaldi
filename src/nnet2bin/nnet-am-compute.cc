@@ -3,6 +3,7 @@
 // Copyright 2012  Johns Hopkins University (author:  Daniel Povey)
 //           2015  Johns Hopkins University (author:  Daniel Garcia-Romero)
 //           2015  David Snyder
+//           2017  Karel Vesely
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -43,11 +44,14 @@ int main(int argc, char *argv[]) {
         "<feature-or-loglikes-wspecifier>\n"
         "See also: nnet-compute, nnet-logprob\n";
 
+    bool divide_by_priors = false;
     bool apply_log = false;
     bool pad_input = true;
     std::string use_gpu = "no";
     int32 chunk_size = 0;
     ParseOptions po(usage);
+    po.Register("divide-by-priors", &divide_by_priors, "If true, "
+                "divide by the priors stored in the model and re-normalize, apply-log may follow");
     po.Register("apply-log", &apply_log, "Apply a log to the result of the computation "
                 "before outputting.");
     po.Register("pad-input", &pad_input, "If true, duplicate the first and last frames "
@@ -88,6 +92,12 @@ int main(int argc, char *argv[]) {
     Nnet &nnet = am_nnet.GetNnet();
 
     int64 num_done = 0, num_frames = 0;
+
+    Vector<BaseFloat> inv_priors(am_nnet.Priors());
+    KALDI_ASSERT((!divide_by_priors || inv_priors.Dim() == am_nnet.NumPdfs()) &&
+                 "Priors in neural network not set up.");
+    inv_priors.ApplyPow(-1.0);
+
     SequentialBaseFloatMatrixReader feature_reader(features_rspecifier);
     BaseFloatMatrixWriter writer(features_or_loglikes_wspecifier);
 
@@ -105,13 +115,27 @@ int main(int argc, char *argv[]) {
       }
 
       Matrix<BaseFloat> output(output_frames, output_dim);
-      if (chunk_size > 0 && chunk_size < feats.NumRows()) {
-        NnetComputationChunked(nnet, feats, chunk_size, &output);
+      CuMatrix<BaseFloat> cu_feats(feats);
+      CuMatrix<BaseFloat> cu_output(output);
+      if (chunk_size > 0 && chunk_size < feats.NumRows()) {      
+        NnetComputationChunked(nnet, cu_feats, chunk_size, &cu_output);
       } else {
-        CuMatrix<BaseFloat> cu_feats(feats);
-        CuMatrix<BaseFloat> cu_output(output);
         NnetComputation(nnet, cu_feats, pad_input, &cu_output);
-        output.CopyFromMat(cu_output);
+      }
+      cu_output.Swap(&output);
+      
+      if (divide_by_priors) {
+        output.MulColsVec(inv_priors); // scales each column by the corresponding element
+        // of inv_priors.
+        for (int32 i = 0; i < output.NumRows(); i++) {
+          SubVector<BaseFloat> frame(output, i);
+          BaseFloat p = frame.Sum();
+          if (!(p > 0.0)) {
+            KALDI_WARN << "Bad sum of probabilities " << p;
+          } else {
+            frame.Scale(1.0 / p); // re-normalize to sum to one.
+          }
+        }
       }
 
       if (apply_log) {
@@ -135,5 +159,3 @@ int main(int argc, char *argv[]) {
     return -1;
   }
 }
-
-

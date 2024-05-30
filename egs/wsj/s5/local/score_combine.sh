@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2013  Arnab Ghoshal
 
@@ -24,8 +24,8 @@
 
 # begin configuration section.
 cmd=run.pl
-min_lmwt=9
-max_lmwt=20
+min_lmwt=7
+max_lmwt=17
 lat_weights=
 #end configuration section.
 

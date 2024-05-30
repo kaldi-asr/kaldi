@@ -23,6 +23,20 @@
 #include "fstext/kaldi-fst-io.h"
 #include "fstext/fstext-utils.h"
 
+namespace kaldi {
+void SetLinearAcceptorWeight(double cost, fst::VectorFst<fst::StdArc> *fst) {
+  typedef typename fst::StdArc::Label Label;
+  typedef typename fst::StdArc::Weight Weight;
+  typedef typename fst::StdArc::StateId StateId;
+
+  StateId start = fst->Start();
+  fst::MutableArcIterator<fst::VectorFst<fst::StdArc> > aiter(fst, start);
+  fst::StdArc arc = aiter.Value();
+  arc.weight = cost;
+  aiter.SetValue(arc);
+}
+}  // namespace kaldi
+
 int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
@@ -31,11 +45,22 @@ int main(int argc, char *argv[]) {
     typedef kaldi::uint64 uint64;
 
     const char *usage =
-        "Build a linear acceptor for each transcription. Read in the transcriptions in archive\n"
-        "format and write out the linear acceptors in archive format with the same key.\n"
+        "Build a linear acceptor for each transcription in the archive. "
+        "Read in the transcriptions in archive format and write out the linear "
+        "acceptors in archive format with the same key. The costs of "
+        "the arcs are set to be zero. The cost of the acceptor can be changed\n"
+        "by supplying the costs archive. In that case, the first arc's cost\n"
+        "will be set to the value obtained from the archive, i.e. the total\n"
+        "cost will be equal to cost. The cost archive can be sparse, i.e.\n"
+        "does not have to include zero-cost transcriptions. It is prefered\n"
+        "for the archive to be sorted (for efficiency).\n"
         "\n"
-        "Usage: transcripts-to-fsts [options]  transcriptions-rspecifier fsts-wspecifier\n"
-        " e.g.: transcripts-to-fsts ark:train.tra ark:train.fsts\n";
+        "Usage: \n"
+        " transcripts-to-fsts [options]  <transcriptions-rspecifier>"
+        " [<costs-rspecifier>] <fsts-wspecifier>\n"
+        "e.g.: \n"
+        " transcripts-to-fsts ark:train.tra ark,s,cs,t:costs.txt "
+        " ark:train.fsts\n";
 
     ParseOptions po(usage);
 
@@ -44,10 +69,16 @@ int main(int argc, char *argv[]) {
     bool project_input = false;
     bool project_output = false;
 
-    po.Register("left-compose", &left_compose, "Compose the given FST to the left");
-    po.Register("right-compose", &right_compose, "Compose the given FST to the right");
-    po.Register("project-input", &project_input, "Project input labels if true");
-    po.Register("project-output", &project_output, "Project input labels if true");
+    po.Register("left-compose", &left_compose,
+        "Compose the given FST to the left");
+    po.Register("right-compose", &right_compose,
+        "Compose the given FST to the right");
+    po.Register("project-input", &project_input,
+        "Project input labels if true "
+        "(makes sense only with connection to left|right composition)");
+    po.Register("project-output", &project_output,
+        "Project output labels if true"
+        "(makes sense only with connection to left|right composition)");
 
     po.Read(argc, argv);
 
@@ -56,11 +87,22 @@ int main(int argc, char *argv[]) {
       exit(1);
     }
 
-    std::string transcript_rspecifier = po.GetArg(1),
-        fst_wspecifier = po.GetOptArg(2);
+    std::string transcript_rspecifier,
+                costs_rspecifier,
+                fst_wspecifier;
+
+    if ( po.NumArgs() == 2 ) {
+      transcript_rspecifier  = po.GetArg(1);
+      fst_wspecifier = po.GetArg(2);
+    } else {
+      transcript_rspecifier  = po.GetArg(1);
+      costs_rspecifier = po.GetArg(2);
+      fst_wspecifier = po.GetArg(3);
+    }
 
 
     SequentialInt32VectorReader transcript_reader(transcript_rspecifier);
+    RandomAccessDoubleReader costs_reader(costs_rspecifier);
     TableWriter<VectorFstHolder> fst_writer(fst_wspecifier);
 
     // Read the possible given FSTs
@@ -81,13 +123,17 @@ int main(int argc, char *argv[]) {
 
       VectorFst<StdArc> fst;
       MakeLinearAcceptor(transcript, &fst);
+      if (costs_reader.IsOpen() && costs_reader.HasKey(key)) {
+        double cost = costs_reader.Value(key);
+        SetLinearAcceptorWeight(cost, &fst);
+      }
 
       if (lfst != NULL) {
         VectorFst<StdArc> composed_fst;
         Compose(*lfst, fst, &composed_fst);
         fst = composed_fst;
       }
-      
+
       if (rfst != NULL) {
         VectorFst<StdArc> composed_fst;
         Compose(fst, *rfst, &composed_fst);
@@ -111,7 +157,7 @@ int main(int argc, char *argv[]) {
     delete rfst;
 
     KALDI_LOG << "Done " << n_done << " transcriptions";
-    return (n_done != 0 ? 0 : 1);    
+    return (n_done != 0 ? 0 : 1);
   } catch(const std::exception &e) {
     std::cerr << e.what();
     return -1;

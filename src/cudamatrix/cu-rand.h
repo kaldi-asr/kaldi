@@ -1,6 +1,6 @@
 // cudamatrix/cu-rand.h
 
-// Copyright 2012  Karel Vesely
+// Copyright 2016  Brno University of Technology (author: Karel Vesely)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -17,65 +17,50 @@
 // See the Apache 2 License for the specific language governing permissions and
 // limitations under the License.
 
-
-
 #ifndef KALDI_CUDAMATRIX_CU_RAND_H_
 #define KALDI_CUDAMATRIX_CU_RAND_H_
 
-
+#include "cudamatrix/cu-device.h"
 #include "cudamatrix/cu-matrix.h"
+#include "cudamatrix/cu-vector.h"
 #include "base/kaldi-math.h"
 
 namespace kaldi {
 
-
-template<typename Real> 
+template<typename Real>
 class CuRand {
  public:
 
-  CuRand(): z1_(NULL), z2_(NULL), z3_(NULL), z4_(NULL), state_size_(0) { }
+   void SeedGpu() {
+  #if HAVE_CUDA == 1
+		CuDevice::Instantiate().SeedGpu();
+  #endif
+  }
 
-  ~CuRand();
-  
-  /// on demand seeding of all the buffers
-  void SeedGpu(MatrixIndexT state_size);
+  // CAUTION.
+  // For the versions of these functions that output to a CuMatrix (as opposed to
+  // CuMatrixBase), the random numbers depend on the stride, and the stride
+  // is not guaranteed to be consistent for the same dimension of matrix
+  // (it usually will be, but not when memory is nearly exhausted).  So
+  // for applications where consistency is essential, either use the versions
+  // of these function that accept CuMatrixBase, or initialize your matrix
+  // with the kStrideEqualNumCols argument to ensure consistent stride.
 
-  /// fill with numbers drawn from uniform distribution on [0, 1]
+  /// Fill with uniform [0..1] floats,
   void RandUniform(CuMatrixBase<Real> *tgt);
-  /// fill with normal random numbers
+  void RandUniform(CuMatrix<Real> *tgt);
+  void RandUniform(CuVectorBase<Real> *tgt);
+  /// Fill with Normal random numbers,
   void RandGaussian(CuMatrixBase<Real> *tgt);
+  void RandGaussian(CuMatrix<Real> *tgt);
   void RandGaussian(CuVectorBase<Real> *tgt);
 
-  /// align probabilities to discrete 0/1 states (use uniform samplig)
+  /// align probabilities to discrete 0/1 states (use uniform sampling),
   void BinarizeProbs(const CuMatrix<Real> &probs, CuMatrix<Real> *states);
-  /// add gaussian noise to each element
+  /// add gaussian noise to each element,
   void AddGaussNoise(CuMatrix<Real> *tgt, Real gscale = 1.0);
-
- private:
-  /// seed one buffer on the GPU.  If state_size == 0, just frees any
-  /// existing buffers.
-  void SeedBuffer(MatrixIndexT state_size, uint32 **tgt);
-   
- private:
-
-  // CANNOT DEFINE CuMatrix<uint32>, 
-  // CuMatrix has back-off Matrix which cannot hold integers. 
-  // The inner state of random number generator will be in 
-  // a raw buffer with the size of the current matrix. 
-  //
-  // On-demand seeding is used to get the correct size 
-  // of the state buffer z1,z2,z3,z4
-  
-  /// Inner state of the ``grid-like'' random number generator
-  uint32 *z1_, *z2_, *z3_, *z4_; 
-  int32 state_size_; ///< size of the buffers
-  
-  CuMatrix<Real> tmp_; ///< auxiliary matrix
 };
 
+}  // namsepace
 
-} // namsepace
-
-#endif
-
-
+#endif  // KALDI_CUDAMATRIX_CU_RAND_H_

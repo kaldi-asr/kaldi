@@ -23,6 +23,7 @@
 #include "lat/kaldi-lattice.h"
 #include "lat/word-align-lattice-lexicon.h"
 #include "lat/lattice-functions.h"
+#include "lat/lattice-functions-transition-model.h"
 
 int main(int argc, char *argv[]) {
   try {
@@ -47,11 +48,20 @@ int main(int argc, char *argv[]) {
     ParseOptions po(usage);
     bool output_if_error = true;
     bool output_if_empty = false;
+    bool test = false;
+    bool allow_duplicate_paths = false;
     
     po.Register("output-error-lats", &output_if_error, "Output lattices that aligned "
                 "with errors (e.g. due to force-out");
     po.Register("output-if-empty", &output_if_empty, "If true: if algorithm gives "
                 "error and produces empty output, pass the input through.");
+    po.Register("test", &test, "If true, testing code will be activated "
+                 "(the purpose of this is to validate the algorithm).");
+    po.Register("allow-duplicate-paths", &allow_duplicate_paths, "Only "
+                "has an effect if --test=true.  If true, does not die "
+                "(only prints warnings) if duplicate paths are found. "
+                "This should only happen with very pathological lexicons, "
+                "e.g. as encountered in testing code.");
     
     WordAlignLatticeLexiconOpts opts;
     opts.Register(&po);
@@ -100,7 +110,16 @@ int main(int argc, char *argv[]) {
       
       bool ok = WordAlignLatticeLexicon(clat, tmodel, lexicon_info, opts,
                                         &aligned_clat);
-      
+
+      if (ok && test) { // We only test if it succeeded.
+        if (!TestWordAlignedLattice(lexicon_info, tmodel, clat, aligned_clat,
+                                    allow_duplicate_paths)) {
+          KALDI_WARN << "Lattice failed test (activated because --test=true). "
+                     << "Probable code error, please contact Kaldi maintainers.";
+          ok = false;
+        }
+      }
+
       if (!ok) {
         num_err++;
         if (output_if_empty && aligned_clat.NumStates() == 0 &&

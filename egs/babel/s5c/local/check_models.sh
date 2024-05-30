@@ -1,10 +1,10 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 
 check_model () {
   model=$1
   if [ -s $model ]; then echo $model
-  else 
+  else
     dir=`dirname $model`
     latest_model=`ls -lt $dir/{?,??}.mdl 2>/dev/null | head -1 | awk '{print $9}'`
     echo "*$model is not there, latest is: $latest_model"

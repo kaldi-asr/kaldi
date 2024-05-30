@@ -1,9 +1,9 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2012 Vassil Panayotov
 # Apache 2.0
 
-. path.sh || exit 1
+. ./path.sh || exit 1
 
 echo "=== Building a language model ..."
 

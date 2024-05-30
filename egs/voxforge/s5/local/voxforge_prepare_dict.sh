@@ -1,9 +1,9 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2012 Vassil Panayotov
 # Apache 2.0
 
-. path.sh || exit 1
+. ./path.sh || exit 1
 
 locdata=data/local
 locdict=$locdata/dict
@@ -12,7 +12,7 @@ echo "=== Preparing the dictionary ..."
 
 if [ ! -f $locdict/cmudict/cmudict.0.7a ]; then
   echo "--- Downloading CMU dictionary ..."
-  mkdir -p $locdict 
+  mkdir -p $locdict
   svn co http://svn.code.sf.net/p/cmusphinx/code/trunk/cmudict \
     $locdict/cmudict || exit 1;
 fi
@@ -49,9 +49,9 @@ if [[ "$(uname)" == "Darwin" ]]; then
   alias readlink=greadlink
 fi
 
-sequitur=$KALDI_ROOT/tools/sequitur
+sequitur=$KALDI_ROOT/tools/sequitur-g2p
 export PATH=$PATH:$sequitur/bin
-export PYTHONPATH=$PYTHONPATH:`readlink -f $sequitur/lib/python*/site-packages`
+export PYTHONPATH=$PYTHONPATH:`utils/make_absolute.sh $sequitur/lib/python*/site-packages`
 
 if ! g2p=`which g2p.py` ; then
   echo "The Sequitur was not found !"
@@ -64,6 +64,7 @@ g2p.py --model=conf/g2p_model --apply $locdict/vocab-oov.txt > $locdict/lexicon-
 
 cat $locdict/lexicon-oov.txt $locdict/lexicon-iv.txt |\
   sort > $locdict/lexicon.txt
+rm $locdict/lexiconp.txt 2>/dev/null || true
 
 echo "--- Prepare phone lists ..."
 echo SIL > $locdict/silence_phones.txt

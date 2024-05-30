@@ -1,0 +1,42 @@
+Run_end2end.sh (WER using lang_test, lang_unk)
+flat_start:
+  • %WER 14.41 [ 2671 / 18542, 262 ins, 561 del, 1848 sub ] exp/chain/e2e_cnn_1a/decode_test/wer_11_1.0
+  • %WER 15.21 [ 2821 / 18542, 375 ins, 500 del, 1946 sub ] exp/chain/e2e_cnn_1a/decode_test/wer_11_1.0
+
+cnn_e2eali_1a: 
+  • %WER 11.94 [ 2214 / 18542, 267 ins, 380 del, 1567 sub ] exp/chain/cnn_e2eali_1a/decode_test/wer_9_1.0
+  • %WER 13.30 [ 2467 / 18542, 441 ins, 330 del, 1696 sub ] exp/chain/cnn_e2eali_1a/decode_test/wer_9_0.5
+
+cnn_e2eali_1b: 
+  • %WER 11.20 [ 2076 / 18542, 260 ins, 335 del, 1481 sub ] exp/chain/cnn_e2eali_1b/decode_test/wer_9_1.0
+  • %WER 12.46 [ 2311 / 18542, 371 ins, 326 del, 1614 sub ] exp/chain/cnn_e2eali_1b/decode_test/wer_9_1.0
+
+cnn_e2eali_1c: 
+  • %WER 9.90 [ 1836 / 18542, 257 ins, 227 del, 1352 sub ] exp/chain/cnn_e2eali_1c/decode_test/wer_10_1.0
+  • %WER 12.10 [ 2243 / 18542, 411 ins, 269 del, 1563 sub ] exp/chain/cnn_e2eali_1c/decode_test/wer_12_0.5
+
+
+Run.sh (WER using lang_test, lang_unk)
+cnn_1a:
+  • %WER 15.18 [ 2815 / 18542, 285 ins, 509 del, 2021 sub ] exp/chain/cnn_1a/decode_test/wer_11_0.0
+  • %WER 16.88 [ 3130 / 18542, 444 ins, 611 del, 2075 sub ] exp/chain/cnn_1a/decode_test/wer_11_0.0
+
+cnn_chainali_1a:
+  • %WER 14.09 [ 2612 / 18542, 245 ins, 505 del, 1862 sub ] exp/chain/cnn_chainali_1a/decode_test/wer_13_0.0
+  • %WER 15.93 [ 2954 / 18542, 454 ins, 470 del, 2030 sub ] exp/chain/cnn_chainali_1a/decode_test/wer_10_0.0
+
+cnn_chainali_1b:
+  • %WER 13.29 [ 2465 / 18542, 221 ins, 499 del, 1745 sub ] exp/chain/cnn_chainali_1b/decode_test/wer_12_0.5
+  • %WER 15.09 [ 2798 / 18542, 418 ins, 468 del, 1912 sub ] exp/chain/cnn_chainali_1b/decode_test/wer_10_0.5
+
+cnn_chainali_1c:
+  • %WER 11.59 [ 2149 / 18542, 276 ins, 362 del, 1511 sub ] exp/chain/cnn_chainali_1c/decode_test/wer_9_0.0
+  • %WER 13.75 [ 2550 / 18542, 465 ins, 368 del, 1717 sub ] exp/chain/cnn_chainali_1c/decode_test/wer_8_0.0
+  
+cnn_chainali_1d:
+  • %WER 11.07 [ 2053 / 18542, 261 ins, 311 del, 1481 sub ] exp/chain/cnn_chainali_1c/decode_test/wer_9_0.0
+  • %WER 12.95 [ 2402 / 18542, 436 ins, 313 del, 1653 sub ] exp/chain/cnn_chainali_1c/decode_test/wer_8_0.0
+
+cnn_chainali_1e:
+  • %WER 10.03 [ 1859 / 18542, 226 ins, 291 del, 1342 sub ] exp/chain/cnn_chainali_1e/decode_test/wer_11_0.5
+    %WER 12.15 [ 2253 / 18542, 406 ins, 282 del, 1565 sub ] exp/chain/cnn_chainali_1e/decode_test/wer_10_0.5

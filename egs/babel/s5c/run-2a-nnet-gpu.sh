@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 dir=exp/tri6_nnet
 train_stage=-10
 

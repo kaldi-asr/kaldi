@@ -23,174 +23,6 @@
 namespace kaldi {
 namespace nnet3 {
 
-void UnitTestConfigLineParse() {
-  std::string str;
-  {
-    ConfigLine cfl;
-    str = "xx=yyy foo=bar  baz=123 ba=1:2";
-    bool status = cfl.ParseLine(str);
-    KALDI_ASSERT(status);
-
-    KALDI_ASSERT(cfl.HasUnusedValues());
-    std::string str_value;
-    KALDI_ASSERT(cfl.GetValue("xx", &str_value));
-    KALDI_ASSERT(str_value == "yyy");
-    KALDI_ASSERT(cfl.HasUnusedValues());
-    KALDI_ASSERT(cfl.GetValue("foo", &str_value));
-    KALDI_ASSERT(str_value == "bar");
-    KALDI_ASSERT(cfl.HasUnusedValues());
-    KALDI_ASSERT(!cfl.GetValue("xy", &str_value));
-    KALDI_ASSERT(cfl.GetValue("baz", &str_value));
-    KALDI_ASSERT(str_value == "123");
-
-    std::vector<int32> int_values;
-    KALDI_ASSERT(!cfl.GetValue("xx", &int_values));
-    KALDI_ASSERT(cfl.GetValue("baz", &int_values));
-    KALDI_ASSERT(cfl.HasUnusedValues());
-    KALDI_ASSERT(int_values.size() == 1 && int_values[0] == 123);
-    KALDI_ASSERT(cfl.GetValue("ba", &int_values));
-    KALDI_ASSERT(int_values.size() == 2 && int_values[0] == 1 && int_values[1] == 2);
-    KALDI_ASSERT(!cfl.HasUnusedValues());
-  }
-
-  {
-    ConfigLine cfl;
-    str = "baz=x y z pp = qq ab =cd ac= bd";
-    KALDI_ASSERT(!cfl.ParseLine(str));
-  }
-  {
-    ConfigLine cfl;
-    str = "baz=x y z pp = qq ab=cd ac=bd";
-    KALDI_ASSERT(!cfl.ParseLine(str));
-  }
-  {
-    ConfigLine cfl;
-    str = "baz";
-    KALDI_ASSERT(!cfl.ParseLine(str));
-  }
-  {
-    ConfigLine cfl;
-    str = "a=b baz";
-    KALDI_ASSERT(cfl.ParseLine(str) && cfl.UnusedValues() == "a=b baz");
-  }
-  {
-    ConfigLine cfl;
-    str = "a=b baz ";
-    KALDI_ASSERT(cfl.ParseLine(str) && cfl.UnusedValues() == "a=b baz");
-  }
-  {
-    ConfigLine cfl;
-    str = "a=b =c";
-    KALDI_ASSERT(!cfl.ParseLine(str));
-  }
-  {
-    ConfigLine cfl;
-    str = "baz='x y z' pp=qq ab=cd ac=bd";
-    KALDI_ASSERT(cfl.ParseLine(str));
-    std::string str_value;
-    KALDI_ASSERT(cfl.GetValue("baz", &str_value));
-    KALDI_ASSERT(str_value == "x y z");
-    KALDI_ASSERT(cfl.GetValue("pp", &str_value));
-    KALDI_ASSERT(str_value == "qq");
-    KALDI_ASSERT(cfl.UnusedValues() == "ab=cd ac=bd");
-    KALDI_ASSERT(cfl.GetValue("ab", &str_value));
-    KALDI_ASSERT(str_value == "cd");
-    KALDI_ASSERT(cfl.UnusedValues() == "ac=bd");
-    KALDI_ASSERT(cfl.HasUnusedValues());
-    KALDI_ASSERT(cfl.GetValue("ac", &str_value));
-    KALDI_ASSERT(str_value == "bd");
-    KALDI_ASSERT(!cfl.HasUnusedValues());
-  }
-
-  {
-    ConfigLine cfl;
-    str = "baz= pp = qq flag=t ";
-    KALDI_ASSERT(!cfl.ParseLine(str));
-  }
-  {
-    ConfigLine cfl;
-    str = " baz= pp=qq flag=t  ";
-    KALDI_ASSERT(cfl.ParseLine(str));
-
-    std::string str_value;
-    KALDI_ASSERT(cfl.GetValue("baz", &str_value));
-    KALDI_ASSERT(str_value == "");
-    KALDI_ASSERT(cfl.GetValue("pp", &str_value));
-    KALDI_ASSERT(str_value == "qq");
-    KALDI_ASSERT(cfl.HasUnusedValues());
-    KALDI_ASSERT(cfl.GetValue("flag", &str_value));
-    KALDI_ASSERT(str_value == "t");
-    KALDI_ASSERT(!cfl.HasUnusedValues());
-
-    bool bool_value = false;
-    KALDI_ASSERT(cfl.GetValue("flag", &bool_value));
-    KALDI_ASSERT(bool_value);
-  }
-
-  {
-    ConfigLine cfl;
-    str = "_baz=a -pp=qq";
-    KALDI_ASSERT(!cfl.ParseLine(str));
-  }
-  {
-    ConfigLine cfl;
-    str = "0baz=a pp=qq";
-    KALDI_ASSERT(!cfl.ParseLine(str));
-  }
-  {
-    ConfigLine cfl;
-    str = "-baz=a pp=qq";
-    KALDI_ASSERT(!cfl.ParseLine(str));
-  }
-  {
-    ConfigLine cfl;
-    str = "_baz'=a pp=qq";
-    KALDI_ASSERT(!cfl.ParseLine(str));
-  }
-  {
-    ConfigLine cfl;
-    str = "baz=g";
-    KALDI_ASSERT(cfl.ParseLine(str));
-    bool flag;
-    KALDI_ASSERT(!cfl.GetValue("baz", &flag));
-  }
-  {
-    ConfigLine cfl;
-    str = "_baz1=a pp=qq";
-    KALDI_ASSERT(cfl.ParseLine(str));
-
-    std::string str_value;
-    KALDI_ASSERT(cfl.GetValue("_baz1", &str_value));
-  }
-}
-
-void UnitTestReadConfig() {
-  std::string str = " alpha=aa beta=\"b b\"# String test\n"
-      "beta2='b c' beta3=bd # \n"
-      "gamma=1:2:3:4  # Int Vector test\n"
-      " de1ta=f  # Bool + Integer in key Comment test delta=t  \n"
-      "_epsilon=-1  # Int Vector test _epsilon=1 \n"
-      " zet-_a=0.15   theta=1.1# Float, -, _ test\n"
-      "quoted='a b c' # quoted string\n"
-      "quoted2=\"d e 'a b=c' f\" # string quoted with double quotes";
-
-  std::istringstream is(str);
-  std::vector<std::string> lines;
-  ReadConfigFile(is, &lines);
-  KALDI_ASSERT(lines.size() == 8);
-
-  ConfigLine cfl;
-  for (size_t i = 0; i < lines.size(); i++) {
-    KALDI_ASSERT(cfl.ParseLine(lines[i]));
-  }
-  KALDI_ASSERT(cfl.GetValue("beta2", &str) && str == "b c");
-  KALDI_ASSERT(cfl.GetValue("_epsilon", &str) && str == "-1");
-  KALDI_ASSERT(cfl.GetValue("quoted", &str) && str == "a b c");
-  KALDI_ASSERT(cfl.GetValue("quoted2", &str) && str == "d e 'a b=c' f");
-
-  BaseFloat float_val = 0;
-  KALDI_ASSERT(cfl.GetValue("zet-_a", &float_val) && ApproxEqual(float_val, 0.15));
-}
 
 void UnitTestDescriptorTokenize() {
   std::vector<std::string> lines;
@@ -241,6 +73,19 @@ void UnitTestSummarizeVector() {
   KALDI_LOG << "vec = " << vec << " -> " << SummarizeVector(vec);
 }
 
+void  UnitTestNameMatchesPattern() {
+  KALDI_ASSERT(NameMatchesPattern("hello", "hello"));
+  KALDI_ASSERT(!NameMatchesPattern("hello", "hellox"));
+  KALDI_ASSERT(!NameMatchesPattern("hellox", "hello"));
+  KALDI_ASSERT(NameMatchesPattern("hellox", "hello*"));
+  KALDI_ASSERT(NameMatchesPattern("hello", "hello*"));
+  KALDI_ASSERT(NameMatchesPattern("", "*"));
+  KALDI_ASSERT(NameMatchesPattern("x", "*"));
+  KALDI_ASSERT(NameMatchesPattern("foo12bar", "foo*bar"));
+  KALDI_ASSERT(NameMatchesPattern("foo12bar", "foo*"));
+  KALDI_ASSERT(NameMatchesPattern("foo12bar", "*bar"));
+}
+
 } // namespace nnet3
 
 } // namespace kaldi
@@ -249,10 +94,9 @@ int main() {
   using namespace kaldi;
   using namespace kaldi::nnet3;
 
-  UnitTestConfigLineParse();
-  UnitTestReadConfig();
   UnitTestDescriptorTokenize();
   UnitTestSummarizeVector();
+  UnitTestNameMatchesPattern();
 
   KALDI_LOG << "Parse tests succeeded.";
 

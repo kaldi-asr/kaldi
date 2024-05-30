@@ -1,8 +1,8 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-. cmd.sh
+. ./cmd.sh
 
-. path.sh
+. ./path.sh
 
 
 ###
@@ -44,18 +44,18 @@ data=data-fbank
   # Prepare data for training mono
   utils/subset_data_dir.sh --shortest $data/train_nodev 100000 $data/train_100kshort
   utils/subset_data_dir.sh  $data/train_100kshort 10000 $data/train_10k
-  local/remove_dup_utts.sh 100 $data/train_10k $data/train_10k_nodup
+  utils/data/remove_dup_utts.sh 100 $data/train_10k $data/train_10k_nodup
 
   # Take the first 30k utterances (about 1/8th of the data)
   utils/subset_data_dir.sh --first $data/train_nodev 30000 $data/train_30k
-  local/remove_dup_utts.sh 200 $data/train_30k $data/train_30k_nodup
+  utils/data/remove_dup_utts.sh 200 $data/train_30k $data/train_30k_nodup
 
-  local/remove_dup_utts.sh 300 $data/train_nodev $data/train_nodup
+  utils/data/remove_dup_utts.sh 300 $data/train_nodev $data/train_nodup
 
   # Take the first 100k utterances (just under half the data); we'll use
   # this for later stages of training.
   utils/subset_data_dir.sh --first $data/train_nodev 100000 $data/train_100k
-  local/remove_dup_utts.sh 200 $data/train_100k $data/train_100k_nodup
+  utils/data/remove_dup_utts.sh 200 $data/train_100k $data/train_100k_nodup
 }
 
 
@@ -165,18 +165,18 @@ data=data-bn/tri5a_uc-mlp-part2/
   # Prepare data for training mono
   utils/subset_data_dir.sh --shortest $data/train_nodev 100000 $data/train_100kshort
   utils/subset_data_dir.sh  $data/train_100kshort 10000 $data/train_10k
-  local/remove_dup_utts.sh 100 $data/train_10k $data/train_10k_nodup
+  utils/data/remove_dup_utts.sh 100 $data/train_10k $data/train_10k_nodup
 
   # Take the first 30k utterances (about 1/8th of the data)
   utils/subset_data_dir.sh --first $data/train_nodev 30000 $data/train_30k
-  local/remove_dup_utts.sh 200 $data/train_30k $data/train_30k_nodup
+  utils/data/remove_dup_utts.sh 200 $data/train_30k $data/train_30k_nodup
 
-  local/remove_dup_utts.sh 300 $data/train_nodev $data/train_nodup
+  utils/data/remove_dup_utts.sh 300 $data/train_nodev $data/train_nodup
 
   # Take the first 100k utterances (just under half the data); we'll use
   # this for later stages of training.
   utils/subset_data_dir.sh --first $data/train_nodev 100000 $data/train_100k
-  local/remove_dup_utts.sh 200 $data/train_100k $data/train_100k_nodup
+  utils/data/remove_dup_utts.sh 200 $data/train_100k $data/train_100k_nodup
 }
 
 

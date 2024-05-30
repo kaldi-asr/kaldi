@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # by Johns Hopkins University (Author: Daniel Povey), 2012.  Apache 2.0.
 
 # This script does MMI discriminative training, including
@@ -62,6 +62,10 @@ dir=$6
 
 silphonelist=`cat $lang/phones/silence.csl`
 mkdir -p $dir/log
+
+utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt || exit 1;
+utils/lang/check_phones_compatible.sh $lang/phones.txt $dubmdir/phones.txt || exit 1;
+cp $lang/phones.txt $dir || exit 1;
 
 for f in $data/feats.scp $lang/phones.txt $dubmdir/final.dubm $alidir/final.mdl \
   $alidir/ali.1.gz $denlatdir/lat.1.gz; do

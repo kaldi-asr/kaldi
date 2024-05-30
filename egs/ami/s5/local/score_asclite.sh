@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright Johns Hopkins University (Author: Daniel Povey) 2012.  Apache 2.0.
 # 2014, University of Edinburgh, (Author: Pawel Swietojanski)
 # 2015, Brno University of Technology (Author: Karel Vesely)
@@ -7,7 +7,7 @@
 cmd=run.pl
 stage=0
 decode_mbr=true
-min_lmwt=9
+min_lmwt=7
 max_lmwt=15
 asclite=true
 iter=final

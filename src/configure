@@ -1,44 +1,162 @@
 #!/bin/bash
-#
-# This configure script is hand-generated, not auto-generated.
-# It creates the file kaldi.mk, which is %included by the Makefiles
-# in the subdirectories.
-# The file kaldi.mk is editable by hand-- for example, you may want to
-# remove the options -g -O0 -DKALDI_PARANOID, or edit the
-# -DKALDI_DOUBLE_PRECISION option (to be 1 not 0),
 
+# This configure script is hand-generated, not auto-generated.  It creates the
+# file kaldi.mk, which is %included by the Makefiles in the subdirectories.
+# The file kaldi.mk is editable by hand -- for example, you may want to
+# uncomment the options -O0 -DKALDI_PARANOID, or edit the DOUBLE_PRECISION
+# variable (to be 1 not 0).
 
 #  Example command lines:
 # ./configure
-# ./configure --shared  ## shared libraries.
-# ./configure --mkl-root=/opt/intel/mkl
-# ./configure --mkl-root=/opt/intel/mkl --threaded-math=yes
-# ./configure --mkl-root=/opt/intel/mkl --threaded-math=yes --mkl-threading=tbb
-#        This is for MKL 11.3 -- which does not seem  to provide Intel OMP libs
-# ./configure  --openblas-root=../tools/OpenBLAS/install  # before doing
-#        # this, cd to ../tools and type "make openblas".  Note:
-#        # this is not working correctly on all platforms, do "make test"
+# ./configure --shared                # Build shared Kaldi libraries.
+# ./configure --mathlib=OPENBLAS      # Build and use OpenBLAS.
+#        # Before doing this, cd to ../tools and type "make -j openblas".
+# ./configure --openblas-root=/usr    # Use system OpenBLAS.
+#        # Note: this is not working correctly on all platforms, do "make test"
 #        # and look out for segmentation faults.
 # ./configure --atlas-root=../tools/ATLAS/build
+# ./configure --use-cuda=no   # disable CUDA detection (will build cpu-only
+#                             # version of kaldi even on CUDA-enabled machine.
+# ./configure --use-cuda --cudatk-dir=/usr/local/cuda/ --cuda-arch=-arch=sm_70
+#        # Use cuda in /usr/local/cuda and set the arch to sm_70
+# ./configure --static --fst-root=/opt/cross/armv8hf \
+#   --atlas-root=/opt/cross/armv8hf --host=armv8-rpi3-linux-gnueabihf
+#        # Cross-compile for armv8hf. This assumes that you have OpenFST built
+#        # with the armv8-rpi3-linux-gnueabihf toolchain and installed to
+#        # /opt/cross/armv8hf. It also assumes that you have an ATLAS library
+#        # built for the target install to /opt/cross/armv8hf and that the
+#        # armv8-rpi3-linux-gnueabihf toolchain is available in your path.
+# ./configure --static --openblas-root=/opt/cross/arm-linux-androideabi \
+#   --fst-root=/opt/cross/arm-linux-androideabi --fst-version=1.6.9 \
+#   --android-incdir=/opt/cross/arm-linux-androideabi/sysroot/usr/include \
+#   --host=arm-linux-androideabi
+#        # Cross-compile for Android on arm. The only difference here is the
+#        # addition of the the --android-includes flag because the toolchains
+#        # produced by the Android NDK don't always include the C++ stdlib
+#        # headers in the normal cross-compile include path.
+#   --host=aarch64-linux-android
+#        # support for 64bit ARMv8 (AArch64) architecture in Android.
 
-#This should be incremented after every significant change of the configure script
-#I.e. after each change that affects the kaldi.mk or the build system as whole
-CONFIGURE_VERSION=3
+# This should be incremented after any significant change to the configure
+# script, i.e. any change affecting kaldi.mk or the build system as a whole.
+CONFIGURE_VERSION=14
 
+# We support bash version 3.2 (Macs still ship with this version as of 2019)
+# and above.
+[[ $BASH_VERSION < '3.2' ]] && {
+  echo >&2 "bash version ${BASH_VERSION} is too old, cannot continue." \
+           "You won't be able to run Kaldi recipes with it anyway." \
+           "Please upgrade. bash version 3.2 or higher is required."
+  exit 1;
+}
+
+if ! [ -x "$PWD/configure" ]; then
+  echo 'You must run "configure" from the src/ directory.'
+  exit 1
+fi
+
+function usage {
+  cat <<EOF
+'configure' configures Kaldi installation.
+
+Usage: [VAR=VALUE]... $0 [OPTION]...
+
+The default configuration is to build and link against static Kaldi libraries.
+OpenFst and Math libraries are linked dynamically.
+
+Configuration options:
+  --help                Display this help message and exit
+  --version             Display the version of 'configure' and exit
+  --static              Build and link against static libraries [default=no]
+  --shared              Build and link against shared libraries [default=no]
+  --use-cuda            Build with CUDA [default=yes]
+  --with-cudadecoder    Build with CUDA decoder [default=yes]
+  --cudatk-dir=DIR      CUDA toolkit directory
+  --cuda-arch=FLAGS     Override the default CUDA_ARCH flags. See:
+         https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html#nvcc-examples.
+  --use-rocm            Build with ROCm
+  --rocm-dir=DIR        ROCM directory
+  --rocm-targets=TGTS   Comma separated list of GPU targets to target through ROCm
+  --debug-level=N       Use assertion level 0 (disabled), 1, or 2 [default=1]
+  --double-precision    Build with BaseFloat set to double if yes [default=no],
+                        mostly useful for testing purposes.
+  --static-fst          Build with static OpenFst libraries [default=no]
+  --fst-root=DIR        OpenFst root directory [default=../tools/openfst/]
+  --fst-version=STR     OpenFst version string
+  --mathlib=LIB         Math library [default=MKL|OPENBLAS, based on platform]
+                        Supported libraries: ATLAS, MKL, CLAPACK, OPENBLAS.
+  --static-math         Build with static math libraries [default=no]
+  --atlas-root=DIR      ATLAS root directory [default=../tools/ATLAS/]
+  --openblas-root=DIR   OpenBLAS root directory
+  --clapack-root=DIR    CLAPACK root directory
+  --mkl-root=DIR        MKL root directory
+  --mkl-libdir=DIR      MKL library directory
+  --omp-libdir=DIR      OpenMP directory
+  --speex-root=DIR      SPEEX root directory
+  --speex-libdir=DIR    SPEEX library directory
+  --speex-incdir=DIR    SPEEX include directory
+  --static-speex        Build with static speex libraries [default=no]
+  --host=HOST           Host triple in the format 'cpu-vendor-os'
+                        If provided, it is prepended to all toolchain programs.
+  --android-incdir=DIR  Android include directory
+  --enable-kenlm        enable kenlm runtime library installed in "../tools/kenlm"
+                        via extras/install_kenlm_query_only.sh, [default=no]
+  --enable-tcmalloc     enable tcmalloc library installed in "../tools/gperftools"
+                        via extras/install_tcmalloc.sh, [default=no]
+
+Following environment variables can be used to override the default toolchain.
+  CXX         C++ compiler [default=g++]
+  AR          Archive maintenance utility [default=ar]
+  AS          Assembler [default=as]
+  RANLIB      Archive indexing utility [default=ranlib]
+
+If a host triple is provided, it is prepended to CXX, AR, AS and RANLIB.
+
+Following environment variables can be used to provide additional flags to the
+compiler/linker.
+  CXXFLAGS    Additional C++ compiler flags, e.g. -I<include-dir>
+  LDFLAGS     Additional linker flags, e.g. -L<lib-dir>
+  LDLIBS      Additional libraries to pass to the linker, e.g. -l<lib>
+
+EOF
+}
+
+# E.g. Die "Invalid switch --foobar"
+Die() { echo >&2 "$0: FATAL:" "$@"; exit 1; }
+
+# E.g. abspath=$(rel2abs "../tools") || exit 1
+#  - Set 'abspath' to existing absolute path of $1, return 0.
+#  - print empty string if path does not exist, return non-0.
 function rel2abs {
-  if [ ! -z "$1" ]; then
-    local retval=`cd $1 2>/dev/null && pwd || exit 1`
-    echo $retval
-  fi
+  [[ $1 ]] && cd -P "$1" 2>/dev/null && pwd
 }
 
-function read_dirname {
-  local dir_name=`expr "X$1" : '[^=]*=\(.*\)'`;
-  local retval=`rel2abs $dir_name`
-  [ -z $retval ] && echo "Bad option '$1': no such directory" && exit 1;
-  echo $retval
+# E.g.: GetSwitchValue var --some-switch=foo
+# Assign variable named 'var' to 'foo'. Return 0 iff value is not empty.
+GetSwitchValue() {
+  IFS='=' read -r -- _ $1 <<< "$2" && [[ ${!1} ]]
 }
 
+# E.g.: GetSwitchValueOrDie var --some-switch=foo
+# Assign variable named 'var' to 'foo'. Die with a fatal error if value is empty.
+GetSwitchValueOrDie() {
+  GetSwitchValue "$@" ||
+    Die "'$2': switch requires a value. See '$0 --help'."
+}
+
+# E.g.: GetSwitchExistingPathOrDie var --some-switch=../tools
+#  - Set 'var' to absolute path of '../tools' if exists, return 1.
+#  - Die with a fatal error if path does not exist or not given in switch.
+GetSwitchExistingPathOrDie() {
+  GetSwitchValueOrDie "$@"  # Already sets variable named $1 to path.
+  local path varname=$1
+  path=$(rel2abs "${!varname}") && [[ -d $path ]] ||
+    Die "'$2': switch must specify an existing directory. See '$0 --help'."
+  builtin printf -v $varname %s "$path"  # Assign $path to variable '$varname'.
+}
+
+# TODO(kkm): Kill this. `[[ ${var-} ]]' is the idiomatic equivalent in bash.
+#   Even better, do not rely on uninitialized variables.
 function is_set {
   local myvar=${1:-notset}
   if [ "$myvar" == "notset" ]; then
@@ -48,195 +166,20 @@ function is_set {
   fi
 }
 
-
-
-##   First do some checks.  These verify that all the things are
-##   here that should be here.
-if ! [ -x "$PWD/configure" ]; then
-  echo 'You must run "configure" from the src/ directory.'
-  exit 1
-fi
-
-## Default locations for FST and linear algebra libraries.
-MATHLIB='ATLAS'
-ATLASROOT=`rel2abs ../tools/ATLAS/`
-FSTROOT=`rel2abs ../tools/openfst`
-
-# Avoid using any variables that are set in the shell.
-unset MKLROOT
-unset CLAPACKROOT
-unset OPENBLASROOT
-unset MKLLIBDIR
-
-function usage {
-  echo 'Usage: ./configure [--static|--shared] [--threaded-atlas={yes|no}] [--atlas-root=ATLASROOT] [--fst-root=FSTROOT]
-  [--openblas-root=OPENBLASROOOT] [--clapack-root=CLAPACKROOT] [--mkl-root=MKLROOT] [--mkl-libdir=MKLLIBDIR]
-  [--omp-libdir=OMPDIR] [--static-fst={yes|no}] [--static-math={yes|no}] [--threaded-math={yes|no}] [--mathlib=ATLAS|MKL|CLAPACK|OPENBLAS]
-  [--use-cuda={yes|no}] [--cudatk-dir=CUDATKDIR][--mkl-threading=sequential|iomp|tbb|gomp]';
-}
-
-threaded_atlas=false #  By default, use the un-threaded version of ATLAS.
-threaded_math=${threaded_atlas}
-static_math=false
-static_fst=false
-use_cuda=true
-dynamic_kaldi=false
-mkl_threading=sequential
-
-cmd_line="$0 $@"  # Save the command line to include in kaldi.mk
-
-while [ $# -gt 0 ];
-do
-  case "$1" in
-  --help)
-    usage; exit 0 ;;
-  --version)
-    echo $CONFIGURE_VERSION; exit 0 ;;
-  --static)
-    dynamic_kaldi=false;
-    static_math=true;
-    static_fst=true;
-    shift ;;
-  --shared)
-    dynamic_kaldi=true;
-    static_math=false;
-    static_fst=false;
-    shift ;;
-  --atlas-root=*)
-    ATLASROOT=`read_dirname $1`;
-    shift ;;
-  --threaded-atlas=yes)
-    threaded_atlas=true;
-    shift ;;
-  --threaded-atlas=no)
-    threaded_atlas=false;
-    shift ;;
-  --threaded-math=yes)
-    threaded_atlas=true;
-    threaded_math=true;
-    mkl_threading=iomp
-    shift ;;
-  --threaded-math=no)
-    threaded_atlas=false;
-    threaded_math=false;
-    mkl_threading=sequential
-    shift ;;
-  --use-cuda=yes)
-    use_cuda=true;
-    shift ;;
-  --use-cuda=no)
-    use_cuda=false;
-    shift ;;
-  --static-math=yes)
-    static_math=true;
-    shift ;;
-  --static-math=no)
-    static_math=false;
-    shift ;;
-  --static-fst=yes)
-    static_fst=true;
-    shift ;;
-  --static-fst=no)
-    static_fst=false;
-    shift ;;
-  --mkl-threading=sequential)
-    threaded_atlas=false;
-    threaded_math=false;
-    mkl_threading=sequential;
-    shift ;;
-  --mkl-threading=*)
-    mkl_threading=`expr "X$1" : '[^=]*=\(.*\)'`;
-    threaded_atlas=true;
-    threaded_math=true;
-    shift ;;
-  --fst-root=*)
-    FSTROOT=`read_dirname $1`;
-    shift ;;
-  --clapack-root=*)
-    CLAPACKROOT=`read_dirname $1`;
-    shift ;;
-  --openblas-root=*)
-    OPENBLASROOT=`read_dirname $1`;
-    shift ;;
-  --mkl-root=*)
-    MKLROOT=`read_dirname $1`;
-    shift ;;
-  --mkl-libdir=*)
-    MKLLIBDIR=`read_dirname $1`;
-    shift ;;
-  --speex-root=*)
-    SPEEXROOT=`read_dirname $1`;
-    shift ;;
-  --speex-libdir=*)
-    SPEEXLIBDIR=`read_dirname $1`;
-    shift ;;
-  --speex-includedir=*)
-    SPEEXINCLUDEDIR=`read_dirname $1`;
-    shift ;;
-  --omp-libdir=*)
-    OMPLIBDIR=`read_dirname $1`;
-    shift ;;
-  --mathlib=*)
-    MATHLIB=`expr "X$1" : '[^=]*=\(.*\)'`;
-    shift ;;
-  --cudatk-dir=*)
-    CUDATKDIR=`read_dirname $1`;
-    shift ;; #CUDA is used in src/cudamatrix and src/nnet{,bin} only
-  *)  echo "Unknown argument: $1, exiting"; usage; exit 1 ;;
-  esac
-done
-
-# the idea here is that if you change the configuration options from using
-# CUDA to not using it, or vice versa, we want to recompile all parts of the
-# code that may use a GPU.  Touching this file is a way to force this.
-touch cudamatrix/cu-common.h 2>/dev/null
+# Lowercase/uppercase argument. Only bash 4.2+ has internal faclilties for this,
+# and we support versions down to 3.2.
+lcase () { awk '{print tolower($0)}' <<<"$1" ; }
+ucase () { awk '{print toupper($0)}' <<<"$1" ; }
 
 function failure {
   echo "***configure failed: $* ***" >&2
-  if [ -f kaldi.mk ]; then rm kaldi.mk; fi
+  rm -f kaldi.mk
   exit 1;
 }
 
 function check_exists {
-  if [ ! -f $1 ]; then failure "$1 not found."; fi
+  [[ -f $1 ]] || failure "$1 not found."
 }
-
-function check_for_bad_gcc {
-  if which gcc >&/dev/null; then  # gcc is on the path
-    gcc_version=$(gcc -dumpspecs 2>&1 | grep -A1 -F '*version:' | grep -v version)
-    if [ "$gcc_version" == "4.8.2" ] || [ "$gcc_version" == "4.8.1" ]; then
-      echo "*** WARNING: your version of gcc seems to be 4.8.1 or 4.8.2. ***"
-      echo "*** These versions of gcc has a bug in nth_element ***"
-      echo "*** in its implementation of the standard library ***"
-      echo "*** This will cause Kaldi to crash (make test   ***"
-      echo "*** would fail). Please either upgrade or downgrade gcc. ***"
-      exit 1
-    fi
-  fi
-}
-
-function check_for_slow_expf {
-  cd probe
-  rm -f exp-test
-  make -f Makefile.slow_expf 1>/dev/null
-  ./exp-test
-  if [ $? -eq 1 ]; then
-      echo "*** WARNING: expf() seems to be slower than exp() on your machine. This is a known bug in old versions of glibc. Please consider updating glibc. ***"
-      echo "*** Kaldi will be configured to use exp() instead of expf() in base/kaldi-math.h Exp() routine for single-precision floats. ***"
-      echo "CXXFLAGS += -DKALDI_NO_EXPF" >> ../kaldi.mk
-  fi
-  cd ..
-}
-
-
-function exit_success {
-  check_for_bad_gcc;
-  check_for_slow_expf;
-  echo "SUCCESS"
-  exit 0;
-}
-
-
 
 function check_library {
   local libpath=$1
@@ -248,179 +191,139 @@ function check_library {
   return 1
 }
 
+function check_compiler {
 
+  # Part of error message.
+  local supported_compiler="GNU g++ >= 5.0, Apple clang >= 6.0 or LLVM clang >= 3.5"
+  local compiler=$1
+  local compiler_ver_info compiler_ver compiler_ver_num
 
-#Check if at least one of these variables is set
-#If yes, we want to switch to using the MKL
-is_set $MKLLIBDIR && echo "Force-configuring KALDI to use MKL" && export MATHLIB="MKL"
-is_set $MKLROOT && echo "Force-configuring KALDI to use MKL"&& export MATHLIB="MKL"
-is_set $CLAPACKROOT && echo "Force-configuring KALDI to use CLAPACK"&& export MATHLIB="CLAPACK"
-is_set $OPENBLASROOT && echo "Force-configuring KALDI to use OPENBLAS"&& export MATHLIB="OPENBLAS"
+  compiler_ver_info=$($compiler --version 2>/dev/null) ||
+    failure "$compiler is not installed.
+You need $supported_compiler."
 
-#MKL functions
-function linux_configure_mkllibdir {
-  local mklroot=$1
+  case $compiler_ver_info in
+    *[gc]++*)
+      compiler_ver=$($compiler -dumpversion)
+      compiler_ver_num=$(echo $compiler_ver | sed 's/\./ /g' | xargs printf "%d%02d%02d")
+      (( compiler_ver_num < 50000 )) &&
+        failure "$compiler (g++-$compiler_ver) is not supported.
+You need $supported_compiler."
+      ;;
 
-  if [ -d $mklroot/lib/em64t ]; then
-    echo $mklroot/lib/em64t
-  elif [ -d $mklroot/lib/intel64 ]; then
-    echo $mklroot/lib/intel64
-  else
-    return 1;
+    *Apple*)
+      compiler_ver=$(echo $compiler_ver_info | grep version | sed "s/.*version \([0-9\.]*\).*/\1/")
+      compiler_ver_num=$(echo $compiler_ver_info | grep version | sed "s/.*clang-\([0-9]*\).*/\1/")
+      (( compiler_ver_num < 600 )) &&
+        failure "$compiler (Apple clang-$compiler_ver) is not supported.
+You need $supported_compiler."
+      ;;
+
+    *LLVM*|*[Cc]lang)
+      compiler_ver=$(echo $compiler_ver_info | grep version | sed "s/.*version \([0-9\.]*\).*/\1/")
+      compiler_ver_num=$(echo $compiler_ver | sed 's/\./ /g' | xargs printf "%d%02d")
+      (( compiler_ver_num < 305 )) &&
+        failure "$compiler (LLVM clang-$compiler_ver) is not supported.
+You need $supported_compiler."
+      ;;
+
+    *)
+      echo >&2 "WARNING: Unfamiliar compiler $compiler. Use at your risk and peril."
+  esac
+
+}
+
+function check_for_slow_expf {
+  # We cannot run this test if we are cross compiling.
+  if [[ "$TARGET_ARCH" == "`uname -m`" ]] ; then
+    ( cd probe
+      rm -f exp-test
+      make -f Makefile.slow_expf 1>/dev/null
+      if ! ./exp-test; then
+        echo "\
+*** WARNING: expf() seems to be slower than exp() on your machine. This is
+***          a known bug in old versions of glibc. Please consider updating it.
+***          Kaldi will be configured to use exp() instead of expf() in
+***          base/kaldi-math.h Exp() routine for single-precision floats."
+        echo "CXXFLAGS += -DKALDI_NO_EXPF" >> ../kaldi.mk
+      fi
+    )
   fi
 }
 
-function linux_configure_mkl_includes {
-  test -d $1/include && echo "$1/include" && return;
-  test -d $2/../../include && echo "$2/../../include" && return;
-  failure "Could not find the MKL include directory"
-}
+# ROCM is used only in selected directories including src/cudamatrix, src/nnet*
+# and src/chain*. It is used to accelerate the neural network training.
+# The rest of Kaldi runs on CPUs.
 
-
-function linux_configure_mkl_libraries {
-  local mkllibdir=$1
-  local static=$2
-  local threaded=$3
-  local mplib=$4
-
-  declare -A mkl_libs
-  mkl_libs=(
-    [sequential]="mkl_intel_lp64 mkl_core mkl_sequential"
-    [gomp]="mkl_intel_lp64 mkl_core mkl_gnu_thread"
-    [iomp]="mkl_intel_lp64 mkl_core mkl_intel_thread "
-    [tbb]="mkl_intel_lp64 mkl_core mkl_tbb_thread "
-  )
-
-  if [ -z "${mkl_libs[$threaded]}" ]; then
-    echo >&2 "Unknown threading mode: $threaded"
-    return 1;
-  fi
-
-  local linkline=""
-  if  ! $static ; then
-    linkline="-L$mkllibdir -Wl,-rpath=$mkllibdir"
-    for file in ${mkl_libs[$threaded]}; do
-      local libfile=$mkllibdir/lib$file.so
-      check_exists $libfile
-      linkline+=" -l$file "
+function configure_rocm {
+  # Check for ROCM in the system
+  if [ ! -d "$ROCMDIR" ]; then
+    for base in $ROCM_PATH /opt/rocm /usr/local/rocm /usr/; do
+      if [ -f $base/bin/hipcc ] && [ -f $base/bin/hipconfig ]; then
+        ROCMDIR=$base
+        break
+      fi
     done
-  else
-    if [ $threaded == "sequential" ] ; then
-      test -f "$mkllibdir/libmkl_solver_lp64.a" && \
-        linkline="$linkline $mkllibdir/libmkl_solver_lp64.a"
-    else
-      test -f "$mkllibdir/libmkl_solver_lp64_sequential.a" && \
-        linkline="$linkline $mkllibdir/libmkl_solver_lp64_sequential.a"
+  fi
+
+  if [ -d "$ROCMDIR" ]; then
+    if [ ! -f $ROCMDIR/bin/hipcc ]; then
+      failure "Cannnot find hipcc and hipconfig in ROCm directory $ROCMDIR"
     fi
-    linkline="$linkline -Wl,--start-group"
-    for file in ${mkl_libs[$threaded]}; do
-      local libfile=$mkllibdir/lib${file}.a
-      check_exists $libfile
-      linkline="$linkline $libfile"
-    done
-    linkline="$linkline -Wl,--end-group "
   fi
-  echo "$linkline"
-}
+  echo "Using ROCm $ROCMDIR (hipcc compiler and runtime libraries)"
+  echo >> kaldi.mk
+  echo "# ROCm configuration" >> kaldi.mk
+  echo >> kaldi.mk
+  echo IS_GPU_BUILD = true >> kaldi.mk
+  echo ROCM = true >> kaldi.mk
+  echo "ROCMDIR = $ROCMDIR" >> kaldi.mk
+  echo "HIPCC = $ROCMDIR/bin/hipcc" >> kaldi.mk 
 
-function linux_configure_mkl_extra {
-  local static=$1
-  local threaded=$2
-
-  declare -A extra_libs
-  extra_libs=(
-    [sequential]="-ldl -lpthread -lm"
-    [gomp]="-lgomp -ldl -lpthread -lm"
-    [iomp]="-ldl -lpthread -lm"
-    [tbb]=" -ldl -lpthread -lm "
-  )
-  echo "$linkline ${extra_libs[$threaded]}"
-}
-
-function linux_configure_threadinglibdir {
-  local library=$1
-  local mklroot=$2
-  local mkllibdir=$3
-  local libexts=$4
-
-  ##First we try to use the library in the same directory
-  ##where the mkl libraries reside
-  ##Afterwards, just try some possibilities for different MKL layouts
-  for libext in $libexts; do
-    check_library $mkllibdir "lib$library" $libext \
-    && echo `readlink -f $mkllibdir` && return 0
-
-    local testdir=`(cd $mklroot; cd ..; cd lib/intel64;pwd)`
-    test -d $testdir && check_library $testdir "lib$library" $libext && echo `readlink -f $testdir` && return 0;
-    local testdir=`(cd $mklroot; cd ..; cd lib/em64t;pwd)`
-    test -d $testdir && check_library $testdir "lib$library" $libext && echo `readlink -f $testdir` && return 0;
-
-    local testdir=`(cd $mkllibdir; cd ../../..; cd lib/intel64;pwd)`
-    test -d $testdir && check_library $testdir "lib$library" $libext && echo `readlink -f $testdir` && return 0;
-    local testdir=`(cd $mklroot; cd ../../..; cd lib/em64t;pwd)`
-    test -d $testdir && check_library $testdir "lib$library" $libext && echo `readlink -f $testdir` && return 0;
+  echo "CUDA_ARCH = " >> kaldi.mk
+  echo "ROCM_ARCH_FLAGS = " >> kaldi.mk
+  for i in ${ROCM_TARGETS//,/ } ; do
+    echo "Targetting ROCm arch $i"
+    echo "ROCM_ARCH_FLAGS += --offload-arch=$i" >> kaldi.mk
   done
-
-  #failure "Could not find the library iomp5, use the configure switch --omp-libdir"
-  return 1
-}
-
-function linux_configure_mkl_threading {
-  local mklroot=$1
-  local mkllibdir=$2
-  local static=$3
-  local threading=$4
-
-  declare -A libs
-  libs=(
-    [sequential]=""
-    [gomp]=""
-    [iomp]="iomp5"
-    [tbb]="tbb"
-  )
-
-  echo >&2 "Configuring MKL threading as $threading"
-  library=${libs[$threading]}
-  if [ -z "$library" ]; then
-    return 0
+  
+  echo "HOST_ARCH = `uname -m`" >> kaldi.mk
+  echo >> kaldi.mk
+  
+  ROCM_MAJOR_VERSION=$(hipconfig -v | cut -d. -f1)
+  echo "ROCM_MAJOR_VERSION = $ROCM_MAJOR_VERSION" >> kaldi.mk
+  ROCM_MINOR_VERSION=$(hipconfig -v | cut -d. -f2)
+  echo "ROCM_MINOR_VERSION = $ROCM_MINOR_VERSION" >> kaldi.mk
+  
+  # Only ROCm 5.2+ is supported.
+  if [ $ROCM_MAJOR_VERSION -eq 5 ] && [ $ROCM_MINOR_VERSION -lt 2 ] || [ $ROCM_MAJOR_VERSION -lt 5 ] ; then
+    echo "\
+WARNING: ROCm $ROCM_MAJOR_VERSION.$ROCM_MINOR_VERSION found but ROCm 5.2 or above is required."
+    exit 1;
   fi
-
-  if ! is_set $OMPLIBDIR ; then
-    if  $static ; then
-      OMPLIBDIR=`linux_configure_threadinglibdir $library "$MKLROOT" "$MKLLIBDIR" "a"`
-    else
-      OMPLIBDIR=`linux_configure_threadinglibdir $library "$MKLROOT" "$MKLLIBDIR" "so"`
-    fi
-  fi
-
-  check_library $OMPLIBDIR "lib$library" "a" || \
-  check_library $OMPLIBDIR "lib$library" "so" || \
-  failure "Could not find the $library library, have your tried the --omp-libdir switch?"
-
-  OMP_LINK_LINE=''
-  # TODO(arnab): in the following conditional, the $static_math test is
-  # needed since the OpenMP library is assumed to be dynamic.
-  if [ "$OMPLIBDIR" != "$MKLLIBDIR" ] ; then
-    OMP_LINK_LINE="-L${OMPLIBDIR}"
-  fi
-  #if the libiomp5 library is dynamic, we add the rpath attribute
-  if ! $static_math ; then
-    OMP_LINK_LINE="$OMP_LINK_LINE -Wl,-rpath=$OMPLIBDIR -l$library"
+  
+  # 64bit/32bit? Not Linux? We do not support cross compilation with ROCm so, 
+  # use direct calls to uname -m here
+  if [ "`uname -m`" == "x86_64" ] && [ "`uname`" == "Linux" ] ; then
+    cat makefiles/hip_64bit.mk >> kaldi.mk
   else
-    OMP_LINK_LINE="$OMP_LINK_LINE -Wl,-Bstatic -l$library -Wl,-Bdynamic"
+    echo "\
+WARNING: ROCm will not be used!
+         ROCm is only supported with 64-bit Linux builds."
+    exit 1;
   fi
-  echo "$OMP_LINK_LINE"
 }
 
-##
-## CUDA is used only in selected directories including src/cudamatrix, src/nnet*
-## and src/chain*.  It is used to accelerate the neural network training, the
-## rest of kaldi runs on CPUs.
-##
+
+
+# CUDA is used only in selected directories including src/cudamatrix, src/nnet*
+# and src/chain*. It is used to accelerate the neural network training.
+# The rest of Kaldi runs on CPUs.
+
 function configure_cuda {
-  #check for CUDA toolkit in the system
-  if [ ! -d  "$CUDATKDIR" ]; then
-    for base in /Developer/NVIDIA/CUDA-6.0 /usr/local/share/cuda /usr/local/cuda /pkgs_local/cuda-3.2/ /opt/nvidia_cuda/cuda-6.0/ /usr/; do
+  # Check for CUDA toolkit in the system
+  if [ ! -d "$CUDATKDIR" ]; then
+    for base in /usr/local/share/cuda /usr/local/cuda /usr/; do
       if [ -f $base/bin/nvcc ]; then
         CUDATKDIR=$base
       fi
@@ -431,55 +334,164 @@ function configure_cuda {
     if [ ! -f $CUDATKDIR/bin/nvcc ]; then
       failure "Cannnot find nvcc in CUDATKDIR=$CUDATKDIR"
     fi
-    echo "Using CUDA toolkit $CUDATKDIR (nvcc compiler and runtime libraries)"
-    echo >> kaldi.mk
-    echo "#Next section enables CUDA for compilation" >> kaldi.mk
-    echo CUDA = true >> kaldi.mk
-    echo CUDATKDIR = $CUDATKDIR >> kaldi.mk
 
-    # Determine 'CUDA_ARCH',
-    CUDA_VERSION=$($CUDATKDIR/bin/nvcc -V | tr '.,' '_ ' | awk '/release/{sub(/.*release/,""); print $1;}') # MAJOR_MINOR,
-    if [ -z "$CUDA_VERSION" ] ; then
-      echo "Cannot figure out CUDA_VERSION from the nvcc output. Either your CUDA is too new or too old."
-      exit 1
+    if [[ "$TARGET_ARCH" != "`uname -m`" ]] ; then
+      failure "Cannot cross compile with CUDA support"
     fi
 
-    case $CUDA_VERSION in
-      5_5) CUDA_ARCH="-gencode arch=compute_13,code=sm_13 -gencode arch=compute_20,code=sm_20 -gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35" ;;
-      6_*) CUDA_ARCH="-gencode arch=compute_13,code=sm_13 -gencode arch=compute_20,code=sm_20 -gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50" ;;
-      7_*) CUDA_ARCH="-gencode arch=compute_20,code=sm_20 -gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_53,code=sm_53" ;;
-      8_*) CUDA_ARCH="-gencode arch=compute_20,code=sm_20 -gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_53,code=sm_53 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_62,code=sm_62" ;;
-      *) echo "Unsupported CUDA_VERSION (CUDA_VERSION=$CUDA_VERSION), please report it to Kaldi mailing list, together with 'nvcc -h' or 'ptxas -h' which lists allowed -gencode values..."; exit 1 ;;
-    esac
-    echo "CUDA_ARCH = $CUDA_ARCH" >> kaldi.mk
+    # Determine 'CUDA_ARCH',
+    CUDA_VERSION=$($CUDATKDIR/bin/nvcc -V | tr '.,' '_ ' |
+                     awk '/release/{sub(/.*release/,""); print $1;}') # MAJOR_MINOR,
+    [[ $CUDA_VERSION ]] ||
+      failure "Cannot figure out CUDA version from the nvcc output.
+Either your CUDA is too new or too old."
 
-    # 64bit/32bit?
+    COMPILER_VER_INFO=$($CXX --version 2>/dev/null)
+    if [[ $COMPILER_VER_INFO == *[gc]"++"* ]]; then
+      GCC_VER=$($CXX -dumpversion)
+      GCC_VER_NUM=$(echo $GCC_VER | sed 's/\./ /g' | xargs printf "%d%02d%02d")
+      case $CUDA_VERSION in
+        # Update this list by consulting https://gist.github.com/ax3l/9489132
+        # Disabling CUDA 7 and CUDA 8 because we now use C++14 to compile CUDA
+        # code. It is still possible to use those cuda versions by switching
+        # back to C++11 in src/makefiles/cuda_64bit.mk and use CUB <= 1.8.0.
+        # See tools/ and https://github.com/kaldi-asr/kaldi/pull/4242
+        #7_*)
+        #  MIN_UNSUPPORTED_GCC_VER="5.0"
+        #  MIN_UNSUPPORTED_GCC_VER_NUM=50000;
+        #;;
+        #8_*)
+        #  MIN_UNSUPPORTED_GCC_VER="6.0"
+        #  MIN_UNSUPPORTED_GCC_VER_NUM=60000;
+        #;;
+        [1-8]_*)
+          failure "CUDA version $CUDA_VERSION is too old and unsupported."
+          ;;
+        9_[01])
+          MIN_UNSUPPORTED_GCC_VER="7.0"
+          MIN_UNSUPPORTED_GCC_VER_NUM=70000
+          ;;
+        9_* | 10_0)
+          MIN_UNSUPPORTED_GCC_VER="8.0"
+          MIN_UNSUPPORTED_GCC_VER_NUM=80000
+          ;;
+        10_*)
+          MIN_UNSUPPORTED_GCC_VER="9.0"
+          MIN_UNSUPPORTED_GCC_VER_NUM=90000
+          ;;
+        11_[0-3])
+          MIN_UNSUPPORTED_GCC_VER="10.0"
+          MIN_UNSUPPORTED_GCC_VER_NUM=100000
+          ;;
+        11_*)
+          MIN_UNSUPPORTED_GCC_VER="12.0"
+          MIN_UNSUPPORTED_GCC_VER_NUM=120000
+          CUSOLVER=true
+        ;;
+        12_*)
+          MIN_UNSUPPORTED_GCC_VER="12.3"
+          MIN_UNSUPPORTED_GCC_VER_NUM=123000
+          CUSOLVER=true
+        ;;
+        *)
+          failure "Unsupported CUDA version ${CUDA_VERSION}.
+Please open an issue at https://github.com/kaldi-asr/kaldi/issues and include\
+ output of either 'nvcc -h' or 'ptxas -h'."
+          ;;
+      esac
+      if [ $GCC_VER_NUM -ge $MIN_UNSUPPORTED_GCC_VER_NUM ]; then
+        failure "CUDA $CUDA_VERSION does not support $CXX (g++-$GCC_VER).\
+ Only versions strictly older than $MIN_UNSUPPORTED_GCC_VER are supported."
+      fi
+
+      case $CUDA_VERSION in
+        [1-8]_* | 9_0) CUSOLVER=false ;;
+        *) CUSOLVER=true ;;
+      esac
+    fi
+
+    if [[ ! $CUDA_ARCH ]]; then
+      case `uname -m` in
+        x86_64 | ppc64le)
+          case $CUDA_VERSION in
+            # Disabling CUDA 7 and 8. See a few lines above for details.
+            #7_*) CUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52" ;;
+            #8_*) CUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61" ;;
+            9_*) CUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_70,code=sm_70" ;;
+            10_*) CUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_70,code=sm_70 -gencode arch=compute_75,code=sm_75" ;;
+            11_0) CUDA_ARCH="-gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_70,code=sm_70 -gencode arch=compute_75,code=sm_75 -gencode arch=compute_80,code=sm_80" ;;
+            11_*) CUDA_ARCH="-gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_70,code=sm_70 -gencode arch=compute_75,code=sm_75 -gencode arch=compute_80,code=sm_80 -gencode arch=compute_86,code=sm_86" ;;
+            12_*) CUDA_ARCH="-gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_70,code=sm_70 -gencode arch=compute_75,code=sm_75 -gencode arch=compute_80,code=sm_80 -gencode arch=compute_86,code=sm_86 -gencode arch=compute_90,code=sm_90" ;;
+            *) failure \
+                 "Unsupported CUDA version ${CUDA_VERSION}. Please open an" \
+                 "issue at https://github.com/kaldi-asr/kaldi/issues and" \
+                 "include output of either 'nvcc -h' or 'ptxas -h'."
+          esac
+        ;;
+        aarch64)
+          case $CUDA_VERSION in
+            #7_*) CUDA_ARCH="-gencode arch=compute_53,code=sm_53" ;;
+            #8_*) CUDA_ARCH="-gencode arch=compute_53,code=sm_53 -gencode arch=compute_62,code=sm_62" ;;
+            9_*) CUDA_ARCH="-gencode arch=compute_53,code=sm_53 -gencode arch=compute_62,code=sm_62" ;;
+            10_*|11_*) CUDA_ARCH="-gencode arch=compute_53,code=sm_53 -gencode arch=compute_62,code=sm_62 -gencode arch=compute_72,code=sm_72" ;;
+            *) echo "Unsupported CUDA_VERSION (CUDA_VERSION=$CUDA_VERSION), please report it to Kaldi mailing list, together with 'nvcc -h' or 'ptxas -h' which lists allowed -gencode values..."; exit 1 ;;
+          esac
+        ;;
+        *) echo "Unsupported architecture for use of Kaldi with CUDA. Please let us know by opening a bug at:
+    https://github.com/kaldi-asr/kaldi/issues/new?template=bug_report.md&title=Unsupported+CUDA+platform+[FILLPLATFORMNAME]"
+           exit 1
+      esac
+    fi
+
+    echo "Using CUDA toolkit $CUDATKDIR (nvcc compiler and runtime libraries)"
+    echo >> kaldi.mk
+    echo "# CUDA configuration" >> kaldi.mk
+    echo >> kaldi.mk
+
+    echo IS_GPU_BUILD = true >> kaldi.mk
+    echo CUDA = true >> kaldi.mk
+    echo CUDATKDIR = $CUDATKDIR >> kaldi.mk
+    echo "CUDA_ARCH = $CUDA_ARCH" >> kaldi.mk
+    echo "HOST_ARCH = `uname -m`" >> kaldi.mk
+    echo >> kaldi.mk
+
+    # 64bit/32bit? We do not support cross compilation with CUDA so, use direct
+    # calls to uname -m here
     if [ "`uname -m`" == "x86_64" ]; then
       if [ "`uname`" == "Darwin" ]; then
         sed 's/lib64/lib/g' < makefiles/cuda_64bit.mk >> kaldi.mk
       else
         cat makefiles/cuda_64bit.mk >> kaldi.mk
       fi
+    elif [ "`uname -m`" == "aarch64" ]; then
+      cat makefiles/cuda_64bit.mk >> kaldi.mk
+    elif [ "`uname -m`" == "ppc64le" ]; then
+      cat makefiles/cuda_64bit.mk >> kaldi.mk
     else
-      cat makefiles/cuda_32bit.mk >> kaldi.mk
+      echo "\
+WARNING: CUDA will not be used!
+         CUDA is not supported with 32-bit builds."
+      exit 1;
+    fi
+
+    #add cusolver flags for newer toolkits
+    if [ "$CUSOLVER" == "true" ]; then
+      echo "CUDA_LDLIBS += -lcusolver" >> kaldi.mk
     fi
 
   else
-    echo "CUDA will not be used! If you have already installed cuda drivers "
-    echo "and cuda toolkit, try using --cudatk-dir=... option.  Note: this is"
-    echo "only relevant for neural net experiments"
+    echo "\
+WARNING: CUDA will not be used! If you have already installed cuda drivers
+         and CUDA toolkit, try using the --cudatk-dir= option. A GPU and CUDA
+         are required to run neural net experiments in a realistic time."
   fi
 }
 
 function linux_configure_speex {
-  #check whether the user has called tools/extras/install_speex.sh or not
+  # Check whether the user has called tools/extras/install_speex.sh or not
   [ ! -z "$SPEEXROOT" ] || SPEEXROOT=`pwd`/../tools/speex
   [ ! -z "$SPEEXLIBDIR" ] || SPEEXLIBDIR="$SPEEXROOT"/lib
-  [ ! -z "$SPEEXINCLUDEDIR" ] || SPEEXINCLUDEDIR="$SPEEXROOT"/include
-  static_speex=$1
-  if [ "foo"$static_speex == "foo" ]; then
-    static_speex=false
-  fi
+  [ ! -z "$SPEEXINCDIR" ] || SPEEXINCDIR="$SPEEXROOT"/include
 
   if $static_speex; then
     spx_type=a
@@ -487,14 +499,15 @@ function linux_configure_speex {
     spx_type=so
   fi
   if [ ! -f "$SPEEXLIBDIR/libspeex.${spx_type}" ];then
-    echo "Info: configuring Kaldi not to link with Speex (don't worry, it's only needed if you"
-    echo "intend to use 'compress-uncompress-speex', which is very unlikely)"
+    echo "\
+INFO: Configuring Kaldi not to link with Speex. Don't worry, it's only needed if
+      you intend to use 'compress-uncompress-speex', which is very unlikely."
     return
   fi
 
-  if [ -f $SPEEXINCLUDEDIR/speex/speex.h ]; then
+  if [ -f $SPEEXINCDIR/speex/speex.h ]; then
     echo >> kaldi.mk
-    echo CXXFLAGS += -DHAVE_SPEEX -I${SPEEXINCLUDEDIR} >> kaldi.mk
+    echo CXXFLAGS += -DHAVE_SPEEX -I${SPEEXINCDIR} >> kaldi.mk
 
     if $static_speex; then
       echo LDLIBS += $SPEEXLIBDIR/libspeex.a
@@ -509,46 +522,38 @@ function linux_configure_speex {
   fi
 }
 
-function fix_cxx_flag {
-  CXXCOMPILER=`grep "CXX = " kaldi.mk | awk '{print $3}'`
-  if [ $CXXCOMPILER=="g++" ]; then
-    $CXXCOMPILER -dumpversion | \
-    awk '{if(NR==1 && $1<"4.4") print "sed \"s/-Wno-unused-local-typedefs//g\" \
-    kaldi.mk > tmpf; mv tmpf kaldi.mk; "}' | sh -
-  fi
+function linux_configure_atlas_failure {
+  echo ATLASINC = $ATLASROOT/include >> kaldi.mk
+  echo ATLASLIBS = [somewhere]/liblapack.a [somewhere]/libcblas.a [somewhere]/libatlas.a [somewhere]/libf77blas.a $ATLASLIBDIR >> kaldi.mk
+  echo >> kaldi.mk
+
+  failure "*** $*
+***
+*** Configure cannot proceed automatically.
+***
+*** If you know that you have ATLAS installed somewhere on your machine, you may
+*** be able to proceed by replacing [somewhere] in kaldi.mk with a directory.
+***
+*** If you have sudo (root) access you could install the ATLAS package on your
+*** machine, e.g. 'sudo apt-get install libatlas-dev libatlas-base-dev' or
+*** 'sudo yum install atlas.x86_64' or 'sudo zypper install libatlas3-devel'
+***
+*** On cygwin, install atlas from the installer GUI; and then run
+*** ./configure again.
+***
+*** Otherwise (or if you prefer OpenBLAS for speed), you could go the OpenBLAS
+*** route: cd to ../tools, type 'extras/install_openblas.sh', cd back to here,
+*** and type './configure --mathlib=OPENBLAS'."
 }
 
-function linux_atlas_failure { # function we use when we couldn't find
-   # ATLAS libs.
-   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
-   echo ATLASLIBS = [somewhere]/liblapack.a [somewhere]/libcblas.a [somewhere]/libatlas.a [somewhere]/libf77blas.a $ATLASLIBDIR >> kaldi.mk
-   cat makefiles/linux_atlas.mk >> kaldi.mk
-   fix_cxx_flag
-   echo "** $* ***"
-   echo "**  ERROR   **"
-   echo "** Configure cannot proceed automatically."
-   echo "**  If you know that you have ATLAS installed somewhere on your machine, you"
-   echo "** may be able to proceed by replacing [somewhere] in kaldi.mk with a directory."
-   echo "**  If you have sudo (root) access you could install the ATLAS package on your"
-   echo "** machine, e.g. 'sudo apt-get install libatlas-dev libatlas-base-dev' or"
-   echo "** 'sudo yum install atlas.x86_64' or 'sudo zypper install libatlas3-devel',"
-   echo "** or on cygwin, install atlas from the installer GUI; and then run ./configure"
-   echo "** again."
-   echo "**"
-   echo "**  Otherwise (or if you prefer OpenBLAS for speed), you could go the OpenBLAS"
-   echo "** route: cd to ../tools, type 'extras/install_openblas.sh', cd back to here,"
-   echo "** and type './configure  --openblas-root=../tools/OpenBLAS/install'"
-   exit 1;
-}
-
-function linux_check_static {
+function linux_atlas_check_static {
   # will exit with success if $dir seems to contain ATLAS libraries with
   # right architecture (compatible with default "nm")
   echo "int main(void) { return 0; }" > test_linking.cc;
   if [ -f $dir/libatlas.a ]; then # candidate...
     # Note: on the next line, the variable assignment
     # LANG=en_US should apply just to the program called on that line.
-    if LANG=en_US gcc -o test_linking test_linking.cc -u ATL_flushcache $dir/libatlas.a 2>&1 | grep -i "incompatible" >/dev/null; then
+    if LANG=en_US $CXX -o test_linking test_linking.cc -u ATL_flushcache $dir/libatlas.a 2>&1 | grep -i "incompatible" >/dev/null; then
       echo "Directory $dir may contain ATLAS libraries but seems to be wrong architecture";
       rm test_linking test_linking.cc 2>/dev/null
       return 1;
@@ -561,86 +566,30 @@ function linux_check_static {
   fi
 }
 
-function linux_configure_debian_ubuntu {
-  m=$1
-  ATLASLIBS="/usr/lib$m/atlas-base/libatlas.so.3gf  /usr/lib$m/atlas-base/libf77blas.so.3gf /usr/lib$m/atlas-base/libcblas.so.3gf  /usr/lib$m/atlas-base/liblapack_atlas.so.3gf"
+function linux_configure_atlas_generic {
+  # You pass in a directory (e.g. /usr/lib/atlas-base) and a suffix (e.g. so.3.0)
+  # and it tries to find ATLAS libraries with that dir and suffix.  On success it
+  # returns 0; on failure, it returns 1.
+  dir=$1
+  suffix=$2
+  ATLASLIBS="$dir/libatlas.$suffix $dir/libf77blas.$suffix $dir/libcblas.$suffix $dir/liblapack_atlas.$suffix"
   for f in $ATLASLIBS; do
     [ ! -f $f ] && return 1;
   done
   lapacklib=$(echo $ATLASLIBS | awk '{print $NF}')
   if ! nm --dynamic $lapacklib | grep ATL_cgetrf >/dev/null; then
-    exit 1;
-  fi
-  echo ATLASINC = $ATLASROOT/include >> kaldi.mk
-  echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
-  cat makefiles/linux_atlas.mk >> kaldi.mk
-  fix_cxx_flag
-  echo "Successfully configured for Debian/Ubuntu Linux [dynamic libraries] with ATLASLIBS =$ATLASLIBS"
-  $use_cuda && configure_cuda
-  linux_configure_speex
-  exit_success;
-}
-
-function linux_configure_debian_ubuntu3 {
-  ATLASLIBS="/usr/lib/libatlas.so.3  /usr/lib/libf77blas.so.3 /usr/lib/libcblas.so.3  /usr/lib/liblapack_atlas.so.3"
-  for f in $ATLASLIBS; do
-    [ ! -f $f ] && return 1;
-  done
-  lapacklib=$(echo $ATLASLIBS | awk '{print $NF}')
-  if ! nm --dynamic $lapacklib | grep ATL_cgetrf >/dev/null; then
-    exit 1;
-  fi
-  echo ATLASINC = $ATLASROOT/include >> kaldi.mk
-  echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
-  cat makefiles/linux_atlas.mk >> kaldi.mk
-  fix_cxx_flag
-  echo "Successfully configured for Debian/Ubuntu Linux [dynamic libraries] with ATLASLIBS =$ATLASLIBS"
-  $use_cuda && configure_cuda
-  linux_configure_speex
-  exit_success;
-}
-
-function linux_configure_debian7 {
-  ATLASLIBS="/usr/lib/atlas-base/libatlas.so.3.0 /usr/lib/atlas-base/libf77blas.so.3.0 /usr/lib/atlas-base/libcblas.so.3 /usr/lib/atlas-base/liblapack_atlas.so.3"
-  for f in $ATLASLIBS; do
-    [ ! -f $f ] && return 1;
-  done
-  lapacklib=$(echo $ATLASLIBS | awk '{print $NF}')
-  if ! nm --dynamic $lapacklib | grep ATL_cgetrf >/dev/null; then
+    echo "configure: failed to find symbol ATL_cgetrf in library $lapacklib"
     exit 1;
   fi
   libdir=$(dirname $(echo $ATLASLIBS | awk '{print $1}'))
-  [ -z "$libdir" ] && echo "Error getting libdir in linux_configure_debian7" && exit 1;
+  [ -z "$libdir" ] && echo "Error getting libdir in linux_configure_atlas_generic: dir=$dir,suffix=$suffix" && exit 1;
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS -Wl,-rpath=$libdir >> kaldi.mk
-  echo
-  cat makefiles/linux_atlas.mk >> kaldi.mk
-  fix_cxx_flag
-  echo "Successfully configured for Debian 7 [dynamic libraries] with ATLASLIBS =$ATLASLIBS"
-  $use_cuda && configure_cuda
-  linux_configure_speex
-  exit_success;
+  echo >> kaldi.mk
+  echo "Successfully configured ATLAS with ATLASLIBS=$ATLASLIBS"
 }
 
-function linux_configure_redhat {
-  m=$1  # 64 or empty.
-  ATLASLIBS="/usr/lib$m/atlas/libatlas.so.3 /usr/lib$m/atlas/libf77blas.so.3 /usr/lib$m/atlas/libcblas.so.3 /usr/lib$m/atlas/libclapack.so.3"
-  for f in $ATLASLIBS; do
-    [ ! -f $f ] && return 1;
-  done
-  libdir=$(dirname $(echo $ATLASLIBS | awk '{print $1}'))
-  [ -z "$libdir" ] && echo "Error getting libdir in linux_configure_redhat" && exit 1;
-  echo ATLASINC = $ATLASROOT/include >> kaldi.mk
-  echo ATLASLIBS = $ATLASLIBS -Wl,-rpath=$libdir >> kaldi.mk
-  echo
-  cat makefiles/linux_atlas.mk >> kaldi.mk
-  fix_cxx_flag
-  echo "Successfully configured for red hat [dynamic libraries] with ATLASLIBS =$ATLASLIBS"
-  $use_cuda && configure_cuda
-  exit_success;
-}
-
-function linux_configure_redhat_fat {
+function linux_configure_atlas_redhat_fat {
   # This is for when only two so-called 'fat' ATLAS libs are provided:
   # libsatlas.so.3 and libtatlas.so.3.
   # See http://stackoverflow.com/questions/13439296/build-shared-libraries-in-atlas.
@@ -650,25 +599,18 @@ function linux_configure_redhat_fat {
     [ ! -f $f ] && return 1;
   done
   libdir=$(dirname $(echo $ATLASLIBS | awk '{print $1}'))
-  [ -z "$libdir" ] && echo "Error getting libdir in linux_configure_redhat_fat" && exit 1;
+  [ -z "$libdir" ] && echo "Error getting libdir in linux_configure_atlas_redhat_fat" && exit 1;
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS -Wl,-rpath=$libdir >> kaldi.mk
-  echo
-  cat makefiles/linux_atlas.mk >> kaldi.mk
-  fix_cxx_flag
+  echo >> kaldi.mk
   echo "Successfully configured for red hat [dynamic libraries, fat] with ATLASLIBS =$ATLASLIBS"
-  $use_cuda && configure_cuda
-  exit_success;
 }
 
-
-function linux_configure_static {
-  if $threaded_atlas; then pt=pt; else pt=""; fi
-
+function linux_configure_atlas_static {
   if [ -z $ATLASLIBDIR ]; then # Note: it'll pick up the last one below.
     for dir in /usr{,/local}/lib{64,}{,/atlas,/atlas-sse2,/atlas-sse3} \
        /usr/local/atlas/lib{,64} `pwd`/../tools/ATLAS/build/install/lib/ $ATLASROOT/lib; do
-     linux_check_static &&  ATLASLIBDIR=$dir
+     linux_atlas_check_static && ATLASLIBDIR=$dir
     done
     if [ -z $ATLASLIBDIR ]; then # Note: it'll pick up the last one below.
       echo "Could not find libatlas.a in any of the generic-Linux places, but we'll try other stuff..."
@@ -681,11 +623,11 @@ function linux_configure_static {
   echo "Validating presence of ATLAS libs in $ATLASLIBDIR"
   ATLASLIBS=
   # The Lapack part of ATLAS seems to appear under various different names.. but it
-  # should always have symbols like ATL_cgetrf defined, so we test for this,
-  # for all the names we have encountered.
+  # should always have symbols like ATL_cgetrf and clapack_cgetrf defined, so we test for this.
   for libname in liblapack liblapack_atlas  libclapack; do
     if [ -f $ATLASLIBDIR/${libname}.a -a "$ATLASLIBS" == "" ]; then
-      if nm  $ATLASLIBDIR/${libname}.a  | grep ATL_cgetrf >/dev/null; then
+      if nm  $ATLASLIBDIR/${libname}.a  | grep ATL_cgetrf >/dev/null && \
+	 nm  $ATLASLIBDIR/${libname}.a  | grep clapack_cgetrf >/dev/null; then
          ATLASLIBS=$ATLASLIBDIR/${libname}.a
          echo "Using library $ATLASLIBS as ATLAS's CLAPACK library."
       fi
@@ -693,236 +635,553 @@ function linux_configure_static {
   done
   if [ "$ATLASLIBS" == "" ]; then
     echo Could not find any libraries $ATLASLIBDIR/{liblapack,liblapack_atlas,libclapack} that seem to be an ATLAS CLAPACK library.
-    return ;
+    return 1;
   fi
 
-  for x in lib${pt}cblas.a libatlas.a lib${pt}f77blas.a; do
+  for x in libcblas.a libatlas.a libf77blas.a; do
     if [ ! -f $ATLASLIBDIR/$x ]; then
       echo "Configuring static ATLAS libraries failed: Could not find library $x in directory $ATLASLIBDIR"
       return 1;
     fi
     ATLASLIBS="$ATLASLIBS $ATLASLIBDIR/$x"
   done
-  if $threaded_atlas; then ATLASLIBS="$ATLASLIBS"; fi
 
   echo ATLASINC = $ATLASROOT/include >> kaldi.mk
   echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
-  cat makefiles/linux_atlas.mk >> kaldi.mk
-  fix_cxx_flag
-  $use_cuda && configure_cuda
-  linux_configure_speex
+  echo >> kaldi.mk
   echo "Successfully configured for Linux [static libraries] with ATLASLIBS =$ATLASLIBS"
-  exit_success;
 }
 
-function linux_check_dynamic {
-  # will exit with success if $dir seems to contain ATLAS libraries with
-  # right architecture (compatible with default "nm")
-  if $threaded_atlas; then pt=t; else pt=s; fi
-  for atlas_libname in libatlas.so lib${pt}atlas.so; do
-    if [ -f $dir/$atlas_libname ]; then # candidate...
-      if nm --dynamic $dir/$atlas_libname 2>&1 | grep "File format not recognized" >/dev/null; then
-        echo "Directory $dir may contain dynamic ATLAS libraries but seems to be wrong architecture";
-        return 1;
-      fi
-        echo "Atlas found in $dir";
-        return 0;
-      fi
+#############################    CONFIGURATION    #############################
+
+# If configuration sets any of these variables, we will switch the external
+# math library. Here we unset them so that we can check later.
+#TODO(kkm): Maybe allow env vars to provide defaults?
+ATLASROOT=
+CLAPACKROOT=
+MATHLIB=
+MKLLIBDIR=
+MKLROOT=
+OPENBLASROOT=
+
+# This variable identifies the type of system where built programs and
+# libraries will run. It is set by the configure script when cross compiling.
+HOST=
+
+# These environment variables can be used to provide additional flags to the
+# compiler/linker. We want these flags to override the flags determined by the
+# configure script, so we append them to the appropriate variables (CXXFLAGS,
+# LDFLAGS and LDLIBS) after those variables are set by the configure script.
+ENV_CXXFLAGS=$CXXFLAGS
+ENV_LDFLAGS=$LDFLAGS
+ENV_LDLIBS=$LDLIBS
+
+# Default configuration
+debug_level=1
+double_precision=false
+dynamic_kaldi=false
+use_cuda=false
+use_rocm=false
+with_cudadecoder=true
+static_fst=false
+static_math=false
+static_speex=false
+android=false
+enable_kenlm=false
+enable_tcmalloc=false
+
+FSTROOT=`rel2abs ../tools/openfst`
+CUBROOT=`rel2abs ../tools/cub`
+
+# Save the command line to include in kaldi.mk
+cmd_line="$0 $@"
+
+while [ $# -gt 0 ];
+do
+  case "$1" in
+  --help)
+    usage; exit 0 ;;
+  --version)
+    echo $CONFIGURE_VERSION; exit 0 ;;
+  --static)
+    dynamic_kaldi=false;
+    static_math=true;
+    static_fst=true;
+    static_speex=true;
+    shift ;;
+  --shared)
+    dynamic_kaldi=true;
+    static_math=false;
+    static_fst=false;
+    static_speex=false;
+    shift ;;
+  --debug-level=*)
+    GetSwitchValueOrDie debug_level "$1"
+    shift ;;
+  --double-precision)
+    double_precision=true;
+    shift ;;
+  --double-precision=yes)
+    double_precision=true;
+    shift ;;
+  --double-precision=no)
+    double_precision=false;
+    shift ;;
+  --atlas-root=*)
+    GetSwitchExistingPathOrDie ATLASROOT "$1"
+    shift ;;
+  --use-rocm)
+    use_rocm=true;
+    shift ;;
+  --use-rocm=no)
+    use_rocm=false;
+    shift ;;
+  --use-cuda=yes)
+    use_cuda=true;
+    shift ;;
+  --use-cuda=no)
+    use_cuda=false;
+    shift ;;
+  --with-cudadecoder)
+    with_cudadecoder=true;
+    shift ;;
+  --with-cudadecoder=yes)
+    with_cudadecoder=true;
+    shift ;;
+  --with-cudadecoder=no)
+    with_cudadecoder=false;
+    shift ;;
+  --static-math)
+    static_math=true;
+    shift ;;
+  --static-math=yes)
+    static_math=true;
+    shift ;;
+  --static-math=no)
+    static_math=false;
+    shift ;;
+  --static-fst)
+    static_fst=true;
+    shift ;;
+  --static-fst=yes)
+    static_fst=true;
+    shift ;;
+  --static-fst=no)
+    static_fst=false;
+    shift ;;
+  --static-speex)
+    static_speex=true;
+    shift ;;
+  --static-speex=yes)
+    static_speex=true;
+    shift ;;
+  --static-speex=no)
+    static_speex=false;
+    shift ;;
+  --fst-root=*)
+    GetSwitchExistingPathOrDie FSTROOT "$1"
+    shift ;;
+  --cub-root=*)
+    GetSwitchExistingPathOrDie CUBROOT "$1"
+    shift ;;
+  --clapack-root=*)
+    GetSwitchExistingPathOrDie CLAPACKROOT "$1"
+    shift ;;
+  --openblas-root=*)
+    GetSwitchExistingPathOrDie OPENBLASROOT "$1"
+    shift ;;
+  --mkl-root=*)
+    GetSwitchExistingPathOrDie MKLROOT "$1"
+    shift ;;
+  --mkl-libdir=*)
+    GetSwitchExistingPathOrDie MKLLIBDIR "$1"
+    shift ;;
+  --speex-root=*)
+    GetSwitchExistingPathOrDie SPEEXROOT "$1"
+    shift ;;
+  --speex-libdir=*)
+    GetSwitchExistingPathOrDie SPEEXLIBDIR "$1"
+    shift ;;
+  --speex-incdir=*)
+    GetSwitchExistingPathOrDie SPEEXINCDIR "$1"
+    shift ;;
+  --omp-libdir=*)
+    GetSwitchExistingPathOrDie OMPLIBDIR "$1"
+    shift ;;
+  --mathlib=*)
+    GetSwitchValueOrDie MATHLIB "$1"
+    shift ;;
+  --rocm-dir=*)
+    # ROCM is used in src/cudamatrix and src/nnet{,bin} only.
+    GetSwitchExistingPathOrDie ROCMDIR "$1"
+    shift ;;
+  --rocm-targets=*)
+    GetSwitchValueOrDie ROCM_TARGETS "$1"
+    shift ;;
+  --cudatk-dir=*)
+    # CUDA is used in src/cudamatrix and src/nnet{,bin} only.
+    GetSwitchExistingPathOrDie CUDATKDIR "$1"
+    shift ;;
+  --cuda-arch=*)
+    GetSwitchValueOrDie CUDA_ARCH "$1"
+    shift ;;
+  --fst-version=*)
+    GetSwitchValueOrDie OPENFST_VER "$1"
+    shift ;;
+  --host=*)
+    # The type of system where built programs and libraries will run.
+    # It should be in the format cpu-vendor-os. If specified, this script
+    # will infer the target architecture from the specified host triple.
+    GetSwitchValueOrDie HOST "$1"
+    shift ;;
+  --android-incdir=*)
+    android=true
+    static_math=true
+    static_fst=true
+    dynamic_kaldi=false
+    MATHLIB='OPENBLAS'
+    GetSwitchExistingPathOrDie ANDROIDINC "$1"
+    shift ;;
+  --enable-kenlm)
+    enable_kenlm=true
+    shift ;;
+  --enable-tcmalloc)
+    enable_tcmalloc=true
+    shift ;;
+  *)  echo "Unknown argument: $1, exiting"; usage; exit 1 ;;
+  esac
+done
+
+case "$debug_level" in
+  [012]) ;;
+  *) failure "Invalid value --debug-level=$debug_level. Supported values are 0, 1, and 2." ;;
+esac
+
+# The idea here is that if you change the configuration options from using
+# CUDA to not using it, or vice versa, we want to recompile all parts of the
+# code that may use a GPU. Touching this file is a way to force this.
+touch cudamatrix/cu-common.h 2>/dev/null
+
+if $android && [[ "$CXX" != *clang++*  ]] ; then
+  failure "Android build requires clang++. Make sure you have clang++ installed
+  on your system and then override the default compiler by setting CXX, e.g.
+  CXX=clang++ ./configure"
+fi
+
+# If HOST is set
+# - If it is not equal to WASM
+#   1. We prepend it to CXX, AR, AS and RANLIB.
+#   2. We parse the target architecture from the HOST triple.
+# - Otherwise we take its value as the target architecture
+# Otherwise we set the target architecture to the output of `uname -m`.
+if is_set $HOST; then
+  # The host triple will be something like "armv8-rpi3-linux-gnueabihf". We
+  # need the first field which is the target architecture for this build. The
+  # following command will take the host triple "armv8-rpi3-linux-gnueabihf"
+  # and return ["armv8", "rpi3", "linux", "gnueabihf"] in PARTS.
+  IFS='-' read -ra PARTS <<< "$HOST"
+
+  if [[ "$HOST" != WASM ]]; then
+    # The first field in the PARTS list is the target architecture.
+    TARGET_ARCH="$PARTS"
+    if [[ "$TARGET_ARCH" != aarch64* && "$TARGET_ARCH" != arm* && "$TARGET_ARCH" != ppc64le && \
+          "$TARGET_ARCH" != x86* && "$TARGET_ARCH" != i686* ]] ; then
+      # We currently only support building for x86[_64], arm*, aarch64* and ppc64le.
+      # If TARGET_ARCH was read from the HOST variable, it must be one of these.
+      failure "$TARGET_ARCH is not a supported architecture.
+      Supported architectures: x86[_64], arm*, aarch64*, ppc64le."
+    fi
+  else
+    TARGET_ARCH="$HOST"
+  fi
+
+  HOST_CXX="$HOST-c++"
+  HOST_AR="$HOST-ar"
+  HOST_AS="$HOST-as"
+  HOST_RANLIB="$HOST-ranlib"
+else
+  TARGET_ARCH="`uname -m`"
+  HOST_CXX=c++
+  HOST_AR=ar
+  HOST_AS=as
+  HOST_RANLIB=ranlib
+fi
+
+# These environment variables can be used to override the default toolchain.
+CXX=${CXX:-$HOST_CXX}
+AR=${AR:-$HOST_AR}
+AS=${AS:-$HOST_AS}
+RANLIB=${RANLIB:-$HOST_RANLIB}
+
+#------------------------------------------------------------------------------
+# Matrix algebra library selection and validation.
+#--------------
+
+declare -a mathlibs   # Contains e. g. 'atlas', 'mkl'
+declare -a incompat   # Contains mutually-inconsistent switches, if any.
+auto_lib=             # Deduced lib name, used when $MATHLIB is not set.
+
+# Validate the (optionally) provided MATHLIB value.
+case $MATHLIB in
+  ''|ATLAS|CLAPACK|MKL|OPENBLAS) : ;;
+  *) failure "Unknown --mathlib='${MATHLIB}'. Supported libs: ATLAS CLAPACK MKL OPENBLAS" ;;
+esac
+
+# See which library-root switches are set, what mathlib they imply, and whether
+# there are any conflicts betweeh the switches.
+[[ $MKLLIBDIR || $MKLROOT ]] && { mathlibs+=(mkl); auto_lib=MKL; }
+[[ $CLAPACKROOT  ]] && { mathlibs+=(clapack); auto_lib=CLAPACK; }
+[[ $OPENBLASROOT ]] && { mathlibs+=(openblas); auto_lib=OPENBLAS; }
+[[ $ATLASROOT    ]] && { mathlibs+=(atlas); auto_lib=ATLAS; }
+
+# When --mathlib= is explicitly provided, and some mathlib(s) deduced, but
+# MATHLIB is not among them, record a conflict for the --mathlib= value.
+shopt -s nocasematch
+[[ $MATHLIB && $mathlibs && ! " ${mathlibs[@]} " =~ " $MATHLIB " ]] &&
+  incompat+=(--mathlib=$MATHLIB)
+shopt -u nocasematch
+
+# If more than one library specified, or a conflict has been recorded above
+# already, then add all deduced libraries as conflicting options (not all may
+# be conflicting sensu stricto, but let the user deal with it).
+if [[ ${#mathlibs[@]} -gt 1 || $incompat ]]; then
+  for libpfx in "${mathlibs[@]}"; do
+    # Handle --mkl-libdir out of common pattern.
+    [[ $libpfx == mkl && $MKLLIBDIR ]] && incompat+=(--mkl-libdir=)
+    # All other switches follow the pattern --$libpfx-root.
+    incompat+=(--$(lcase $libpfx)-root=)
   done
-  # echo "... no {libatlas,lib${pt}atlas}.so in $dir";
-  return 1;
-}
-
-function linux_configure_dynamic {
-  if $threaded_atlas; then pt=t; else pt=s; fi # relevant to "fat" libraries, will change later for separate ones
-  if [ -z $ATLASLIBDIR ]; then # Note: it'll pick up the last one below.
-    for dir in /usr{,/local}/lib{,64}{,/atlas,/atlas-sse2,/atlas-sse3} \
-      `pwd`/../tools/ATLAS/build/install/lib/ $ATLASROOT/lib; do
-      linux_check_dynamic && ATLASLIBDIR=$dir && ATLASLIBNAME=$atlas_libname
-    done
-    if [ -z $ATLASLIBDIR -o -z $ATLASLIBNAME ]; then
-      echo "Could not find {libatlas,lib${pt}atlas}.so in any of the obvious places, will most likely try static:"
-      return 1;
-    fi
-  fi
-
-  # If using "fat" libraries we only need one file to link against
-  if [ $ATLASLIBNAME != libatlas.so ]; then
-    if [ -f $ATLASLIBDIR/$ATLASLIBNAME ]; then
-      ATLASLIBS="$ATLASLIBDIR/$ATLASLIBNAME"
-    else
-      echo "Configuring dynamic ATLAS library failed: library $ATLASLIBNAME not found in $ATLASLIBDIR"
-      return 1;
-    fi
-  else  # with "thin" libraries, we have several object to link against, and different single/multi-thread names
-    if $threaded_atlas; then pt=pt; else pt=""; fi
-    echo "Validating presence of ATLAS libs in $ATLASLIBDIR"
-    ATLASLIBS=
-    # The Lapack part of ATLAS seems to appear under various different names.. but it
-    # should always have symbols like ATL_cgetrf defined, so we test for this,
-    # for all the names we have encountered.
-    for libname in lapack lapack_atlas  clapack; do
-      if [ -f $ATLASLIBDIR/lib${libname}.so -a "$ATLASLIBS" == "" ]; then
-        if nm  --dynamic $ATLASLIBDIR/lib${libname}.so  | grep ATL_cgetrf >/dev/null; then
-           ATLASLIBS="$ATLASLIBDIR/lib${libname}.so"
-           echo "Using library $ATLASLIBS as ATLAS's CLAPACK library."
-        fi
-      fi
-    done
-    if [ "$ATLASLIBS" == "" ]; then
-      echo Could not find any libraries $ATLASLIBDIR/{liblapack,liblapack_atlas,libclapack} that seem to be an ATLAS CLAPACK library.
-      return 1;
-    fi
-
-    for x in ${pt}cblas atlas ${pt}f77blas; do
-      if [ ! -f $ATLASLIBDIR/lib$x.so ]; then
-        echo "Configuring dynamic ATLAS libraries failed: Could not find library $x in directory $ATLASLIBDIR"
-        return 1;
-      fi
-      ATLASLIBS="$ATLASLIBS $ATLASLIBDIR/lib${x}.so"
-    done
-    if $threaded_atlas; then ATLASLIBS="$ATLASLIBS"; fi
-  fi
-
-  echo ATLASINC = $ATLASROOT/include >> kaldi.mk
-  echo ATLASLIBS = $ATLASLIBS >> kaldi.mk
-  cat makefiles/linux_atlas.mk >> kaldi.mk
-  fix_cxx_flag
-  $use_cuda && configure_cuda
-  linux_configure_speex
-  echo "Successfully configured for Linux [dynamic libraries] with ATLASLIBS =$ATLASLIBS"
-  exit_success;
-}
-
-echo "Configuring ..."
-
-if [ ! -f makefiles/common.mk ]; then
-    failure makefiles/common.mk not found
+  failure "Incompatible configuration switches: ${incompat[@]}"
 fi
 
+# When no library roots were provided, so that auto_lib is not deduced, and
+# MATHLIB is also not explicitly provided by the user, then default to MKL.
+[[ ! $auto_lib && ! $MATHLIB ]] &&
+  case $TARGET_ARCH in
+    x86_64) auto_lib=MKL ;;
+    *) auto_lib=OPENBLAS ;;
+  esac
+: ${MATHLIB:=$auto_lib}
 
-echo "Checking OpenFST library in $FSTROOT ..."
-if [ ! -f $FSTROOT/include/fst/fst.h  ]; then
-    failure "Could not find file $FSTROOT/include/fst/fst.h:
-    you may not have installed OpenFst.  See ../tools/INSTALL"
-fi
-echo Checking OpenFst library was patched.
-if ! grep "multiple repeated" $FSTROOT/include/fst/minimize.h >/dev/null; then
-    echo "**  ERROR  **"
-    echo "** $FSTROOT/include/fst/minimize.h seems not to be patched:"
-    echo "patch not applied?  FST tools will not work in our recipe."
-    exit 1;
-fi
+# Define default library roots where known (others may be found by probing).
+case $MATHLIB in
+  MKL) [[ ! $MKLLIBDIR && ! $MKLROOT ]] && MKLROOT=/opt/intel/mkl ;;
+  ATLAS) : ${ATLASROOT:=$(rel2abs ../tools/ATLAS_headers/)} ;;
+esac
 
-# back up the old one in case we modified it
+unset auto_lib incompat libpfx mathlibs
+
+echo "Configuring KALDI to use ${MATHLIB}."
+
+# Back up the old kaldi.mk in case we modified it
 if [ -f kaldi.mk ]; then
-  echo "Backing up kaldi.mk to kaldi.mk.bak"
+  echo "Backing up kaldi.mk to kaldi.mk.bak ..."
   cp kaldi.mk kaldi.mk.bak
 fi
 
-printf "# This file was generated using the following command:\n# $cmd_line\n\n" > kaldi.mk
-cat makefiles/common.mk >> kaldi.mk
-if $dynamic_kaldi ; then
-KALDILIBDIR=`pwd`/lib
-echo "KALDI_FLAVOR := dynamic" >> kaldi.mk
-echo "KALDILIBDIR := $KALDILIBDIR" >> kaldi.mk
-fi
+# Generate the new kaldi.mk file
+echo "# This file was generated using the following command:" > kaldi.mk
+echo "# $cmd_line" >> kaldi.mk
+echo >> kaldi.mk
 echo "CONFIGURE_VERSION := $CONFIGURE_VERSION" >> kaldi.mk
-echo "FSTROOT = $FSTROOT" >> kaldi.mk
+echo >> kaldi.mk
 
-# Check installed OpenFst version and add C++11 flags if OpenFst >= 1.4
-OPENFST_VER="${OPENFST_VER:-`grep 'PACKAGE_VERSION' $FSTROOT/Makefile | sed -e 's:.*= ::'`}"
-echo "OPENFST_VER = $OPENFST_VER" >> kaldi.mk
-OPENFST_VER_NUM=`echo $OPENFST_VER | sed 's/\./ /g' | xargs printf "%d%02d%02d"`
-if [ $OPENFST_VER_NUM -ge 10400 ]; then
-  echo "OPENFST_GE_10400 = 1" >> kaldi.mk
-  echo "EXTRA_CXXFLAGS += -DHAVE_OPENFST_GE_10400 -std=c++0x" >> kaldi.mk
+echo "# Toolchain configuration" >> kaldi.mk
+echo >> kaldi.mk
+echo "CXX = $CXX" >> kaldi.mk
+echo "AR = $AR" >> kaldi.mk
+echo "AS = $AS" >> kaldi.mk
+echo "RANLIB = $RANLIB" >> kaldi.mk
+echo >> kaldi.mk
+
+echo "Checking compiler $CXX ..."
+check_compiler $CXX
+
+echo "# Target achitecture" >> kaldi.mk
+echo "ARCH = $TARGET_ARCH" >> kaldi.mk
+echo >> kaldi.mk
+
+echo "# Base configuration" >> kaldi.mk
+echo >> kaldi.mk
+if $dynamic_kaldi ; then
+  KALDILIBDIR=`pwd`/lib
+  echo "KALDI_FLAVOR := dynamic" >> kaldi.mk
+  echo "KALDILIBDIR := $KALDILIBDIR" >> kaldi.mk
+fi
+echo "DEBUG_LEVEL = $debug_level" >> kaldi.mk
+if $double_precision; then
+  echo "DOUBLE_PRECISION = 1" >> kaldi.mk
 else
-  echo "OPENFST_GE_10400 = 0" >> kaldi.mk
+  echo "DOUBLE_PRECISION = 0" >> kaldi.mk
+fi
+echo "Checking OpenFst library in $FSTROOT ..."
+if [ ! -f $FSTROOT/include/fst/fst.h  ]; then
+  failure "Could not find file $FSTROOT/include/fst/fst.h:
+  you may not have installed OpenFst. See ../tools/INSTALL"
+fi
+OPENFST_VER=${OPENFST_VER:-$(grep 'PACKAGE_VERSION' $FSTROOT/Makefile | sed -e 's:.*= ::')}
+OPENFST_VER_NUM=$(echo $OPENFST_VER | sed 's/\./ /g' | xargs printf "%d%02d%02d")
+if [ $OPENFST_VER_NUM -lt 10600 ]; then
+  failure "OpenFst-$OPENFST_VER is not supported. You need OpenFst >= 1.6.0.)"
+fi
+echo "OPENFSTINC = $FSTROOT/include" >> kaldi.mk
+if $static_fst ; then
+  OPENFSTLIBS="$FSTROOT/lib/libfst.a"
+else
+  if [ "`uname`" == "Darwin"  ]; then
+    OPENFSTLIBS="$FSTROOT/lib/libfst.dylib"
+    OPENFSTLDFLAGS="-Wl,-rpath -Wl,${FSTROOT}/lib"
+  elif [ "`uname`" == "Linux" -o "`uname`" == "FreeBSD" ]; then
+    OPENFSTLIBS="$FSTROOT/lib/libfst.so"
+    OPENFSTLDFLAGS="-Wl,-rpath=${FSTROOT}/lib"
+  else
+    failure "Dynamic libraries are not supported on this platform.
+             Run configure with --static --static-fst flag."
+  fi
+fi
+if [ ! -f "$OPENFSTLIBS" ]; then
+  failure "Static=[$static_fst] OpenFST library not found:  See ../tools/INSTALL"
+fi
+echo "OPENFSTLIBS = $OPENFSTLIBS" >> kaldi.mk
+echo "OPENFSTLDFLAGS = $OPENFSTLDFLAGS" >> kaldi.mk
+echo >> kaldi.mk
+
+if $use_cuda; then
+   echo "Checking cub library in $CUBROOT ..."
+   if [[ ! -f $CUBROOT/cub/cub.cuh ]]; then
+     failure "Could not find file $CUBROOT/cub/cub.cuh:
+  you may not have installed cub.  Go to ../tools/ and type
+  'make cub' to download and unpack it. We'll detect it then."
+   else
+     echo "CUBROOT = $CUBROOT" >> kaldi.mk
+   fi
+   echo "WITH_CUDADECODER = $with_cudadecoder" >> kaldi.mk
+else
+   if $use_rocm; then
+     echo "WITH_CUDADECODER = $with_cudadecoder" >> kaldi.mk
+   else
+     echo "WITH_CUDADECODER = false" >> kaldi.mk
+   fi
+fi
+echo >> kaldi.mk
+
+if $enable_kenlm ; then
+  if [ -d ../tools/kenlm ]; then
+    KENLM_ROOT=$(rel2abs ../tools/kenlm)
+    echo "Checking kenlm library in $KENLM_ROOT"
+    if [ -f $KENLM_ROOT/libkenlm.so ]; then
+      if [ "$(uname)" == "Linux" ]; then
+        echo "KENLM_ROOT = $KENLM_ROOT" >> kaldi.mk
+        echo "KENLM_CXXFLAGS = -DHAVE_KENLM  -DKENLM_MAX_ORDER=6  -I$KENLM_ROOT" >> kaldi.mk
+        echo "KENLM_LDFLAGS = -Wl,-rpath=$KENLM_ROOT  -L$KENLM_ROOT" >> kaldi.mk
+        echo "KENLM_LDLIBS = -lkenlm" >> kaldi.mk
+      else
+        failure "Sorry, for now --enable-kenlm option is only supported for Linux"
+      fi
+    else
+      failure "can't find libkenlm.so in ../tools/kenlm/,
+              refer to ../tools/extras/install_kenlm_query_only.sh for instruction."
+    fi
+  else
+    failure "--enable-kenlm switched on, but can't find kenlm repo in ../tools/kenlm,
+            refer to ../tools/extras/install_kenlm_query_only.sh for instruction."
+  fi
 fi
 
-# Most of the OS-specific steps below will append to kaldi.mk
-echo "Doing OS specific configurations ..."
+# OS-specific steps given below append to kaldi.mk
+echo "Performing OS specific configuration ..."
 
-# Check for Darwin at first, because we later call uname -o (for Cygwin)
-# which crashes on Darwin. Also the linear algebra libraries on Macs are
-# used differently (through the Accelerate framework) than on Linux.
-if [ "`uname`" == "Darwin"  ]; then
- $use_cuda && configure_cuda
-  echo "On Darwin: checking for Accelerate framework ..."
+if $android ; then
+  if [ -z $ANDROIDINC ] ;  then
+    failure "--android-incdir must be specified for android builds."
+  fi
+
+  if ! is_set $HOST; then
+    failure "HOST must be specified for android builds."
+  fi
+
+  OPENBLASROOT=`rel2abs "$OPENBLASROOT"`
+  if [ -z "$OPENBLASROOT" ]; then
+    failure "The location of OPENBLAS must be specified for android builds
+             using --openblas-root (and it must exist)"
+  fi
+  if [ ! -f $OPENBLASROOT/lib/libopenblas.a ]; then
+    failure "Expected to find the file $OPENBLASROOT/lib/libopenblas.a"
+  fi
+  echo "Using OpenBLAS as the linear algebra library."
+
+  OPENBLASLIBS="$OPENBLASROOT/lib/libopenblas.a $OPENBLASROOT/lib/libclapack.a $OPENBLASROOT/lib/liblapack.a $OPENBLASROOT/lib/libblas.a $OPENBLASROOT/lib/libf2c.a"
+  echo "OPENBLASINC = $OPENBLASROOT/include" >> kaldi.mk
+  echo "OPENBLASLIBS = $OPENBLASLIBS" >> kaldi.mk
+  echo "ANDROIDINC = $ANDROIDINC" >> kaldi.mk
+
+  cat makefiles/android_openblas.mk >> kaldi.mk
+
+  echo "Successfully configured for Android with OpenBLAS from $OPENBLASROOT."
+
+elif [ "`uname`" == "Darwin" ]; then
+  # Check for Darwin first, because we later call uname -o (for Cygwin)
+  # which crashes on Darwin.
+
+  echo "On Darwin: Checking for Accelerate framework ..."
   if [ ! -e /System/Library/Frameworks/Accelerate.framework ]; then
-    failure "Need the Accelerate.framework to compile on Darwin."
+    failure "Need the Accelerate framework to compile on Darwin."
   fi
-  if [ ! -f $FSTROOT/lib/libfst.a ]; then
-    failure "Static OpenFST library not found:  See ../tools/INSTALL"
+  OSX_VER=$(sw_vers | grep ProductVersion | awk '{print $2}' | awk '{split($0,a,"."); print a[1] "." a[2]; }')
+  OSX_VER_NUM=$(echo $OSX_VER | sed 's/\./ /g' | xargs printf "%d%02d")
+  echo "Configuring for OS X version $OSX_VER ..."
+  if [ $OSX_VER_NUM -ge 1005 ]; then
+    if [ "$MATHLIB" == "CLAPACK" ]; then
+      if [ -z "$CLAPACKROOT" ]; then
+          failure "Must specify the location of CLAPACK with --clapack-root option (and it must exist)"
+      fi
+      if [ ! -f ../tools/CLAPACK/clapack.h ]; then
+          failure "could not find file ../tools/CLAPACK/clapack.h"
+      fi
+      if [ ! -d "$CLAPACKROOT" ]; then
+          failure "The directory $CLAPACKROOT does not exist"
+      fi
+      # Also check for cblas.h and f2c.h
+      echo "Using CLAPACK libs from $CLAPACKROOT as the linear algebra library."
+      echo "CLAPACKROOT = $CLAPACKROOT" >> kaldi.mk
+      if [ ! -f makefiles/darwin_clapack.mk ]; then
+          failure "makefiles/darwin_clapack.mk not found."
+      fi
+      cat makefiles/darwin_clapack.mk >> kaldi.mk
+      echo "Warning (CLAPACK): this part of the configure process is not properly tested and may not work."
+      echo "Successfully configured for Darwin with CLAPACK libs from $CLAPACKROOT"
+    else
+      cat makefiles/darwin.mk >> kaldi.mk
+    fi
+  else
+    failure "Mac OS X version '$OSX_VER' is not supported."
   fi
-  # posix_memalign and gcc -rdynamic options not present on OS X 10.5.*
-  osx_ver=`sw_vers | grep ProductVersion | awk '{print $2}' | awk '{split($0,a,"\."); print a[1] "." a[2]; }'`
-  echo "Configuring for OS X version $osx_ver ..."
-  if [ "$osx_ver" == "10.5" ]; then
-    check_exists makefiles/darwin_10_5.mk
-    cat makefiles/darwin_10_5.mk >> kaldi.mk
-  elif [ "$osx_ver" == "10.6" ]; then
-    check_exists makefiles/darwin_10_6.mk
-    cat makefiles/darwin_10_6.mk >> kaldi.mk
-  elif [ "$osx_ver" == "10.7" ]; then
-    check_exists makefiles/darwin_10_7.mk
-    cat makefiles/darwin_10_7.mk >> kaldi.mk
-  elif [ "$osx_ver" == "10.8" ]; then
-    check_exists makefiles/darwin_10_8.mk
-    cat makefiles/darwin_10_8.mk >> kaldi.mk
-  elif [ "$osx_ver" == "10.9" ]; then
-    check_exists makefiles/darwin_10_9.mk
-    cat makefiles/darwin_10_9.mk >> kaldi.mk
-  elif [ "$osx_ver" == "10.10" ]; then
-    check_exists makefiles/darwin_10_10.mk
-    cat makefiles/darwin_10_10.mk >> kaldi.mk
-  elif [ "$osx_ver" == "10.11" ]; then
-    check_exists makefiles/darwin_10_11.mk
-    cat makefiles/darwin_10_11.mk >> kaldi.mk
+
+  if [ $OSX_VER_NUM == 1011 ]; then
     echo "**BAD WARNING**: You are using OS X El Capitan.  Some versions of this OS"
     echo "**BAD WARNING**: have a bug in the BLAS implementation that affects Kaldi."
     echo "**BAD WARNING**: After compiling, cd to matrix/ and type 'make test'.  The"
     echo "**BAD WARNING**: test will fail if the problem exists in your version. "
     echo "**BAD WARNING**: Eventually this issue will be fixed by system updates from"
-    echo "**BAD WARNING**  Apple.  Unexplained crashes with reports of NaNs will"
-    echo "**BAD WARNING**  be caused by this bug, but some recipes will (sometimes) work."
+    echo "**BAD WARNING**: Apple.  Unexplained crashes with reports of NaNs will"
+    echo "**BAD WARNING**: be caused by this bug, but some recipes will (sometimes) work."
     sleep 1; echo -n .; sleep 1; echo -n .; sleep 1; echo .
-  else
-    failure "OS X version '$osx_ver' not supported"
   fi
-  echo "Configuration succeeded for platform Darwin."
-  exit_success;
-fi
+  echo "Successfully configured for Darwin with Accelerate framework."
+  $use_cuda && configure_cuda
 
-if [ "`uname -o`" == "Cygwin"  ]; then
-    echo "On Cygwin: checking for linear algebra libraries ..."
-    if [ ! -f ../tools/CLAPACK/clapack.h ]; then
-        failure "could not find file ../tools/CLAPACK/clapack.h"
-    fi
-    if [ ! -f /usr/lib/lapack/cygblas-0.dll ]; then
-       failure "please first install package liblapack0"
-    fi
-    cat makefiles/cygwin.mk >> kaldi.mk
-    echo "Configuration succeeded for platform cygwin"
-    exit_success;
-fi
-
-if [ "`uname`" == "Linux" ]; then
-  if  $static_fst ; then
-      OPENFSTLIBS="$FSTROOT/lib/libfst.a"
-      fst_type='a'
-  else
-      OPENFSTLIBS="-L${FSTROOT}/lib -lfst"
-      OPENFSTLDFLAGS="-Wl,-rpath=${FSTROOT}/lib"
-      fst_type='so'
+elif [ "`uname -o`" == "Cygwin"  ]; then
+  echo "On Cygwin: Checking for linear algebra libraries ..."
+  if [ ! -f ../tools/CLAPACK/clapack.h ]; then
+      failure "could not find file ../tools/CLAPACK/clapack.h"
   fi
-  if [ ! -f "$FSTROOT/lib/libfst.${fst_type}" ]; then
-    failure "Static=[$static_fst] OpenFST library not found:  See ../tools/INSTALL"
+  if [ ! -f /usr/lib/lapack/cygblas-0.dll ]; then
+     failure "please first install package liblapack0"
   fi
-  echo OPENFSTLIBS = $OPENFSTLIBS >> kaldi.mk
-  echo OPENFSTLDFLAGS = $OPENFSTLDFLAGS >> kaldi.mk
+  cat makefiles/cygwin.mk >> kaldi.mk
+  echo "Successfully configured for Cygwin with CLAPACK."
 
+elif [ "`uname`" == "Linux" -o "`uname`" == "FreeBSD"  ]; then
   echo "On Linux: Checking for linear algebra header files ..."
   if [ "$MATHLIB" == "ATLAS" ]; then
     if [ ! -f $ATLASROOT/include/cblas.h ] || [ ! -f $ATLASROOT/include/clapack.h ] ; then
@@ -941,135 +1200,245 @@ if [ "`uname`" == "Linux" ]; then
     # containing {liblapack.a,libblas.a}, and linking against just these two
     # libraries worked.
 
+    ( $static_math && linux_configure_atlas_static ) || \
+      linux_configure_atlas_generic /usr/lib "so.3" || \
+      linux_configure_atlas_generic /usr/lib/atlas-base "so.3gf" || \
+      linux_configure_atlas_generic /usr/lib64/atlas-base "so.3gf" \
+      linux_configure_atlas_generic /usr/lib/atlas "so.3" || \
+      linux_configure_atlas_generic /usr/lib64/atlas "so.3" || \
+      linux_configure_atlas_generic /usr/lib/x86_64-linux-gnu/ "so.3" || \
+      linux_configure_atlas_generic /usr/lib/x86_64-linux-gnu/ "so" || \
+      linux_configure_atlas_redhat_fat 64 || \
+      linux_configure_atlas_redhat_fat || \
+      linux_configure_atlas_static || \
+      linux_configure_atlas_failure "Failed to configure ATLAS libraries";
+
+    case $TARGET_ARCH in
+      arm*)    cat makefiles/linux_atlas_arm.mk ;;
+      ppc64le) cat makefiles/linux_atlas_ppc64le.mk ;;
+      *)       cat makefiles/linux_atlas.mk ;;
+    esac >> kaldi.mk
+
+  elif [[ $MATHLIB = MKL ]]; then
+    if [[ $TARGET_ARCH != x86_64 ]]; then
+      failure "MKL on Linux is only supported for Intel 64-bit (x86_64) arch.
+ ... See makefiles/linux_64_mkl.mk to manually configure for other platforms."
+    fi
+
+    # Ubuntu 20+ supplies these packages.
     if $static_math; then
-      # Prefer static to dynamic math.
-      linux_configure_static || \
-        linux_configure_debian_ubuntu3 || \
-        linux_configure_dynamic || \
-        linux_configure_debian_ubuntu 64 || \
-        linux_configure_debian_ubuntu || \
-        linux_configure_debian7 || \
-        linux_configure_redhat 64 || \
-        linux_configure_redhat || \
-        linux_configure_redhat_fat 64 || \
-        linux_configure_redhat_fat || \
-        linux_atlas_failure "Failed to configure ATLAS lbiraries";
+      mkl_sys_package=mkl-static-lp64-seq
     else
-      # Prefer dynamic to static math.
-      linux_configure_debian_ubuntu3 || \
-        linux_configure_dynamic || \
-        linux_configure_static || \
-        linux_configure_debian_ubuntu 64 || \
-        linux_configure_debian_ubuntu || \
-        linux_configure_debian7 || \
-        linux_configure_redhat 64 || \
-        linux_configure_redhat || \
-        linux_configure_redhat_fat 64 || \
-        linux_configure_redhat_fat || \
-        linux_atlas_failure "Failed to configure ATLAS lbiraries";
+      mkl_sys_package=mkl-dynamic-lp64-seq
     fi
 
-  elif [ "$MATHLIB" == "MKL" ]; then
-    if [ "`uname -m`" != "x86_64" ]; then
-      failure "MKL on Linux only supported for Intel(R) 64 architecture (x86_64).
-      See makefiles/linux_64_mkl.mk to manually configure for other platforms."
-    fi
-
-    if  ( is_set "$MKLROOT" && ! is_set "$MKLLIBDIR" ); then
+    if [[ ! $MKLLIBDIR ]]; then
       echo -n "Configuring MKL library directory: "
-      MKLLIBDIR=`linux_configure_mkllibdir $MKLROOT`
-      if [ $? -ne 0 ]; then
-        failure "MKL libraries could not be found. Please use the switch --mkl-libdir "
+      MKLLIBDIR=$(
+        if [[ -d $MKLROOT/lib/intel64 ]]; then
+          echo "$MKLROOT/lib/intel64"
+        elif [[ -d $MKLROOT/lib ]]; then
+          echo "$MKLROOT/lib"
+        elif pkg-config $mkl_sys_package --exists &>/dev/null; then
+          MKLROOT=
+          # Return empty path to indicate a system package.
+        else
+          failure "Could not find the MKL library directory.
+Please use the switch --mkl-root and/or --mkl-libdir if you have MKL installed,
+or try another math library, e.g. --mathlib=OPENBLAS (Kaldi may be slower)."
+        fi) || exit
+      echo "Found ${MKLLIBDIR:-system package $mkl_sys_package}"
+    fi
+
+    # MKL libraries.
+    MKL_LDLIBS=$(
+      # If $MKLLIBDIR is empty, we found the package through pkg-config.
+      [[ $MKLLIBDIR ]] || { pkg-config $mkl_sys_package --libs; exit; }
+
+      readonly mkl_libs=(mkl_intel_lp64 mkl_core mkl_sequential)
+
+      if $static_math ; then
+        suffix=a link_pre="-Wl,--start-group" link_post=" -Wl,--end-group"
       else
-        echo "Found: $MKLLIBDIR"
+        suffix=so link_pre="-Wl,-rpath=$MKLLIBDIR" link_post=
       fi
-    fi
 
-    MKL_LINK_LINE=`linux_configure_mkl_libraries "$MKLLIBDIR" $static_math $mkl_threading` || exit 1
-    echo "MKL configured with threading: $mkl_threading, libs: $MKL_LINK_LINE"
+      linkline="-L$MKLLIBDIR $link_pre"
+      for file in ${mkl_libs[@]}; do
+        file=lib$file.$suffix
+        check_exists $MKLLIBDIR/$file
+        linkline+=" -l:$file"
+      done
+      linkline+=$link_post
 
-    MKL_COMPILE_LINE=`linux_configure_mkl_includes "$MKLROOT" "$MKLLIBDIR"` || exit 1
-    echo "MKL include directory configured as: $MKL_COMPILE_LINE"
-    MKL_COMPILE_LINE=" -I${MKL_COMPILE_LINE} "
+      echo "$linkline -ldl -lpthread -lm") || exit
+    echo "MKL libs MKL_LDLIBS = $MKL_LDLIBS."
 
-    THREADING_LINE=`linux_configure_mkl_threading $MKLROOT $MKLLIBDIR $static_math $mkl_threading` || exit 1
-    EXTRA_LIBS=`linux_configure_mkl_extra $static_math $mkl_threading` || exit 1
-    if [ ! -z "$THREADING_LINE" ] || [ ! -z "$EXTRA_LIBS" ]; then
-      echo "MKL threading libraries configured as $THREADING_LINE $EXTRA_LIBS"
-    fi
+    # MKL includes.
+    MKL_CXXFLAGS=$(
+      # If $MKLLIBDIR is empty, we found the package through pkg-config.
+      if [[ ! $MKLLIBDIR ]]; then
+        pkg-config $mkl_sys_package --cflags
+      elif [[ -d $MKLROOT/include ]]; then
+        echo "-I$MKLROOT/include"
+      elif [[ -d $MKLLIBDIR/../../include ]]; then
+        echo "-I$MKLLIBDIR/../../include"
+      else
+        failure "Could not guess the MKL include directory."
+      fi) || exit
+    echo "MKL compile flags MKL_CXXFLAGS = $MKL_CXXFLAGS."
 
-    echo "Using Intel MKL as the linear algebra library."
-    (
-      cd probe; rm -f mkl-test;
-      g++ mkl-test.cc -o mkl-test $MKL_COMPILE_LINE $MKL_LINK_LINE $THREADING_LINE $EXTRA_LIBS || exit 1
-      test -f ./mkl-test || exit 1
-      ./mkl-test || exit 1
-      cd ..
-    ) || failure "Cannot validate the MKL switches"
+    echo "*** MKL self-reported version:"
+    ( cd probe
+      rm -f mkl-test
+      g++ mkl-test.cc -o mkl-test $MKL_CXXFLAGS $MKL_LDLIBS &&
+        ./mkl-test
+    ) || failure "MKL did not pass a simple compile test."
 
-    echo MKLROOT = $MKLROOT >> kaldi.mk
-    if [ ! -z $MKLLIBDIR ]; then
-      echo MKLLIB = $MKLLIBDIR >> kaldi.mk
-    fi
+    echo "MKL_CXXFLAGS = $MKL_CXXFLAGS" >> kaldi.mk
+    echo "MKL_LDLIBS = $MKL_LDLIBS" >> kaldi.mk
+    echo >> kaldi.mk
     check_exists makefiles/linux_x86_64_mkl.mk
     cat makefiles/linux_x86_64_mkl.mk >> kaldi.mk
-    fix_cxx_flag
-    echo "MKLFLAGS = ${MKL_LINK_LINE} ${THREADING_LINE} $EXTRA_LIBS " >> kaldi.mk
-
-    $use_cuda && configure_cuda
-    linux_configure_speex
-    echo "Successfully configured for Linux with MKL libs from $MKLROOT"
-    exit_success;
+    echo "Successfully configured for Linux with MKL libraries found in" \
+         "${MKLROOT:-distro package}"
 
   elif [ "$MATHLIB" == "CLAPACK" ]; then
     if [ -z "$CLAPACKROOT" ]; then
       failure "Must specify the location of CLAPACK with --clapack-root option (and it must exist)"
     fi
     if [ ! -f ../tools/CLAPACK/clapack.h ]; then
-      failure could not find file ../tools/CLAPACK/clapack.h
+      failure "could not find file ../tools/CLAPACK/clapack.h"
     fi
     if [ ! -d "$CLAPACKROOT" ]; then
       failure "The directory $CLAPACKROOT does not exist"
     fi
     # Also check for cblas.h and f2c.h
-    echo "Using CLAPACK as the linear algebra library."
+    echo "Using CLAPACK libs from $CLAPACKROOT as the linear algebra library."
     if [ ! -f makefiles/linux_clapack.mk ]; then
       failure "makefiles/linux_clapack.mk not found."
     fi
-    cat makefiles/linux_clapack.mk >> kaldi.mk
-    fix_cxx_flag
-    echo "Warning (CLAPACK): this part of the configure process is not properly tested and will not work."
-    $use_cuda && configure_cuda
-    linux_configure_speex
-    echo "Successfully configured for Linux with CLAPACK libs from $CLAPACKROOT"
-    exit_success;
-  elif [ "$MATHLIB" == "OPENBLAS" ]; then
-    OPENBLASROOT=`rel2abs "$OPENBLASROOT"`
-    if [ -z "$OPENBLASROOT" ]; then
-      failure "Must specify the location of OPENBLAS with --openblas-root option (and it must exist)"
+    if [[ "$TARGET_ARCH" == arm* ]]; then
+      cat makefiles/linux_clapack_arm.mk >> kaldi.mk
+    else
+      echo "CLAPACKROOT = $CLAPACKROOT" >> kaldi.mk
+      cat makefiles/linux_clapack.mk >> kaldi.mk
     fi
-    if [ ! -f $OPENBLASROOT/lib/libopenblas.so ]; then
+    echo "Warning (CLAPACK): this part of the configure process is not properly tested and may not work."
+    echo "Successfully configured for Linux with CLAPACK libs from $CLAPACKROOT"
+
+  elif [ "$MATHLIB" == "OPENBLAS" ]; then
+    if [[ ! $OPENBLASROOT ]]; then
+      # Either the user specified --mathlib=OPENBLAS or we've autodetected the
+      # system where OpenBLAS is the preferred option (the parser for
+      # --openblas-root fails fatally if the path does not exist, so we trust
+      # that if set, the variable contains the existing path, converted to
+      # absolute form).
+      OPENBLASROOT="$(rel2abs ../tools/OpenBLAS/install)" ||
+        Die "OpenBLAS not found in '../tools/OpenBLAS/install'.
+** This is the only place we look for it. The best option is to build OpenBLAS
+** tuned for your system and CPU. To do that, run the following commands:
+**
+**   cd ../tools; extras/install_openblas.sh
+**
+** Another option is to specify the location of existing OpenBLAS directory
+** with the switch '--openblas-root='. However, even if a package is provided
+** for your system, the packaged version is almost always significantly slower
+** and often older than the above commands can fetch and build.
+**
+** You can also use other matrix algebra libraries. For information, see:
+**   http://kaldi-asr.org/doc/matrixwrap.html"
+    fi
+    if [ -f $OPENBLASROOT/lib/libopenblas.so ]; then
+      OPENBLASLIBDIR=$OPENBLASROOT/lib
+    elif [ -f $OPENBLASROOT/lib64/libopenblas.so ]; then
+      # in REDHAT/CentOS package installs, the library is located here
+      OPENBLASLIBDIR=$OPENBLASROOT/lib64
+    else
       failure "Expected to find the file $OPENBLASROOT/lib/libopenblas.so"
     fi
-    echo "Your math library seems to be OpenBLAS.  Configuring appropriately."
+    if [ -f $OPENBLASROOT/include/cblas.h ] ; then
+      OPENBLASINCDIR=$OPENBLASROOT/include
+    elif [ -f $OPENBLASROOT/include/openblas/cblas.h ] ; then
+      # in REDHAT/CentOS/Ubuntu package installs, the includes are located here
+      OPENBLASINCDIR=$OPENBLASROOT/include/openblas
+    else
+      echo "$0: ***** Using OpenBLAS from $OPENBLASROOT but cblas.h is not found. "
+      echo "** Assuming openblas is aleady in a default include path, but"
+      echo "** if you get compilation messages about not finding files like cblas.h,"
+      echo "** you should look into this (e.g. make sure to install the 'openblas-dev' package,"
+      echo "** if it is a package-based install)."
+      OPENBLASINCDIR="/usr/include"
+    fi
+    echo "Your math library seems to be OpenBLAS from $OPENBLASROOT.  Configuring appropriately."
+    # TODO(kkm): Probably, OpenBLAS required libgfortran.so.3 at some point, but
+    # no longer does. *My* linker does not complain about a missing library, but
+    # is it safe to keep the reference if no longer required? Try to figure out
+    # how long ago the dependency was dropped.
     if $static_math; then
       echo "Configuring static OpenBlas since --static-math=yes"
-      OPENBLASLIBS="$OPENBLASROOT/lib/libopenblas.a -lgfortran"
+      OPENBLASLIBS="-L$OPENBLASLIBDIR -l:libopenblas.a -lgfortran"
     else
       echo "Configuring dynamically loaded OpenBlas since --static-math=no (the default)"
-      OPENBLASLIBS="-L$OPENBLASROOT/lib -lopenblas -lgfortran -Wl,-rpath=$OPENBLASROOT/lib"
+      OPENBLASLIBS="-L$OPENBLASLIBDIR -lopenblas -lgfortran -Wl,-rpath=$OPENBLASLIBDIR"
     fi
+    echo "OPENBLASINC = $OPENBLASINCDIR" >> kaldi.mk
     echo "OPENBLASLIBS = $OPENBLASLIBS" >> kaldi.mk
-    echo "OPENBLASROOT = $OPENBLASROOT" >> kaldi.mk
-    cat makefiles/linux_openblas.mk >> kaldi.mk
-    fix_cxx_flag
-    $use_cuda && configure_cuda
-    linux_configure_speex
-    echo "Successfully configured OpenBLAS from $OPENBLASROOT."
-    exit_success;
+    echo >> kaldi.mk
+    case $TARGET_ARCH in
+      aarch64*) cat makefiles/linux_openblas_aarch64.mk ;;
+      arm*)     cat makefiles/linux_openblas_arm.mk ;;
+      ppc64le)  cat makefiles/linux_openblas_ppc64le.mk ;;
+      *)        cat makefiles/linux_openblas.mk ;;
+    esac >> kaldi.mk
+
+    echo "Successfully configured for Linux with OpenBLAS from $OPENBLASROOT"
   else
     failure "Unsupported linear algebra library '$MATHLIB'"
   fi
+  $use_cuda && configure_cuda
+  $use_rocm && configure_rocm
+  linux_configure_speex
+else
+  failure "Could not detect the platform or we have not yet worked out the
+  appropriate configuration for this platform. Please contact the developers."
 fi
 
-failure Could not detect platform or we have not yet worked out the appropriate configuration for this platform.  Please contact the developers.
+if $enable_tcmalloc ; then
+  if [ -f ../tools/gperftools/lib/libtcmalloc_minimal.so ]; then
+    TCMALLOC_ROOT=$(rel2abs ../tools/gperftools)
+    echo "Configuring tcmalloc since --enable-tcmalloc"
+    if [ "$(uname)" == "Linux" ]; then
+      echo "LDLIBS += -Wl,-rpath=$TCMALLOC_ROOT/lib -L$TCMALLOC_ROOT/lib -ltcmalloc_minimal" >> kaldi.mk
+    else
+      failure "Now, --enable-tcmalloc option is only supported for Linux"
+    fi
+    echo "Successfully configured tcmalloc for Linux from $TCMALLOC_ROOT"
+  else
+    failure "Can't find tcmalloc in tools/gperftools. Run" \
+            "'extras/install_tcmalloc.sh' in 'tools/' to install."
+  fi
+fi
+
+# Append the flags set by environment variables last so they can be used
+# to override the automatically generated configuration.
+echo >> kaldi.mk
+echo "# Environment configuration" >> kaldi.mk
+echo >> kaldi.mk
+if [ -n "$ENV_CXXFLAGS" ]; then echo "CXXFLAGS += $ENV_CXXFLAGS" >> kaldi.mk; fi
+if [ -n "$ENV_LDFLAGS" ]; then echo "LDFLAGS += $ENV_LDFLAGS" >> kaldi.mk; fi
+if [ -n "$ENV_LDLIBS" ]; then echo "LDLIBS += $ENV_LDLIBS" >> kaldi.mk; fi
+
+# We check for slow exp implementation just before we exit. This check uses
+# and possibly modifies the kaldi.mk file that we just generated.
+check_for_slow_expf;
+echo "Kaldi has been successfully configured. To compile:
+
+  make -j clean depend; make -j <NCPU>
+
+where <NCPU> is the number of parallel builds you can afford to do. If unsure,
+use the smaller of the number of CPUs or the amount of RAM in GB divided by 2,
+to stay within safe limits. 'make -j' without the numeric value may not limit
+the number of parallel jobs at all, and overwhelm even a powerful workstation,
+since Kaldi build is highly parallelized."
+exit 0

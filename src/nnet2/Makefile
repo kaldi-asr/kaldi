@@ -15,7 +15,7 @@ TESTFILES = nnet-component-test nnet-precondition-test \
 
 OBJFILES = nnet-component.o nnet-nnet.o train-nnet.o train-nnet-ensemble.o nnet-update.o \
      nnet-compute.o am-nnet.o nnet-functions.o  \
-     nnet-precondition.o shrink-nnet.o combine-nnet.o combine-nnet-a.o \
+     nnet-precondition.o combine-nnet.o \
      mixup-nnet.o nnet-update-parallel.o combine-nnet-fast.o \
      nnet-fix.o nnet-stats.o rescale-nnet.o nnet-limit-rank.o nnet-example.o \
      get-feature-transform.o widen-nnet.o nnet-precondition-online.o \
@@ -27,7 +27,7 @@ LIBNAME = kaldi-nnet2
 
 ADDLIBS = ../cudamatrix/kaldi-cudamatrix.a ../lat/kaldi-lat.a \
           ../hmm/kaldi-hmm.a ../transform/kaldi-transform.a ../gmm/kaldi-gmm.a \
-          ../tree/kaldi-tree.a ../util/kaldi-util.a ../thread/kaldi-thread.a \
-          ../matrix/kaldi-matrix.a ../base/kaldi-base.a 
+          ../tree/kaldi-tree.a ../util/kaldi-util.a ../matrix/kaldi-matrix.a \
+          ../base/kaldi-base.a 
 
 include ../makefiles/default_rules.mk

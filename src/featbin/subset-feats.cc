@@ -101,23 +101,23 @@ int main(int argc, char *argv[]) {
         "e.g.: subset-feats --n=10 ark:- ark:-\n"
         "or:  subset-feats --include=include_uttlist ark:- ark:-\n"
         "or:  subset-feats --exclude=exclude_uttlist ark:- ark:-\n"
-        "See also extract-rows, select-feats, subsample-feats\n";
-    
+        "See also extract-feature-segments, select-feats, subsample-feats\n";
+
     ParseOptions po(usage);
-    
+
     int32 n = 10;
     std::string include_rxfilename;
     std::string exclude_rxfilename;
     po.Register("n", &n, "If nonnegative, copy the first n feature files.");
-    po.Register("include", &include_rxfilename, 
+    po.Register("include", &include_rxfilename,
                         "Text file, the first field of each"
                         " line being interpreted as an "
                         "utterance-id whose features will be included");
-    po.Register("exclude", &exclude_rxfilename, 
+    po.Register("exclude", &exclude_rxfilename,
                         "Text file, the first field of each "
                         "line being interpreted as an utterance-id"
                         " whose features will be excluded");
-    
+
     po.Read(argc, argv);
 
     if (po.NumArgs() != 2) {
@@ -150,7 +150,7 @@ int main(int argc, char *argv[]) {
       return CopyExcludedFeats(exclude_rxfilename,
                                &kaldi_reader, &kaldi_writer);
     }
-    
+
     if (n == 0) {
       KALDI_ERR << "Invalid option --n=0. Should be at least 1";
     }

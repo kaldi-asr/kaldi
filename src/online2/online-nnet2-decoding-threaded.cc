@@ -21,15 +21,14 @@
 #include "nnet2/nnet-compute-online.h"
 #include "lat/lattice-functions.h"
 #include "lat/determinize-lattice-pruned.h"
-#include "thread/kaldi-thread.h"
+#include "util/kaldi-thread.h"
 
 namespace kaldi {
 
 ThreadSynchronizer::ThreadSynchronizer():
-    abort_(false), 
+    abort_(false),
     producer_waiting_(false),
-    consumer_waiting_(false),
-    num_errors_(0) {
+    consumer_waiting_(false) {
   producer_semaphore_.Signal();
   consumer_semaphore_.Signal();
 }
@@ -44,10 +43,10 @@ bool ThreadSynchronizer::Lock(ThreadType t) {
   }
   if (abort_)
     return false;
-  mutex_.Lock();
+  mutex_.lock();
   held_by_ = t;
   if (abort_) {
-    mutex_.Unlock();
+    mutex_.unlock();
     return false;
   } else {
     return true;
@@ -67,9 +66,9 @@ bool ThreadSynchronizer::UnlockSuccess(ThreadType t) {
       producer_semaphore_.Signal();
       producer_waiting_ = false;
     }
-    
-  }  
-  mutex_.Unlock();
+
+  }
+  mutex_.unlock();
   return !abort_;
 }
 
@@ -84,7 +83,7 @@ bool ThreadSynchronizer::UnlockFailure(ThreadType t) {
     KALDI_ASSERT(!consumer_waiting_ && "code error.");
     consumer_waiting_ = true;
   }
-  mutex_.Unlock();
+  mutex_.unlock();
   return !abort_;
 }
 
@@ -115,7 +114,8 @@ SingleUtteranceNnet2DecoderThreaded::SingleUtteranceNnet2DecoderThreaded(
     const nnet2::AmNnet &am_nnet,
     const fst::Fst<fst::StdArc> &fst,
     const OnlineNnet2FeaturePipelineInfo &feature_info,
-    const OnlineIvectorExtractorAdaptationState &adaptation_state):
+    const OnlineIvectorExtractorAdaptationState &adaptation_state,
+    const OnlineCmvnState &cmvn_state):
   config_(config), am_nnet_(am_nnet), tmodel_(tmodel), sampling_rate_(0.0),
   num_samples_received_(0), input_finished_(false),
   feature_pipeline_(feature_info),
@@ -129,38 +129,11 @@ SingleUtteranceNnet2DecoderThreaded::SingleUtteranceNnet2DecoderThreaded(
   // utterance(s)... this only makes sense if theose previous utterance(s) are
   // believed to be from the same speaker.
   feature_pipeline_.SetAdaptationState(adaptation_state);
+  feature_pipeline_.SetCmvnState(cmvn_state);
   // spawn threads.
-
-  pthread_attr_t pthread_attr;
-  pthread_attr_init(&pthread_attr);
-  int32 ret;
-
-  // Note: if the constructor throws an exception, the corresponding destructor
-  // will not be called.  So we don't have to be careful about setting the
-  // thread pointers to NULL after we've joined them.
-  if ((ret=pthread_create(&(threads_[0]),
-                          &pthread_attr, RunNnetEvaluation,
-                          (void*)this)) != 0) {
-    const char *c = strerror(ret);
-    if (c == NULL) { c = "[NULL]"; }
-    KALDI_ERR << "Error creating thread, errno was: " << c;
-  }
+  threads_[0] = std::thread(RunNnetEvaluation, this);
   decoder_.InitDecoding();
-  if ((ret=pthread_create(&(threads_[1]),
-                          &pthread_attr, RunDecoderSearch,
-                          (void*)this)) != 0) {
-    const char *c = strerror(ret);
-    if (c == NULL) { c = "[NULL]"; }
-    bool error = true;
-    AbortAllThreads(error);
-    KALDI_WARN << "Error creating thread, errno was: " << c
-               << " (will rejoin already-created threads).";
-    if (pthread_join(threads_[0], NULL)) {
-      KALDI_ERR << "Error rejoining thread.";
-    } else {
-      KALDI_ERR << "Error creating thread, errno was: " << c;
-    }
-  }
+  threads_[1] = std::thread(RunDecoderSearch, this);
 }
 
 
@@ -192,7 +165,7 @@ void SingleUtteranceNnet2DecoderThreaded::AcceptWaveform(
     KALDI_ASSERT(sampling_rate == sampling_rate_);
   }
   num_samples_received_ += wave_part.Dim();
-  
+
   if (wave_part.Dim() == 0) return;
   if (!waveform_synchronizer_.Lock(ThreadSynchronizer::kProducer)) {
     KALDI_ERR << "Failure locking mutex: decoding aborted.";
@@ -252,7 +225,7 @@ void SingleUtteranceNnet2DecoderThreaded::Wait() {
 }
 
 void SingleUtteranceNnet2DecoderThreaded::FinalizeDecoding() {
-  if (KALDI_PTHREAD_PTR(threads_[0]) != 0) {
+  if (threads_[0].joinable()) {
     KALDI_ERR << "It is an error to call FinalizeDecoding before Wait().";
   }
   decoder_.FinalizeDecoding();
@@ -260,7 +233,7 @@ void SingleUtteranceNnet2DecoderThreaded::FinalizeDecoding() {
 
 BaseFloat SingleUtteranceNnet2DecoderThreaded::GetRemainingWaveform(
     Vector<BaseFloat> *waveform) const {
-  if (KALDI_PTHREAD_PTR(threads_[0]) != 0) {
+  if (threads_[0].joinable()) {
     KALDI_ERR << "It is an error to call GetRemainingWaveform before Wait().";
   }
   int64 num_samples_stored = 0;  // number of samples we still have.
@@ -308,31 +281,36 @@ BaseFloat SingleUtteranceNnet2DecoderThreaded::GetRemainingWaveform(
 
 void SingleUtteranceNnet2DecoderThreaded::GetAdaptationState(
     OnlineIvectorExtractorAdaptationState *adaptation_state) {
-  feature_pipeline_mutex_.Lock();  // If this blocks, it shouldn't be for very long.
+  std::lock_guard<std::mutex> lock(feature_pipeline_mutex_);
+  // If this blocks, it shouldn't be for very long.
   feature_pipeline_.GetAdaptationState(adaptation_state);
-  feature_pipeline_mutex_.Unlock();  // If this blocks, it won't be for very long.  
 }
-  
+
+void SingleUtteranceNnet2DecoderThreaded::GetCmvnState(
+    OnlineCmvnState *cmvn_state) {
+  std::lock_guard<std::mutex> lock(feature_pipeline_mutex_);
+  // If this blocks, it shouldn't be for very long.
+  feature_pipeline_.GetCmvnState(cmvn_state);
+}
+
 void SingleUtteranceNnet2DecoderThreaded::GetLattice(
     bool end_of_utterance,
     CompactLattice *clat,
     BaseFloat *final_relative_cost) const {
   clat->DeleteStates();
-  // we'll make an exception to the normal const rules, for mutexes, since
-  // we're not really changing the class.
-  const_cast<Mutex&>(decoder_mutex_).Lock();
+  decoder_mutex_.lock();
   if (final_relative_cost != NULL)
     *final_relative_cost = decoder_.FinalRelativeCost();
   if (decoder_.NumFramesDecoded() == 0) {
-    const_cast<Mutex&>(decoder_mutex_).Unlock();    
+    decoder_mutex_.unlock();
     clat->SetFinal(clat->AddState(),
                    CompactLatticeWeight::One());
     return;
   }
   Lattice raw_lat;
   decoder_.GetRawLattice(&raw_lat, end_of_utterance);
-  const_cast<Mutex&>(decoder_mutex_).Unlock();
-  
+  decoder_mutex_.unlock();
+
   if (!config_.decoder_opts.determinize_lattice)
     KALDI_ERR << "--determinize-lattice=false option is not supported at the moment";
 
@@ -345,16 +323,14 @@ void SingleUtteranceNnet2DecoderThreaded::GetBestPath(
     bool end_of_utterance,
     Lattice *best_path,
     BaseFloat *final_relative_cost) const {
-  // we'll make an exception to the normal const rules, for mutexes, since
-  // we're not really changing the class.
-  const_cast<Mutex&>(decoder_mutex_).Lock();
+  std::lock_guard<std::mutex> lock(decoder_mutex_);
   if (decoder_.NumFramesDecoded() == 0) {
     // It's possible that this if-statement is not necessary because we'd get this
     // anyway if we just called GetBestPath on the decoder.
     best_path->DeleteStates();
     best_path->SetFinal(best_path->AddState(),
                         LatticeWeight::One());
-    if (final_relative_cost != NULL)    
+    if (final_relative_cost != NULL)
       *final_relative_cost = std::numeric_limits<BaseFloat>::infinity();
   } else {
     decoder_.GetBestPath(best_path,
@@ -362,7 +338,6 @@ void SingleUtteranceNnet2DecoderThreaded::GetBestPath(
     if (final_relative_cost != NULL)
       *final_relative_cost = decoder_.FinalRelativeCost();
   }
-  const_cast<Mutex&>(decoder_mutex_).Unlock();
 }
 
 void SingleUtteranceNnet2DecoderThreaded::AbortAllThreads(bool error) {
@@ -374,15 +349,12 @@ void SingleUtteranceNnet2DecoderThreaded::AbortAllThreads(bool error) {
 }
 
 int32 SingleUtteranceNnet2DecoderThreaded::NumFramesDecoded() const {
-  const_cast<Mutex&>(decoder_mutex_).Lock();
-  int32 ans =  decoder_.NumFramesDecoded();
-  const_cast<Mutex&>(decoder_mutex_).Unlock();
-  return ans;
+  std::lock_guard<std::mutex> lock(decoder_mutex_);
+  return decoder_.NumFramesDecoded();
 }
 
-void* SingleUtteranceNnet2DecoderThreaded::RunNnetEvaluation(void *ptr_in) {
-  SingleUtteranceNnet2DecoderThreaded *me =
-      reinterpret_cast<SingleUtteranceNnet2DecoderThreaded*>(ptr_in);
+void SingleUtteranceNnet2DecoderThreaded::RunNnetEvaluation(
+    SingleUtteranceNnet2DecoderThreaded *me) {
   try {
     if (!me->RunNnetEvaluationInternal() && !me->abort_)
       KALDI_ERR << "Returned abnormally and abort was not called";
@@ -393,12 +365,10 @@ void* SingleUtteranceNnet2DecoderThreaded::RunNnetEvaluation(void *ptr_in) {
     bool error = true;
     me->AbortAllThreads(error);
   }
-  return NULL;
 }
 
-void* SingleUtteranceNnet2DecoderThreaded::RunDecoderSearch(void *ptr_in) {
-  SingleUtteranceNnet2DecoderThreaded *me =
-      reinterpret_cast<SingleUtteranceNnet2DecoderThreaded*>(ptr_in);
+void SingleUtteranceNnet2DecoderThreaded::RunDecoderSearch(
+    SingleUtteranceNnet2DecoderThreaded *me) {
   try {
     if (!me->RunDecoderSearchInternal() && !me->abort_)
       KALDI_ERR << "Returned abnormally and abort was not called";
@@ -408,23 +378,16 @@ void* SingleUtteranceNnet2DecoderThreaded::RunDecoderSearch(void *ptr_in) {
     bool error = true;
     me->AbortAllThreads(error);
   }
-  return NULL;
 }
 
 
 void SingleUtteranceNnet2DecoderThreaded::WaitForAllThreads() {
   for (int32 i = 0; i < 2; i++) {  // there are 2 spawned threads.
-    pthread_t &thread = threads_[i];
-    if (KALDI_PTHREAD_PTR(thread) != 0) {
-      if (pthread_join(thread, NULL)) {
-        KALDI_ERR << "Error rejoining thread";  // this should not happen.
-      }
-      KALDI_PTHREAD_PTR(thread) = 0;
-    }
+    if (threads_[i].joinable())
+      threads_[i].join();
   }
-  if (error_) {
+  if (error_)
     KALDI_ERR << "Error encountered during decoding.  See above.";
-  }
 }
 
 
@@ -447,7 +410,7 @@ void SingleUtteranceNnet2DecoderThreaded::ProcessLoglikes(
 // locked feature_pipeline_mutex_.
 bool SingleUtteranceNnet2DecoderThreaded::FeatureComputation(
     int32 num_frames_consumed) {
-  
+
   int32 num_frames_ready = feature_pipeline_.NumFramesReady(),
       num_frames_usable = num_frames_ready - num_frames_consumed;
   bool features_done = feature_pipeline_.IsLastFrame(num_frames_ready - 1);
@@ -457,7 +420,7 @@ bool SingleUtteranceNnet2DecoderThreaded::FeatureComputation(
   } else {
     if (num_frames_usable >= config_.nnet_batch_size)
       return true;  // We don't need more data yet.
-    
+
     // Now try to get more data, if we can.
     if (!waveform_synchronizer_.Lock(ThreadSynchronizer::kConsumer)) {
       return false;
@@ -506,12 +469,12 @@ bool SingleUtteranceNnet2DecoderThreaded::FeatureComputation(
 bool SingleUtteranceNnet2DecoderThreaded::RunNnetEvaluationInternal() {
   // if any of the Lock/Unlock functions return false, it's because AbortAllThreads()
   // was called.
-  
+
   // This object is responsible for keeping track of the context, and avoiding
   // re-computing things we've already computed.
   bool pad_input = true;
   nnet2::NnetOnlineComputer computer(am_nnet_.GetNnet(), pad_input);
-  
+
   // we declare the following as CuVector just to enable GPU support, but
   // we expect this code to be run on CPU in the normal case.
   CuVector<BaseFloat> log_inv_prior(am_nnet_.Priors());
@@ -525,30 +488,32 @@ bool SingleUtteranceNnet2DecoderThreaded::RunNnetEvaluationInternal() {
   // has produced, which may be less than num_frames_consumed due to the
   // right-context of the network.
   int32 num_frames_consumed = 0, num_frames_output = 0;
-  
+
   while (true) {
     bool last_time = false;
 
     /****** Begin locking of feature pipeline mutex. ******/
-    feature_pipeline_mutex_.Lock();
+    feature_pipeline_mutex_.lock();
     if (!FeatureComputation(num_frames_consumed)) {  // error
-      feature_pipeline_mutex_.Unlock();
+      feature_pipeline_mutex_.unlock();
       return false;
     }
     // take care of silence weighting.
-    if (silence_weighting_.Active()) {
-      silence_weighting_mutex_.Lock();
+    if (silence_weighting_.Active() &&
+        feature_pipeline_.IvectorFeature() != NULL) {
+      silence_weighting_mutex_.lock();
       std::vector<std::pair<int32, BaseFloat> > delta_weights;
-      silence_weighting_.GetDeltaWeights(feature_pipeline_.NumFramesReady(),
-                                         &delta_weights);
-      silence_weighting_mutex_.Unlock();
-      feature_pipeline_.UpdateFrameWeights(delta_weights);
+      silence_weighting_.GetDeltaWeights(
+          feature_pipeline_.IvectorFeature()->NumFramesReady(),
+          &delta_weights);
+      silence_weighting_mutex_.unlock();
+      feature_pipeline_.IvectorFeature()->UpdateFrameWeights(delta_weights);
     }
-    
+
     int32 num_frames_ready = feature_pipeline_.NumFramesReady(),
         num_frames_usable = num_frames_ready - num_frames_consumed;
     bool features_done = feature_pipeline_.IsLastFrame(num_frames_ready - 1);
-      
+
     int32 num_frames_evaluate = std::min<int32>(num_frames_usable,
                                                 config_.nnet_batch_size);
 
@@ -563,10 +528,10 @@ bool SingleUtteranceNnet2DecoderThreaded::RunNnetEvaluationInternal() {
       }
     }
     /****** End locking of feature pipeline mutex. ******/
-    feature_pipeline_mutex_.Unlock();  
+    feature_pipeline_mutex_.unlock();
 
     CuMatrix<BaseFloat> cu_loglikes;
-    
+
     if (feats.NumRows() == 0) {
       if (features_done) {
         // flush out the last few frames.  Note: this is the only place from
@@ -587,7 +552,7 @@ bool SingleUtteranceNnet2DecoderThreaded::RunNnetEvaluationInternal() {
       num_frames_consumed += cu_feats.NumRows();
       ProcessLoglikes(log_inv_prior, &cu_loglikes);
     }
-    
+
     Matrix<BaseFloat> loglikes;
     loglikes.Swap(&cu_loglikes);  // If we don't have a GPU (and not having a
                                   // GPU is the normal expected use-case for
@@ -596,8 +561,8 @@ bool SingleUtteranceNnet2DecoderThreaded::RunNnetEvaluationInternal() {
 
 
     // OK, at this point we may have some newly created log-likes and we want to
-    // give them to the decoding thread.  
-    
+    // give them to the decoding thread.
+
     int32 num_loglike_frames = loglikes.NumRows();
 
     if (num_loglike_frames != 0) {  // if we need to output some loglikes...
@@ -644,7 +609,7 @@ bool SingleUtteranceNnet2DecoderThreaded::RunNnetEvaluationInternal() {
     }
   }
 }
-  
+
 
 bool SingleUtteranceNnet2DecoderThreaded::RunDecoderSearchInternal() {
   int32 num_frames_decoded = 0;  // this is just a copy of decoder_->NumFramesDecoded();
@@ -666,16 +631,15 @@ bool SingleUtteranceNnet2DecoderThreaded::RunDecoderSearchInternal() {
       }
     } else {
       // Decode at most config_.decode_batch_size frames (e.g. 1 or 2).
-      decoder_mutex_.Lock();
+      decoder_mutex_.lock();
       decoder_.AdvanceDecoding(&decodable_, config_.decode_batch_size);
       num_frames_decoded = decoder_.NumFramesDecoded();
       if (silence_weighting_.Active()) {
-        silence_weighting_mutex_.Lock();
+        std::lock_guard<std::mutex> lock(silence_weighting_mutex_);
         // the next function does not trace back all the way; it's very fast.
         silence_weighting_.ComputeCurrentTraceback(decoder_);
-        silence_weighting_mutex_.Unlock();
       }
-      decoder_mutex_.Unlock();
+      decoder_mutex_.unlock();
       num_frames_decoded_ = num_frames_decoded;
       if (!decodable_synchronizer_.UnlockSuccess(ThreadSynchronizer::kConsumer))
         return false;
@@ -685,12 +649,10 @@ bool SingleUtteranceNnet2DecoderThreaded::RunDecoderSearchInternal() {
 
 bool SingleUtteranceNnet2DecoderThreaded::EndpointDetected(
     const OnlineEndpointConfig &config) {
-  decoder_mutex_.Lock();
-  bool ans = kaldi::EndpointDetected(config, tmodel_,
-                                     feature_pipeline_.FrameShiftInSeconds(),
-                                     decoder_);
-  decoder_mutex_.Unlock();
-  return ans;
+  std::lock_guard<std::mutex> lock(decoder_mutex_);
+  return kaldi::EndpointDetected(config, tmodel_,
+                                 feature_pipeline_.FrameShiftInSeconds(),
+                                 decoder_);
 }
 
 

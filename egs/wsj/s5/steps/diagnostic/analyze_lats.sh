@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 # Copyright Johns Hopkins University (Author: Daniel Povey) 2016.  Apache 2.0.
 
@@ -50,10 +50,10 @@ $cmd JOB=1:$num_jobs $dir/log/lattice_best_path.JOB.log \
 
 $cmd JOB=1:$num_jobs $dir/log/get_lattice_stats.JOB.log \
   ali-to-phones --write-lengths=true "$model" "ark:gunzip -c $dir/ali_tmp.JOB.gz|" ark,t:- \| \
-  sed -E 's/^[^ ]+ //' \| \
-  awk 'BEGIN{FS=" ; "; OFS="\n";} {print "begin " $1; print "end " $NF; for (n=1;n<=NF;n++) print "all " $n; }' \| \
-  sort \| uniq -c \| gzip -c '>' $dir/phone_stats.JOB.gz || exit 1
-
+  perl -ne 'chomp;s/^\S+\s*//;@a=split /\s;\s/, $_;$count{"begin ".$a[$0]."\n"}++;
+  if(@a>1){$count{"end ".$a[-1]."\n"}++;}for($i=0;$i<@a;$i++){$count{"all ".$a[$i]."\n"}++;}
+  END{for $k (sort keys %count){print "$count{$k} $k"}}' \| \
+  gzip -c '>' $dir/phone_stats.JOB.gz || exit 1
 
 $cmd $dir/log/analyze_alignments.log \
   gunzip -c "$dir/phone_stats.*.gz" \| \
@@ -62,31 +62,20 @@ $cmd $dir/log/analyze_alignments.log \
 grep WARNING $dir/log/analyze_alignments.log
 echo "$0: see stats in $dir/log/analyze_alignments.log"
 
-
-# note: below, some things that would be interpreted by the shell have to be
-# escaped since it needs to be passed to $cmd.
-# the 'paste' command will paste together the phone-indexes and the depths
-# so that one line will be like utt-id1 phone1 phone2 phone3 .. utt-id1 depth1 depth2 depth3 ...
-# the awk command computes counts of pairs (phone, lattice-depth) and outputs lines
-# containing 3 integers representing:
-#   phone lattice_depth, count[phone,lattice_depth]
-$cmd JOB=1:$num_jobs $dir/log/lattice_best_path.JOB.log \
-  ali-to-phones --per-frame=true "$model" "ark:gunzip -c $dir/ali_tmp.JOB.gz|" ark,t:- \| \
-  paste /dev/stdin '<(' gunzip -c $dir/depth_tmp.JOB.gz  ')'  \| \
-  awk '{ half=NF/2; for (n=2; n<=half; n++) { m=n+half; count[$n " " $m]++;}} END{for(k in count) print k, count[k]; }' \| \
-  gzip -c '>' $dir/depth_stats_tmp.JOB.gz
-
+$cmd $dir/log/dump_ali_frame.log \
+  ali-to-phones --per-frame=true "$model" "ark:gunzip -c $dir/ali_tmp.*.gz|" "ark,t:|gzip -c >$dir/ali_frame_tmp.gz"
 
 $cmd $dir/log/analyze_lattice_depth_stats.log \
-  gunzip -c "$dir/depth_stats_tmp.*.gz" \| \
-  steps/diagnostic/analyze_lattice_depth_stats.py $lang || exit 1
+  gunzip -c "$dir/depth_tmp.*.gz" \| \
+  steps/diagnostic/analyze_lattice_depth_stats.py $lang "$dir/ali_frame_tmp.gz" || exit 1
 
+grep Overall $dir/log/analyze_lattice_depth_stats.log
 echo "$0: see stats in $dir/log/analyze_lattice_depth_stats.log"
 
 
 rm $dir/phone_stats.*.gz
 rm $dir/depth_tmp.*.gz
-rm $dir/depth_stats_tmp.*.gz
+rm $dir/ali_frame_tmp.gz
 rm $dir/ali_tmp.*.gz
 
 exit 0

@@ -24,6 +24,7 @@
 #include "lat/kaldi-lattice.h"
 #include "lat/lattice-functions.h"
 #include "gmm/am-diag-gmm.h"
+#include "hmm/posterior.h"
 #include "hmm/transition-model.h"
 
 int main(int argc, char *argv[]) {
@@ -36,7 +37,7 @@ int main(int argc, char *argv[]) {
   
     const char *usage =
         "Do forward-backward and collect frame level MPE posteriors over\n" 
-        "lattices, which can be fed into gmm-acc-stats2 to do MPE traning.\n"
+        "lattices, which can be fed into gmm-acc-stats2 to do MPE training.\n"
         "Caution: this is not really MPE, this is MPFE (minimum phone frame\n"
         "error).  The posteriors may be positive or negative.\n"
         "Usage: lattice-to-mpe-post [options] <model> <num-posteriors-rspecifier>\n"
@@ -93,7 +94,7 @@ int main(int argc, char *argv[]) {
       trans_model.Read(ki.Stream(), binary);
     }
 
-    int32 num_done = 0, num_err = 0;
+    int32 num_done = 0;
     double total_lat_frame_acc = 0.0, lat_frame_acc;
     double total_time = 0, lat_time;
 
@@ -113,7 +114,6 @@ int main(int argc, char *argv[]) {
       
       if (!alignments_reader.HasKey(key)) {
         KALDI_WARN << "No alignment for utterance " << key;
-        num_err++;
       } else {
         const std::vector<int32> &alignment = alignments_reader.Value(key);
         Posterior post;

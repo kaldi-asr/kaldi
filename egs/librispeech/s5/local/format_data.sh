@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2014 Vassil Panayotov
 # Apache 2.0
@@ -6,7 +6,7 @@
 # Prepares the test time language model(G) transducers
 # (adapted from wsj/s5/local/wsj_format_data.sh)
 
-. path.sh
+. ./path.sh
 
 if [ $# -ne 1 ]; then
   echo "Usage: $0 <lm-dir>"

@@ -22,21 +22,6 @@
 
 namespace kaldi {
 
-bool ExtractRangeSpecifier(const std::string &line,
-                           std::string *data_rxfilename,
-                           std::string *range) {
-  if (line.empty() || line[line.size()-1] != ']')
-    KALDI_ERR << "ExtractRangeRspecifier called wrongly.";
-  std::vector<std::string> splits;
-  SplitStringToVector(line, "[", false, &splits);
-  if (splits.size() == 2 && !splits[0].empty() && splits[1].size() > 1) {
-    *data_rxfilename = splits[0];
-    range->assign(splits[1], 0, splits[1].size()-1);
-    return true;
-  }
-  return false;
-}
-
 
 bool ReadScriptFile(const std::string &rxfilename,
                     bool warn,
@@ -238,7 +223,7 @@ WspecifierType ClassifyWspecifier(const std::string &wspecifier,
 
 
 RspecifierType ClassifyRspecifier(const std::string &rspecifier,
-                                  std::string *wxfilename,
+                                  std::string *rxfilename,
                                   RspecifierOptions *opts) {
   // Examples
   // ark:rxfilename  ->  kArchiveRspecifier
@@ -262,7 +247,7 @@ RspecifierType ClassifyRspecifier(const std::string &rspecifier,
 
   // Improperly formed Rspecifiers will be classified as kNoRspecifier.
 
-  if (wxfilename) wxfilename->clear();
+  if (rxfilename) rxfilename->clear();
 
   if (opts != NULL)
     *opts = RspecifierOptions();  // Make sure all the defaults are as in the
@@ -323,8 +308,8 @@ RspecifierType ClassifyRspecifier(const std::string &rspecifier,
     }
   }
   if ((rs == kArchiveRspecifier || rs == kScriptRspecifier)
-     && wxfilename != NULL)
-    *wxfilename = after_colon;
+     && rxfilename != NULL)
+    *rxfilename = after_colon;
   return rs;
 }
 

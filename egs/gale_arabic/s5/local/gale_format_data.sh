@@ -1,10 +1,10 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2014 QCRI (author: Ahmed Ali)
 # Apache 2.0
 
 if [ -f path.sh ]; then
-  . path.sh; else
+  . ./path.sh; else
    echo "missing path.sh"; exit 1;
 fi
 
@@ -56,3 +56,5 @@ fsttablecompose data/lang/L_disambig.fst data/lang_test/G.fst | \
 
 
 echo gale_format_data  succeeded.
+
+exit 0

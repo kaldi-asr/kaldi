@@ -37,7 +37,7 @@ int main(int argc, char *argv[]) {
     using namespace kaldi;
     typedef kaldi::int32 int32;
     using fst::SymbolTable;
-    using fst::VectorFst;
+    using fst::Fst;
     using fst::StdArc;
 
     const char *usage =
@@ -80,7 +80,7 @@ int main(int argc, char *argv[]) {
       am_gmm.Read(ki.Stream(), binary);
     }
 
-    VectorFst<StdArc> *decode_fst = fst::ReadFstKaldi(fst_in_filename);
+    Fst<StdArc> *decode_fst = fst::ReadFstKaldiGeneric(fst_in_filename);
 
     bool determinize = config.determinize_lattice;
     CompactLatticeWriter compact_lattice_writer;

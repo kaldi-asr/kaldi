@@ -24,6 +24,7 @@
 namespace kaldi {
 namespace chain {
 
+
 DenominatorComputation::DenominatorComputation(
     const ChainTrainingOptions &opts,
     const DenominatorGraph &den_graph,
@@ -33,10 +34,9 @@ DenominatorComputation::DenominatorComputation(
     den_graph_(den_graph),
     num_sequences_(num_sequences),
     frames_per_sequence_(nnet_output.NumRows() / num_sequences_),
-    exp_nnet_output_transposed_(nnet_output, kTrans),
     nnet_output_deriv_transposed_(
-        exp_nnet_output_transposed_.NumRows(),
-        std::min<int32>(exp_nnet_output_transposed_.NumCols(),
+        nnet_output.NumCols(),
+        std::min<int32>(nnet_output.NumRows(),
                         static_cast<int32>(kMaxDerivTimeSteps) *
                         num_sequences_)),
     alpha_(frames_per_sequence_ + 1,
@@ -48,8 +48,25 @@ DenominatorComputation::DenominatorComputation(
     tot_log_prob_(num_sequences_, kUndefined),
     log_correction_term_(num_sequences_, kUndefined),
     ok_(true) {
+  // We don't let leaky_hmm_coefficient be exactly zero (although that would
+  // make sense mathematically, corresponding to "turning off" the leaky HMM),
+  // because that would lead to underflow and eventually NaN's or inf's
+  // appearing in the computation, since we do this computation not in
+  // log-space.
   KALDI_ASSERT(opts_.leaky_hmm_coefficient > 0.0 &&
                opts_.leaky_hmm_coefficient < 1.0);
+
+  if (RandInt(0, 99) == 0) {
+    // A check, that all values in nnet_output are in the range [-30, 30]..
+    // otherwise derivatives will be wrong (search below for 30).
+    BaseFloat max_val = nnet_output.Max(), min_val = nnet_output.Min();
+    if (max_val > 30.0 || min_val < -30.0) {
+      KALDI_WARN << "Nnet outputs " << min_val << ", "
+                 << max_val <<
+          " outside the range [-30,30], derivs may be inaccurate.";
+    }
+  }
+
   // make sure the alpha sums and beta sums are zeroed.
   alpha_.ColRange(den_graph_.NumStates() * num_sequences_,
                   num_sequences_).SetZero();
@@ -57,7 +74,19 @@ DenominatorComputation::DenominatorComputation(
                  num_sequences_).SetZero();
 
   KALDI_ASSERT(nnet_output.NumRows() % num_sequences == 0);
-  exp_nnet_output_transposed_.ApplyExp();
+  // the kStrideEqualNumCols argument is so that we can share the same
+  // memory block with xent_output_deriv (see chain-training.cc, search for
+  // kStrideEqualNumCols).  This depends on how the allocator works, and
+  // actually might not happen, but anyway, the impact on speed would
+  // likely be un-measurably small.
+  exp_nnet_output_transposed_.Resize(nnet_output.NumCols(),
+                                     nnet_output.NumRows(),
+                                     kUndefined, kStrideEqualNumCols);
+  exp_nnet_output_transposed_.CopyFromMat(nnet_output, kTrans);
+  // We limit the nnet output to the range [-30,30] before doing the exp;
+  // this avoids NaNs appearing in the forward-backward computation, which
+  // is not done in log space.
+  exp_nnet_output_transposed_.ApplyExpLimited(-30.0, 30.0);
 }
 
 
@@ -70,15 +99,13 @@ void DenominatorComputation::AlphaFirstFrame() {
                                    den_graph_.NumStates(),
                                    num_sequences_,
                                    num_sequences_);
-  // TODO (possible): It would be more efficient here if we implemented a
-  // CopyColsFromVec function in class CuMatrix.
-  alpha_mat.SetZero();
-  alpha_mat.AddVecToCols(1.0, den_graph_.InitialProbs(), 0.0);
+  alpha_mat.CopyColsFromVec(den_graph_.InitialProbs());
 }
 
 
 // the alpha computation for some 0 < t <= num_time_steps_.
 void DenominatorComputation::AlphaGeneralFrame(int32 t) {
+  NVTX_RANGE(__func__);
   KALDI_ASSERT(t > 0 && t <= frames_per_sequence_);
   BaseFloat *this_alpha = alpha_.RowData(t);
   const BaseFloat *prev_alpha_dash = alpha_.RowData(t - 1);
@@ -95,7 +122,7 @@ void DenominatorComputation::AlphaGeneralFrame(int32 t) {
 
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    Timer tim;
+    CuTimer tim;
     dim3 dimBlock(std::min<int32>(CU1DBLOCK, num_sequences), 1, 1);
     dim3 dimGrid(n_blocks(num_sequences, dimBlock.x), num_hmm_states, 1);
 
@@ -120,7 +147,7 @@ void DenominatorComputation::AlphaGeneralFrame(int32 t) {
         dimGrid.y = num_hmm_states;
       }
     }
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
   } else
 #endif
   {
@@ -157,6 +184,7 @@ void DenominatorComputation::AlphaGeneralFrame(int32 t) {
 }
 
 void DenominatorComputation::AlphaDash(int32 t) {
+  NVTX_RANGE(__func__);
   BaseFloat *this_alpha = alpha_.RowData(t);
 
   // create a 'fake matrix' for the regular alphas- view this row as a matrix.
@@ -180,6 +208,7 @@ void DenominatorComputation::AlphaDash(int32 t) {
 
 // compute beta from beta-dash.
 void DenominatorComputation::Beta(int32 t) {
+  NVTX_RANGE(__func__);
   BaseFloat *this_beta_dash = beta_.RowData(t % 2);
   // create a 'fake matrix' for the regular beta-dash (which is
   // the counterpart of alpha-dash)- view this row as a matrix.
@@ -202,6 +231,7 @@ void DenominatorComputation::Beta(int32 t) {
 }
 
 BaseFloat DenominatorComputation::Forward() {
+  NVTX_RANGE(__func__);
   AlphaFirstFrame();
   AlphaDash(0);
   for (int32 t = 1; t <= frames_per_sequence_; t++) {
@@ -212,6 +242,7 @@ BaseFloat DenominatorComputation::Forward() {
 }
 
 BaseFloat DenominatorComputation::ComputeTotLogLike() {
+  NVTX_RANGE(__func__);
   tot_prob_.Resize(num_sequences_);
   // View the last alpha-dash as a matrix of size num-hmm-states by num-sequences.
   CuSubMatrix<BaseFloat> last_alpha_dash(
@@ -252,6 +283,7 @@ BaseFloat DenominatorComputation::ComputeTotLogLike() {
 bool DenominatorComputation::Backward(
     BaseFloat deriv_weight,
     CuMatrixBase<BaseFloat> *nnet_output_deriv) {
+  NVTX_RANGE(__func__);
   BetaDashLastFrame();
   Beta(frames_per_sequence_);
   for (int32 t = frames_per_sequence_ - 1; t >= 0; t--) {
@@ -260,7 +292,7 @@ bool DenominatorComputation::Backward(
       BetaGeneralFrameDebug(t);
     Beta(t);
     if (t % kMaxDerivTimeSteps == 0) {
-      // commit the derivative stored in exp_nnet_output_transposed_ by adding
+      // commit the derivative stored in nnet_output_deriv_transposed_ by adding
       // its transpose to the appropriate sub-matrix of 'nnet_output_deriv'.
       int32 chunk_frames = std::min<int32>(static_cast<int32>(kMaxDerivTimeSteps),
                                            frames_per_sequence_ - t),
@@ -278,6 +310,7 @@ bool DenominatorComputation::Backward(
         transposed_deriv_part.SetZero();
     }
   }
+
   return ok_;
 }
 
@@ -302,6 +335,7 @@ void DenominatorComputation::BetaDashLastFrame() {
 }
 
 void DenominatorComputation::BetaDashGeneralFrame(int32 t) {
+  NVTX_RANGE(__func__);
   KALDI_ASSERT(t >= 0 && t < frames_per_sequence_);
   int32 num_pdfs = exp_nnet_output_transposed_.NumRows();
   // t_wrapped gives us the time-index we use when indexing
@@ -325,7 +359,7 @@ void DenominatorComputation::BetaDashGeneralFrame(int32 t) {
 
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
-    Timer tim;
+    CuTimer tim;
     dim3 dimBlock(std::min<int32>(CU1DBLOCK, num_sequences), 1, 1);
     dim3 dimGrid(n_blocks(num_sequences, dimBlock.x), num_hmm_states, 1);
     while (1) {
@@ -351,7 +385,7 @@ void DenominatorComputation::BetaDashGeneralFrame(int32 t) {
         dimGrid.y = num_hmm_states;
       }
     }
-    CuDevice::Instantiate().AccuProfile(__func__, tim.Elapsed());
+    CuDevice::Instantiate().AccuProfile(__func__, tim);
   } else
 #endif
   {

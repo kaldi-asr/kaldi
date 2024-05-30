@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# -*- coding: utf-8 -*-
 '''
 # Copyright 2014 Author: Andreas Kirkedal
 
@@ -21,6 +22,7 @@ Currently only has a table for Danish
 
 Changed to write output to file to prevent problems with shell ascii codec.
 '''
+from __future__ import print_function
 
 import sys
 import os
@@ -214,7 +216,7 @@ def rmPvAnnotation(string):
 
 def normNumber(line, table):
     tokens = line.split()
-    keys = table.keys()
+    keys = list(table.keys())
     for num, tok in enumerate(tokens):
         newtoks = splitNumeric(tok)
         if newtoks != False:

@@ -1,12 +1,13 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright 2012 Vassil Panayotov
 # Apache 2.0
 
 # NOTE: You will want to download the data set first, before executing this script.
 #       This can be done for example by:
-#       1. Setting the DATA_ROOT variable to point to a directory with enough free
-#          space (at least 20-25GB currently (Feb 2014))
+#       1. Setting the variable DATA_ROOT in path.sh to point to a
+#          directory with enough free space (at least 20-25GB
+#          currently (Feb 2014))
 #       2. Running "getdata.sh"
 
 # The second part of this script comes mostly from egs/rm/s5/run.sh
@@ -43,7 +44,7 @@ selected=${DATA_ROOT}/selected
 # /bin/bash run.sh --pos-dep-phones false
 . utils/parse_options.sh || exit 1
 
-[[ $# -ge 1 ]] && { echo "Unexpected arguments"; exit 1; } 
+[[ $# -ge 1 ]] && { echo "Unexpected arguments"; exit 1; }
 
 # Select a subset of the data to use
 # WARNING: the destination directory will be deleted if it already exists!
@@ -74,7 +75,7 @@ local/voxforge_format_data.sh || exit 1
 # mfccdir should be some place with a largish disk where you
 # want to store MFCC features.
 mfccdir=${DATA_ROOT}/mfcc
-for x in train test; do 
+for x in train test; do
  steps/make_mfcc.sh --cmd "$train_cmd" --nj $njobs \
    data/$x exp/make_mfcc/$x $mfccdir || exit 1;
  steps/compute_cmvn_stats.sh data/$x exp/make_mfcc/$x $mfccdir || exit 1;
@@ -85,7 +86,7 @@ utils/subset_data_dir.sh data/train 1000 data/train.1k  || exit 1;
 steps/train_mono.sh --nj $njobs --cmd "$train_cmd" data/train.1k data/lang exp/mono  || exit 1;
 
 # Monophone decoding
-utils/mkgraph.sh --mono data/lang_test exp/mono exp/mono/graph || exit 1
+utils/mkgraph.sh data/lang_test exp/mono exp/mono/graph || exit 1
 # note: local/decode.sh calls the command line once for each
 # test, and afterwards averages the WERs into (in this case
 # exp/mono/decode/

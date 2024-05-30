@@ -138,7 +138,7 @@ void WriteToken(std::ostream &os, bool binary, const char *token) {
   CheckToken(token);  // make sure it's valid (can be read back)
   os << token << " ";
   if (os.fail()) {
-    throw std::runtime_error("Write failure in WriteToken.");
+    KALDI_ERR << "Write failure in WriteToken.";
   }
 }
 
@@ -161,7 +161,7 @@ void ReadToken(std::istream &is, bool binary, std::string *str) {
   }
   if (!isspace(is.peek())) {
     KALDI_ERR << "ReadToken, expected space after token, saw instead "
-              << static_cast<char>(is.peek())
+              << CharToString(static_cast<char>(is.peek()))
               << ", at file position " << is.tellg();
   }
   is.get();  // consume the space.
@@ -178,8 +178,11 @@ int PeekToken(std::istream &is, bool binary) {
   }
   int ans = is.peek();
   if (read_bracket) {
-    if (!is.unget())
-      KALDI_WARN << "Error ungetting '<' in PeekToken";
+    if (!is.unget()) {
+      // Clear the bad bit. This code can be (and is in fact) reached, since the
+      // C++ standard does not guarantee that a call to unget() must succeed.
+      is.clear();
+    }
   }
   return ans;
 }
@@ -197,7 +200,12 @@ void ExpectToken(std::istream &is, bool binary, const char *token) {
     KALDI_ERR << "Failed to read token [started at file position "
               << pos_at_start << "], expected " << token;
   }
-  if (strcmp(str.c_str(), token) != 0) {
+  // The second half of the '&&' expression below is so that if we're expecting
+  // "<Foo>", we will accept "Foo>" instead.  This is so that the model-reading
+  // code will tolerate errors in PeekToken where is.unget() failed; search for
+  // is.clear() in PeekToken() for an explanation.
+  if (strcmp(str.c_str(), token) != 0 &&
+      !(token[0] == '<' && strcmp(str.c_str(), token + 1) == 0)) {
     KALDI_ERR << "Expected token \"" << token << "\", got instead \""
               << str <<"\".";
   }

@@ -21,7 +21,7 @@
 #include <vector>
 
 #include "ivector/ivector-extractor.h"
-#include "thread/kaldi-task-sequence.h"
+#include "util/kaldi-thread.h"
 
 namespace kaldi {
 
@@ -348,7 +348,8 @@ static double GetLogDetNoFailure(const SpMatrix<double> &var) {
   } catch (...) {
     Vector<double> eigs(var.NumRows());
     var.Eig(&eigs);
-    int32 floored = eigs.ApplyFloor(1.0e-20);
+    int32 floored;
+    eigs.ApplyFloor(1.0e-20, &floored);
     if (floored > 0)
       KALDI_WARN << "Floored " << floored << " eigenvalues of variance.";
     eigs.ApplyLog();
@@ -577,9 +578,95 @@ void OnlineIvectorEstimationStats::AccStats(
       quadratic_term_.AddToDiag(prior_scale_change);
     }
   }
-
   num_frames_ += tot_weight;
 }
+
+
+// This is used in OnlineIvectorEstimationStats::AccStats().
+struct GaussInfo {
+  // total weight for this Gaussian.
+  BaseFloat tot_weight;
+  // vector of pairs of (frame-index, weight for this Gaussian)
+  std::vector<std::pair<int32, BaseFloat> > frame_weights;
+  GaussInfo(): tot_weight(0.0) { }
+};
+
+static void ConvertPostToGaussInfo(
+    const std::vector<std::vector<std::pair<int32, BaseFloat> > > &gauss_post,
+    std::unordered_map<int32, GaussInfo> *gauss_info) {
+  int32 num_frames = gauss_post.size();
+  for (int32 t = 0; t < num_frames; t++) {
+    const std::vector<std::pair<int32, BaseFloat> > &this_post = gauss_post[t];
+    auto iter = this_post.begin(), end = this_post.end();
+    for (; iter != end; ++iter) {
+      int32 gauss_idx = iter->first;
+      GaussInfo &info = (*gauss_info)[gauss_idx];
+      BaseFloat weight = iter->second;
+      info.tot_weight += weight;
+      info.frame_weights.push_back(std::pair<int32, BaseFloat>(t, weight));
+    }
+  }
+}
+
+void OnlineIvectorEstimationStats::AccStats(
+    const IvectorExtractor &extractor,
+    const MatrixBase<BaseFloat> &features,
+    const std::vector<std::vector<std::pair<int32, BaseFloat> > > &gauss_post) {
+  KALDI_ASSERT(extractor.IvectorDim() == this->IvectorDim());
+  KALDI_ASSERT(!extractor.IvectorDependentWeights());
+
+  int32 feat_dim = features.NumCols();
+  std::unordered_map<int32, GaussInfo> gauss_info;
+  ConvertPostToGaussInfo(gauss_post, &gauss_info);
+
+  Vector<double> weighted_feats(feat_dim, kUndefined);
+  double tot_weight = 0.0;
+  int32 ivector_dim = this->IvectorDim(),
+      quadratic_term_dim = (ivector_dim * (ivector_dim + 1)) / 2;
+  SubVector<double> quadratic_term_vec(quadratic_term_.Data(),
+                                       quadratic_term_dim);
+
+  std::unordered_map<int32, GaussInfo>::const_iterator
+      iter = gauss_info.begin(), end = gauss_info.end();
+  for (; iter != end; ++iter) {
+    int32 gauss_idx = iter->first;
+    const GaussInfo &info = iter->second;
+
+    weighted_feats.SetZero();
+    std::vector<std::pair<int32, BaseFloat> >::const_iterator
+        f_iter = info.frame_weights.begin(), f_end = info.frame_weights.end();
+    for (; f_iter != f_end; ++f_iter) {
+      int32 t = f_iter->first;
+      BaseFloat weight = f_iter->second;
+      weighted_feats.AddVec(weight, features.Row(t));
+    }
+    BaseFloat this_tot_weight = info.tot_weight;
+
+    linear_term_.AddMatVec(1.0, extractor.Sigma_inv_M_[gauss_idx], kTrans,
+                           weighted_feats, 1.0);
+    SubVector<double> U_g(extractor.U_, gauss_idx);
+    quadratic_term_vec.AddVec(this_tot_weight, U_g);
+    tot_weight += this_tot_weight;
+  }
+  if (max_count_ > 0.0) {
+    // see comments in header RE max_count for explanation.  It relates to
+    // prior scaling when the count exceeds max_count_
+    double old_num_frames = num_frames_,
+        new_num_frames = num_frames_ + tot_weight;
+    double old_prior_scale = std::max(old_num_frames, max_count_) / max_count_,
+        new_prior_scale = std::max(new_num_frames, max_count_) / max_count_;
+    // The prior_scales are the inverses of the scales we would put on the stats
+    // if we were implementing this by scaling the stats.  Instead we
+    // scale the prior term.
+    double prior_scale_change = new_prior_scale - old_prior_scale;
+    if (prior_scale_change != 0.0) {
+      linear_term_(0) += prior_offset_ * prior_scale_change;
+      quadratic_term_.AddToDiag(prior_scale_change);
+    }
+  }
+  num_frames_ += tot_weight;
+}
+
 
 void OnlineIvectorEstimationStats::Scale(double scale) {
   KALDI_ASSERT(scale >= 0.0 && scale <= 1.0);
@@ -842,7 +929,7 @@ void IvectorExtractorStats::CommitStatsForM(
     const VectorBase<double> &ivec_mean,
     const SpMatrix<double> &ivec_var) {
 
-  gamma_Y_lock_.Lock();
+  gamma_Y_lock_.lock();
 
   // We do the occupation stats here also.
   gamma_.AddVec(1.0, utt_stats.gamma_);
@@ -852,17 +939,17 @@ void IvectorExtractorStats::CommitStatsForM(
     Y_[i].AddVecVec(1.0, utt_stats.X_.Row(i),
                     Vector<double>(ivec_mean));
   }
-  gamma_Y_lock_.Unlock();
+  gamma_Y_lock_.unlock();
 
   SpMatrix<double> ivec_scatter(ivec_var);
   ivec_scatter.AddVec2(1.0, ivec_mean);
 
-  R_cache_lock_.Lock();
+  R_cache_lock_.lock();
   while (R_num_cached_ == R_gamma_cache_.NumRows()) {
     // Cache full.  The "while" statement is in case of certain race conditions.
-    R_cache_lock_.Unlock();
+    R_cache_lock_.unlock();
     FlushCache();
-    R_cache_lock_.Lock();
+    R_cache_lock_.lock();
   }
   R_gamma_cache_.Row(R_num_cached_).CopyFromVec(utt_stats.gamma_);
   int32 ivector_dim = ivec_mean.Dim();
@@ -870,11 +957,11 @@ void IvectorExtractorStats::CommitStatsForM(
                                      ivector_dim * (ivector_dim + 1) / 2);
   R_ivec_scatter_cache_.Row(R_num_cached_).CopyFromVec(ivec_scatter_vec);
   R_num_cached_++;
-  R_cache_lock_.Unlock();
+  R_cache_lock_.unlock();
 }
 
 void IvectorExtractorStats::FlushCache() {
-  R_cache_lock_.Lock();
+  R_cache_lock_.lock();
   if (R_num_cached_ > 0) {
     KALDI_VLOG(1) << "Flushing cache for IvectorExtractorStats";
     // Store these quantities as copies in memory so other threads can use the
@@ -887,13 +974,13 @@ void IvectorExtractorStats::FlushCache() {
                                     0, R_ivec_scatter_cache_.NumCols()));
     R_num_cached_ = 0; // As far as other threads are concerned, the cache is
                        // cleared and they may write to it.
-    R_cache_lock_.Unlock();
-    R_lock_.Lock();
+    R_cache_lock_.unlock();
+    R_lock_.lock();
     R_.AddMatMat(1.0, R_gamma_cache, kTrans,
                  R_ivec_scatter_cache, kNoTrans, 1.0);
-    R_lock_.Unlock();
+    R_lock_.unlock();
   } else {
-    R_cache_lock_.Unlock();
+    R_cache_lock_.unlock();
   }
 }
 
@@ -901,13 +988,13 @@ void IvectorExtractorStats::FlushCache() {
 void IvectorExtractorStats::CommitStatsForSigma(
     const IvectorExtractor &extractor,
     const IvectorExtractorUtteranceStats &utt_stats) {
-  variance_stats_lock_.Lock();
+  variance_stats_lock_.lock();
   // Storing the raw scatter statistics per Gaussian.  In the update phase we'll
   // take into account some other terms relating to the model means and their
   // correlation with the data.
   for (int32 i = 0; i < extractor.NumGauss(); i++)
     S_[i].AddSp(1.0, utt_stats.S_[i]);
-  variance_stats_lock_.Unlock();
+  variance_stats_lock_.unlock();
 }
 
 
@@ -936,7 +1023,7 @@ void IvectorExtractorStats::CommitStatsForWPoint(
     linear_coeff(i) = gamma_i - gamma * w(i) + max_term * logw_unnorm(i);
     quadratic_coeff(i) = max_term;
   }
-  weight_stats_lock_.Lock();
+  weight_stats_lock_.lock();
   G_.AddVecVec(weight, linear_coeff, Vector<double>(ivector));
 
   int32 ivector_dim = extractor.IvectorDim();
@@ -945,7 +1032,7 @@ void IvectorExtractorStats::CommitStatsForWPoint(
   SubVector<double> outer_prod_vec(outer_prod.Data(),
                                    ivector_dim * (ivector_dim + 1) / 2);
   Q_.AddVecVec(weight, quadratic_coeff, outer_prod_vec);
-  weight_stats_lock_.Unlock();
+  weight_stats_lock_.unlock();
 }
 
 void IvectorExtractorStats::CommitStatsForW(
@@ -982,11 +1069,11 @@ void IvectorExtractorStats::CommitStatsForPrior(
     const SpMatrix<double> &ivec_var) {
   SpMatrix<double> ivec_scatter(ivec_var);
   ivec_scatter.AddVec2(1.0, ivec_mean);
-  prior_stats_lock_.Lock();
+  prior_stats_lock_.lock();
   num_ivectors_ += 1.0;
   ivector_sum_.AddVec(1.0, ivec_mean);
   ivector_scatter_.AddSp(1.0, ivec_scatter);
-  prior_stats_lock_.Unlock();
+  prior_stats_lock_.unlock();
 }
 
 
@@ -1579,7 +1666,8 @@ double IvectorExtractorStats::UpdatePrior(
   covar.Eig(&s, &P);
   KALDI_LOG << "Eigenvalues of iVector covariance range from "
             << s.Min() << " to " << s.Max();
-  int32 num_floored = s.ApplyFloor(1.0e-07);
+  int32 num_floored;
+  s.ApplyFloor(1.0e-07, &num_floored);
   if (num_floored > 0)
     KALDI_WARN << "Floored " << num_floored << " eigenvalues of covar "
                << "of iVectors.";

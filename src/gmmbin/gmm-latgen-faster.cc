@@ -36,7 +36,7 @@ int main(int argc, char *argv[]) {
     using namespace kaldi;
     typedef kaldi::int32 int32;
     using fst::SymbolTable;
-    using fst::VectorFst;
+    using fst::Fst;
     using fst::StdArc;
 
     const char *usage =
@@ -48,7 +48,7 @@ int main(int argc, char *argv[]) {
     bool allow_partial = false;
     BaseFloat acoustic_scale = 0.1;
     LatticeFasterDecoderConfig config;
-    
+
     std::string word_syms_filename;
     config.Register(&po);
     po.Register("acoustic-scale", &acoustic_scale,
@@ -57,7 +57,7 @@ int main(int argc, char *argv[]) {
                 "Symbol table for words [for debug output]");
     po.Register("allow-partial", &allow_partial,
                 "If true, produce output even if end state was not reached.");
-    
+
     po.Read(argc, argv);
 
     if (po.NumArgs() < 4 || po.NumArgs() > 6) {
@@ -71,7 +71,7 @@ int main(int argc, char *argv[]) {
         lattice_wspecifier = po.GetArg(4),
         words_wspecifier = po.GetOptArg(5),
         alignment_wspecifier = po.GetOptArg(6);
-    
+
     TransitionModel trans_model;
     AmDiagGmm am_gmm;
     {
@@ -94,7 +94,7 @@ int main(int argc, char *argv[]) {
     Int32VectorWriter alignment_writer(alignment_wspecifier);
 
     fst::SymbolTable *word_syms = NULL;
-    if (word_syms_filename != "") 
+    if (word_syms_filename != "")
       if (!(word_syms = fst::SymbolTable::ReadText(word_syms_filename)))
         KALDI_ERR << "Could not read symbol table from file "
                    << word_syms_filename;
@@ -106,11 +106,12 @@ int main(int argc, char *argv[]) {
     if (ClassifyRspecifier(fst_in_str, NULL, NULL) == kNoRspecifier) {
       SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
       // Input FST is just one FST, not a table of FSTs.
-      VectorFst<StdArc> *decode_fst = fst::ReadFstKaldi(fst_in_str);
-      
+      Fst<StdArc> *decode_fst = fst::ReadFstKaldiGeneric(fst_in_str);
+      timer.Reset();
+
       {
         LatticeFasterDecoder decoder(*decode_fst, config);
-    
+
         for (; !feature_reader.Done(); feature_reader.Next()) {
           std::string utt = feature_reader.Key();
           Matrix<BaseFloat> features (feature_reader.Value());
@@ -120,7 +121,7 @@ int main(int argc, char *argv[]) {
             num_err++;
             continue;
           }
-          
+
           DecodableAmDiagGmmScaled gmm_decodable(am_gmm, trans_model, features,
                                                  acoustic_scale);
 
@@ -139,7 +140,7 @@ int main(int argc, char *argv[]) {
       delete decode_fst; // delete this only after decoder goes out of scope.
     } else { // We have different FSTs for different utterances.
       SequentialTableReader<fst::VectorFstHolder> fst_reader(fst_in_str);
-      RandomAccessBaseFloatMatrixReader feature_reader(feature_rspecifier);          
+      RandomAccessBaseFloatMatrixReader feature_reader(feature_rspecifier);
       for (; !fst_reader.Done(); fst_reader.Next()) {
         std::string utt = fst_reader.Key();
         if (!feature_reader.HasKey(utt)) {
@@ -170,7 +171,7 @@ int main(int argc, char *argv[]) {
         } else num_err++;
       }
     }
-      
+
     double elapsed = timer.Elapsed();
     KALDI_LOG << "Time taken "<< elapsed
               << "s: real-time factor assuming 100 frames/sec is "

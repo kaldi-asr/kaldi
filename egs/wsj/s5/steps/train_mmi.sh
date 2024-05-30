@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright 2012  Johns Hopkins University (Author: Daniel Povey).  Apache 2.0.
 
 # MMI training (or optionally boosted MMI, if you give the --boost option).
@@ -46,6 +46,9 @@ alidir=$3
 denlatdir=$4
 dir=$5
 mkdir -p $dir/log
+
+utils/lang/check_phones_compatible.sh $lang/phones.txt $alidir/phones.txt || exit 1;
+cp $lang/phones.txt $dir || exit 1;
 
 for f in $data/feats.scp $alidir/{tree,final.mdl,ali.1.gz} $denlatdir/lat.1.gz; do
   [ ! -f $f ] && echo "$0: no such file $f" && exit 1;

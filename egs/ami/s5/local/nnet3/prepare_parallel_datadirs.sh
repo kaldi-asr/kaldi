@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # this script creates a new data directory data/$new_mic
 # where the train, dev and eval directories are copied from $original_mic
@@ -10,7 +10,7 @@ original_mic=sdm1
 parallel_mic=ihm
 new_mic=sdm1_cleanali
 
-. cmd.sh
+. ./cmd.sh
 . ./path.sh
 . ./utils/parse_options.sh
 

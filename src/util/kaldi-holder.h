@@ -27,6 +27,7 @@
 #include "util/kaldi-io.h"
 #include "util/text-utils.h"
 #include "matrix/kaldi-vector.h"
+#include "matrix/sparse-matrix.h"
 
 namespace kaldi {
 
@@ -124,7 +125,7 @@ template<class SomeType> class GenericHolder {
   /// Returns the value of the object held here.  Will only
   /// ever be called if Read() has been previously called and it returned
   /// true (so OK to throw exception if no object was read).
-  const T &Value() const { return t_; }  // if t is a pointer, would return *t_;
+  T &Value() { return t_; }  // if t is a pointer, would return *t_;
 
   /// The Clear() function doesn't have to do anything.  Its purpose is to
   /// allow the object to free resources if they're no longer needed.
@@ -193,8 +194,8 @@ template<class BasicType> class BasicVectorHolder;
 // types, and bool.
 template<class BasicType> class BasicVectorVectorHolder;
 
-// A holder for vectors of pairsof basic types, e.g.
-// std::vector<std::vector<int32> >, and so on.
+// A holder for vectors of pairs of basic types, e.g.
+// std::vector<std::pair<int32, int32> >, and so on.
 // Note: a basic type is defined as a type for which ReadBasicType
 // and WriteBasicType are implemented, i.e. integer and floating
 // types, and bool.  Text format is (e.g. for integers),
@@ -241,6 +242,35 @@ bool ExtractObjectRange(const T &input, const std::string &range, T *output) {
 template <class Real>
 bool ExtractObjectRange(const Matrix<Real> &input, const std::string &range,
                         Matrix<Real> *output);
+
+/// The template is specialized types Vector<float> and Vector<double>.
+template <class Real>
+bool ExtractObjectRange(const Vector<Real> &input, const std::string &range,
+                        Vector<Real> *output);
+
+/// GeneralMatrix is always of type BaseFloat
+bool ExtractObjectRange(const GeneralMatrix &input, const std::string &range,
+                        GeneralMatrix *output);
+
+/// CompressedMatrix is always of the type BaseFloat but it is more
+/// efficient to provide template as it uses CompressedMatrix's own
+/// conversion to Matrix<Real>
+template <class Real>
+bool ExtractObjectRange(const CompressedMatrix &input, const std::string &range,
+                        Matrix<Real> *output);
+
+// In SequentialTableReaderScriptImpl and RandomAccessTableReaderScriptImpl, for
+// cases where the scp contained 'range specifiers' (things in square brackets
+// identifying parts of objects like matrices), use this function to separate
+// the input string 'rxfilename_with_range' (e.g "1.ark:100[1:2,2:10]") into the data_rxfilename
+// (e.g. "1.ark:100") and the optional range specifier which will be everything
+// inside the square brackets.  It returns true if everything seems OK, and
+// false if for example the string contained more than one '['.  This function
+// should only be called if 'line' ends in ']', otherwise it is an error.
+bool ExtractRangeSpecifier(const std::string &rxfilename_with_range,
+                           std::string *data_rxfilename,
+                           std::string *range);
+
 
 /// @} end "addtogroup holders"
 

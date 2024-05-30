@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Copyright   2012  Johns Hopkins University (Author: Daniel Povey)
 #             2013  Daniel Povey
@@ -10,15 +10,15 @@
 
 # This script was modified from ../../sre08/v1/sid/train_diag_ubm.sh.  It trains
 # a diagonal UBM on top of features processed with apply-cmvn-online and then
-# transformed with an LDA+MLLT matrix (obtained from the source directory).
-# This script does not use the trained model from the source directory to
-# initialize the diagonal GMM; instead, we initialize the GMM using
+# transformed with an LDA+MLLT or PCA matrix (obtained from the source
+# directory).  This script does not use the trained model from the source
+# directory to initialize the diagonal GMM; instead, we initialize the GMM using
 # gmm-global-init-from-feats, which sets the means to random data points and
 # then does some iterations of E-M in memory.  After the in-memory
-# initialization we train for a few iterations in parallel.
-# Note that there is a slight mismatch in that the source LDA+MLLT matrix
-# (final.mat) will have been estimated using standard CMVN, and we're using
-# online CMVN.  We don't think this will have much effect.
+# initialization we train for a few iterations in parallel.  Note that if an
+# LDA+MLLT transform matrix is used, there will be a slight mismatch in that the
+# source LDA+MLLT matrix (final.mat) will have been estimated using standard
+# CMVN, and we're using online CMVN.  We don't think this will have much effect.
 
 
 # Begin configuration section.
@@ -35,7 +35,7 @@ subsample=2 # subsample all features with this periodicity, in the main E-M phas
 cleanup=true
 min_gaussian_weight=0.0001
 remove_low_count_gaussians=true # set this to false if you need #gauss to stay fixed.
-num_threads=32
+num_threads=16
 parallel_opts=  # ignored now.
 online_cmvn_config=conf/online_cmvn.conf
 # End configuration section.
@@ -58,7 +58,7 @@ if [ $# != 4 ]; then
   echo "  --stage <stage|-2>                               # stage to do partial re-run from."
   echo "  --num-gselect <n|30>                             # Number of Gaussians per frame to"
   echo "                                                   # limit computation to, for speed"
-  echo " --subsample <n|5>                                 # In main E-M phase, use every n" 
+  echo " --subsample <n|5>                                 # In main E-M phase, use every n"
   echo "                                                   # frames (a speedup)"
   echo "  --num-frames <n|500000>                          # Maximum num-frames to keep in memory"
   echo "                                                   # for model initialization"
@@ -89,6 +89,15 @@ for f in $data/feats.scp "$online_cmvn_config" $srcdir/splice_opts $srcdir/final
    [ ! -f "$f" ] && echo "$0: expecting file $f to exist" && exit 1
 done
 
+if [ -d "$dir" ]; then
+  bak_dir=$(mktemp -d ${dir}/backup.XXX);
+  echo "$0: Directory $dir already exists. Backing up diagonal UBM in ${bak_dir}";
+  for f in $dir/final.mat $dir/final.dubm $dir/online_cmvn.conf $dir/global_cmvn.stats; do
+    [ -f "$f" ] && mv $f ${bak_dir}/
+  done
+  [ -d "$dir/log" ] && mv $dir/log ${bak_dir}/
+fi
+
 splice_opts=$(cat $srcdir/splice_opts)
 cp $srcdir/splice_opts $dir/ || exit 1;
 cp $srcdir/final.mat $dir/ || exit 1;
@@ -102,8 +111,8 @@ fi
 
 # Note: there is no point subsampling all_feats, because gmm-global-init-from-feats
 # effectively does subsampling itself (it keeps a random subset of the features).
-all_feats="ark,s,cs:apply-cmvn-online --config=$online_cmvn_config $dir/global_cmvn.stats scp:$data/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
-feats="ark,s,cs:apply-cmvn-online --config=$online_cmvn_config $dir/global_cmvn.stats scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- | subsample-feats --n=$subsample ark:- ark:- |"
+all_feats="ark,s,cs:apply-cmvn-online --config=$online_cmvn_config --spk2utt=ark:$data/spk2utt $dir/global_cmvn.stats scp:$data/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- |"
+feats="ark,s,cs:apply-cmvn-online --config=$online_cmvn_config --spk2utt=ark:$sdata/JOB/spk2utt $dir/global_cmvn.stats scp:$sdata/JOB/feats.scp ark:- | splice-feats $splice_opts ark:- ark:- | transform-feats $dir/final.mat ark:- ark:- | subsample-feats --n=$subsample ark:- ark:- |"
 
 num_gauss_init=$(perl -e "print int($initial_gauss_proportion * $num_gauss); ");
 ! [ $num_gauss_init -gt 0 ] && echo "Invalid num-gauss-init $num_gauss_init" && exit 1;
@@ -146,10 +155,16 @@ for x in `seq 0 $[$num_iters-1]`; do
     $cmd $dir/log/update.$x.log \
       gmm-global-est $opt --min-gaussian-weight=$min_gaussian_weight $dir/$x.dubm "gmm-global-sum-accs - $dir/$x.*.acc|" \
       $dir/$[$x+1].dubm || exit 1;
-    rm $dir/$x.*.acc $dir/$x.dubm
+
+    if $cleanup; then
+      rm $dir/$x.*.acc $dir/$x.dubm
+    fi
   fi
 done
 
-rm $dir/gselect.*.gz
+if $cleanup; then
+  rm $dir/gselect.*.gz
+fi
+
 mv $dir/$num_iters.dubm $dir/final.dubm || exit 1;
 exit 0;

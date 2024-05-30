@@ -1,11 +1,11 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #Copyright 2013 Ufal MFF UK; Ondrej Platek
 #
 #Licensed under the Apache License, Version 2.0 (the "License");
 #you may not use this file except in compliance with the License.
 #You may obtain a copy of the License at
 #
-#http://www.apache.org/licenses/LICENSE-2.0
+#https://www.apache.org/licenses/LICENSE-2.0
 #
 #THIS CODE IS PROVIDED *AS IS* BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
 #KIND, EITHER EXPRESS OR IMPLIED, INCLUDING WITHOUT LIMITATION ANY IMPLIED
@@ -16,24 +16,26 @@
 #
 # This script is attempting to install cffi a Python/C interface
 # Cffi is used to call Kaldi from Python
-# See the documentation at http://cffi.readthedocs.org/en/latest/
+# See the documentation at https://cffi.readthedocs.io/en/latest/
 # This script is trying to install cffi 0.6(now the latest version
 # Tell us if you need higher version(if it exists).
 #
 # Also dependencies are installed. Namely:
-# * pycparser >= 2.06: http://code.google.com/p/pycparser/
+# * pycparser >= 2.06: https://github.com/eliben/pycparser/releases
 # * py.test
-# 
+#
 # NOT INSTALLED DEPENDENCIES (We are letting you to install it!):
-# * Cpython 2.6, 2.7 or PyPy(not tested for Kaldi setup) 
+# * Cpython 2.6, 2.7 or PyPy(not tested for Kaldi setup)
 # * python-dev (Python headers) and libffi-dev (ffi C library)
 # * a C compiler is required to use CFFI during development, but not to run correctly-installed programs that use CFF
+
+WGET=${WGET:-wget}
 
 echo "**** Installing Cffi and dependencies"
 
 echo "Checking for Python-Dev"
-# copied from http://stackoverflow.com/questions/4848566/check-for-existence-of-python-dev-files-from-bash-script
-if [ ! -e $(python -c 'from distutils.sysconfig import get_makefile_filename as m; print m()') ]; then 
+# copied from https://stackoverflow.com/questions/4848566/check-for-existence-of-python-dev-files-from-bash-script
+if [ ! -e $(python -c 'from sysconfig import get_makefile_filename as m; print m()') ]; then
     echo "On Debian/Ubuntu like system install by 'sudo apt-get python-dev' package."
     echo "On Fedora by 'yum install python-devel'"
     echo "On Mac OS X by 'brew install python'"
@@ -67,13 +69,13 @@ return 0;
 }
 CCODE
 rm -f $exe_ffi  # clean previous attempts
-gcc -o $exe_ffi $src_ffi -lffi  # build 
+gcc -o $exe_ffi $src_ffi -lffi  # build
 chmod u+x $exe_ffi  # make it executable (gcc usually does it too)
 
 # checking the exit status = ffi installed?
-./$exe_ffi  
-if [ $? -ne 0 ] ; then 
-    echo "You have not ffi installed!" 
+./$exe_ffi
+if [ $? -ne 0 ] ; then
+    echo "You have not ffi installed!"
     echo "On Debian/Ubuntu: sudo apt-get install libffi-dev"
     echo "Fedora: sudo yum libffi-devel"
     echo "Mac OS: brew install libffi"
@@ -86,31 +88,37 @@ cffiname=cffi-0.6
 pycparsername=pycparser-release_v2.09.1
 pytestname=pytest-2.3.5
 
-# helper function  
+# helper function
 function downloader {
     file=$1; url=$2;
     if [ ! -e "$file" ]; then
-        echo "Could not find $file" 
-        echo "Trying to download it via wget!"
-        
-        wget --version  >/dev/null 2>&1 || \
-            { echo "This script requires you to first install wget"
-            echo "You can also just download $file from $url"
-            exit 1; }
+        echo "Could not find $file"
 
-       wget --no-check-certificate -T 10 -t 3 $url
+        if [ -d "$DOWNLOAD_DIR" ]; then
+          echo "Copying it from $DOWNLOAD_DIR !"
+          cp -p "$DOWNLOAD_DIR/$file" .
+        else
+          echo "Trying to download it via wget!"
 
-       if [ ! -e $file ]; then
+          $WGET --version  >/dev/null 2>&1 || \
+              { echo "This script requires you to first install wget"
+              echo "You can also just download $file from $url"
+              exit 1; }
+
+          $WGET -T 10 -t 3 $url
+        fi
+
+        if [ ! -e $file ]; then
             echo "Download of $file - failed!"
             echo "Aborting script. Please download and install $file manually!"
-        exit 1;
-       fi
+            exit 1;
+        fi
     fi
 }
 
 echo Downloading and extracting cffi
 cffitar=$cffiname.tar.gz
-cffiurl=http://pypi.python.org/packages/source/c/cffi/cffi-0.6.tar.gz
+cffiurl=https://pypi.python.org/packages/source/c/cffi/cffi-0.6.tar.gz
 downloader $cffitar $cffiurl
 tar -xovzf $cffitar || exit 1
 
@@ -142,8 +150,8 @@ pushd $pytestname
 
 new_path="$prefix/bin"
 export PATH="$PATH:$new_path"
-echo "\nAdding the $new_path to PATH so I can launch the pytest"
-echo "DO THE SAME IN YOUR PERMANENT SETTINGS TO USE THE pytest REGULARLY!\n"
+echo; echo "Adding the $new_path to PATH so I can launch the pytest"
+echo "DO THE SAME IN YOUR PERMANENT SETTINGS TO USE THE pytest REGULARLY!"; echo
 
 python setup.py install --prefix="$prefix" || exit 1
 popd
@@ -157,13 +165,13 @@ popd
 
 echo "*******Installing $cffiname"
 pushd $cffiname
-# FIXME check the depencies 
+# FIXME check the depencies
 python setup.py install --prefix="$prefix" || exit 1
 popd
 
 
 echo "****** Last check "
-if [ ! -e $(python -c 'import cffi') ]; then 
+if [ ! -e $(python -c 'import cffi') ]; then
     echo "Installation failed. Please download and install $file manually!"
 fi
 

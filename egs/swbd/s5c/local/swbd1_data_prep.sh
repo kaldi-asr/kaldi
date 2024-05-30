@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 # Switchboard-1 training data preparation customized for Edinburgh
 # Author:  Arnab Ghoshal (Jan 2013)
@@ -17,7 +17,7 @@
 ## will be using "find" to locate this file so we don't make any assumptions
 ## on the directory structure. (Peng Qi, Aug 2014)
 
-. path.sh
+. ./path.sh
 
 #check existing directories
 if [ $# != 1 -a $# != 2 ]; then
@@ -49,8 +49,8 @@ sph2pipe=$KALDI_ROOT/tools/sph2pipe_v2.5/sph2pipe
 find $SWBD_DIR -iname '*.sph' | sort > $dir/sph.flist
 
 n=`cat $dir/sph.flist | wc -l`
-[ $n -ne 2435 ] && \
-  echo Warning: expected 2435 data data files, found $n
+[ $n -ne 2435 ] && [ $n -ne 2438 ] && \
+  echo Warning: expected 2435 or 2438 data data files, found $n
 
 
 # (1a) Transcriptions preparation
@@ -124,7 +124,7 @@ awk '{print $1}' $dir/wav.scp \
                print "$1-$2 $1 $2\n"; ' \
   > $dir/reco2file_and_channel || exit 1;
 
-awk '{spk=substr($1,4,6); print $1 " " spk}' $dir/segments > $dir/utt2spk \
+awk '{spk=substr($1,1,9); print $1 " " spk}' $dir/segments > $dir/utt2spk \
   || exit 1;
 sort -k 2 $dir/utt2spk | utils/utt2spk_to_spk2utt.pl > $dir/spk2utt || exit 1;
 

@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 #
 
 # To be run from one directory above this script.
@@ -10,7 +10,7 @@
 
 # for example /mnt/matylda2/data/SWITCHBOARD_1R2
 
-. path.sh
+. ./path.sh
 
 #check existing directories
 if [ $# != 1 ]; then

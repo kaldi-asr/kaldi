@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # Copyright Johns Hopkins University (Author: Daniel Povey) 2012-2013. 
 #           Hong Kong University of Science and Technology (Author: Ricky Chan Ho Yin). Apache 2.0.
 #
@@ -15,8 +15,8 @@
 
 # begin configuration section.
 cmd=run.pl
-min_lmwt=9
-max_lmwt=20
+min_lmwt=7
+max_lmwt=17
 useword2charmap=
 #end configuration section.
 

@@ -33,7 +33,7 @@ def ParseSubsegmentsAndArguments(segment_endpoints, sub_segments, arguments, inp
             else:
                 arguments.append(sub_segment_name)
     else:
-        arguments = map(lambda x: re.sub(',','', x.strip()), input_string[segment_endpoints[0]:segment_endpoints[1]+1].split())
+        arguments = [re.sub(',','', x.strip()) for x in input_string[segment_endpoints[0]:segment_endpoints[1]+1].split()]
         sub_segments = []
     return sub_segments, arguments
 

@@ -38,10 +38,14 @@ void UnitTestClassifyRxfilename() {
   KALDI_ASSERT(ClassifyRxfilename("b|") == kPipeInput);
   KALDI_ASSERT(ClassifyRxfilename("|b") == kNoInput);
   KALDI_ASSERT(ClassifyRxfilename("b c|") == kPipeInput);
+  KALDI_ASSERT(ClassifyRxfilename(" b c|") == kPipeInput);
   KALDI_ASSERT(ClassifyRxfilename("a b c:123") == kOffsetFileInput);
   KALDI_ASSERT(ClassifyRxfilename("a b c:3") == kOffsetFileInput);
   KALDI_ASSERT(ClassifyRxfilename("a b c:") == kFileInput);
   KALDI_ASSERT(ClassifyRxfilename("a b c/3") == kFileInput);
+  KALDI_ASSERT(ClassifyRxfilename("ark,s,cs:a b c") == kNoInput);
+  KALDI_ASSERT(ClassifyRxfilename("scp:a b c") == kNoInput);
+
 }
 
 
@@ -54,8 +58,11 @@ void UnitTestClassifyWxfilename() {
   KALDI_ASSERT(ClassifyWxfilename("-") == kStandardOutput);
   KALDI_ASSERT(ClassifyWxfilename("b|") == kNoOutput);
   KALDI_ASSERT(ClassifyWxfilename("|b") == kPipeOutput);
+  KALDI_ASSERT(ClassifyWxfilename("| b ") == kPipeOutput);
   KALDI_ASSERT(ClassifyWxfilename("b c|") == kNoOutput);
   KALDI_ASSERT(ClassifyWxfilename("a b c:123") == kNoOutput);
+  KALDI_ASSERT(ClassifyWxfilename("ark,s,cs:a b c") == kNoOutput);
+  KALDI_ASSERT(ClassifyWxfilename("scp:a b c") == kNoOutput);
   KALDI_ASSERT(ClassifyWxfilename("a b c:3") == kNoOutput);
   KALDI_ASSERT(ClassifyWxfilename("a b c:") == kFileOutput);
   KALDI_ASSERT(ClassifyWxfilename("a b c/3") == kFileOutput);
