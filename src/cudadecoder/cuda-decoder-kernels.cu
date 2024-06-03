@@ -26,6 +26,10 @@
 #include "cuda-decoder-kernels.h"
 #include "cuda-decoder-kernels-utils.h"
 
+#ifndef FLT_MAX
+#define FLT_MAX 340282346638528859811704183484516925440.0f
+#endif
+
 namespace kaldi {
 namespace cuda_decoder {
 
