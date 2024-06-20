@@ -78,7 +78,7 @@ void ConvertToInteger(
   for (int i = 0; i < string_sentences.size(); i++) {
     (*int_sentences)[i].resize(string_sentences[i].size());
     for (int j = 0; j < string_sentences[i].size(); j++) {
-      kaldi::int64 key = symbol_table.Find(string_sentences[i][j]);
+      int64 key = symbol_table.Find(string_sentences[i][j]);
       KALDI_ASSERT(key != -1); // fst::kNoSymbol
       (*int_sentences)[i][j] = static_cast<int32>(key);
     }

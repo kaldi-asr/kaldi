@@ -1503,7 +1503,7 @@ NnetBatchDecoder::~NnetBatchDecoder() {
   }
   // Print diagnostics.
 
-  kaldi::int64 input_frame_count =
+  int64 input_frame_count =
       frame_count_ * computer_->GetOptions().frame_subsampling_factor;
   int32 num_threads = static_cast<int32>(decode_threads_.size());
 

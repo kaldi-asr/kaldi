@@ -113,7 +113,7 @@ void PushInLog(VectorFst<StdArc> *fst, uint32 ptype, float delta = kDelta) {
 template<class Arc>
 void MinimizeEncoded(VectorFst<Arc> *fst, float delta = kDelta) {
 
-  Map(fst, QuantizeMapper<Arc>(delta));
+  ArcMap(fst, QuantizeMapper<Arc>(delta));
   EncodeMapper<Arc> encoder(kEncodeLabels | kEncodeWeights, ENCODE);
   Encode(fst, &encoder);
   internal::AcceptorMinimize(fst);
