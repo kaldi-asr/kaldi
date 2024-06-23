@@ -67,7 +67,7 @@ cp -r $srcdir/* $test
 
 cat $lmdir/train${ngram}.arpa | \
   arpa2fst --disambig-symbol=#0 \
-           --read-symbol-table=$test/words.txt - $test/G.fst
+           --read-symbol-table=$test/words.txt - $test/G.fst || exit 1;
 
 utils/validate_lang.pl $test || exit 1;
 

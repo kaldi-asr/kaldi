@@ -70,15 +70,22 @@ struct ChainTrainingOptions {
   // the network is expected to have an output named 'output-xent', which
   // should have a softmax as its final nonlinearity.
   BaseFloat xent_regularize;
+  BaseFloat lwf_scale, lwf_den_scale;
 
   ChainTrainingOptions(): l2_regularize(0.0), out_of_range_regularize(0.01),
                           leaky_hmm_coefficient(1.0e-05),
-                          xent_regularize(0.0) { }
+                          xent_regularize(0.0), lwf_scale(0.0),
+                          lwf_den_scale(0.0) { }
 
   void Register(OptionsItf *opts) {
     opts->Register("l2-regularize", &l2_regularize, "l2 regularization "
                    "constant for 'chain' training, applied to the output "
                    "of the neural net.");
+    opts->Register("lwf-scale", &lwf_scale, "Scale for the Learning Without "
+                   "Forgetting (LWF) term. See https://arxiv.org/abs/2110.07055."
+                   "Currently only works with unconstrained egs.");
+    opts->Register("lwf-den-scale", &lwf_den_scale, "Scale for the DenLWF term."
+                   "See --lwf-scale and the paper. DenLWF is a variant of LWF.");
     opts->Register("out-of-range-regularize", &out_of_range_regularize,
                    "Constant that controls how much we penalize the nnet output "
                    "being outside the range [-30,30].  This is needed because we "
@@ -97,7 +104,7 @@ struct ChainTrainingOptions {
 
     numerator_opts.Register(opts);
   }
-  
+
   // Config for numerator graph object
   GenericNumeratorComputationOptions numerator_opts;
 };

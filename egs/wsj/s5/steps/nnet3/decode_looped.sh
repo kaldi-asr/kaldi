@@ -43,6 +43,7 @@ skip_scoring=false
 extra_left_context_initial=0
 online_ivector_dir=
 minimize=false
+batch_am_decoder=false
 # End configuration section.
 
 echo "$0 $@"  # Print the command line for logging
@@ -112,8 +113,10 @@ if [ -f $srcdir/frame_subsampling_factor ]; then
 fi
 
 if [ $stage -le 1 ]; then
+  decoder_suffix=
+  if $batch_am_decoder ; then decoder_suffix="-parallel"; fi
   $cmd JOB=1:$nj $dir/log/decode.JOB.log \
-    nnet3-latgen-faster-looped $ivector_opts $frame_subsampling_opt \
+    nnet3-latgen-faster-looped$decoder_suffix $ivector_opts $frame_subsampling_opt \
      --frames-per-chunk=$frames_per_chunk \
      --extra-left-context-initial=$extra_left_context_initial \
      --minimize=$minimize --max-active=$max_active --min-active=$min_active --beam=$beam \

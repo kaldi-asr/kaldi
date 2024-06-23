@@ -7,9 +7,7 @@ CC ?= gcc        # used for sph2pipe
 
 WGET ?= wget
 
-# Note: OpenFst requires a relatively recent C++ compiler with C++11 support,
-# e.g. g++ >= 4.7, Apple clang >= 5.0 or LLVM clang >= 3.3.
-OPENFST_VERSION ?= 1.6.7
+OPENFST_VERSION ?= 1.7.2
 CUB_VERSION ?= 1.8.0
 # No '?=', since there exists only one version of sph2pipe.
 SPH2PIPE_VERSION = 2.5
@@ -22,9 +20,9 @@ OPENFST_CONFIGURE ?= --enable-static --enable-shared --enable-far \
                      --enable-ngram-fsts --enable-lookahead-fsts --with-pic
 
 OPENFST_VER_NUM := $(shell echo $(OPENFST_VERSION) | sed 's/\./ /g' | xargs printf "%d%02d%02d")
-ifeq ("$(shell expr $(OPENFST_VER_NUM) \< 10600)","1")
+ifeq ("$(shell expr $(OPENFST_VER_NUM) \< 10607)","1")
     $(error OpenFst-$(OPENFST_VERSION) is not supported. \
-            Supported versions: >= 1.6.0)
+            Supported versions: >= 1.6.7)
 endif
 
 .PHONY: all clean distclean
@@ -84,7 +82,7 @@ endif
 openfst-$(OPENFST_VERSION)/Makefile: openfst-$(OPENFST_VERSION)
 	cd openfst-$(OPENFST_VERSION)/ && \
 	./configure --prefix=`pwd` $(OPENFST_CONFIGURE) CXX="$(CXX)" \
-		CXXFLAGS="$(CXXFLAGS) $(openfst_add_CXXFLAGS)" \
+		CXXFLAGS="$(openfst_add_CXXFLAGS) $(CXXFLAGS)" \
 		LDFLAGS="$(LDFLAGS)" LIBS="-ldl"
 
 openfst-$(OPENFST_VERSION): openfst-$(OPENFST_VERSION).tar.gz
@@ -105,9 +103,15 @@ openfst_cleaned:
 
 #== SCTK =======================================================================
 
-SCTK_CXFLAGS = -w -march=native
+# We don't set -march=native on MacOS because it breaks the compilation on M1 CPUs.
+OS := $(shell uname -s)
+SCTK_CXFLAGS = -w
+ifneq ($(OS), Darwin)
+SCTK_CXFLAGS += -march=native
+endif
+
 SCTK_MKENV = CFLAGS="$(CFLAGS) $(SCTK_CXFLAGS)" \
-             CXXFLAGS="$(CXXFLAGS) $(SCTK_CXFLAGS)" \
+             CXXFLAGS="$(CXXFLAGS) -std=c++11 $(SCTK_CXFLAGS)" \
 
 # Keep the existing target 'sclite' to avoid breaking the users who might have
 # scripted it in.
@@ -117,6 +121,8 @@ sclite sctk_made: sctk/.compiled
 
 sctk/.compiled: sctk
 	rm -f sctk/.compiled
+	sed -i -e '2s/^/#include <unistd.h>\n/' sctk/src/sclite/align.c
+	sed -i -e '99s/^/int TEXT_set_lang_prof(char *lprof);\n/' sctk/src/sclite/text.h
 	$(SCTK_MKENV) $(MAKE) -C sctk config
 	$(SCTK_MKENV) $(MAKE) -C sctk all doc
 	$(MAKE) -C sctk install
@@ -124,7 +130,7 @@ sctk/.compiled: sctk
 
 # The GitHub archive unpacks into SCTK-{40-character-long-hash}/
 sctk: sctk-$(SCTK_GITHASH).tar.gz
-	tar --exclude '*NONE*html' -xmaf sctk-$(SCTK_GITHASH).tar.gz
+	tar zxvf sctk-$(SCTK_GITHASH).tar.gz
 	rm -rf sctk-$(SCTK_GITHASH) sctk
 	mv SCTK-$(SCTK_GITHASH)* sctk-$(SCTK_GITHASH)
 	ln -s sctk-$(SCTK_GITHASH) sctk
@@ -161,6 +167,11 @@ sph2pipe_v$(SPH2PIPE_VERSION)/Makefile: sph2pipe-$(SPH2PIPE_VERSION).tar.gz
 	rm -rf sph2pipe_v*
 	tar -xmzf sph2pipe-$(SPH2PIPE_VERSION).tar.gz
 	mv sph2pipe-$(SPH2PIPE_VERSION) sph2pipe_v$(SPH2PIPE_VERSION)
+	# Workaround for macOS bug <rdar://problem/19363342>
+	if [ `uname` = "Darwin" ]; then \
+		sed -i -e "s/#define _XOPEN_SOURCE 500/#define _XOPEN_SOURCE 600/g" sph2pipe_v$(SPH2PIPE_VERSION)/sph2pipe.c ; \
+		sed -i -e "s/#define _XOPEN_SOURCE 500/#define _XOPEN_SOURCE 600/g" sph2pipe_v$(SPH2PIPE_VERSION)/file_headers.c ; \
+	fi
 
 sph2pipe-$(SPH2PIPE_VERSION).tar.gz:
 	if [ -d "$(DOWNLOAD_DIR)" ]; then \

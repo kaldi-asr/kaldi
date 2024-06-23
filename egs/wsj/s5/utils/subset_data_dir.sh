@@ -115,7 +115,11 @@ else
   if $shortest; then
     # Select $numutt shortest utterances.
     . ./path.sh
-    feat-to-len scp:$srcdir/feats.scp ark,t:$destdir/tmp.len || exit 1;
+    if [ -f $srcdir/utt2num_frames ]; then
+      ln -sf $(utils/make_absolute.sh $srcdir)/utt2num_frames $destdir/tmp.len
+    else
+      feat-to-len scp:$srcdir/feats.scp ark,t:$destdir/tmp.len || exit 1;
+    fi
     sort -n -k2 $destdir/tmp.len |
       awk '{print $1}' |
       head -$numutt >$destdir/tmp.uttlist

@@ -1,7 +1,7 @@
 // nnet3/nnet-chain-diagnostics.h
 
 // Copyright    2015  Johns Hopkins University (author: Daniel Povey)
-//                2019    Idiap Research Institute (author: Srikanth Madikeri)
+//              2019  Idiap Research Institute (author: Srikanth Madikeri)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -48,14 +48,14 @@ class NnetChainComputeProb2 {
  public:
   // does not store a reference to 'config' but does store one to 'nnet'.
   NnetChainComputeProb2(const NnetComputeProbOptions &nnet_config,
-                       const chain::ChainTrainingOptions &chain_config,
-                       NnetChainModel2 &model,
-                       const Nnet &nnet);
+                        const chain::ChainTrainingOptions &chain_config,
+                        NnetChainModel2 &model,
+                        const Nnet &nnet);
 
   NnetChainComputeProb2(const NnetComputeProbOptions &nnet_config,
-                       const chain::ChainTrainingOptions &chain_config,
-                       NnetChainModel2 &model,
-                       Nnet *nnet);
+                        const chain::ChainTrainingOptions &chain_config,
+                        NnetChainModel2 &model,
+                        Nnet *nnet);
 
   // Reset the likelihood stats, and the derivative stats (if computed).
   void Reset();
@@ -71,9 +71,9 @@ class NnetChainComputeProb2 {
   // or NULL if there is no such info.
   const ChainObjectiveInfo *GetObjective(const std::string &output_name) const;
 
-  // This function returns the total objective over all output nodes recorded here, and
-  // outputs to 'tot_weight' the total weight (typically the number of frames)
-  // corresponding to it.
+  // This function returns the total objective over all output nodes recorded
+  // here, and outputs to 'tot_weight' the total weight (typically the number
+  // of frames) corresponding to it.
   double GetTotalObjective(double *tot_weight) const;
 
   // if config.compute_deriv == true, returns a reference to the
@@ -95,25 +95,25 @@ class NnetChainComputeProb2 {
   int32 num_minibatches_processed_;  // this is only for diagnostics
 
   unordered_map<std::string, ChainObjectiveInfo, StringHasher> objf_info_;
-
 };
 
-void RecomputeStats2(const std::string &lang_name, std::vector<NnetChainExample> &egs,
-                    const chain::ChainTrainingOptions &chain_config_in,
-                    NnetChainModel2 &model,
-                    Nnet *nnet);
+void RecomputeStats2(const std::string &lang_name,
+                     std::vector<NnetChainExample> &egs,
+                     const chain::ChainTrainingOptions &chain_config_in,
+                     NnetChainModel2 &model,
+                     Nnet *nnet);
 
-void RecomputeStats2(std::vector<std::pair<std::string, NnetChainExample> > &egs,
-                    const chain::ChainTrainingOptions &chain_config_in,
-                    NnetChainModel2 &model,
-                    Nnet *nnet);
+void RecomputeStats2(std::vector<std::pair<std::string, NnetChainExample>> &egs,
+                     const chain::ChainTrainingOptions &chain_config_in,
+                     NnetChainModel2 &model,
+                     Nnet *nnet);
 
 void RecomputeStats2(std::vector<NnetChainExample> &egs,
-                    const chain::ChainTrainingOptions &chain_config_in,
-                    NnetChainModel2 &model,
-                    Nnet *nnet);
-} // namespace nnet3
-} // namespace kaldi
+                     const chain::ChainTrainingOptions &chain_config_in,
+                     NnetChainModel2 &model,
+                     Nnet *nnet);
+
+}  // namespace nnet3
+}  // namespace kaldi
 
 #endif // KALDI_NNET3_NNET_CHAIN_DIAGNOSTICS2_H_
-

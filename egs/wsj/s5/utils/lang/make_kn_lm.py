@@ -108,13 +108,15 @@ class NgramCounts:
     # 'line' is a string containing a sequence of integer word-ids.
     # This function adds the un-smoothed counts from this line of text.
     def add_raw_counts_from_line(self, line):
-        words = [self.bos_symbol] + whitespace.split(line) + [self.eos_symbol]
+        if line == '':
+            words = [self.bos_symbol, self.eos_symbol]
+        else:
+            words = [self.bos_symbol] + whitespace.split(line) + [self.eos_symbol]
 
         for i in range(len(words)):
             for n in range(1, self.ngram_order+1):
                 if i + n > len(words):
                     break
-
                 ngram = words[i: i + n]
                 predicted_word = ngram[-1]
                 history = tuple(ngram[: -1])
@@ -130,8 +132,6 @@ class NgramCounts:
         infile = io.TextIOWrapper(sys.stdin.buffer, encoding=default_encoding)  # byte stream as input
         for line in infile:
             line = line.strip(strip_chars)
-            if line == '':
-                break
             self.add_raw_counts_from_line(line)
             lines_processed += 1
         if lines_processed == 0 or args.verbose > 0:
@@ -142,8 +142,6 @@ class NgramCounts:
         with open(filename, encoding=default_encoding) as fp:
             for line in fp:
                 line = line.strip(strip_chars)
-                if line == '':
-                    break
                 self.add_raw_counts_from_line(line)
                 lines_processed += 1
         if lines_processed == 0 or args.verbose > 0:
@@ -167,7 +165,9 @@ class NgramCounts:
                 n1 += stat[1]
                 n2 += stat[2]
             assert n1 + 2 * n2 > 0
-            self.d.append(n1 * 1.0 / (n1 + 2 * n2))
+            self.d.append(max(0.001, n1 * 1.0) / (n1 + 2 * n2))   # We are doing this max(0.001, xxx) to avoid zero discounting constant D due to n1=0,
+                                                                  # which could happen if the number of symbols is small.
+                                                                  # Otherwise, zero discounting constant can cause division by zero in computing BOW.            
 
     def cal_f(self):
         # f(a_z) is a probability distribution of word sequence a_z.

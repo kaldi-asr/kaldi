@@ -23,6 +23,7 @@
 #include "lat/kaldi-lattice.h"
 #include "lat/word-align-lattice.h"
 #include "lat/lattice-functions.h"
+#include "lat/lattice-functions-transition-model.h"
 
 int main(int argc, char *argv[]) {
   try {

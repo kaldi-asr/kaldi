@@ -308,9 +308,9 @@ int32 main(int argc, char *argv[]) {
         } else {
           std::vector<int32> word_ids;
           if (decoder.PartialTraceback(&out_fst)) {
-            GetLinearSymbolSequence(out_fst, static_cast<vector<int32> *>(0),
+            GetLinearSymbolSequence(out_fst, static_cast<std::vector<int32> *>(nullptr),
                                     &word_ids,
-                                    static_cast<LatticeArc::Weight*>(0));
+                                    static_cast<LatticeArc::Weight*>(nullptr));
             for (size_t i = 0; i < word_ids.size(); i++) {
               if (word_ids[i] != 0) {
                 WriteLine(client_socket,

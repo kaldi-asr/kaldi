@@ -93,7 +93,7 @@ struct MapDiagGmmOptions {
   void Register(OptionsItf *opts) {
     opts->Register("mean-tau", &mean_tau,
                    "Tau value for updating means.");
-    opts->Register("variance-tau", &mean_tau,
+    opts->Register("variance-tau", &variance_tau,
                    "Tau value for updating variances (note: only relevant if "
                    "update-flags contains \"v\".");
     opts->Register("weight-tau", &weight_tau,

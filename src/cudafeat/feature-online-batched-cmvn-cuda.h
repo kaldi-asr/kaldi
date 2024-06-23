@@ -27,11 +27,10 @@ namespace kaldi {
 class CudaOnlineBatchedCmvn {
  public:
   CudaOnlineBatchedCmvn(const OnlineCmvnOptions &opts,
-                        const CudaOnlineCmvnState &cmvn_state, int32_t feat_dim,
+                        const CudaOnlineCmvnState &cmvn_state,
+                        int32_t feat_dim,
                         int32_t chunk_size, int32_t num_channels,
                         int32_t stats_coarsening_factor);
-
-  ~CudaOnlineBatchedCmvn();
 
   // Computes a chunk of features for each channel included in lanes
   void ComputeFeaturesBatched(int32_t num_lanes, const LaneDesc *lanes,
@@ -42,7 +41,6 @@ class CudaOnlineBatchedCmvn {
   const OnlineCmvnOptions &opts_;
   const CudaOnlineCmvnState cmvn_state_;
 
-  int32_t feat_dim_;
   int32_t chunk_size_;
   int32_t num_channels_;
 

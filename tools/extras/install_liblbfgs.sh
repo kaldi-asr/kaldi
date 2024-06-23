@@ -8,7 +8,9 @@ if [ ! -f liblbfgs-$VER.tar.gz ]; then
   if [ -d "$DOWNLOAD_DIR" ]; then
     cp -p "$DOWNLOAD_DIR/liblbfgs-$VER.tar.gz" . || exit 1
   else
-    $WGET https://github.com/downloads/chokkan/liblbfgs/liblbfgs-$VER.tar.gz || exit 1
+    # only 1.10 supported
+    $WGET https://danielpovey.com/files/liblbfgs-$VER.tar.gz || exit 1
+    # $WGET https://github.com/downloads/chokkan/liblbfgs/liblbfgs-$VER.tar.gz || exit 1
   fi
 fi
 
@@ -37,4 +39,3 @@ cd ..
   echo "export LIBLBFGS=$wd/liblbfgs-1.10"
   echo export LD_LIBRARY_PATH='${LD_LIBRARY_PATH:-}':'${LIBLBFGS}'/lib/.libs
 ) >> env.sh
-

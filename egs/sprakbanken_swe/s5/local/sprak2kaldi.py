@@ -77,6 +77,11 @@ def create_parallel_file_list(session, sndlist, txtlist):
         if not os.path.exists(oldsound): 
             continue
 
+        # Giampiero Salvi: at least one file only has header but no samples check this
+        # 0468 sv test/Stasjon20/191299/adb_0468/speech/scr0468/20/04682001/r4680013/u0013872.wav
+        if os.stat(oldsound).st_size == 1024:
+            continue
+        
         # create file and write the transcription
         txtout = session.create_filename(recnum+1, "txt")
         txtline = os.path.join(session.sessiondir, txtout)

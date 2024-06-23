@@ -9,12 +9,24 @@
 stage=0
 dbase=/mnt/data/openslr            # it is recommanded practice to provide absolute path here,
                                    # otherwise some data downloading scripts might break.
+
 aidatatang_url=www.openslr.org/resources/62
 aishell_url=www.openslr.org/resources/33
 magicdata_url=www.openslr.org/resources/68
 primewords_url=www.openslr.org/resources/47
 stcmds_url=www.openslr.org/resources/38
 thchs_url=www.openslr.org/resources/18
+
+in_china=false # use magicdata url if in china
+
+if $in_china; then
+aidatatang_url=openslr.magicdatatech.com/resources/62
+aishell_url=openslr.magicdatatech.com/resources/33
+magicdata_url=openslr.magicdatatech.com/resources/68
+primewords_url=openslr.magicdatatech.com/resources/47
+stcmds_url=openslr.magicdatatech.com/resources/38
+thchs_url=openslr.magicdatatech.com/resources/18
+fi
 
 test_sets="aishell aidatatang magicdata thchs"
 corpus_lm=false   # interpolate with corpus lm

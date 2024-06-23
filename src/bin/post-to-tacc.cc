@@ -35,7 +35,7 @@ int main(int argc, char *argv[]) {
         "Note: the model is only read in order to get the size of the vector\n"
         "\n"
         "Usage: post-to-tacc [options] <model> <post-rspecifier> <accs>\n"
-        " e.g.: post-to-tacc --binary=false 1.mdl \"ark:ali-to-post 1.ali|\" 1.tacc\n"
+        " e.g.: post-to-tacc --binary=false 1.mdl \"ark:ali-to-post 1.ali ark:-|\" 1.tacc\n"
         "See also: get-post-on-ali\n";
 
     bool binary = true;

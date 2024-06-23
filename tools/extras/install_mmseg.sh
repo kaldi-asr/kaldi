@@ -16,13 +16,13 @@ fi
 
 
 # Install python-devel package if not already available
-# first, makes sure distutils.sysconfig usable
-if ! $(python -c "import distutils.sysconfig" &> /dev/null); then
-    echo "$0: WARNING: python library distutils.sysconfig not usable, this is necessary to figure out the path of Python.h." >&2
+# first, makes sure sysconfig is usable
+if ! $(python -c "import sysconfig" &> /dev/null); then
+    echo "$0: WARNING: python library sysconfig not usable, this is necessary to figure out the path of Python.h." >&2
     echo "Proceeding with installation." >&2
 else
   # get include path for this python version
-  INCLUDE_PY=$(python -c "from distutils import sysconfig as s; print(s.get_python_inc())")
+  INCLUDE_PY=$(python -c "import sysconfig as s; print(s.get_path('include'))")
   if [ ! -f "${INCLUDE_PY}/Python.h" ]; then
       echo "$0 : ERROR: python-devel/python-dev not installed" >&2
       if which yum >&/dev/null; then

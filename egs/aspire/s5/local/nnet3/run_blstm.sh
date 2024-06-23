@@ -89,9 +89,9 @@ if [ $stage -le 7 ]; then
   fast-lstmp-layer name=blstm2-backward input=Append(blstm1-forward, blstm1-backward) delay=2 $lstm_opts
 
   fast-lstmp-layer name=blstm3-forward input=Append(blstm2-forward, blstm2-backward) delay=-3 $lstm_opts
-  fast-lstmp-layer name=blstm3-backward input=Append(blstm2-forward, blstm2-backward delay=3 $lstm_opts
+  fast-lstmp-layer name=blstm3-backward input=Append(blstm2-forward, blstm2-backward) delay=3 $lstm_opts
 
-  output-layer name=output output-delay=$label_delay dim=$num_targets max-change=1.5
+  output-layer name=output input=Append(blstm3-forward, blstm3-backward) include-log-softmax=false output-delay=0 dim=$num_targets max-change=1.5
 EOF
   steps/nnet3/xconfig_to_configs.py --xconfig-file $dir/configs/network.xconfig --config-dir $dir/configs || exit 1
 fi

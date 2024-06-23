@@ -63,7 +63,7 @@ class GeneralHistKey {
     return a.vector_ == b.vector_;
   }
   // Public typename HashType for hashing.
-  struct HashType : public std::unary_function<GeneralHistKey, size_t> {
+  struct HashType {
     size_t operator()(const GeneralHistKey& key) const {
       return VectorHasher<Symbol>().operator()(key.vector_);
     }
@@ -99,7 +99,7 @@ class OptimizedHistKey {
   friend bool operator==(const OptimizedHistKey& a, const OptimizedHistKey& b) {
     return a.data_ == b.data_;
   }
-  struct HashType : public std::unary_function<OptimizedHistKey, size_t> {
+  struct HashType {
     size_t operator()(const OptimizedHistKey& key) const { return key.data_; }
   };
 

@@ -4,3 +4,4 @@ export PATH=$PWD/utils/:$KALDI_ROOT/tools/openfst/bin:$KALDI_ROOT/tools/kaldi_lm
 . $KALDI_ROOT/tools/config/common_path.sh
 . $KALDI_ROOT/tools/env.sh
 export LC_ALL=C
+export PYTHONUNBUFFERED=1

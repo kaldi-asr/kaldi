@@ -196,7 +196,7 @@ while [ $x -lt $num_iters ]; do
       $cmd JOB=1:$nj $dir/log/macc.$x.JOB.log \
         ali-to-post "ark:gunzip -c $dir/ali.JOB.gz|" ark:- \| \
         weight-silence-post 0.0 $silphonelist $dir/$x.mdl ark:- ark:- \| \
-        gmm-acc-mllt --rand-prune=$randprune  $dir/$x.mdl "$feats" ark:- $dir/$x.JOB.macc \
+        gmm-acc-mllt --rand-prune=$randprune  $dir/$x.mdl "$feats" ark,s,o,cs:- $dir/$x.JOB.macc \
         || exit 1;
       est-mllt $dir/$x.mat.new $dir/$x.*.macc 2> $dir/log/mupdate.$x.log || exit 1;
       gmm-transform-means  $dir/$x.mat.new $dir/$x.mdl $dir/$x.mdl \

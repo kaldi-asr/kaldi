@@ -16,7 +16,7 @@ default_package=intel-mkl-64bit-2020.0-088
 
 yum_repo='https://yum.repos.intel.com/mkl/setup/intel-mkl.repo'
 apt_repo='https://apt.repos.intel.com/mkl'
-intel_key_url='https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS-2019.PUB'
+intel_key_url='https://apt.repos.intel.com/intel-gpg-keys/GPG-PUB-KEY-INTEL-SW-PRODUCTS.PUB'
 
 Usage () {
   cat >&2 <<EOF

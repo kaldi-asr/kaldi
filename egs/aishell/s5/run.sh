@@ -47,10 +47,11 @@ for x in train dev test; do
   utils/fix_data_dir.sh data/$x || exit 1;
 done
 
+# Train a monophone model on delta features.
 steps/train_mono.sh --cmd "$train_cmd" --nj 10 \
   data/train data/lang exp/mono || exit 1;
 
-# Monophone decoding
+# Decode with the monophone model.
 utils/mkgraph.sh data/lang_test exp/mono exp/mono/graph || exit 1;
 steps/decode.sh --cmd "$decode_cmd" --config conf/decode.config --nj 10 \
   exp/mono/graph data/dev exp/mono/decode_dev
@@ -61,7 +62,7 @@ steps/decode.sh --cmd "$decode_cmd" --config conf/decode.config --nj 10 \
 steps/align_si.sh --cmd "$train_cmd" --nj 10 \
   data/train data/lang exp/mono exp/mono_ali || exit 1;
 
-# train tri1 [first triphone pass]
+# Train the first triphone pass model tri1 on delta + delta-delta features.
 steps/train_deltas.sh --cmd "$train_cmd" \
  2500 20000 data/train data/lang exp/mono_ali exp/tri1 || exit 1;
 
@@ -87,49 +88,57 @@ steps/decode.sh --cmd "$decode_cmd" --config conf/decode.config --nj 10 \
 steps/decode.sh --cmd "$decode_cmd" --config conf/decode.config --nj 10 \
   exp/tri2/graph data/test exp/tri2/decode_test
 
-# train and decode tri2b [LDA+MLLT]
+# Align training data with the tri2 model.
 steps/align_si.sh --cmd "$train_cmd" --nj 10 \
   data/train data/lang exp/tri2 exp/tri2_ali || exit 1;
 
-# Train tri3a, which is LDA+MLLT,
+# Train the second triphone pass model tri3a on LDA+MLLT features.
 steps/train_lda_mllt.sh --cmd "$train_cmd" \
  2500 20000 data/train data/lang exp/tri2_ali exp/tri3a || exit 1;
-
+ 
+# Run a test decode with the tri3a model.
 utils/mkgraph.sh data/lang_test exp/tri3a exp/tri3a/graph || exit 1;
 steps/decode.sh --cmd "$decode_cmd" --nj 10 --config conf/decode.config \
   exp/tri3a/graph data/dev exp/tri3a/decode_dev
 steps/decode.sh --cmd "$decode_cmd" --nj 10 --config conf/decode.config \
   exp/tri3a/graph data/test exp/tri3a/decode_test
 
-# From now, we start building a more serious system (with SAT), and we'll
-# do the alignment with fMLLR.
+# align tri3a with fMLLR
 
 steps/align_fmllr.sh --cmd "$train_cmd" --nj 10 \
   data/train data/lang exp/tri3a exp/tri3a_ali || exit 1;
 
+# Train the third triphone pass model tri4a on LDA+MLLT+SAT features.
+# From now on, we start building a more serious system with Speaker
+# Adaptive Training (SAT).
 steps/train_sat.sh --cmd "$train_cmd" \
   2500 20000 data/train data/lang exp/tri3a_ali exp/tri4a || exit 1;
 
+# decode tri4a
 utils/mkgraph.sh data/lang_test exp/tri4a exp/tri4a/graph
 steps/decode_fmllr.sh --cmd "$decode_cmd" --nj 10 --config conf/decode.config \
   exp/tri4a/graph data/dev exp/tri4a/decode_dev
 steps/decode_fmllr.sh --cmd "$decode_cmd" --nj 10 --config conf/decode.config \
   exp/tri4a/graph data/test exp/tri4a/decode_test
-
+  
+# align tri4a with fMLLR
 steps/align_fmllr.sh  --cmd "$train_cmd" --nj 10 \
   data/train data/lang exp/tri4a exp/tri4a_ali
 
-# Building a larger SAT system.
+# Train tri5a, which is LDA+MLLT+SAT
+# Building a larger SAT system. You can see the num-leaves is 3500 and tot-gauss is 100000
 
 steps/train_sat.sh --cmd "$train_cmd" \
   3500 100000 data/train data/lang exp/tri4a_ali exp/tri5a || exit 1;
-
+  
+# decode tri5a
 utils/mkgraph.sh data/lang_test exp/tri5a exp/tri5a/graph || exit 1;
 steps/decode_fmllr.sh --cmd "$decode_cmd" --nj 10 --config conf/decode.config \
    exp/tri5a/graph data/dev exp/tri5a/decode_dev || exit 1;
 steps/decode_fmllr.sh --cmd "$decode_cmd" --nj 10 --config conf/decode.config \
    exp/tri5a/graph data/test exp/tri5a/decode_test || exit 1;
-
+   
+# align tri5a with fMLLR
 steps/align_fmllr.sh --cmd "$train_cmd" --nj 10 \
   data/train data/lang exp/tri5a exp/tri5a_ali || exit 1;
 

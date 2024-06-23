@@ -15,7 +15,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 //
+#ifdef __IS_HIP_COMPILE__
+#include <hipcub/hipcub.hpp>
+
+#include "hipify.h"
+#else
 #include <cub/cub.cuh>
+#endif
 #include "cudafeat/feature-online-batched-cmvn-cuda-kernels.h"
 
 __host__ __device__ inline float2 operator-(const float2 &a, const float2 &b) {
@@ -24,16 +30,12 @@ __host__ __device__ inline float2 operator-(const float2 &a, const float2 &b) {
   retval.y = a.y - b.y;
   return retval;
 }
+
 __host__ __device__ inline float2 operator+(const float2 &a, const float2 &b) {
   float2 retval;
   retval.x = a.x + b.x;
   retval.y = a.y + b.y;
   return retval;
-}
-
-__device__ inline void atomicAdd(float2 *addr, float2 val) {
-  atomicAdd(reinterpret_cast<float *>(addr), val.x);
-  atomicAdd(reinterpret_cast<float *>(addr) + 1, val.y);
 }
 
 __device__ inline void operator+=(float2 &a, float2 &b) {

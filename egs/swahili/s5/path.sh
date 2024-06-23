@@ -14,3 +14,4 @@ TRAIN_DIR="train"
 
 
 export LC_ALL=C
+export PYTHONUNBUFFERED=1

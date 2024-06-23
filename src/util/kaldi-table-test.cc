@@ -24,6 +24,8 @@
 #include "util/kaldi-holder.h"
 #include "util/table-types.h"
 
+#include <random>
+
 namespace kaldi {
 
 void UnitTestReadScriptFile() {
@@ -841,6 +843,9 @@ void UnitTestTableRandomBothDouble(bool binary, bool read_scp,
 
 
 void UnitTestRangesMatrix(bool binary) {
+  std::random_device rd;
+  std::mt19937 g(rd());
+
   int32 archive_size = RandInt(1, 10);
   std::vector<std::pair<std::string, Matrix<BaseFloat> > > archive_contents(
       archive_size);
@@ -854,7 +859,7 @@ void UnitTestRangesMatrix(bool binary) {
     archive_contents[i].second.SetRandn();
   }
   if (RandInt(0, 1) == 0)
-    std::random_shuffle(archive_contents.begin(), archive_contents.end());
+    std::shuffle(archive_contents.begin(), archive_contents.end(), g);
 
   std::ostringstream writer_name;
   writer_name << "ark,scp";
@@ -1065,7 +1070,7 @@ void UnitTestTableNumpyArray() {
   writer.Write(key1, NumpyArray<BaseFloat>(v));
   writer.Write(key2, NumpyArray<BaseFloat>(m));
   writer.Close();
-  usleep(200);
+  Sleep(200e-6);
 
   const char* rspecifier = "scp:numpy_array.scp";
   {
@@ -1124,8 +1129,7 @@ void UnitTestTableNumpyArray() {
 }
 
 
-
-}  // end namespace kaldi.
+}  // namespace kaldi
 
 int main() {
   using namespace kaldi;

@@ -82,7 +82,7 @@ int main(int argc, char *argv[]) {
         feature_rspecifier = po.GetArg(2),
         ivectors_wspecifier = po.GetArg(3);
 
-    double tot_ubm_loglike = 0.0, tot_objf_impr = 0.0, tot_t = 0.0,
+    double tot_objf_impr = 0.0, tot_t = 0.0,
         tot_length = 0.0, tot_length_utt_end = 0.0;
     int32 num_done = 0, num_err = 0;
 
@@ -166,7 +166,6 @@ int main(int argc, char *argv[]) {
         }
         // Update diagnostics.
 
-        tot_ubm_loglike += T * ivector_feature.UbmLogLikePerFrame();
         tot_objf_impr += T * ivector_feature.ObjfImprPerFrame();
         tot_length_utt_end += T * ivectors.Row(num_ivectors - 1).Norm(2.0);
         for (int32 i = 0; i < num_ivectors; i++)

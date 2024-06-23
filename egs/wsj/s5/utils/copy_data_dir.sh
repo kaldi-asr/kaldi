@@ -84,6 +84,10 @@ if [ -f $srcdir/vad.scp ]; then
   utils/apply_map.pl -f 1 $destdir/utt_map <$srcdir/vad.scp >$destdir/vad.scp
 fi
 
+if [ -f $srcdir/utt2lang ]; then
+  utils/apply_map.pl -f 1 $destdir/utt_map <$srcdir/utt2lang >$destdir/utt2lang
+fi
+
 if [ -f $srcdir/segments ]; then
   utils/apply_map.pl -f 1 $destdir/utt_map <$srcdir/segments >$destdir/segments
   cp $srcdir/wav.scp $destdir

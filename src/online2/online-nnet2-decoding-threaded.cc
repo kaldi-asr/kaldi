@@ -28,8 +28,7 @@ namespace kaldi {
 ThreadSynchronizer::ThreadSynchronizer():
     abort_(false),
     producer_waiting_(false),
-    consumer_waiting_(false),
-    num_errors_(0) {
+    consumer_waiting_(false) {
   producer_semaphore_.Signal();
   consumer_semaphore_.Signal();
 }

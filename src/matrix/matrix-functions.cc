@@ -669,12 +669,10 @@ void ComputePca(const MatrixBase<Real> &X,
       Nsp.TopEigs(&l, &Vtmp);
     }
 
-    MatrixIndexT num_zeroed = 0;
     for (MatrixIndexT g = 0; g < G; g++) {
       if (l(g) < 0.0) {
         KALDI_WARN << "In PCA, setting element " << l(g) << " to zero.";
         l(g) = 0.0;
-        num_zeroed++;
       }
     }
     SortSvd(&l, &Vtmp); // Make sure zero elements are last, this

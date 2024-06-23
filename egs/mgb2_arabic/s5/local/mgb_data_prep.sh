@@ -11,6 +11,7 @@ fi
 
 db_dir=$1
 mer=$2
+process_xml=$3
 
 train_dir=data/train_mer$mer
 dev_dir=data/dev

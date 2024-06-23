@@ -9,6 +9,7 @@ LMBIN=$KALDI_ROOT/tools/irstlm/bin
 SRILM=$KALDI_ROOT/tools/srilm/bin/i686-m64
 
 export PATH=$PATH:$LMBIN:$SRILM
+export PYTHONUNBUFFERED=1
 
 # The following was needed to enable Python 3 and also a version of
 # gcc consistent with the latest version of cuda on our system. You

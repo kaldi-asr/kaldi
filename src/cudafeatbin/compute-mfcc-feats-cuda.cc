@@ -22,6 +22,8 @@
 #include "feat/wave-reader.h"
 #include "cudamatrix/cu-matrix.h"
 #include "cudamatrix/cu-vector.h"
+
+
 int main(int argc, char *argv[]) {
   try {
     using namespace kaldi;
@@ -66,7 +68,7 @@ int main(int argc, char *argv[]) {
       po.PrintUsage();
       exit(1);
     }
-    
+
     g_cuda_allocator.SetOptions(g_allocator_options);
     CuDevice::Instantiate().SelectGpuId("yes");
     CuDevice::Instantiate().AllowMultithreading();
@@ -87,7 +89,7 @@ int main(int argc, char *argv[]) {
                    "needed if the vtln-map option is used.");
     RandomAccessBaseFloatReaderMapped vtln_map_reader(vtln_map_rspecifier,
                                                       utt2spk_rspecifier);
-    
+
     if (output_format == "kaldi") {
       if (!kaldi_writer.Open(output_wspecifier))
         KALDI_ERR << "Could not initialize output with wspecifier "
@@ -105,6 +107,11 @@ int main(int argc, char *argv[]) {
       num_utts++;
       std::string utt = reader.Key();
       const WaveData &wave_data = reader.Value();
+      if (wave_data.SampFreq() != mfcc_opts.frame_opts.samp_freq) {
+        KALDI_ERR << "File: " << utt << " has an mismatched sampling "
+          << "rate (config= " << mfcc_opts.frame_opts.samp_freq
+          << " vs file=" << wave_data.SampFreq() << ".";
+      }
       if (wave_data.Duration() < min_duration) {
         KALDI_WARN << "File: " << utt << " is too short ("
                    << wave_data.Duration() << " sec): producing no output.";

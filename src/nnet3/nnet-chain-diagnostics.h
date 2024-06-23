@@ -37,9 +37,11 @@ struct ChainObjectiveInfo {
   double tot_weight;
   double tot_like;
   double tot_l2_term;
+  double tot_lwf_term;
   ChainObjectiveInfo(): tot_weight(0.0),
                         tot_like(0.0),
-                        tot_l2_term(0.0) { }
+                        tot_l2_term(0.0),
+                        tot_lwf_term(0.0) { }
 };
 
 

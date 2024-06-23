@@ -292,7 +292,7 @@ template<class F> class DeterminizerStar {
       for (typename std::vector<Element>::const_iterator iter = subset->begin();
            iter != subset->end(); ++iter) {
         hash *= factor;
-        hash += iter->state + 103333 * iter->string;
+        hash += iter->state + size_t(103333) * iter->string;
         factor *= 23531;  // these numbers are primes.
       }
       return hash;
@@ -725,7 +725,7 @@ void DeterminizerStar<F>::EpsilonClosure::
 
   {
     // this sorting is based on StateId
-    sort(ecinfo_.begin(), ecinfo_.end());
+    std::sort(ecinfo_.begin(), ecinfo_.end());
 
     output_subset->clear();
 

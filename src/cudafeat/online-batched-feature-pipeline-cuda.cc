@@ -16,9 +16,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#if HAVE_CUDA
+
 #include "cudafeat/online-batched-feature-pipeline-cuda.h"
 
-#if HAVE_CUDA == 1
+#ifdef __IS_HIP_COMPILE__
+#include <roctracer/roctx.h>
+
+#include "hipify.h"
+#else
 #include <nvToolsExt.h>
 #endif
 
@@ -87,6 +93,7 @@ OnlineBatchedFeaturePipelineCuda::OnlineBatchedFeaturePipelineCuda(
     info_.ivector_extractor_info.Init(ivector_extraction_opts);
 
     ivector_ = new BatchedIvectorExtractorCuda(ivector_extraction_opts,
+                                               FeatureDim(),
                                                max_chunk_size_frames_,
                                                max_lanes_, num_channels_);
   }
@@ -94,7 +101,8 @@ OnlineBatchedFeaturePipelineCuda::OnlineBatchedFeaturePipelineCuda(
   current_samples_stash_ = new int32_t[num_channels_];
 
   // allocated pinned memory for storing channel desc
-  cudaMallocHost(&h_lanes_, sizeof(LaneDesc) * max_lanes_);
+  CU_SAFE_CALL(
+      cudaMallocHost((void **)&h_lanes_, sizeof(LaneDesc) * max_lanes_));
 
   // allocate device memory
   lanes_ =
@@ -108,13 +116,13 @@ OnlineBatchedFeaturePipelineCuda::~OnlineBatchedFeaturePipelineCuda() {
   if (cmvn_ != NULL) delete cmvn_;
   if (ivector_ != NULL) delete ivector_;
 
-  cudaFreeHost(h_lanes_);
+  CU_SAFE_CALL(cudaFreeHost(h_lanes_));
 
   delete[] current_samples_stash_;
 
   CuDevice::Instantiate().Free(lanes_);
 
-  cudaEventDestroy(event_);
+  CU_SAFE_CALL(cudaEventDestroy(event_));
 }
 
 void OnlineBatchedFeaturePipelineCuda::ComputeFeaturesBatched(
@@ -197,3 +205,5 @@ void OnlineBatchedFeaturePipelineCuda::ComputeFeaturesBatched(
 }
 
 }  // namespace kaldi
+
+#endif  // HAVE_CUDA

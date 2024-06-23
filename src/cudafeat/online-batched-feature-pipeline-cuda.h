@@ -23,6 +23,10 @@
 #include <string>
 #include <vector>
 
+#ifdef __IS_HIP_COMPILE__
+#include "hipify.h"
+#endif
+
 #include "base/kaldi-error.h"
 #include "feat/feature-window.h"
 #include "matrix/matrix-lib.h"
@@ -121,7 +125,6 @@ class OnlineBatchedFeaturePipelineCuda {
 
   // channel array for stashing sample count
   int32_t *current_samples_stash_;
-  ChannelId *channels_;
 
   // Host and Device array of lane descriptions
   LaneDesc *h_lanes_, *lanes_;

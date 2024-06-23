@@ -36,7 +36,7 @@ if [ $# != 3 ]; then
   echo "main options (for others, see top of script file)"
   echo "  --config <config-file>                           # config containing options"
   echo "  --cmd (utils/run.pl|utils/queue.pl <queue opts>) # how to run jobs."
-  echo "  --nj <n|10>                                      # Number of jobs (also see num-processes and num-threads)"
+  echo "  --nj <n|10>                                      # Number of jobs"
   echo "  --stage <stage|0>                                # To control partial reruns"
   echo "  --cleanup <bool|false>                           # If true, remove temporary files"
   exit 1;
@@ -68,25 +68,45 @@ if [ "$result" == "0" ]; then
     python3 -m pip install numexpr
 fi
 
+# Set various variables.
+mkdir -p $dir/log
+
 if [ $stage -le 0 ]; then
   # Mean subtraction (If original x-vectors are high-dim, e.g. 512, you should
   # consider also applying LDA to reduce dimensionality to, say, 200) 
   $cmd $xvec_dir/log/transform.log \
-    ivector-subtract-global-mean scp:$xvec_dir/xvector.scp ark:$xvec_dir/xvector_norm.ark
+    ivector-subtract-global-mean scp:$xvec_dir/xvector.scp \
+    ark,scp:$xvec_dir/xvector_norm.ark,$xvec_dir/xvector_norm.scp
 fi
 
-echo -e "Performing bayesian HMM based x-vector clustering..\n"
-$cmd JOB=1:$nj $dir/log/vb_hmm.JOB.log \
-  diarization/vb_hmm_xvector.py \
-    --loop-prob $loop_prob --fa $fa --fb $fb \
-    $xvec_dir/xvector_norm.ark $plda $dir/labels.JOB $dir/labels.vb.JOB
+cp $xvec_dir/plda_scores/spk2utt $dir/tmp/
+cp $xvec_dir/plda_scores/utt2spk $dir/tmp/
+cp $xvec_dir/plda_scores/segments $dir/tmp/
+utils/fix_data_dir.sh $dir/tmp > /dev/null
+
+sdata=$dir/tmp/split$nj;
+utils/split_data.sh $dir/tmp $nj || exit 1;
+
+for n in $(seq 1 $nj); do
+  utils/filter_scp.pl $sdata/$n/utt2spk $xvec_dir/xvector_norm.scp > $sdata/$n/xvector.scp
+  utils/filter_scp.pl $sdata/$n/utt2spk $dir/labels > $sdata/$n/labels.old
+done
 
 if [ $stage -le 1 ]; then
-  echo "$0: combining labels"
-  for j in $(seq $nj); do cat $dir/labels.vb.$j; done > $dir/labels.vb || exit 1;
+  echo -e "Performing bayesian HMM based x-vector clustering..\n"
+  $cmd JOB=1:$nj $dir/log/vb_hmm.JOB.log \
+    python3 diarization/vb_hmm_xvector.py \
+      --loop-prob $loop_prob --fa $fa --fb $fb \
+      $sdata/JOB/xvector.scp $sdata/JOB/spk2utt $plda \
+      $sdata/JOB/labels.old $dir/tmp/labels.vb.JOB
 fi
 
 if [ $stage -le 2 ]; then
+  echo "$0: combining labels"
+  for j in $(seq $nj); do cat $dir/tmp/labels.vb.$j; done > $dir/labels.vb || exit 1;
+fi
+
+if [ $stage -le 3 ]; then
   echo "$0: computing RTTM"
   diarization/make_rttm.py --rttm-channel $rttm_channel $xvec_dir/plda_scores/segments $dir/labels.vb $dir/rttm.vb || exit 1;
 fi

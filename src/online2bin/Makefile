@@ -15,6 +15,11 @@ BINFILES = online2-wav-gmm-latgen-faster apply-cmvn-online \
      online2-tcp-nnet3-decode-faster online2-wav-nnet3-latgen-incremental \
      online2-wav-nnet3-wake-word-decoder-faster
 
+# ARCH is defined in kaldi.mk
+ifeq ($(ARCH), WASM)
+    BINFILES += online2-tcp-nnet3-decode-faster-emscripten
+endif
+
 OBJFILES =
 
 TESTFILES =

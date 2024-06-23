@@ -22,8 +22,9 @@
 #include "lat/lattice-functions.h"
 #include "hmm/posterior.h"
 #include "util/text-utils.h"
-#include <numeric>
 #include <iomanip>
+#include <numeric>
+#include <random>
 
 namespace kaldi {
 namespace nnet3 {
@@ -572,7 +573,7 @@ bool UtteranceSplitter::LengthsMatch(const std::string &utt,
                                      int32 length_tolerance) const {
   int32 sf = config_.frame_subsampling_factor,
       expected_supervision_length = (utterance_length + sf - 1) / sf;
-  if (std::abs(supervision_length - expected_supervision_length) 
+  if (std::abs(supervision_length - expected_supervision_length)
       <= length_tolerance) {
     return true;
   } else {
@@ -672,11 +673,9 @@ void UtteranceSplitter::InitSplits(std::vector<std::vector<int32> > *splits) con
         vec.push_back(config_.num_frames[i]);
       if (j > 0)
         vec.push_back(config_.num_frames[j]);
-      int32 n = 0;
       while (DefaultDurationOfSplit(vec) <= default_duration_ceiling) {
         if (!vec.empty()) // Don't allow the empty vector as a split.
           splits_set.insert(vec);
-        n++;
         vec.push_back(primary_length);
         std::sort(vec.begin(), vec.end());
       }
@@ -710,7 +709,9 @@ void UtteranceSplitter::DistributeRandomlyUniform(int32 n, std::vector<int32> *v
   for (; i < size; i++) {
     (*vec)[i] = common_part;
   }
-  std::random_shuffle(vec->begin(), vec->end());
+  std::random_device rd;
+  std::mt19937 g(rd());
+  std::shuffle(vec->begin(), vec->end(), g);
   KALDI_ASSERT(std::accumulate(vec->begin(), vec->end(), int32(0)) == n);
 }
 

@@ -19,6 +19,7 @@
 #define KALDI_CUDA_DECODER_BATCHED_THREADED_NNET3_CUDA_PIPELINE_H_
 
 #include <atomic>
+#include <memory>
 #include <thread>
 
 #include "cudadecoder/cuda-decoder.h"
@@ -28,6 +29,7 @@
 #include "feat/wave-reader.h"
 #include "lat/determinize-lattice-pruned.h"
 #include "nnet3/nnet-batch-compute.h"
+#include "nnet3/decodable-simple-looped.h"
 #include "online2/online-nnet2-feature-pipeline.h"
 
 // This pipeline is deprecated and will be removed. Please switch to
@@ -48,7 +50,7 @@ namespace cuda_decoder {
  */
 // configuration options common to the BatchedThreadedNnet3CudaPipeline and
 // BatchedThreadedNnet3CudaPipeline
-struct BatchedThreadedNnet3CudaPipelineConfig {
+struct [[deprecated]] BatchedThreadedNnet3CudaPipelineConfig {
   BatchedThreadedNnet3CudaPipelineConfig()
       : max_batch_size(200),
         num_channels(-1),
@@ -136,7 +138,7 @@ struct BatchedThreadedNnet3CudaPipelineConfig {
  * decoding. For examples of how to use this decoder see cudadecoder/README and
  * cudadecoderbin/batched-wav-nnet3-cuda.cc
  */
-class BatchedThreadedNnet3CudaPipeline {
+class [[deprecated]] BatchedThreadedNnet3CudaPipeline {
  public:
   BatchedThreadedNnet3CudaPipeline(
       const BatchedThreadedNnet3CudaPipelineConfig &config)
@@ -364,10 +366,9 @@ class BatchedThreadedNnet3CudaPipeline {
 
   BatchedThreadedNnet3CudaPipelineConfig config_;
 
-  CudaFst cuda_fst_;
+  std::unique_ptr<CudaFst> cuda_fst_;
   const TransitionModel *trans_model_;
   const nnet3::AmNnetSimple *am_nnet_;
-  nnet3::DecodableNnetSimpleLoopedInfo *decodable_info_;
   OnlineNnet2FeaturePipelineInfo *feature_info_;
 
   std::mutex tasks_mutex_;         // protects tasks_front_ and

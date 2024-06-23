@@ -16,8 +16,20 @@
 // limitations under the License.
 
 #if HAVE_CUDA == 1
+#ifdef __IS_HIP_COMPILE__
+#include <roctracer/roctx.h>
+
+#include "hipify.h"
+// The BLAS enumerators are used instead of the SOLVER ones.
+#ifdef CUBLAS_FILL_MODE_LOWER
+#undef CUBLAS_FILL_MODE_LOWER
+#endif
+#define CUBLAS_FILL_MODE_LOWER HIPSOLVER_FILL_MODE_LOWER
+#else
 #include <nvToolsExt.h>
 #endif
+#endif
+
 #include <iostream>
 
 #include "base/io-funcs.h"
@@ -67,7 +79,7 @@ void IvectorExtractorFastCuda::GetIvector(const CuMatrixBase<BaseFloat> &feats,
 
       // create submatrix which removes last column
       CuSubMatrix<BaseFloat> cu_lda(cu_lda_, 0, lda_rows, 0, lda_cols - 1);
-  
+
       // Add offset
       lda_feats_normalized.CopyRowsFromVec(offset_);
       lda_feats_normalized.AddMatMat(1.0, spliced_feats_normalized, kNoTrans,
@@ -75,7 +87,7 @@ void IvectorExtractorFastCuda::GetIvector(const CuMatrixBase<BaseFloat> &feats,
 
     } else {
       KALDI_ERR << "Dimension mismatch: source features have dimension "
-                << spliced_feats_normalized.NumCols() << " and LDA #cols is " 
+                << spliced_feats_normalized.NumCols() << " and LDA #cols is "
                 << lda_cols;
     }
   }
@@ -97,14 +109,14 @@ void IvectorExtractorFastCuda::GetIvector(const CuMatrixBase<BaseFloat> &feats,
 
       // create submatrix which removes last column
       CuSubMatrix<BaseFloat> cu_lda(cu_lda_, 0, lda_rows, 0, lda_cols - 1);
-      
+
       // Add offset
       lda_feats.CopyRowsFromVec(offset_);
       lda_feats.AddMatMat(1.0, spliced_feats, kNoTrans, cu_lda, kTrans, 1.0);
 
     } else {
       KALDI_ERR << "Dimension mismatch: source features have dimension "
-                << spliced_feats.NumCols() << " and LDA #cols is " 
+                << spliced_feats.NumCols() << " and LDA #cols is "
                 << lda_cols;
     }
   }

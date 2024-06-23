@@ -1,0 +1,26 @@
+#!/usr/bin/env python3
+
+import re
+import sys
+
+if __name__ == '__main__':
+    for line in sys.stdin:
+        try:
+            utt, text = line.split(' ', 1)
+        except:
+            continue
+        text = text.lower()
+        text = re.sub(r'[.,?]', ' ', text)
+        text = re.sub(r'{[^}]+}', '<UNK>', text)
+        text = re.sub('<unk>', '<UNK>', text)
+        text = re.sub('<noise>', '<UNK>', text)
+        text = re.sub('\s+\)\)', '))', text)
+        text = re.sub('\(\(<UNK>\)\)', '<UNK>', text)
+        text = re.sub('%[a-z]+', '<UNK>', text)
+        text = re.sub(' -- ', ' ', text)
+        text = re.sub(' --$', '', text)
+        text = re.sub('\s+', ' ', text)
+        text = re.sub('\s+$', '', text)
+        text = re.sub('<UNK>', ' ', text)
+
+        print("{} {}".format(utt, text))

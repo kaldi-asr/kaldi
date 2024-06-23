@@ -63,10 +63,12 @@ void NnetChainTrainer::Train(const NnetChainExample &chain_eg) {
   const NnetTrainerOptions &nnet_config = opts_.nnet_config;
   bool use_xent_regularization = (opts_.chain_config.xent_regularize != 0.0);
   ComputationRequest request;
+
   GetChainComputationRequest(*nnet_, chain_eg, need_model_derivative,
                              nnet_config.store_component_stats,
                              use_xent_regularization, need_model_derivative,
                              &request);
+
   std::shared_ptr<const NnetComputation> computation = compiler_.Compile(request);
 
   if (nnet_config.backstitch_training_scale > 0.0 && num_minibatches_processed_
@@ -93,6 +95,7 @@ void NnetChainTrainer::Train(const NnetChainExample &chain_eg) {
   }
   num_minibatches_processed_++;
 }
+
 
 void NnetChainTrainer::TrainInternal(const NnetChainExample &eg,
                                      const NnetComputation &computation) {
@@ -212,7 +215,18 @@ void NnetChainTrainer::ProcessOutputs(bool is_backstitch_step2,
   const std::string suffix = (is_backstitch_step2 ? "_backstitch" : "");
   std::vector<NnetChainSupervision>::const_iterator iter = eg.outputs.begin(),
       end = eg.outputs.end();
-  for (; iter != end; ++iter) {
+
+  const NnetIo *lwf_io = NULL;
+  for (auto &io: eg.inputs)
+    if (io.name == "__LWF-posteriors") {
+      lwf_io = &io;
+      break;
+    }
+
+  for (int32 output_counter = 0; iter != end; ++iter, ++output_counter) {
+    if (opts_.chain_config.lwf_den_scale != 0.0 || opts_.chain_config.lwf_scale != 0.0)
+      KALDI_ASSERT(output_counter == 0);  // The LWF CL code is not yet ready for multi-output case.
+
     const NnetChainSupervision &sup = *iter;
     int32 node_index = nnet_->GetNodeIndex(sup.name);
     if (node_index < 0 ||
@@ -248,6 +262,49 @@ void NnetChainTrainer::ProcessOutputs(bool is_backstitch_step2,
                                         num_minibatches_processed_,
                                         tot_weight, xent_objf);
     }
+
+    BaseFloat lwf_weight = 0, lwf_objf = 0;
+    if (lwf_io) {
+      const GeneralMatrix &supervision = lwf_io->features;
+      Matrix<BaseFloat> sup_mat_bad_order;
+      supervision.GetMatrix(&sup_mat_bad_order);
+      Matrix<BaseFloat> sup_mat(sup_mat_bad_order.NumRows(),
+                                sup_mat_bad_order.NumCols(), kUndefined);
+      // Re-order it to make the order same as output
+      int32 frames_per_sequence = sup.supervision.frames_per_sequence,
+          num_sequences = sup.supervision.num_sequences;
+      for (int32 i = 0; i < sup_mat_bad_order.NumRows(); i++) {
+        int32 old_index = (i % num_sequences) * frames_per_sequence + i / num_sequences;
+        sup_mat.Row(i).CopyFromVec(sup_mat_bad_order.Row(old_index));
+      }
+      // Some checks:
+      if (WithProb(0.01) &&
+          (opts_.chain_config.lwf_den_scale != 0.0 ||
+           opts_.chain_config.lwf_scale != 0.0)) { // Some checks
+        Matrix<BaseFloat> output_cpu(nnet_output);
+        int32 i = RandInt(0, output_cpu.NumRows() - 1);
+        BaseFloat logsumexp = output_cpu.Row(i).LogSumExp();
+        KALDI_LOG << "Log sum of exp of row i is: " << logsumexp;
+        if (abs(logsumexp - 0.0) > 0.1) KALDI_ERR << "Nnet output is not softmaxed.";
+        BaseFloat sum = sup_mat.Row(i).Sum();
+        KALDI_LOG << "Sum of row " << i << " of sup is " << sum;
+        if (abs(sum - 1.0) > 0.1) KALDI_ERR << "Sup does not sum to 1.0.";
+      }
+      if (opts_.chain_config.lwf_den_scale != 0.0) {
+        CuMatrix<BaseFloat> cu_post(sup_mat);
+        lwf_weight = cu_post.Sum();
+        lwf_objf = opts_.chain_config.lwf_den_scale * TraceMatMat(nnet_output, cu_post, kTrans);
+        KALDI_VLOG(1) << "Full DenLWF objf: " << lwf_objf/lwf_weight << "  weight: " << lwf_weight;
+        nnet_output_deriv.AddMat(opts_.chain_config.lwf_den_scale, cu_post);
+      }
+      if (opts_.chain_config.lwf_scale != 0.0) {
+        CuMatrix<BaseFloat> cu_post(sup_mat);
+        lwf_weight = cu_post.Sum();
+        lwf_objf = opts_.chain_config.lwf_scale * TraceMatMat(nnet_output, cu_post, kTrans);
+        KALDI_VLOG(1) << "Full LWF objf: " << lwf_objf/lwf_weight << "  weight: " << lwf_weight;
+        nnet_output_deriv.AddMat(opts_.chain_config.lwf_scale, cu_post);
+      }
+    } //// LWF
 
     if (opts_.apply_deriv_weights && sup.deriv_weights.Dim() != 0) {
       CuVector<BaseFloat> cu_deriv_weights(sup.deriv_weights);

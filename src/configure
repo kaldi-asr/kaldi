@@ -39,7 +39,7 @@
 
 # This should be incremented after any significant change to the configure
 # script, i.e. any change affecting kaldi.mk or the build system as a whole.
-CONFIGURE_VERSION=11
+CONFIGURE_VERSION=14
 
 # We support bash version 3.2 (Macs still ship with this version as of 2019)
 # and above.
@@ -74,6 +74,9 @@ Configuration options:
   --cudatk-dir=DIR      CUDA toolkit directory
   --cuda-arch=FLAGS     Override the default CUDA_ARCH flags. See:
          https://docs.nvidia.com/cuda/cuda-compiler-driver-nvcc/index.html#nvcc-examples.
+  --use-rocm            Build with ROCm
+  --rocm-dir=DIR        ROCM directory
+  --rocm-targets=TGTS   Comma separated list of GPU targets to target through ROCm
   --debug-level=N       Use assertion level 0 (disabled), 1, or 2 [default=1]
   --double-precision    Build with BaseFloat set to double if yes [default=no],
                         mostly useful for testing purposes.
@@ -92,9 +95,14 @@ Configuration options:
   --speex-root=DIR      SPEEX root directory
   --speex-libdir=DIR    SPEEX library directory
   --speex-incdir=DIR    SPEEX include directory
+  --static-speex        Build with static speex libraries [default=no]
   --host=HOST           Host triple in the format 'cpu-vendor-os'
                         If provided, it is prepended to all toolchain programs.
   --android-incdir=DIR  Android include directory
+  --enable-kenlm        enable kenlm runtime library installed in "../tools/kenlm"
+                        via extras/install_kenlm_query_only.sh, [default=no]
+  --enable-tcmalloc     enable tcmalloc library installed in "../tools/gperftools"
+                        via extras/install_tcmalloc.sh, [default=no]
 
 Following environment variables can be used to override the default toolchain.
   CXX         C++ compiler [default=g++]
@@ -186,43 +194,43 @@ function check_library {
 function check_compiler {
 
   # Part of error message.
-  local supported_compiler="GNU g++ >= 4.7, Apple clang >= 5.0 or LLVM clang >= 3.3"
+  local supported_compiler="GNU g++ >= 5.0, Apple clang >= 6.0 or LLVM clang >= 3.5"
+  local compiler=$1
+  local compiler_ver_info compiler_ver compiler_ver_num
 
-  COMPILER=$1
-  if ! which $COMPILER >&/dev/null; then
-    failure "$COMPILER is not installed.
+  compiler_ver_info=$($compiler --version 2>/dev/null) ||
+    failure "$compiler is not installed.
 You need $supported_compiler."
-  else
-    COMPILER_VER_INFO=$($COMPILER --version 2>/dev/null)
-    if [[ $COMPILER_VER_INFO == *[gc]"++"* ]]; then
-      GCC_VER=$($COMPILER -dumpversion)
-      GCC_VER_NUM=$(echo $GCC_VER | sed 's/\./ /g' | xargs printf "%d%02d%02d")
-      if [ $GCC_VER_NUM -lt 40700 ]; then
-        failure "$COMPILER (g++-$GCC_VER) is not supported.
+
+  case $compiler_ver_info in
+    *[gc]++*)
+      compiler_ver=$($compiler -dumpversion)
+      compiler_ver_num=$(echo $compiler_ver | sed 's/\./ /g' | xargs printf "%d%02d%02d")
+      (( compiler_ver_num < 50000 )) &&
+        failure "$compiler (g++-$compiler_ver) is not supported.
 You need $supported_compiler."
-      elif [ $GCC_VER_NUM  == 40801 ] || [ $GCC_VER_NUM == 40802 ]; then
-        failure "$COMPILER (g++-$GCC_VER) is not supported.
-GCC 4.8.1 and 4.8.2 have a bug in the implementation of the nth_element
-algorithm provided by the standard library. This will cause Kaldi to crash
-(make test would fail). Please use another C++ compiler with C++11 support:
-$supported_compiler."
-      fi
-    elif [[ $COMPILER_VER_INFO == *"Apple"* ]]; then
-      CLANG_VER=$(echo $COMPILER_VER_INFO | grep version | sed "s/.*version \([0-9\.]*\).*/\1/")
-      CLANG_VER_NUM=$(echo $COMPILER_VER_INFO | grep version | sed "s/.*clang-\([0-9]*\).*/\1/")
-      if [ $CLANG_VER_NUM -lt 500 ]; then
-        failure "$COMPILER (Apple clang-$CLANG_VER) is not supported.
+      ;;
+
+    *Apple*)
+      compiler_ver=$(echo $compiler_ver_info | grep version | sed "s/.*version \([0-9\.]*\).*/\1/")
+      compiler_ver_num=$(echo $compiler_ver_info | grep version | sed "s/.*clang-\([0-9]*\).*/\1/")
+      (( compiler_ver_num < 600 )) &&
+        failure "$compiler (Apple clang-$compiler_ver) is not supported.
 You need $supported_compiler."
-      fi
-    elif [[ $COMPILER_VER_INFO == *"LLVM"* ]]; then
-      CLANG_VER=$(echo $COMPILER_VER_INFO | grep version | sed "s/.*version \([0-9\.]*\).*/\1/")
-      CLANG_VER_NUM=$(echo $CLANG_VER | sed 's/\./ /g' | xargs printf "%d%02d")
-      if [ $CLANG_VER_NUM -lt 303 ]; then
-        failure "$COMPILER (LLVM clang-$CLANG_VER) is not supported.
+      ;;
+
+    *LLVM*|*[Cc]lang)
+      compiler_ver=$(echo $compiler_ver_info | grep version | sed "s/.*version \([0-9\.]*\).*/\1/")
+      compiler_ver_num=$(echo $compiler_ver | sed 's/\./ /g' | xargs printf "%d%02d")
+      (( compiler_ver_num < 305 )) &&
+        failure "$compiler (LLVM clang-$compiler_ver) is not supported.
 You need $supported_compiler."
-      fi
-    fi
-  fi
+      ;;
+
+    *)
+      echo >&2 "WARNING: Unfamiliar compiler $compiler. Use at your risk and peril."
+  esac
+
 }
 
 function check_for_slow_expf {
@@ -242,6 +250,71 @@ function check_for_slow_expf {
     )
   fi
 }
+
+# ROCM is used only in selected directories including src/cudamatrix, src/nnet*
+# and src/chain*. It is used to accelerate the neural network training.
+# The rest of Kaldi runs on CPUs.
+
+function configure_rocm {
+  # Check for ROCM in the system
+  if [ ! -d "$ROCMDIR" ]; then
+    for base in $ROCM_PATH /opt/rocm /usr/local/rocm /usr/; do
+      if [ -f $base/bin/hipcc ] && [ -f $base/bin/hipconfig ]; then
+        ROCMDIR=$base
+        break
+      fi
+    done
+  fi
+
+  if [ -d "$ROCMDIR" ]; then
+    if [ ! -f $ROCMDIR/bin/hipcc ]; then
+      failure "Cannnot find hipcc and hipconfig in ROCm directory $ROCMDIR"
+    fi
+  fi
+  echo "Using ROCm $ROCMDIR (hipcc compiler and runtime libraries)"
+  echo >> kaldi.mk
+  echo "# ROCm configuration" >> kaldi.mk
+  echo >> kaldi.mk
+  echo IS_GPU_BUILD = true >> kaldi.mk
+  echo ROCM = true >> kaldi.mk
+  echo "ROCMDIR = $ROCMDIR" >> kaldi.mk
+  echo "HIPCC = $ROCMDIR/bin/hipcc" >> kaldi.mk 
+
+  echo "CUDA_ARCH = " >> kaldi.mk
+  echo "ROCM_ARCH_FLAGS = " >> kaldi.mk
+  for i in ${ROCM_TARGETS//,/ } ; do
+    echo "Targetting ROCm arch $i"
+    echo "ROCM_ARCH_FLAGS += --offload-arch=$i" >> kaldi.mk
+  done
+  
+  echo "HOST_ARCH = `uname -m`" >> kaldi.mk
+  echo >> kaldi.mk
+  
+  ROCM_MAJOR_VERSION=$(hipconfig -v | cut -d. -f1)
+  echo "ROCM_MAJOR_VERSION = $ROCM_MAJOR_VERSION" >> kaldi.mk
+  ROCM_MINOR_VERSION=$(hipconfig -v | cut -d. -f2)
+  echo "ROCM_MINOR_VERSION = $ROCM_MINOR_VERSION" >> kaldi.mk
+  
+  # Only ROCm 5.2+ is supported.
+  if [ $ROCM_MAJOR_VERSION -eq 5 ] && [ $ROCM_MINOR_VERSION -lt 2 ] || [ $ROCM_MAJOR_VERSION -lt 5 ] ; then
+    echo "\
+WARNING: ROCm $ROCM_MAJOR_VERSION.$ROCM_MINOR_VERSION found but ROCm 5.2 or above is required."
+    exit 1;
+  fi
+  
+  # 64bit/32bit? Not Linux? We do not support cross compilation with ROCm so, 
+  # use direct calls to uname -m here
+  if [ "`uname -m`" == "x86_64" ] && [ "`uname`" == "Linux" ] ; then
+    cat makefiles/hip_64bit.mk >> kaldi.mk
+  else
+    echo "\
+WARNING: ROCm will not be used!
+         ROCm is only supported with 64-bit Linux builds."
+    exit 1;
+  fi
+}
+
+
 
 # CUDA is used only in selected directories including src/cudamatrix, src/nnet*
 # and src/chain*. It is used to accelerate the neural network training.
@@ -269,68 +342,77 @@ function configure_cuda {
     # Determine 'CUDA_ARCH',
     CUDA_VERSION=$($CUDATKDIR/bin/nvcc -V | tr '.,' '_ ' |
                      awk '/release/{sub(/.*release/,""); print $1;}') # MAJOR_MINOR,
-    if [[ ! $CUDA_VERSION ]] ; then
-      failure "Cannot figure out CUDA_VERSION from the nvcc output.
+    [[ $CUDA_VERSION ]] ||
+      failure "Cannot figure out CUDA version from the nvcc output.
 Either your CUDA is too new or too old."
-    fi
 
     COMPILER_VER_INFO=$($CXX --version 2>/dev/null)
     if [[ $COMPILER_VER_INFO == *[gc]"++"* ]]; then
-      GCC_VER=$($COMPILER -dumpversion)
+      GCC_VER=$($CXX -dumpversion)
       GCC_VER_NUM=$(echo $GCC_VER | sed 's/\./ /g' | xargs printf "%d%02d%02d")
       case $CUDA_VERSION in
-        # Disabling CUDA 7 and CUDA 8 because we now use C++14 to compile CUDA code
-        # It is still possible to use those cuda versions by switching back to C++11
-        # in src/makefiles/cuda_64bit.mk and use CUB <= 1.8.0 (see tools/)
-        # https://github.com/kaldi-asr/kaldi/pull/4242
+        # Update this list by consulting https://gist.github.com/ax3l/9489132
+        # Disabling CUDA 7 and CUDA 8 because we now use C++14 to compile CUDA
+        # code. It is still possible to use those cuda versions by switching
+        # back to C++11 in src/makefiles/cuda_64bit.mk and use CUB <= 1.8.0.
+        # See tools/ and https://github.com/kaldi-asr/kaldi/pull/4242
         #7_*)
         #  MIN_UNSUPPORTED_GCC_VER="5.0"
         #  MIN_UNSUPPORTED_GCC_VER_NUM=50000;
-        #  CUSOLVER=false
         #;;
         #8_*)
         #  MIN_UNSUPPORTED_GCC_VER="6.0"
         #  MIN_UNSUPPORTED_GCC_VER_NUM=60000;
-        #  CUSOLVER=false
         #;;
-        9_0)
+        [1-8]_*)
+          failure "CUDA version $CUDA_VERSION is too old and unsupported."
+          ;;
+        9_[01])
           MIN_UNSUPPORTED_GCC_VER="7.0"
-          MIN_UNSUPPORTED_GCC_VER_NUM=70000;
-          CUSOLVER=false
-        ;;
-        9_1)
-          MIN_UNSUPPORTED_GCC_VER="7.0"
-          MIN_UNSUPPORTED_GCC_VER_NUM=70000;
-          CUSOLVER=true
-        ;;
-        9_2 | 9_* | 10_0)
+          MIN_UNSUPPORTED_GCC_VER_NUM=70000
+          ;;
+        9_* | 10_0)
           MIN_UNSUPPORTED_GCC_VER="8.0"
-          MIN_UNSUPPORTED_GCC_VER_NUM=80000;
-          CUSOLVER=true
-        ;;
-        10_1 | 10_*)
+          MIN_UNSUPPORTED_GCC_VER_NUM=80000
+          ;;
+        10_*)
           MIN_UNSUPPORTED_GCC_VER="9.0"
-          MIN_UNSUPPORTED_GCC_VER_NUM=90000;
+          MIN_UNSUPPORTED_GCC_VER_NUM=90000
+          ;;
+        11_[0-3])
+          MIN_UNSUPPORTED_GCC_VER="10.0"
+          MIN_UNSUPPORTED_GCC_VER_NUM=100000
+          ;;
+        11_*)
+          MIN_UNSUPPORTED_GCC_VER="12.0"
+          MIN_UNSUPPORTED_GCC_VER_NUM=120000
           CUSOLVER=true
         ;;
-        11_*)
-          MIN_UNSUPPORTED_GCC_VER="10.0"
-          MIN_UNSUPPORTED_GCC_VER_NUM=100000;
+        12_*)
+          MIN_UNSUPPORTED_GCC_VER="12.3"
+          MIN_UNSUPPORTED_GCC_VER_NUM=123000
           CUSOLVER=true
         ;;
         *)
-          echo "Unsupported CUDA_VERSION (CUDA_VERSION=$CUDA_VERSION), please report it to Kaldi mailing list, together with 'nvcc -h' or 'ptxas -h' which lists allowed -gencode values..."; exit 1;
-        ;;
+          failure "Unsupported CUDA version ${CUDA_VERSION}.
+Please open an issue at https://github.com/kaldi-asr/kaldi/issues and include\
+ output of either 'nvcc -h' or 'ptxas -h'."
+          ;;
       esac
       if [ $GCC_VER_NUM -ge $MIN_UNSUPPORTED_GCC_VER_NUM ]; then
-        failure "CUDA $CUDA_VERSION does not support $CXX (g++-$GCC_VER).
-                 You need g++ < $MIN_UNSUPPORTED_GCC_VER."
+        failure "CUDA $CUDA_VERSION does not support $CXX (g++-$GCC_VER).\
+ Only versions strictly older than $MIN_UNSUPPORTED_GCC_VER are supported."
       fi
+
+      case $CUDA_VERSION in
+        [1-8]_* | 9_0) CUSOLVER=false ;;
+        *) CUSOLVER=true ;;
+      esac
     fi
 
-    if [ -z "$CUDA_ARCH" ]; then
+    if [[ ! $CUDA_ARCH ]]; then
       case `uname -m` in
-        x86_64|ppc64le)
+        x86_64 | ppc64le)
           case $CUDA_VERSION in
             # Disabling CUDA 7 and 8. See a few lines above for details.
             #7_*) CUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52" ;;
@@ -338,8 +420,12 @@ Either your CUDA is too new or too old."
             9_*) CUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_70,code=sm_70" ;;
             10_*) CUDA_ARCH="-gencode arch=compute_30,code=sm_30 -gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_70,code=sm_70 -gencode arch=compute_75,code=sm_75" ;;
             11_0) CUDA_ARCH="-gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_70,code=sm_70 -gencode arch=compute_75,code=sm_75 -gencode arch=compute_80,code=sm_80" ;;
-			11_1 | 11_*) CUDA_ARCH="-gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_70,code=sm_70 -gencode arch=compute_75,code=sm_75 -gencode arch=compute_80,code=sm_80 -gencode arch=compute_86,code=sm_86" ;;
-            *) echo "Unsupported CUDA_VERSION (CUDA_VERSION=$CUDA_VERSION), please report it to Kaldi mailing list, together with 'nvcc -h' or 'ptxas -h' which lists allowed -gencode values..."; exit 1 ;;
+            11_*) CUDA_ARCH="-gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_70,code=sm_70 -gencode arch=compute_75,code=sm_75 -gencode arch=compute_80,code=sm_80 -gencode arch=compute_86,code=sm_86" ;;
+            12_*) CUDA_ARCH="-gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_70,code=sm_70 -gencode arch=compute_75,code=sm_75 -gencode arch=compute_80,code=sm_80 -gencode arch=compute_86,code=sm_86 -gencode arch=compute_90,code=sm_90" ;;
+            *) failure \
+                 "Unsupported CUDA version ${CUDA_VERSION}. Please open an" \
+                 "issue at https://github.com/kaldi-asr/kaldi/issues and" \
+                 "include output of either 'nvcc -h' or 'ptxas -h'."
           esac
         ;;
         aarch64)
@@ -362,9 +448,11 @@ Either your CUDA is too new or too old."
     echo "# CUDA configuration" >> kaldi.mk
     echo >> kaldi.mk
 
+    echo IS_GPU_BUILD = true >> kaldi.mk
     echo CUDA = true >> kaldi.mk
     echo CUDATKDIR = $CUDATKDIR >> kaldi.mk
     echo "CUDA_ARCH = $CUDA_ARCH" >> kaldi.mk
+    echo "HOST_ARCH = `uname -m`" >> kaldi.mk
     echo >> kaldi.mk
 
     # 64bit/32bit? We do not support cross compilation with CUDA so, use direct
@@ -404,10 +492,6 @@ function linux_configure_speex {
   [ ! -z "$SPEEXROOT" ] || SPEEXROOT=`pwd`/../tools/speex
   [ ! -z "$SPEEXLIBDIR" ] || SPEEXLIBDIR="$SPEEXROOT"/lib
   [ ! -z "$SPEEXINCDIR" ] || SPEEXINCDIR="$SPEEXROOT"/include
-  static_speex=$1
-  if [ "foo"$static_speex == "foo" ]; then
-    static_speex=false
-  fi
 
   if $static_speex; then
     spx_type=a
@@ -584,12 +668,6 @@ OPENBLASROOT=
 # libraries will run. It is set by the configure script when cross compiling.
 HOST=
 
-# These environment variables can be used to override the default toolchain.
-CXX=${CXX:-g++}
-AR=${AR:-ar}
-AS=${AS:-as}
-RANLIB=${RANLIB:-ranlib}
-
 # These environment variables can be used to provide additional flags to the
 # compiler/linker. We want these flags to override the flags determined by the
 # configure script, so we append them to the appropriate variables (CXXFLAGS,
@@ -602,11 +680,15 @@ ENV_LDLIBS=$LDLIBS
 debug_level=1
 double_precision=false
 dynamic_kaldi=false
-use_cuda=true
-with_cudadecoder=1
+use_cuda=false
+use_rocm=false
+with_cudadecoder=true
 static_fst=false
 static_math=false
+static_speex=false
 android=false
+enable_kenlm=false
+enable_tcmalloc=false
 
 FSTROOT=`rel2abs ../tools/openfst`
 CUBROOT=`rel2abs ../tools/cub`
@@ -625,11 +707,13 @@ do
     dynamic_kaldi=false;
     static_math=true;
     static_fst=true;
+    static_speex=true;
     shift ;;
   --shared)
     dynamic_kaldi=true;
     static_math=false;
     static_fst=false;
+    static_speex=false;
     shift ;;
   --debug-level=*)
     GetSwitchValueOrDie debug_level "$1"
@@ -646,8 +730,11 @@ do
   --atlas-root=*)
     GetSwitchExistingPathOrDie ATLASROOT "$1"
     shift ;;
-  --use-cuda)
-    use_cuda=true;
+  --use-rocm)
+    use_rocm=true;
+    shift ;;
+  --use-rocm=no)
+    use_rocm=false;
     shift ;;
   --use-cuda=yes)
     use_cuda=true;
@@ -656,13 +743,13 @@ do
     use_cuda=false;
     shift ;;
   --with-cudadecoder)
-    with_cudadecoder=1;
+    with_cudadecoder=true;
     shift ;;
   --with-cudadecoder=yes)
-    with_cudadecoder=1;
+    with_cudadecoder=true;
     shift ;;
   --with-cudadecoder=no)
-    with_cudadecoder=0;
+    with_cudadecoder=false;
     shift ;;
   --static-math)
     static_math=true;
@@ -681,6 +768,15 @@ do
     shift ;;
   --static-fst=no)
     static_fst=false;
+    shift ;;
+  --static-speex)
+    static_speex=true;
+    shift ;;
+  --static-speex=yes)
+    static_speex=true;
+    shift ;;
+  --static-speex=no)
+    static_speex=false;
     shift ;;
   --fst-root=*)
     GetSwitchExistingPathOrDie FSTROOT "$1"
@@ -715,6 +811,13 @@ do
   --mathlib=*)
     GetSwitchValueOrDie MATHLIB "$1"
     shift ;;
+  --rocm-dir=*)
+    # ROCM is used in src/cudamatrix and src/nnet{,bin} only.
+    GetSwitchExistingPathOrDie ROCMDIR "$1"
+    shift ;;
+  --rocm-targets=*)
+    GetSwitchValueOrDie ROCM_TARGETS "$1"
+    shift ;;
   --cudatk-dir=*)
     # CUDA is used in src/cudamatrix and src/nnet{,bin} only.
     GetSwitchExistingPathOrDie CUDATKDIR "$1"
@@ -739,6 +842,12 @@ do
     MATHLIB='OPENBLAS'
     GetSwitchExistingPathOrDie ANDROIDINC "$1"
     shift ;;
+  --enable-kenlm)
+    enable_kenlm=true
+    shift ;;
+  --enable-tcmalloc)
+    enable_tcmalloc=true
+    shift ;;
   *)  echo "Unknown argument: $1, exiting"; usage; exit 1 ;;
   esac
 done
@@ -760,32 +869,49 @@ if $android && [[ "$CXX" != *clang++*  ]] ; then
 fi
 
 # If HOST is set
-# 1. We prepend it to CXX, AR, AS and RANLIB.
-# 2. We parse the target architecture from the HOST triple.
+# - If it is not equal to WASM
+#   1. We prepend it to CXX, AR, AS and RANLIB.
+#   2. We parse the target architecture from the HOST triple.
+# - Otherwise we take its value as the target architecture
 # Otherwise we set the target architecture to the output of `uname -m`.
 if is_set $HOST; then
-  CXX="$HOST-$CXX"
-  AR="$HOST-$AR"
-  AS="$HOST-$AS"
-  RANLIB="$HOST-$RANLIB"
-
   # The host triple will be something like "armv8-rpi3-linux-gnueabihf". We
   # need the first field which is the target architecture for this build. The
   # following command will take the host triple "armv8-rpi3-linux-gnueabihf"
   # and return ["armv8", "rpi3", "linux", "gnueabihf"] in PARTS.
   IFS='-' read -ra PARTS <<< "$HOST"
-  # The first field in the PARTS list is the target architecture.
-  TARGET_ARCH="$PARTS"
-  if [[ "$TARGET_ARCH" != aarch64* && "$TARGET_ARCH" != arm* && "$TARGET_ARCH" != ppc64le && \
-        "$TARGET_ARCH" != x86* && "$TARGET_ARCH" != i686* ]] ; then
-    # We currently only support building for x86[_64], arm*, aarch64* and ppc64le.
-    # If TARGET_ARCH was read from the HOST variable, it must be one of these.
-    failure "$TARGET_ARCH is not a supported architecture.
-             Supported architectures: x86[_64], arm*, aarch64*, ppc64le."
+
+  if [[ "$HOST" != WASM ]]; then
+    # The first field in the PARTS list is the target architecture.
+    TARGET_ARCH="$PARTS"
+    if [[ "$TARGET_ARCH" != aarch64* && "$TARGET_ARCH" != arm* && "$TARGET_ARCH" != ppc64le && \
+          "$TARGET_ARCH" != x86* && "$TARGET_ARCH" != i686* ]] ; then
+      # We currently only support building for x86[_64], arm*, aarch64* and ppc64le.
+      # If TARGET_ARCH was read from the HOST variable, it must be one of these.
+      failure "$TARGET_ARCH is not a supported architecture.
+      Supported architectures: x86[_64], arm*, aarch64*, ppc64le."
+    fi
+  else
+    TARGET_ARCH="$HOST"
   fi
+
+  HOST_CXX="$HOST-c++"
+  HOST_AR="$HOST-ar"
+  HOST_AS="$HOST-as"
+  HOST_RANLIB="$HOST-ranlib"
 else
   TARGET_ARCH="`uname -m`"
+  HOST_CXX=c++
+  HOST_AR=ar
+  HOST_AS=as
+  HOST_RANLIB=ranlib
 fi
+
+# These environment variables can be used to override the default toolchain.
+CXX=${CXX:-$HOST_CXX}
+AR=${AR:-$HOST_AR}
+AS=${AS:-$HOST_AS}
+RANLIB=${RANLIB:-$HOST_RANLIB}
 
 #------------------------------------------------------------------------------
 # Matrix algebra library selection and validation.
@@ -871,6 +997,10 @@ echo >> kaldi.mk
 echo "Checking compiler $CXX ..."
 check_compiler $CXX
 
+echo "# Target achitecture" >> kaldi.mk
+echo "ARCH = $TARGET_ARCH" >> kaldi.mk
+echo >> kaldi.mk
+
 echo "# Base configuration" >> kaldi.mk
 echo >> kaldi.mk
 if $dynamic_kaldi ; then
@@ -901,7 +1031,7 @@ else
   if [ "`uname`" == "Darwin"  ]; then
     OPENFSTLIBS="$FSTROOT/lib/libfst.dylib"
     OPENFSTLDFLAGS="-Wl,-rpath -Wl,${FSTROOT}/lib"
-  elif [ "`uname`" == "Linux" ]; then
+  elif [ "`uname`" == "Linux" -o "`uname`" == "FreeBSD" ]; then
     OPENFSTLIBS="$FSTROOT/lib/libfst.so"
     OPENFSTLDFLAGS="-Wl,-rpath=${FSTROOT}/lib"
   else
@@ -916,17 +1046,47 @@ echo "OPENFSTLIBS = $OPENFSTLIBS" >> kaldi.mk
 echo "OPENFSTLDFLAGS = $OPENFSTLDFLAGS" >> kaldi.mk
 echo >> kaldi.mk
 
-$use_cuda && echo "Checking cub library in $CUBROOT ..."
-if [[ "$use_cuda" = true  && ! -f $CUBROOT/cub/cub.cuh ]]; then
-  failure "Could not find file $CUBROOT/cub/cub.cuh:
+if $use_cuda; then
+   echo "Checking cub library in $CUBROOT ..."
+   if [[ ! -f $CUBROOT/cub/cub.cuh ]]; then
+     failure "Could not find file $CUBROOT/cub/cub.cuh:
   you may not have installed cub.  Go to ../tools/ and type
-  e.g. 'make cub'; cub is a new requirement."
+  'make cub' to download and unpack it. We'll detect it then."
+   else
+     echo "CUBROOT = $CUBROOT" >> kaldi.mk
+   fi
+   echo "WITH_CUDADECODER = $with_cudadecoder" >> kaldi.mk
 else
-  echo "CUBROOT = $CUBROOT" >> kaldi.mk
+   if $use_rocm; then
+     echo "WITH_CUDADECODER = $with_cudadecoder" >> kaldi.mk
+   else
+     echo "WITH_CUDADECODER = false" >> kaldi.mk
+   fi
 fi
-
-echo "WITH_CUDADECODER = $with_cudadecoder" >> kaldi.mk
 echo >> kaldi.mk
+
+if $enable_kenlm ; then
+  if [ -d ../tools/kenlm ]; then
+    KENLM_ROOT=$(rel2abs ../tools/kenlm)
+    echo "Checking kenlm library in $KENLM_ROOT"
+    if [ -f $KENLM_ROOT/libkenlm.so ]; then
+      if [ "$(uname)" == "Linux" ]; then
+        echo "KENLM_ROOT = $KENLM_ROOT" >> kaldi.mk
+        echo "KENLM_CXXFLAGS = -DHAVE_KENLM  -DKENLM_MAX_ORDER=6  -I$KENLM_ROOT" >> kaldi.mk
+        echo "KENLM_LDFLAGS = -Wl,-rpath=$KENLM_ROOT  -L$KENLM_ROOT" >> kaldi.mk
+        echo "KENLM_LDLIBS = -lkenlm" >> kaldi.mk
+      else
+        failure "Sorry, for now --enable-kenlm option is only supported for Linux"
+      fi
+    else
+      failure "can't find libkenlm.so in ../tools/kenlm/,
+              refer to ../tools/extras/install_kenlm_query_only.sh for instruction."
+    fi
+  else
+    failure "--enable-kenlm switched on, but can't find kenlm repo in ../tools/kenlm,
+            refer to ../tools/extras/install_kenlm_query_only.sh for instruction."
+  fi
+fi
 
 # OS-specific steps given below append to kaldi.mk
 echo "Performing OS specific configuration ..."
@@ -1021,7 +1181,7 @@ elif [ "`uname -o`" == "Cygwin"  ]; then
   cat makefiles/cygwin.mk >> kaldi.mk
   echo "Successfully configured for Cygwin with CLAPACK."
 
-elif [ "`uname`" == "Linux" ]; then
+elif [ "`uname`" == "Linux" -o "`uname`" == "FreeBSD"  ]; then
   echo "On Linux: Checking for linear algebra header files ..."
   if [ "$MATHLIB" == "ATLAS" ]; then
     if [ ! -f $ATLASROOT/include/cblas.h ] || [ ! -f $ATLASROOT/include/clapack.h ] ; then
@@ -1237,10 +1397,27 @@ or try another math library, e.g. --mathlib=OPENBLAS (Kaldi may be slower)."
     failure "Unsupported linear algebra library '$MATHLIB'"
   fi
   $use_cuda && configure_cuda
+  $use_rocm && configure_rocm
   linux_configure_speex
 else
   failure "Could not detect the platform or we have not yet worked out the
   appropriate configuration for this platform. Please contact the developers."
+fi
+
+if $enable_tcmalloc ; then
+  if [ -f ../tools/gperftools/lib/libtcmalloc_minimal.so ]; then
+    TCMALLOC_ROOT=$(rel2abs ../tools/gperftools)
+    echo "Configuring tcmalloc since --enable-tcmalloc"
+    if [ "$(uname)" == "Linux" ]; then
+      echo "LDLIBS += -Wl,-rpath=$TCMALLOC_ROOT/lib -L$TCMALLOC_ROOT/lib -ltcmalloc_minimal" >> kaldi.mk
+    else
+      failure "Now, --enable-tcmalloc option is only supported for Linux"
+    fi
+    echo "Successfully configured tcmalloc for Linux from $TCMALLOC_ROOT"
+  else
+    failure "Can't find tcmalloc in tools/gperftools. Run" \
+            "'extras/install_tcmalloc.sh' in 'tools/' to install."
+  fi
 fi
 
 # Append the flags set by environment variables last so they can be used

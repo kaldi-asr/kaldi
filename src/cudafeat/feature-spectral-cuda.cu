@@ -15,12 +15,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#if HAVE_CUDA == 1
+#include "cudafeat/feature-spectral-cuda.h"
+
+#ifdef __IS_HIP_COMPILE__
+#include <roctracer/roctx.h>
+
+#include <hipcub/hipcub.hpp>
+
+#include "hipify.h"
+#else
 #include <nvToolsExt.h>
 #include <cub/cub.cuh>
 #endif
 
-#include "cudafeat/feature-spectral-cuda.h"
 #include "cudamatrix/cu-rand.h"
 
 // Each thread block processes a unique frame
@@ -129,7 +136,7 @@ __global__ void mel_banks_compute_kernel(int32_t num_frames, float energy_floor,
 
   // perfom local sum
   float sum = 0;
-  for (int idx = tid; idx < size; idx += 32) {
+  for (int idx = tid; idx < size; idx += GPU_WARP_SIZE) {
     sum += v[idx] * w[idx];
   }
 
@@ -407,9 +414,9 @@ CudaSpectralFeatures::CudaSpectralFeatures(const CudaSpectralFeatureOptions &opt
   stride_ = cu_windows_.Stride();
   tmp_stride_ = tmp_window_.Stride();
 
-  cufftPlanMany(&plan_, 1, &padded_length_, NULL, 1, stride_, NULL, 1,
-                tmp_stride_ / 2, CUFFT_R2C, fft_size_);
-  cufftSetStream(plan_, cudaStreamPerThread);
+  CUFFT_SAFE_CALL(cufftPlanMany(&plan_, 1, &padded_length_, NULL, 1, stride_, NULL, 1,
+                                tmp_stride_ / 2, CUFFT_R2C, fft_size_));
+  CUFFT_SAFE_CALL(cufftSetStream(plan_, cudaStreamPerThread));
   cumfcc_opts_ = opts;
 }
 
@@ -488,7 +495,7 @@ void CudaSpectralFeatures::ComputeFinalFeatures(int num_frames, BaseFloat vtln_w
   // mel banks
   int num_bins = bin_size_;
   cu_mel_energies_.Resize(num_frames, num_bins, kUndefined);
-  dim3 mel_threads(32, 8);
+  dim3 mel_threads(GPU_WARP_SIZE, 8);
   dim3 mel_blocks(num_bins, (num_frames + mel_threads.y - 1) / mel_threads.y);
   mel_banks_compute_kernel<<<mel_blocks, mel_threads>>>(
       num_frames, std::numeric_limits<float>::epsilon(), offsets_, sizes_,
@@ -563,6 +570,6 @@ CudaSpectralFeatures::~CudaSpectralFeatures() {
   CuDevice::Instantiate().Free(vecs_);
   CuDevice::Instantiate().Free(offsets_);
   CuDevice::Instantiate().Free(sizes_);
-  cufftDestroy(plan_);
+  CUFFT_SAFE_CALL(cufftDestroy(plan_));
 }
 }  // namespace kaldi

@@ -15,21 +15,42 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef KALDI_CUDA_DECODER_CUDA_DECODER_H_
-#define KALDI_CUDA_DECODER_CUDA_DECODER_H_
+#ifndef KALDI_CUDADECODER_CUDA_DECODER_H_
+#define KALDI_CUDADECODER_CUDA_DECODER_H_
+
+#if HAVE_CUDA
+
+#ifdef __IS_HIP_COMPILE__
+#include <hip/hip_runtime_api.h>
+
+#include "hipify.h"
+#else
+#include <cuda_runtime_api.h>
+#endif
+
+#include <atomic>
+#include <cfloat>
+#include <condition_variable>
+#include <functional>
+#include <list>
+#include <memory>
+#include <mutex>
+#include <set>
+#include <sstream>
+#include <stack>
+#include <thread>
+#include <tuple>
+#include <unordered_map>
+#include <unordered_set>
+#include <utility>
+#include <vector>
 
 #include "cudadecoder/cuda-decodable-itf.h"
 #include "cudadecoder/cuda-decoder-common.h"
 #include "cudadecoder/cuda-fst.h"
 #include "cudadecoder/thread-pool-light.h"
-#include "nnet3/decodable-online-looped.h"
+#include "fst/symbol-table.h"
 #include "online2/online-endpoint.h"
-
-#include <cuda_runtime_api.h>
-#include <cfloat>
-#include <mutex>
-#include <tuple>
-#include <vector>
 
 namespace kaldi {
 namespace cuda_decoder {
@@ -144,8 +165,8 @@ struct CudaDecoderConfig {
 // Forward declaration.
 // Those contains CUDA code. We don't want to include their definition
 // in this header
-class DeviceParams;
-class KernelParams;
+struct DeviceParams;
+struct KernelParams;
 
 class CudaDecoder {
  public:
@@ -194,12 +215,15 @@ class CudaDecoder {
   // Using nlanes=2500 in that configuration would first not be possible
   // (out of memory), but also not necessary. Increasing the number of
   // lanes is only useful if it increases performance. If the GPU is
-  // saturated at nlanes=200, you should not increase that number
+  // saturated at nlanes=200, you should not increase that number.
+  //
+  ///\param[in] fst A CudaFst instance. Not owned, must survive this object.
+  ///\param[in] config
+  ///\param[in] nlanes
+  ///\param[in] nchannels
   CudaDecoder(const CudaFst &fst, const CudaDecoderConfig &config, int32 nlanes,
               int32 nchannels);
 
-  // Reads the config from config
-  void ReadConfig(const CudaDecoderConfig &config);
   // Special constructor for nlanes = nchannels. Here for the non-advanced
   // user Here we can consider nchannels = batch size. If we want to
   // decode 10 utterances at a time, we can use nchannels = 10
@@ -208,6 +232,10 @@ class CudaDecoder {
       : CudaDecoder(fst, config, nchannels, nchannels) {}
   virtual ~CudaDecoder() noexcept(false);
 
+  KALDI_DISALLOW_COPY_AND_ASSIGN(CudaDecoder);
+
+  // Reads the config from config
+  void ReadConfig(const CudaDecoderConfig &config);
   // InitDecoding initializes the decoding, and should only be used if you
   // intend to call AdvanceDecoding() on the channels listed in channels
   void InitDecoding(const std::vector<ChannelId> &channels);
@@ -234,7 +262,7 @@ class CudaDecoder {
   // If max_num_frames is >= 0 it will decode no more than
   // that many frames.
   void AdvanceDecoding(
-      const std::vector<std::pair<ChannelId, BaseFloat *>> &lanes_assignements);
+      const std::vector<std::pair<ChannelId, const BaseFloat *>> &lanes_assignements);
 
   // Version with deprecated API - will be removed at some point
   void AdvanceDecoding(const std::vector<ChannelId> &channels,
@@ -508,7 +536,7 @@ class CudaDecoder {
 
   // The CudaFst data structure contains the FST graph
   // in the CSR format, on both the GPU and CPU memory
-  const CudaFst fst_;
+  const CudaFst& fst_;
 
   // Counters used by a decoder lane
   // Contains all the single values generated during computation,
@@ -695,8 +723,8 @@ class CudaDecoder {
   // i.e. memory address of the main_q for instance
   // KernelParams contains information that can change.
   // For instance which channel is executing on which lane
-  DeviceParams *h_device_params_;
-  KernelParams *h_kernel_params_;
+  std::unique_ptr<DeviceParams> h_device_params_;
+  std::unique_ptr<KernelParams> h_kernel_params_;
   std::vector<ChannelId> channel_to_compute_;
   int32 nlanes_used_;  // number of lanes used in h_kernel_params_
   // Initial lane
@@ -732,12 +760,11 @@ class CudaDecoder {
   std::vector<std::vector<InfoToken>> h_all_tokens_extra_prev_tokens_;
   std::vector<std::vector<float2>>
       h_all_tokens_extra_prev_tokens_extra_and_acoustic_cost_;
-  std::vector<std::mutex> channel_lock_;  // at some point we should switch to
-                                          // a shared_lock (to be able to
-                                          // compute partial lattices while
-                                          // still streaming new data for this
-                                          // channel)
-  bool worker_threads_running_;
+  //TODO(hugovbraun): At some point we should switch to a shared_lock to be
+  // able to compute partial lattices while still streaming new data for this
+  // channel.
+  std::vector<std::mutex> channel_lock_;
+
   // For each channel, set by PrepareForGetRawLattice
   // argmin cost, list of the tokens within
   // [best_cost;best_cost+lattice_beam] and if we've reached a final
@@ -745,8 +772,8 @@ class CudaDecoder {
   std::vector<std::pair<int32, CostType>> h_all_argmin_cost_;
   std::vector<std::vector<std::pair<int, float>>> h_all_final_tokens_list_;
   std::vector<bool> h_all_has_reached_final_;
-  std::vector<ChannelId>
-      nonempty_channels_;  // used as buffer to store channels with nframes>0
+  // Buffer to store channels with nframes > 0.
+  std::vector<ChannelId> nonempty_channels_;
 
   // Pinned memory arrays. Used for the DeviceToHost copies
   float2 *h_extra_and_acoustic_cost_concat_, *d_extra_and_acoustic_cost_concat_;
@@ -846,7 +873,7 @@ class CudaDecoder {
   std::vector<ChannelId> lanes2channels_todo_;
   std::atomic<int> n_acoustic_h2h_copies_todo_;
   std::atomic<int> n_extra_prev_tokens_h2h_copies_todo_;
-  std::atomic<int> n_d2h_copies_ready_;
+  //TODO(hugovbraun): unused: std::atomic<int> n_d2h_copies_ready_;
   std::atomic<int> n_infotoken_h2h_copies_todo_;
   int32 n_h2h_task_not_done_;
   int32 n_init_decoding_h2h_task_not_done_;
@@ -857,13 +884,15 @@ class CudaDecoder {
   std::condition_variable n_h2h_main_task_todo_cv_;
   std::condition_variable h2h_done_;
   std::condition_variable init_decoding_h2h_done_;
-  std::atomic<bool> active_wait_;
+  //TODO(hugovbraun): unused: std::atomic<bool> active_wait_;
 
   // Used for sync on partial hypotheses tasks
-  std::atomic<std::uint32_t> n_partial_traceback_threads_todo_;
-  std::atomic<std::uint32_t> n_partial_traceback_threads_not_done_;
+  std::atomic<std::int32_t> n_partial_traceback_threads_todo_;
+  std::atomic<std::int32_t> n_partial_traceback_threads_not_done_;
 
-  bool h2h_threads_running_;
+  // Set to false in destructor to stop threads.
+  volatile bool h2h_threads_running_;
+
   // Using the output from GetBestPath, we add the best tokens (as
   // selected in GetBestCost) from the final frame to the output lattice.
   // We also fill the data structures (such as q_curr_frame_todo_, or
@@ -927,10 +956,10 @@ class CudaDecoder {
       std::unordered_map<LatticeStateInternalId, RawLatticeState>
           *prev_f_raw_lattice_state,
       std::unordered_set<int32> *f_arc_idx_added);
-  KALDI_DISALLOW_COPY_AND_ASSIGN(CudaDecoder);
 };
 
 }  // end namespace cuda_decoder
 }  // namespace kaldi
 
-#endif  // KALDI_CUDA_DECODER_CUDA_DECODER_H_
+#endif  // HAVE_CUDA
+#endif  // KALDI_CUDADECODER_CUDA_DECODER_H_

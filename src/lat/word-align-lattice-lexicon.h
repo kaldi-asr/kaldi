@@ -120,12 +120,9 @@ class WordAlignLatticeLexiconInfo {
 struct WordAlignLatticeLexiconOpts {
   int32 partial_word_label;
   bool reorder;
-  bool test;
-  bool allow_duplicate_paths;
   BaseFloat max_expand;
 
   WordAlignLatticeLexiconOpts(): partial_word_label(0), reorder(true),
-                                 test(false), allow_duplicate_paths(false),
                                  max_expand(-1.0) { }
 
   void Register(OptionsItf *opts) {
@@ -136,13 +133,6 @@ struct WordAlignLatticeLexiconOpts {
     opts->Register("reorder", &reorder, "True if the lattices were generated "
                    "from graphs that had the --reorder option true, relating to "
                    "reordering self-loops (typically true)");
-    opts->Register("test", &test, "If true, testing code will be activated "
-                   "(the purpose of this is to validate the algorithm).");
-    opts->Register("allow-duplicate-paths", &allow_duplicate_paths, "Only "
-                   "has an effect if --test=true.  If true, does not die "
-                   "(only prints warnings) if duplicate paths are found. "
-                   "This should only happen with very pathological lexicons, "
-                   "e.g. as encountered in testing code.");
     opts->Register("max-expand", &max_expand, "If >0.0, the maximum ratio "
                    "by which we allow the lattice-alignment code to increase the #states "
                    "in a lattice (vs. the phone-aligned lattice) before we fail and "
@@ -161,26 +151,10 @@ struct WordAlignLatticeLexiconOpts {
 /// error including when the the lattice seems to have been "forced out"
 /// (did not reach end state, resulting in partial word at end).
 bool WordAlignLatticeLexicon(const CompactLattice &lat,
-                             const TransitionModel &tmodel,
+                             const TransitionInformation &tmodel,
                              const WordAlignLatticeLexiconInfo &lexicon_info,
                              const WordAlignLatticeLexiconOpts &opts,
                              CompactLattice *lat_out);
 
-
-/// This function is designed to crash if something went wrong with the
-/// word-alignment of the lattice.  If was_ok==true (was_ok is the return status
-/// of WordAlignLattice), it tests that, after removing any silence and
-/// partial-word labels that may have been inserted by WordAlignLattice,
-/// the word-aligned lattice is equivalent to the input.  It also verifies
-/// that arcs are of 4 types:
-///   properly-aligned word arcs, with a word label.
-///   partial-word arcs, with the partial-word label.
-///   silence arcs, with the silence label.
-void TestWordAlignedLatticeLexicon(const CompactLattice &lat,
-                                   const TransitionModel &tmodel,
-                                   const std::vector<std::vector<int32> > &lexicon,
-                                   const CompactLattice &aligned_lat,
-                                   bool allow_duplicate_paths);
-
-} // end namespace kaldi
+} // namespace kaldi
 #endif

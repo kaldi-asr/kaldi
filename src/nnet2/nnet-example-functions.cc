@@ -19,6 +19,7 @@
 
 #include "nnet2/nnet-example-functions.h"
 #include "lat/lattice-functions.h"
+#include "lat/lattice-functions-transition-model.h"
 
 namespace kaldi {
 namespace nnet2 {

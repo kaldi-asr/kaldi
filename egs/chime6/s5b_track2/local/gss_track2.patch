@@ -1,0 +1,188 @@
+diff --git a/Makefile b/Makefile
+index 4177b10..d87dc3f 100644
+--- a/Makefile
++++ b/Makefile
+@@ -1,8 +1,9 @@
+ 
+ 
+ # uses environment variable CHIME5_DIR if it is defined, otherwise falls back to default /net/fastdb/chime5/CHiME5
+-CHIME5_DIR ?= /net/fastdb/chime5/CHiME5
+-CHIME6_DIR ?= cache/CHiME6
++CHIME5_DIR ?= /export/corpora4/CHiME5
++CHIME6_DIR ?= ./CHiME6
++CHIME6_DIR_cache ?= cache/CHiME6
+ 
+ cache:
+ 	mkdir cache
+@@ -13,11 +14,11 @@ cache/chime5.json: cache
+ 	python -m pb_chime5.database.chime5.create_json -j cache/chime5.json -db $(CHIME5_DIR) --transcription-path $(CHIME5_DIR)/transcriptions
+ 
+ cache/chime6.json: cache
+-	python -m pb_chime5.database.chime5.create_json -j cache/chime6.json -db $(CHIME6_DIR) --transcription-path $(CHIME6_DIR)/transcriptions --chime6
++	python -m pb_chime5.database.chime5.create_json -j cache/chime6.json -db $(CHIME6_DIR_cache) --transcription-path $(CHIME6_DIR_cache)/transcriptions --chime6
+ 
+-$(CHIME6_DIR):
++$(CHIME6_DIR_cache):
+ 	# Generate a dummy CHiME 6 folder with invalid time stamps and audio files that aren't sync
+-	python -m pb_chime5.scripts.simulate_chime6_transcriptions $(CHIME5_DIR) $(CHIME6_DIR)
++	python -m pb_chime5.scripts.simulate_chime6_transcriptions $(CHIME5_DIR) $(CHIME6_DIR) $(CHIME6_DIR_cache)
+ 
+ cache/annotation/S02.pkl: cache
+ 	# See pb_chime5.activity_alignment for an example how to create activity patterns
+diff --git a/pb_chime5/database/chime5/create_json.py b/pb_chime5/database/chime5/create_json.py
+index b62ed70..4ed3103 100644
+--- a/pb_chime5/database/chime5/create_json.py
++++ b/pb_chime5/database/chime5/create_json.py
+@@ -27,7 +27,6 @@ from pb_chime5 import git_root
+ from pb_chime5.io.json_module import load_json
+ from pb_chime5.mapping import Dispatcher
+ 
+-
+ EVAL_TRANSCRIPTIONS_MISSING = False
+ 
+ 
+@@ -41,7 +40,7 @@ CH_K = CHiME5_Keys
+ FEMALE_SPEAKER = [
+     'P14', 'P15', 'P17', 'P19', 'P36', 'P49', 'P52', 'P41', 'P43', 'P44',
+     'P53', 'P56', 'P05', 'P08', 'P25', 'P26', 'P27', 'P28', 'P01', 'P02',
+-    'P08', 'P46', 'P48'
++    'P08', 'P46', 'P48', '1', '2', '3', '4'
+ ]
+ NUM_ARRAYS = 6
+ NUM_MICS = 4
+@@ -604,7 +603,7 @@ def main(
+     json = create_database(database_path, transcription_path, chime6)
+ 
+     print('Check that all wav files in the json exsist.')
+-    check_audio_files_exist(json, speedup='thread')
++    #check_audio_files_exist(json, speedup='thread')
+     print('Finished check. Write json to disk:')
+     dump_database_as_json(json_path, json)
+     print('Finished write')
+diff --git a/pb_chime5/database/chime5/mapping.py b/pb_chime5/database/chime5/mapping.py
+index dca1cc5..1b43cad 100644
+--- a/pb_chime5/database/chime5/mapping.py
++++ b/pb_chime5/database/chime5/mapping.py
+@@ -58,15 +58,15 @@ dev_sess_ref_array_mapping = Dispatcher({
+ # })
+ 
+ session_speakers_mapping = Dispatcher({
+-    'S01': ['P01', 'P02', 'P03', 'P04'],
+-    'S02': ['P05', 'P06', 'P07', 'P08'],
++    'S01': ['1', '2', '3', '4'],
++    'S02': ['1', '2', '3', '4'],
+     'S03': ['P09', 'P10', 'P11', 'P12'],
+     'S04': ['P09', 'P10', 'P11', 'P12'],
+     'S05': ['P13', 'P14', 'P15', 'P16'],
+     'S06': ['P13', 'P14', 'P15', 'P16'],
+     'S07': ['P17', 'P18', 'P19', 'P20'],
+     'S08': ['P21', 'P22', 'P23', 'P24'],
+-    'S09': ['P25', 'P26', 'P27', 'P28'],
++    'S09': ['1', '2', '3', '4'],
+     'S12': ['P33', 'P34', 'P35', 'P36'],
+     'S13': ['P33', 'P34', 'P35', 'P36'],
+     'S16': ['P21', 'P22', 'P23', 'P24'],
+@@ -74,7 +74,7 @@ session_speakers_mapping = Dispatcher({
+     'S18': ['P41', 'P42', 'P43', 'P44'],
+     'S19': ['P49', 'P50', 'P51', 'P52'],
+     'S20': ['P49', 'P50', 'P51', 'P52'],
+-    'S21': ['P45', 'P46', 'P47', 'P48'],
++    'S21': ['1', '2', '3', '4'],
+     'S22': ['P41', 'P42', 'P43', 'P44'],
+     'S23': ['P53', 'P54', 'P55', 'P56'],
+     'S24': ['P53', 'P54', 'P55', 'P56'],
+diff --git a/pb_chime5/io/audiowrite.py b/pb_chime5/io/audiowrite.py
+index fbee41b..863f1c4 100644
+--- a/pb_chime5/io/audiowrite.py
++++ b/pb_chime5/io/audiowrite.py
+@@ -158,7 +158,7 @@ def dump_audio(
+         # Correction, because the allowed values are in the range [-1, 1).
+         # => "1" is not a vaild value
+         correction = (2**15 - 1) / (2**15)
+-        obj = obj * (correction / np.amax(np.abs(obj)))
++        obj = obj * (correction / np.amax(np.abs(obj)) + 1e-10)
+ 
+     # ToDo: better exception when path is file descriptor
+     if start is None or not Path(path).exists():
+diff --git a/pb_chime5/mapping.py b/pb_chime5/mapping.py
+index 4051661..958687e 100644
+--- a/pb_chime5/mapping.py
++++ b/pb_chime5/mapping.py
+@@ -10,15 +10,15 @@ class Dispatcher(dict):
+             )
+ 
+ session_to_speakers = Dispatcher({
+-    'S01': ['P01', 'P02', 'P03', 'P04'],
+-    'S02': ['P05', 'P06', 'P07', 'P08'],
++    'S01': ['1', '2', '3', '4'],
++    'S02': ['1', '2', '3', '4'],
+     'S03': ['P09', 'P10', 'P11', 'P12'],
+     'S04': ['P09', 'P10', 'P11', 'P12'],
+     'S05': ['P13', 'P14', 'P15', 'P16'],
+     'S06': ['P13', 'P14', 'P15', 'P16'],
+     'S07': ['P17', 'P18', 'P19', 'P20'],
+     'S08': ['P21', 'P22', 'P23', 'P24'],
+-    'S09': ['P25', 'P26', 'P27', 'P28'],
++    'S09': ['1', '2', '3', '4'],
+     'S12': ['P33', 'P34', 'P35', 'P36'],
+     'S13': ['P33', 'P34', 'P35', 'P36'],
+     'S16': ['P21', 'P22', 'P23', 'P24'],
+@@ -26,7 +26,7 @@ session_to_speakers = Dispatcher({
+     'S18': ['P41', 'P42', 'P43', 'P44'],
+     'S19': ['P49', 'P50', 'P51', 'P52'],
+     'S20': ['P49', 'P50', 'P51', 'P52'],
+-    'S21': ['P45', 'P46', 'P47', 'P48'],
++    'S21': ['1', '2', '3', '4'],
+     'S22': ['P41', 'P42', 'P43', 'P44'],
+     'S23': ['P53', 'P54', 'P55', 'P56'],
+     'S24': ['P53', 'P54', 'P55', 'P56'],
+diff --git a/pb_chime5/scripts/simulate_chime6_transcriptions.py b/pb_chime5/scripts/simulate_chime6_transcriptions.py
+index 4a4eb9b..a3ea62b 100644
+--- a/pb_chime5/scripts/simulate_chime6_transcriptions.py
++++ b/pb_chime5/scripts/simulate_chime6_transcriptions.py
+@@ -4,32 +4,37 @@ from pb_chime5.io import load_json, dump_json, symlink
+ 
+ 
+ def main(
+-        source='/net/fastdb/chime5/CHiME5',
+-        destination='/net/vol/boeddeker/chime6/dummy_db_dir',
++        source1='/export/corpora4/CHiME5',
++        source2='/export/c01/draj/kaldi_chime6_jhu/egs/chime6/s5_track2/CHiME6',
++        destination='chime6/dummy_db_dir',
+ ):
+-    source = Path(source)
++    source1 = Path(source1)
++    source2 = Path(source2)
+     destination = Path(destination)
+ 
+     assert not destination.exists(), 'Please change {destination} to an new dir.'
+ 
+     destination.mkdir(parents=True, exist_ok=True)
+ 
+-    for file in ['audio', 'Manifest', 'floorplans']:
+-        symlink(source / file, destination / file)
++    for file in ['Manifest', 'floorplans']:
++        symlink(source1 / file, destination / file)
++
++    for file in ['audio']:
++        symlink(source2 / file, destination / file)
+ 
+     def modify_example(example):
+         example['start_time'] = example['start_time']['original']
+         example['end_time'] = example['end_time']['original']
+         return example
+ 
+-    for file in source.rglob('*.json'):
++    for file in source1.rglob('*.json'):
+         data = load_json(file)
+         data = [
+             modify_example(example)
+             for example in data
+         ]
+-        print(destination / file.relative_to(source))
+-        dump_json(data, destination / file.relative_to(source), create_path=True)
++        print(destination / file.relative_to(source1))
++        dump_json(data, destination / file.relative_to(source1), create_path=True)
+ 
+ 
+ if __name__ == '__main__':

@@ -202,7 +202,7 @@ wait;
 init_info=$dir/init/info.txt
 if [ $stage -le 15 ]; then
 
-  if [ $dir/init/default_trans.mdl ]; then # checking this because it may have been copied in a previous run of the same script
+  if [ ! -f $dir/init/default_trans.mdl ]; then # checking this because it may have been copied in a previous run of the same script
       copy-transition-model $tree_dir/final.mdl $dir/init/default_trans.mdl  || exit 1 &
   else
       echo "Keeping the old $dir/init/default_trans.mdl as it already exists."
@@ -325,7 +325,7 @@ fi
 if [ $stage -le 22 ]; then
   echo "$0: about to train model"
   steps/chain2/train.sh \
-    --stage $train_stage --cmd "$cuda_cmd" \
+    --stage $train_stage --cmd "$train_cmd" \
     --xent-regularize $xent_regularize --leaky-hmm-coefficient 0.1 \
     --max-param-change 2.0 \
     --num-jobs-initial 2 --num-jobs-final 5 \

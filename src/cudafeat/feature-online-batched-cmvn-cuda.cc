@@ -26,7 +26,6 @@ CudaOnlineBatchedCmvn::CudaOnlineBatchedCmvn(
     int32_t stats_coarsening_factor)
     : opts_(opts),
       cmvn_state_(cmvn_state),
-      feat_dim_(feat_dim),
       chunk_size_(chunk_size),
       num_channels_(num_channels),
       stats_coarsening_factor_(stats_coarsening_factor) {
@@ -39,8 +38,6 @@ CudaOnlineBatchedCmvn::CudaOnlineBatchedCmvn(
 
   stats_fragments_.Resize(num_channels_, feat_dim * num_fragments_ * 2);
 }
-
-CudaOnlineBatchedCmvn::~CudaOnlineBatchedCmvn() {}
 
 // Computes a chunk of features for each channel included in channels
 void CudaOnlineBatchedCmvn::ComputeFeaturesBatched(

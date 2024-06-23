@@ -80,6 +80,11 @@ dir=$2
 
 set -e -u  # die on failed command or undefined variable
 
+# remove the error flag that might have been set the previous run
+# just to get the script the chance to finish successfuly when user
+# has fixed the issue reported in the previous run
+[ -f $dir/.error ] && rm $dir/.error
+
 steps/chain2/validate_randomized_egs.sh $egs_dir
 
 for f in $dir/init/info.txt; do
@@ -110,8 +115,7 @@ if [ $stage -le -2 ]; then
 fi
 
 
-# won't work at Idiap
-#if [ "$use_gpu" != "no" ]; then gpu_cmd_opt="--gpu 1"; else gpu_cmd_opt=""; fi
+if [ "$use_gpu" != "no" ]; then gpu_cmd_opt="--gpu 1"; else gpu_cmd_opt=""; fi
 
 num_iters=$(wc -l <$dir/schedule.txt)
 
@@ -131,7 +135,7 @@ if [ $stage -le -1 ]; then
   if [ $num_langs -eq 1 ]; then
       echo "$0: Num langs is 1"
       cp $dir/init/default.raw $dir/0.raw
-      if [ -f $dir/init/default_trans.mdl ]; then
+      if [ ! -f $dir/0_trans.mdl ]; then
           cp $dir/init/default_trans.mdl $dir/0_trans.mdl 
       fi
   else
@@ -279,7 +283,6 @@ if [ $stage -le $num_iters ]; then
    $cmd $gpu_cmd_opt $dir/log/combine.log \
       nnet3-chain-combine2 --use-gpu=$use_gpu \
         --leaky-hmm-coefficient=$leaky_hmm_coefficient \
-        --print-interval=10  \
         $den_fst_dir $input_models \
         "ark:nnet3-chain-merge-egs $multilingual_eg_opts  scp:$egs_dir/train_subset.scp ark:-|" \
         $dir/final.raw || exit 1;
@@ -316,7 +319,7 @@ if [ $stage -le $num_iters ]; then
    fi
 fi
 
-if [ ! -f $dir/final.mdl ]; then
+if [[ ! $multilingual_eg ]] && [[ ! -f $dir/final.mdl ]]; then
   echo "$0: $dir/final.mdl does not exist."
   # we don't want to clean up if the training didn't succeed.
   exit 1;

@@ -3,7 +3,7 @@
 # Apache 2.0.
 #
 # This recipe performs diarization for the mix-headset data in the
-# AMI dataset. The x-vector extractor we use is trained on VoxCeleb v2 
+# AMI dataset. The x-vector extractor we use is trained on VoxCeleb v2
 # corpus with simulated RIRs. We use oracle SAD in this recipe.
 # This recipe demonstrates the following:
 # 1. Diarization using x-vector and clustering (AHC, VBx, spectral)
@@ -29,7 +29,7 @@ decode_nj=15
 model_dir=exp/xvector_nnet_1a
 
 train_set=train
-test_sets="dev eval"
+test_sets="dev test"
 
 diarizer_type=spectral  # must be one of (ahc, spectral, vbx)
 
@@ -38,12 +38,12 @@ diarizer_type=spectral  # must be one of (ahc, spectral, vbx)
 # Path where AMI gets downloaded (or where locally available):
 AMI_DIR=$PWD/wav_db # Default,
 case $(hostname -d) in
-  fit.vutbr.cz) AMI_DIR=/mnt/matylda5/iveselyk/KALDI_AMI_WAV ;; # BUT,
+  fit.vutbr.cz) AMI_DIR=/mnt/matylda2/data/AMI_KALDI_DOWNLOAD ;; # BUT,
   clsp.jhu.edu) AMI_DIR=/export/corpora5/amicorpus ;; # JHU,
   cstr.ed.ac.uk) AMI_DIR= ;; # Edinburgh,
 esac
 
-# Download AMI corpus, You need around 130GB of free space to get whole data ihm+mdm,
+# Download AMI corpus, You need around 130GB of free space to get whole data
 if [ $stage -le 1 ]; then
   if [ -d $AMI_DIR ] && ! touch $AMI_DIR/.foo 2>/dev/null; then
     echo "$0: directory $AMI_DIR seems to exist and not be owned by you."
@@ -59,25 +59,23 @@ fi
 
 # Prepare data directories.
 if [ $stage -le 2 ]; then
-  if ! [ -d data/local/annotations ]; then
-    local/ami_text_prep.sh data/local/downloads
+  # Download the data split and references from BUT's AMI setup
+  if ! [ -d AMI-diarization-setup ]; then
+    git clone https://github.com/BUTSpeechFIT/AMI-diarization-setup
   fi
 
   for dataset in train $test_sets; do
     echo "$0: preparing $dataset set.."
     mkdir -p data/$dataset
-    local/prepare_data.py data/local/annotations/${dataset}.txt \
+    # Prepare wav.scp and segments file from meeting lists and oracle SAD
+    # labels, and concatenate all reference RTTMs into one file.
+    local/prepare_data.py --sad-labels-dir AMI-diarization-setup/only_words/labs/${dataset} \
+      AMI-diarization-setup/lists/${dataset}.meetings.txt \
       $AMI_DIR data/$dataset
-    local/convert_rttm_to_utt2spk_and_segments.py --append-reco-id-to-spkr=true data/$dataset/rttm.annotation \
-      <(awk '{print $2" "$2" "$3}' data/$dataset/rttm.annotation |sort -u) \
-      data/$dataset/utt2spk data/$dataset/segments
+    cat AMI-diarization-setup/only_words/rttms/${dataset}/*.rttm \
+      > data/${dataset}/rttm.annotation
 
-    # For the test sets we create dummy segments and utt2spk files using oracle speech marks
-    if ! [ $dataset == "train" ]; then
-      local/get_all_segments.py data/$dataset/rttm.annotation > data/$dataset/segments
-      awk '{print $1,$2}' data/$dataset/segments > data/$dataset/utt2spk
-    fi
-
+    awk '{print $1,$2}' data/$dataset/segments > data/$dataset/utt2spk
     utils/utt2spk_to_spk2utt.pl data/$dataset/utt2spk > data/$dataset/spk2utt
     utils/fix_data_dir.sh data/$dataset
   done
@@ -122,7 +120,7 @@ if [ $stage -le 6 ]; then
      transform-vec $model_dir/xvectors_plda_train/transform.mat ark:- ark:- |\
       ivector-normalize-length ark:-  ark:- |" \
     $model_dir/xvectors_plda_train/plda || exit 1;
-  
+
   cp $model_dir/xvectors_plda_train/plda $model_dir/
   cp $model_dir/xvectors_plda_train/transform.mat $model_dir/
   cp $model_dir/xvectors_plda_train/mean.vec $model_dir/
@@ -132,12 +130,17 @@ if [ $stage -le 7 ]; then
   for datadir in ${test_sets}; do
     ref_rttm=data/${datadir}/rttm.annotation
 
-    nj=$( cat data/$datadir/wav.scp | wc -l )
+    diarize_nj=$(wc -l < "data/$datadir/wav.scp")
+    nj=$((decode_nj>diarize_nj ? diarize_nj : decode_nj))
     local/diarize_${diarizer_type}.sh --nj $nj --cmd "$train_cmd" --stage $diarizer_stage \
       $model_dir data/${datadir} exp/${datadir}_diarization_${diarizer_type}
 
     # Evaluate RTTM using md-eval.pl
-    md-eval.pl -r $ref_rttm -s exp/${datadir}_diarization_${diarizer_type}/rttm
+    rttm_affix=
+    if [ $diarizer_type == "vbx" ]; then
+      rttm_affix=".vb"
+    fi
+    md-eval.pl -r $ref_rttm -s exp/${datadir}_diarization_${diarizer_type}/rttm${rttm_affix}
   done
 fi
 

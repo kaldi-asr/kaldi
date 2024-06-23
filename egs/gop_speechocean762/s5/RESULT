@@ -1,0 +1,26 @@
+In the `speechocean762` corpus, the phoneme-level scores are in three levels:
+2: pronunciation is correct
+1: pronunciation is right but has a heavy accent
+0: pronunciation is incorrect or missed
+
+Firstly, we can treat the scoring as a regression task.
+So, MSE(Mean Square Error) and Corr(Cross-correlation) are computed:
+
+MSE: 0.16
+Corr: 0.45
+
+Then we round the continuous predicted scores into [0, 1, 2] to treat the scoring
+as a classification task.
+So, the classification metrics like precision, recall, and f1-score are computed
+and printed by `sklearn.metrics.classification_report`:
+
+
+              precision    recall  f1-score   support
+
+           0       0.42      0.30      0.35      1339
+           1       0.16      0.36      0.22      1828
+           2       0.97      0.92      0.94     44079
+
+    accuracy                           0.88     47246
+   macro avg       0.52      0.53      0.50     47246
+weighted avg       0.92      0.88      0.90     47246

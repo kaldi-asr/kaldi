@@ -972,7 +972,7 @@ while(<M>) {
   # parsing the part of the top-level Makefile that's like:
   # SUBDIRS = base util matrix feat tree model fstext hmm optimization \
   #	    transform lm decoder bin fstbin gmmbin featbin
-  if (s/^(SUBDIRS|EXT_SUBDIRS)\s+=\s+//) {
+  if (s/^(SUBDIRS|EXT_SUBDIRS)\s+:=\s+//) {
     # print STDERR "here\n";
     while ( isValidProjectLine($_) ) { # till we get an empty line or a line starting with EXT_SUBDIRS_LIB..
       s:\\::;

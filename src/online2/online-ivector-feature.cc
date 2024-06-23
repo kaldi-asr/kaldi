@@ -97,7 +97,7 @@ void OnlineIvectorExtractionInfo::Check() const {
 
 // The class constructed in this way should never be used.
 OnlineIvectorExtractionInfo::OnlineIvectorExtractionInfo():
-    ivector_period(0), num_gselect(0), min_post(0.0), posterior_scale(0.0),
+    online_cmvn_iextractor(false), ivector_period(0), num_gselect(0), min_post(0.0), posterior_scale(0.0),
     use_most_recent_ivector(true), greedy_ivector_extractor(false),
     max_remembered_frames(0) { }
 
