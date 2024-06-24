@@ -112,9 +112,10 @@ int main(int argc, char *argv[]) {
         "<transition-alignments-respecifier> "
         "<phoneme-alignments-rspecifier> "
         "<prob-matrix-rspecifier> <gop-wspecifier> "
-        "[<phone-feature-wspecifier>]\n"
+        "<phone-feature-wspecifier>\n"
         "e.g.:\n"
-        " nnet3-compute [args] | compute-gop 1.mdl ark:ali-phone.1 ark:-"
+        " nnet3-compute [args] | compute-gop 1.mdl ark:ali.1 ark:ali-phone.1 "
+        " ark:output.1.ark "
         " ark:gop.1 ark:phone-feat.1\n";
 
     ParseOptions po(usage);
@@ -206,7 +207,7 @@ int main(int argc, char *argv[]) {
       std::vector<int32> phone_boundary;
       for (int32 i = 0; i < split.size(); i++) {
         for (int32 j = 0; j < split[i].size(); j++) {
-          phone_boundary.push_back(static_cast<int32>(i));
+          phone_boundary.push_back(i);
         }
       }
 
