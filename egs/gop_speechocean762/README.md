@@ -1,8 +1,3 @@
-There is a copy of this document on Google Docs, which renders the equations better:
-[link](https://docs.google.com/document/d/1pie-PU6u2NZZC_FzocBGGm6mpfBJMiCft9UoG0uA1kA/edit?usp=sharing)
-
-* * *
-
 # GOP on Kaldi
 
 The Goodness of Pronunciation (GOP) is a variation of the posterior probability, for phone level pronunciation scoring.
