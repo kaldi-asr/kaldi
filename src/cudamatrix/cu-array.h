@@ -111,7 +111,6 @@ class CuArrayBase {
   T *data_;  ///< GPU data pointer (if GPU not available,
              ///< will point to CPU memory).
   MatrixIndexT dim_;     ///< dimension of the vector
-
 };
 
 /**
@@ -123,7 +122,6 @@ class CuArrayBase {
 template<typename T>
 class CuArray: public CuArrayBase<T> {
  public:
-
   /// Default constructor, initialized data_ to NULL and dim_ to 0 via
   /// constructor of CuArrayBase.
   CuArray() { }
@@ -172,7 +170,6 @@ class CuArray: public CuArrayBase<T> {
   /// I/O
   void Read(std::istream &is, bool binary);
   void Write(std::ostream &is, bool binary) const;
-
 };
 
 
