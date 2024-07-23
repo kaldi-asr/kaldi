@@ -250,7 +250,7 @@ class CuMatrixBase {
   template<typename OtherReal>
   void CopyFromTp(const CuTpMatrix<OtherReal> &M,
                   MatrixTransposeType trans = kNoTrans);
-  
+
   // This function will copy from source rows (start_range, end_range]
   // if the range is outside of the clamped region then the clamped
   // row will be replicated across the out of range areas
@@ -307,9 +307,9 @@ class CuMatrixBase {
   void PowAbs(const CuMatrixBase<Real> &src, Real power, bool include_sign=false);
 
   void Floor(const CuMatrixBase<Real> &src, Real floor_val);
-  
+
   void Ceiling(const CuMatrixBase<Real> &src, Real ceiling_val);
-  
+
   /// This is equivalent to running:
   /// Floor(src, lower_limit);
   /// Ceiling(src, upper_limit);
@@ -320,7 +320,7 @@ class CuMatrixBase {
   /// (x < 0 ? exp(x) : x + 1).  This function is used
   /// in our RNNLM training.
   void ExpSpecial(const CuMatrixBase<Real> &src);
-  
+
   /// Softmax nonlinearity
   /// Y = Softmax(X) : Yij = e^Xij / sum_k(e^Xik), done to each row,
   /// with attention to avoiding  overflow or underflow.
@@ -333,7 +333,7 @@ class CuMatrixBase {
   /// Supports in-place operation (i.e. this == &src).
   void LogSoftMaxPerRow(const CuMatrixBase<Real> &src);
 
-  
+
   /// Apply the function y = log(1 + exp(x)), to each element.
   /// Note: the derivative of this function is the sigmoid function.
   /// This is like a soft ReLU.
@@ -439,23 +439,23 @@ class CuMatrixBase {
     this -> Pow(*this, power);
   };
 
-  
+
   inline void ApplyPowAbs(Real power, bool include_sign=false) {
     this -> PowAbs(*this, power, include_sign);
   };
-  
+
   inline void ApplyHeaviside() {
     this -> Heaviside(*this);
   };
-  
+
   inline void ApplyFloor(Real floor_val) {
     this -> Floor(*this, floor_val);
   };
-  
+
   inline void ApplyCeiling(Real ceiling_val) {
     this -> Ceiling(*this, ceiling_val);
   };
-  
+
   inline void ApplyExp() {
     this -> Exp(*this);
   };
@@ -924,7 +924,7 @@ class CuSubMatrix: public CuMatrixBase<Real> {
 
   /// This type of constructor is needed for Range() to work [in CuMatrix base
   /// class]. Cannot make it explicit or that breaks.
-  inline CuSubMatrix<Real> (const CuSubMatrix &other):
+  inline CuSubMatrix(const CuSubMatrix &other):
   CuMatrixBase<Real> (other.data_, other.num_rows_, other.num_cols_,
                       other.stride_) {}
  private:
