@@ -1150,6 +1150,8 @@ elif [ "`uname`" == "Darwin" ]; then
       cat makefiles/darwin_clapack.mk >> kaldi.mk
       echo "Warning (CLAPACK): this part of the configure process is not properly tested and may not work."
       echo "Successfully configured for Darwin with CLAPACK libs from $CLAPACKROOT"
+    elif [ "`uname -m`" == "arm64" ]; then
+      cat makefiles/darwin_arm64.mk >> kaldi.mk
     else
       cat makefiles/darwin.mk >> kaldi.mk
     fi
