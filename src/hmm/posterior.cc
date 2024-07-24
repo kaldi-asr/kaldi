@@ -146,7 +146,7 @@ bool PosteriorHolder::Read(std::istream &is) {
   try {
     ReadPosterior(is, is_binary, &t_);
     return true;
-  } catch (std::exception &e) {
+  } catch (const std::exception &e) {
     KALDI_WARN << "Exception caught reading table of posteriors. " << e.what();
     t_.clear();
     return false;
@@ -207,7 +207,7 @@ bool GaussPostHolder::Read(std::istream &is) {
       }
     }
     return true;
-  } catch (std::exception &e) {
+  } catch (const std::exception &e) {
     KALDI_WARN << "Exception caught reading table of posteriors. " << e.what();
     t_.clear();
     return false;
