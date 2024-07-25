@@ -25,9 +25,10 @@ $(error Android build does not support compiling with $(CXX).
         Supported compilers: clang++)
 endif
 
-CXXFLAGS = -std=c++14 -I.. -I$(OPENFSTINC) -O1 $(EXTRA_CXXFLAGS) \
+CXXFLAGS = -std=$(CXXLANGVERSION) -I.. -I$(OPENFSTINC) -O1 $(EXTRA_CXXFLAGS) \
            -Wall -Wno-sign-compare -Wno-unused-local-typedefs \
            -Wno-deprecated-declarations -Winit-self -Wno-mismatched-tags \
+           -DOPENFST_VER=$(OPENFSTVER) \
            -DKALDI_DOUBLEPRECISION=$(DOUBLE_PRECISION) \
            -DHAVE_CXXABI_H -DHAVE_OPENBLAS -DANDROID_BUILD \
            -I$(OPENBLASINC) -I$(ANDROIDINC) -ftree-vectorize -mfloat-abi=softfp \

@@ -21,6 +21,8 @@
 #include "fstext/fst-test-utils.h"
 #include "base/kaldi-math.h"
 
+#include "fstext/openfst_compat.h"
+
 namespace fst{
 
 
@@ -64,13 +66,13 @@ template<class Arc>  void TestTableMatcher(bool connect, bool left) {
   std::cout <<"Table-Composed FST\n";
   {
     FstPrinter<Arc> fstprinter(composed, NULL, NULL, NULL, false, true, "\t");
-    fstprinter.Print(&std::cout, "standard output");
+    printer_print(std::cout, fstprinter, "standard output");
   }
 
   std::cout <<" Baseline-Composed FST\n";
   {
     FstPrinter<Arc> fstprinter(composed_baseline, NULL, NULL, NULL, false, true, "\t");
-    fstprinter.Print(&std::cout, "standard output");
+    printer_print(std::cout, fstprinter, "standard output");
   }
 
   if ( !RandEquivalent(composed, composed_baseline, 3/*paths*/, 0.01/*delta*/, kaldi::Rand()/*seed*/, 20/*path length-- max?*/)) {
@@ -79,7 +81,7 @@ template<class Arc>  void TestTableMatcher(bool connect, bool left) {
     std::cout <<" Diff1 (composed - baseline) \n";
     {
       FstPrinter<Arc> fstprinter(diff1, NULL, NULL, NULL, false, true, "\t");
-      fstprinter.Print(&std::cout, "standard output");
+      printer_print(std::cout, fstprinter, "standard output");
     }
 
 
@@ -88,7 +90,7 @@ template<class Arc>  void TestTableMatcher(bool connect, bool left) {
     std::cout <<" Diff2 (baseline - composed) \n";
     {
       FstPrinter<Arc> fstprinter(diff2, NULL, NULL, NULL, false, true, "\t");
-      fstprinter.Print(&std::cout, "standard output");
+      printer_print(std::cout, fstprinter, "standard output");
     }
 
     assert(0);
@@ -149,7 +151,7 @@ template<class Arc>  void TestTableMatcherCacheLeft(bool connect) {
       std::cout <<" Diff1 (composed - baseline) \n";
       {
         FstPrinter<Arc> fstprinter(diff1, NULL, NULL, NULL, false, true, "\t");
-        fstprinter.Print(&std::cout, "standard output");
+        printer_print(std::cout, fstprinter, "standard output");
       }
 
 
@@ -158,7 +160,7 @@ template<class Arc>  void TestTableMatcherCacheLeft(bool connect) {
       std::cout <<" Diff2 (baseline - composed) \n";
       {
         FstPrinter<Arc> fstprinter(diff2, NULL, NULL, NULL, false, true, "\t");
-        fstprinter.Print(&std::cout, "standard output");
+        printer_print(std::cout, fstprinter, "standard output");
       }
 
       assert(0);
@@ -219,7 +221,7 @@ template<class Arc>  void TestTableMatcherCacheRight(bool connect) {
       std::cout <<" Diff1 (composed - baseline) \n";
       {
         FstPrinter<Arc> fstprinter(diff1, NULL, NULL, NULL, false, true, "\t");
-        fstprinter.Print(&std::cout, "standard output");
+        printer_print(std::cout, fstprinter, "standard output");
       }
 
 
@@ -228,7 +230,7 @@ template<class Arc>  void TestTableMatcherCacheRight(bool connect) {
       std::cout <<" Diff2 (baseline - composed) \n";
       {
         FstPrinter<Arc> fstprinter(diff2, NULL, NULL, NULL, false, true, "\t");
-        fstprinter.Print(&std::cout, "standard output");
+        printer_print(std::cout, fstprinter, "standard output");
       }
 
       assert(0);

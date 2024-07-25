@@ -39,6 +39,7 @@ typedef float   BaseFloat;
 // we find in the future lacks stdint.h
 #include <stdint.h>
 
+#if OPENFST_VER >= 10800
 typedef int8_t   int8;
 typedef int16_t  int16;
 typedef int32_t  int32;
@@ -50,5 +51,18 @@ typedef uint32_t uint32;
 typedef uint64_t uint64;
 typedef float    float32;
 typedef double   double64;
+#else
+#include <fst/types.h>
+#endif
 
+namespace kaldi {
+  using ::int16;
+  using ::int32;
+  using ::int64;
+  using ::uint16;
+  using ::uint32;
+  using ::uint64;
+  typedef float   float32;
+  typedef double double64;
+}  // end namespace kaldi
 #endif  // KALDI_BASE_KALDI_TYPES_H_

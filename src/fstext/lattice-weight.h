@@ -23,6 +23,7 @@
 
 #include "fst/fstlib.h"
 #include "base/kaldi-common.h"
+#include "fstext/openfst_compat.h"
 
 namespace fst {
 

@@ -374,6 +374,7 @@ void GetSymbols(const SymbolTable &symtab,
                 std::vector<I> *syms_out) {
   KALDI_ASSERT(syms_out != NULL);
   syms_out->clear();
+#if OPENFST_VER >= 10800
   for (SymbolTable::iterator iter = symtab.begin();
       iter != symtab.end();
       ++iter) {
@@ -382,6 +383,16 @@ void GetSymbols(const SymbolTable &symtab,
       KALDI_ASSERT(syms_out->back() == iter->Label());  // an integer-range thing.
     }
   }
+#else
+  for (SymbolTableIterator iter(symtab);
+      !iter.Done();
+      iter.Next()) {
+    if (include_eps || iter.Value() != 0) {
+      syms_out->push_back(iter.Value());
+      KALDI_ASSERT(syms_out->back() == iter.Value());  // an integer-range thing.
+    }
+  }
+#endif
 }
 
 template<class Arc>

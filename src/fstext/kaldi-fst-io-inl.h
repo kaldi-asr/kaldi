@@ -24,6 +24,8 @@
 
 #include "util/text-utils.h"
 
+#include "fstext/openfst_compat.h"
+
 namespace fst {
 
 
@@ -44,7 +46,8 @@ void WriteFstKaldi(std::ostream &os, bool binary,
     bool acceptor = false, write_one = false;
     FstPrinter<Arc> printer(t, t.InputSymbols(), t.OutputSymbols(),
                             NULL, acceptor, write_one, "\t");
-    printer.Print(os, "<unknown>");
+    //printer.Print(&os, "<unknown>");
+    printer_print(os, printer, "<unknown>");
     if (os.fail())
       KALDI_ERR << "Stream failure detected writing FST to stream";
     // Write another newline as a terminating character.  The read routine will
