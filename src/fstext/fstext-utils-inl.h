@@ -163,7 +163,7 @@ void RemoveSomeInputSymbols(const std::vector<I> &to_remove,
                             MutableFst<Arc> *fst) {
   KALDI_ASSERT_IS_INTEGER_TYPE(I);
   RemoveSomeInputSymbolsMapper<Arc, I> mapper(to_remove);
-  Map(fst, mapper);
+  ArcMap(fst, mapper);
 }
 
 template<class Arc, class I>
@@ -374,6 +374,16 @@ void GetSymbols(const SymbolTable &symtab,
                 std::vector<I> *syms_out) {
   KALDI_ASSERT(syms_out != NULL);
   syms_out->clear();
+#if OPENFST_VER >= 10800
+  for (SymbolTable::iterator iter = symtab.begin();
+      iter != symtab.end();
+      ++iter) {
+    if (include_eps || iter->Label() != 0) {
+      syms_out->push_back(iter->Label());
+      KALDI_ASSERT(syms_out->back() == iter->Label());  // an integer-range thing.
+    }
+  }
+#else
   for (SymbolTableIterator iter(symtab);
       !iter.Done();
       iter.Next()) {
@@ -382,6 +392,7 @@ void GetSymbols(const SymbolTable &symtab,
       KALDI_ASSERT(syms_out->back() == iter.Value());  // an integer-range thing.
     }
   }
+#endif
 }
 
 template<class Arc>

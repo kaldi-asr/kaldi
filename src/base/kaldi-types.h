@@ -39,9 +39,21 @@ typedef float   BaseFloat;
 // we find in the future lacks stdint.h
 #include <stdint.h>
 
-// for discussion on what to do if you need compile kaldi
-// without OpenFST, see the bottom of this this file
+#if OPENFST_VER >= 10800
+typedef int8_t   int8;
+typedef int16_t  int16;
+typedef int32_t  int32;
+typedef int64_t  int64;
+
+typedef uint8_t  uint8;
+typedef uint16_t uint16;
+typedef uint32_t uint32;
+typedef uint64_t uint64;
+typedef float    float32;
+typedef double   double64;
+#else
 #include <fst/types.h>
+#endif
 
 namespace kaldi {
   using ::int16;
@@ -53,23 +65,4 @@ namespace kaldi {
   typedef float   float32;
   typedef double double64;
 }  // end namespace kaldi
-
-// In a theoretical case you decide compile Kaldi without the OpenFST
-// comment the previous namespace statement and uncomment the following
-/*
-namespace kaldi {
-  typedef int8_t   int8;
-  typedef int16_t  int16;
-  typedef int32_t  int32;
-  typedef int64_t  int64;
-
-  typedef uint8_t  uint8;
-  typedef uint16_t uint16;
-  typedef uint32_t uint32;
-  typedef uint64_t uint64;
-  typedef float    float32;
-  typedef double   double64;
-}  // end namespace kaldi
-*/
-
 #endif  // KALDI_BASE_KALDI_TYPES_H_

@@ -22,7 +22,10 @@
 #include "lat/kaldi-lattice.h"
 #include "fst/script/print-impl.h"
 
+#include "fstext/openfst_compat.h"
+
 namespace kaldi {
+
 
 /// Converts lattice types if necessary, deleting its input.
 template<class OrigWeightType>
@@ -78,7 +81,8 @@ bool WriteCompactLattice(std::ostream &os, bool binary,
     fst::FstPrinter<CompactLatticeArc> printer(t, t.InputSymbols(),
                                                t.OutputSymbols(),
                                                NULL, acceptor, write_one, "\t");
-    printer.Print(&os, "<unknown>");
+    //printer.Print(&os, "<unknown>");
+    printer_print(os, printer, "<unknown>");
     if (os.fail())
       KALDI_WARN << "Stream failure detected.";
     // Write another newline as a terminating character.  The read routine will
@@ -114,7 +118,7 @@ class LatticeReader {
     CompactLattice *cfst = new CompactLattice();
     string line;
     size_t nline = 0;
-    string separator = FLAGS_fst_field_separator + "\r\n";
+    string separator = FST_FLAGS_fst_field_separator + "\r\n";
     while (std::getline(is, line)) {
       nline++;
       vector<string> col;
@@ -403,7 +407,8 @@ bool WriteLattice(std::ostream &os, bool binary, const Lattice &t) {
     fst::FstPrinter<LatticeArc> printer(t, t.InputSymbols(),
                                         t.OutputSymbols(),
                                         NULL, acceptor, write_one, "\t");
-    printer.Print(&os, "<unknown>");
+    //printer.Print(&os, "<unknown>");
+    printer_print(os, printer, "<unknown>");
     if (os.fail())
       KALDI_WARN << "Stream failure detected.";
     // Write another newline as a terminating character.  The read routine will

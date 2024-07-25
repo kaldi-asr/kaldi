@@ -67,7 +67,7 @@ TreeRenderer::MakeEdgeLabel(const EventKeyType &key,
       oss << ", ";
     if (key != kPdfClass) {
       std::string phone =
-          phone_syms_.Find(static_cast<kaldi::int64>(*child));
+          phone_syms_.Find(static_cast<int64>(*child));
       if (phone.empty())
         KALDI_ERR << "No phone found for Phone ID " << *child;
       oss << phone;
@@ -137,7 +137,7 @@ void TreeRenderer::RenderTable(const EventType *query, int32 id) {
         ExpectToken(is_, binary_, "NULL"); // consume the invalid/NULL entry
         continue;
       }
-      std::string phone = phone_syms_.Find(static_cast<kaldi::int64>(t));
+      std::string phone = phone_syms_.Find(static_cast<int64>(t));
       if (phone.empty())
           KALDI_ERR << "Phone ID found in a TableEventMap, but not in the "
                     << "phone symbol table! ID: " << t;

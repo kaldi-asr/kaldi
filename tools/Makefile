@@ -7,7 +7,7 @@ CC ?= gcc        # used for sph2pipe
 
 WGET ?= wget
 
-OPENFST_VERSION ?= 1.7.2
+OPENFST_VERSION ?= 1.8.3
 CUB_VERSION ?= 1.8.0
 # No '?=', since there exists only one version of sph2pipe.
 SPH2PIPE_VERSION = 2.5

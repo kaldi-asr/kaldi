@@ -25,6 +25,8 @@
 #include "fstext/kaldi-fst-io.h"
 #include "kws/kaldi-kws.h"
 
+#include "fstext/openfst_compat.h"
+
 namespace kaldi {
 
 typedef KwsLexicographicArc Arc;

@@ -25,6 +25,8 @@
 #include "lat/kaldi-lattice.h"
 #include "lat/lattice-functions.h"
 
+#include "fstext/openfst_compat.h"
+
 namespace kaldi {
 
  using std::string;

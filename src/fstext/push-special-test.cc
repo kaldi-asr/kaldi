@@ -23,6 +23,8 @@
 #include "fstext/fstext-utils.h"
 #include "base/kaldi-math.h"
 
+#include "fstext/openfst_compat.h"
+
 namespace fst
 {
 
@@ -38,7 +40,7 @@ static void TestPushSpecial() {
 
   {
     FstPrinter<Arc> fstprinter(*fst, NULL, NULL, NULL, false, true, "\t");
-    fstprinter.Print(&std::cout, "standard output");
+    printer_print(std::cout, fstprinter, "standard output");
   }
 
   VectorFst<Arc> fst_copy(*fst);
@@ -56,7 +58,7 @@ static void TestPushSpecial() {
 
   {
     FstPrinter<Arc> fstprinter(fst_copy, NULL, NULL, NULL, false, true, "\t");
-    fstprinter.Print(&std::cout, "standard output");
+    printer_print(std::cout, fstprinter, "standard output");
   }
   KALDI_LOG << "Min value is " << min.Value() << ", max value is " << max.Value();
 

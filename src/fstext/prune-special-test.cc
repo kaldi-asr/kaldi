@@ -22,6 +22,8 @@
 #include "fstext/rand-fst.h"
 #include "fstext/fstext-utils.h"
 
+#include "fstext/openfst_compat.h"
+
 namespace fst {
 
 static void TestPruneSpecial() {
@@ -38,7 +40,7 @@ static void TestPruneSpecial() {
 
   {
     FstPrinter<Arc> fstprinter(*ifst, NULL, NULL, NULL, false, true, "\t");
-    fstprinter.Print(&std::cout, "standard output");
+    printer_print(std::cout, fstprinter, "standard output");
     std::cout << std::endl;
   }
 
@@ -47,7 +49,7 @@ static void TestPruneSpecial() {
   PruneSpecial<StdArc>(*ifst, &ofst1, beam);
   {
     FstPrinter<Arc> fstprinter(ofst1, NULL, NULL, NULL, false, true, "\t");
-    fstprinter.Print(&std::cout, "standard output");
+    printer_print(std::cout, fstprinter, "standard output");
     std::cout << std::endl;
   }
 
@@ -56,7 +58,7 @@ static void TestPruneSpecial() {
   Prune(*ifst, &ofst2, beam);
   {
     FstPrinter<Arc> fstprinter(ofst2, NULL, NULL, NULL, false, true, "\t");
-    fstprinter.Print(&std::cout, "standard output");
+    printer_print(std::cout, fstprinter, "standard output");
     std::cout << std::endl;
   }
 

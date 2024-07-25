@@ -39,7 +39,7 @@
 
 # This should be incremented after any significant change to the configure
 # script, i.e. any change affecting kaldi.mk or the build system as a whole.
-CONFIGURE_VERSION=14
+CONFIGURE_VERSION=15
 
 # We support bash version 3.2 (Macs still ship with this version as of 2019)
 # and above.
@@ -1024,6 +1024,14 @@ OPENFST_VER_NUM=$(echo $OPENFST_VER | sed 's/\./ /g' | xargs printf "%d%02d%02d"
 if [ $OPENFST_VER_NUM -lt 10600 ]; then
   failure "OpenFst-$OPENFST_VER is not supported. You need OpenFst >= 1.6.0.)"
 fi
+
+if [ $OPENFST_VER_NUM -lt 10800 ]; then
+  echo "CXXLANGVERSION = c++14"
+else
+  echo "CXXLANGVERSION = c++17"
+fi >> kaldi.mk
+
+echo "OPENFSTVER = $OPENFST_VER_NUM" >> kaldi.mk
 echo "OPENFSTINC = $FSTROOT/include" >> kaldi.mk
 if $static_fst ; then
   OPENFSTLIBS="$FSTROOT/lib/libfst.a"
