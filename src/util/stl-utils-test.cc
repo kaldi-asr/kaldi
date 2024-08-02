@@ -148,9 +148,9 @@ void TestCopyMapValuesToVector() {
     CopyMapValuesToVector(mp, &v);
     KALDI_ASSERT(mp.size() == v.size());
     int i = 0;
-    for (std::map<int, int>::iterator iter = mp.begin(); iter != mp.end();
-         iter++) {
-      KALDI_ASSERT(v[i++] == iter->second);
+    for (auto iter = mp.begin(); iter != mp.end();
+         iter++, i++) {
+      KALDI_ASSERT(v[i] == iter->second);
     }
   }
 }

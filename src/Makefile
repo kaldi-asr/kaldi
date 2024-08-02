@@ -62,13 +62,15 @@ endif
 
 # Don't call rm -rf.
 rmlibdir:
+ifeq ($(KALDI_FLAVOR), dynamic)
 ifneq ($(KALDILIBDIR), )
-	-rm -f $(KALDILIBDIR)/*{.so,.a,.o}
+	-rm -f $(KALDILIBDIR)/*{.so,.a,.o,.dylib}
 	-rmdir 2>/dev/null $(KALDILIBDIR); true
 else
 # KALDILIBDIR might have been unset because of reconfigure. Do a best guess.
 	@echo "Something seems wrong. Please re-run configure."
 	@echo "I will continue but the cleanup might not be complete."
+endif
 endif
 
 kaldi.mk:
