@@ -279,7 +279,7 @@ bool MinimizeCompactLattice(
 
 // Instantiate for CompactLattice type.
 template
-bool MinimizeCompactLattice<kaldi::LatticeWeight, kaldi::int32>(
+bool MinimizeCompactLattice<kaldi::LatticeWeight, int32>(
     MutableFst<kaldi::CompactLatticeArc> *clat, float delta);
   
 

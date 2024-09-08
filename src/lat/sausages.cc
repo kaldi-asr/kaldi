@@ -325,7 +325,7 @@ void MinimumBayesRisk::PrepareLatticeAndInitStats(CompactLattice *clat) {
   // paper (i.e. just one final state).
 
   // Topologically sort the lattice, if not already sorted.
-  kaldi::uint64 props = clat->Properties(fst::kFstProperties, false);
+  uint64 props = clat->Properties(fst::kFstProperties, false);
   if (!(props & fst::kTopSorted)) {
     if (fst::TopSort(clat) == false)
       KALDI_ERR << "Cycles detected in lattice.";

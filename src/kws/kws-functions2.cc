@@ -92,7 +92,7 @@ void DoFactorMerging(KwsProductFst *factor_transducer,
 
   Decode(&dest_transducer, encoder);
 
-  Map(dest_transducer, index_transducer, KwsProductFstToKwsLexicographicFstMapper());
+  ArcMap(dest_transducer, index_transducer, KwsProductFstToKwsLexicographicFstMapper());
 }
 
 void DoFactorDisambiguation(KwsLexicographicFst *index_transducer) {

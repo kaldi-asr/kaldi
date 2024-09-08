@@ -10,9 +10,10 @@ ifndef OPENFSTLIBS
 $(error OPENFSTLIBS not defined.)
 endif
 
-CXXFLAGS = -std=c++14 -I.. -I$(OPENFSTINC) -O1 $(EXTRA_CXXFLAGS) \
+CXXFLAGS = -std=$(CXXLANGVERSION) -I.. -I$(OPENFSTINC) -O1 $(EXTRA_CXXFLAGS) \
            -Wall -Wno-sign-compare -Wno-unused-local-typedefs \
            -Wno-deprecated-declarations -Winit-self \
+           -DOPENFST_VER=$(OPENFSTVER) \
            -DKALDI_DOUBLEPRECISION=$(DOUBLE_PRECISION) \
            -DHAVE_EXECINFO_H=1 -DHAVE_CXXABI_H -DHAVE_CLAPACK \
            -msse -msse2 -pthread \

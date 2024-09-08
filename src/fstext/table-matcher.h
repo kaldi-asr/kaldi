@@ -22,7 +22,7 @@
 #include <fst/fstlib.h>
 #include <fst/fst-decl.h>
 
-
+#include "base/kaldi-types.h"
 
 namespace fst {
 

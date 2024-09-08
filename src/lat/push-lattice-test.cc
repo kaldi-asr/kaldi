@@ -22,6 +22,8 @@
 #include "lat/push-lattice.h"
 #include "fstext/rand-fst.h"
 
+#include "fstext/openfst_compat.h"
+
 
 namespace kaldi {
 using namespace fst;
@@ -92,12 +94,12 @@ void TestPushCompactLatticeWeights() {
       {
         fst::FstPrinter<CompactLatticeArc> printer(clat2, NULL, NULL,
                                                    NULL, true, true, "\t");
-        printer.Print(&std::cerr, "<unknown>");
+        printer_print(std::cerr, printer, "<unknown>");
       }
       {
         fst::FstPrinter<CompactLatticeArc> printer(*clat, NULL, NULL,
                                                    NULL, true, true, "\t");
-        printer.Print(&std::cerr, "<unknown>");
+        printer_print(std::cerr, printer, "<unknown>");
       }
       KALDI_ERR << "Bad lattice being pushed.";
     }
