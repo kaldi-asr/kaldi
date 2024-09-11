@@ -14,8 +14,8 @@ on:
           - info
           - warning
           - debug
-#  pull_request: #for debugging purposes
-#    branches: [ "master" ]
+  pull_request: #for debugging purposes
+    branches: [ "master" ]
 
 jobs:
   enable_build:
@@ -94,10 +94,10 @@ jobs:
           echo "Platforms: ${{ steps.buildx.outputs.platforms }}"
       - name: Build and push
         run: |
-          cd docker/debian10-cpu/
-          docker build --push \
+          cd docker/debian12-cpu/
+          docker build \
                        --tag kaldiasr/kaldi:latest \
                        --tag kaldiasr/kaldi:cpu-latest  \
-                       --tag kaldiasr/kaldi:cpu-debian10 \
-                       --tag kaldiasr/kaldi:cpu-debian10-$(date +%F) .
+                       --tag kaldiasr/kaldi:cpu-debian12 \
+                       --tag kaldiasr/kaldi:cpu-debian12-$(date +%F) .
 
