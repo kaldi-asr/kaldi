@@ -17,6 +17,7 @@ RUN apt-get update && \
         ca-certificates \
         gfortran \
         patch \
+        sox \
         software-properties-common && \
         apt-add-repository multiverse && \
         apt-get update && \
