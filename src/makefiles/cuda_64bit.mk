@@ -11,7 +11,7 @@ CUDA_INCLUDE= -I$(CUDATKDIR)/include -I$(CUBROOT) -I.. -isystem $(OPENFSTINC)
 CUDA_FLAGS = --compiler-options -fPIC --machine 64 -DHAVE_CUDA \
              -ccbin $(lastword $(CXX)) -DKALDI_DOUBLEPRECISION=$(DOUBLE_PRECISION) \
              -std=c++14 -DCUDA_API_PER_THREAD_DEFAULT_STREAM -lineinfo \
-             --verbose -Wno-deprecated-gpu-targets
+             --verbose -Wno-deprecated-gpu-targets -DOPENFST_VER=$(OPENFSTVER)
 
 CUDA_LDFLAGS += -L$(CUDATKDIR)/lib64/stubs -L$(CUDATKDIR)/lib64 -Wl,-rpath,$(CUDATKDIR)/lib64
 CUDA_LDFLAGS += -L$(CUDATKDIR)/lib/stubs -L$(CUDATKDIR)/lib -Wl,-rpath,$(CUDATKDIR)/lib
