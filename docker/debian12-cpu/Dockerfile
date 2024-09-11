@@ -27,7 +27,7 @@ RUN    cd /opt/kaldi/tools && \
        ./extras/install_openblas.sh  && \
        make -j 5 && \
        cd /opt/kaldi/src && \
-       ./configure --shared && \
+       ./configure --shared --mathlib=OPENBLAS && \
        make depend -j $(nproc) && \
        make -j 5 
 
