@@ -8,10 +8,10 @@ endif
 CXXFLAGS += -DHAVE_CUDA -DOPENFST_VER=$(OPENFSTVER) -I$(CUDATKDIR)/include -fPIC -pthread -isystem $(OPENFSTINC)
 
 CUDA_INCLUDE= -I$(CUDATKDIR)/include -I$(CUBROOT) -I.. -isystem $(OPENFSTINC)
-CUDA_FLAGS = --compiler-options -fPIC --machine 64 -DHAVE_CUDA \
+CUDA_FLAGS = --compiler-options -fPIC --machine 64 -DHAVE_CUDA -DOPENFST_VER=$(OPENFSTVER)\
              -ccbin $(lastword $(CXX)) -DKALDI_DOUBLEPRECISION=$(DOUBLE_PRECISION) \
              -std=c++14 -DCUDA_API_PER_THREAD_DEFAULT_STREAM -lineinfo \
-             --verbose -Wno-deprecated-gpu-targets -DOPENFST_VER=$(OPENFSTVER)
+             --verbose -Wno-deprecated-gpu-targets
 
 CUDA_LDFLAGS += -L$(CUDATKDIR)/lib64/stubs -L$(CUDATKDIR)/lib64 -Wl,-rpath,$(CUDATKDIR)/lib64
 CUDA_LDFLAGS += -L$(CUDATKDIR)/lib/stubs -L$(CUDATKDIR)/lib -Wl,-rpath,$(CUDATKDIR)/lib
