@@ -15,11 +15,11 @@ on:
           - warning
           - debug
   pull_request: #for debugging purposes
-    branches: [ "master" ]
+    #branches: [ "master" ]
 
 jobs:
   enable_build:
-    if: github.repository == 'kaldi-asr/kaldi'
+    #if: github.repository == 'kaldi-asr/kaldi'
     runs-on: ubuntu-latest
     outputs:
       enabled: ${{ steps.set-enabled.outputs.enabled }}
