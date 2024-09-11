@@ -30,7 +30,7 @@ RUN git clone --depth 1 https://github.com/kaldi-asr/kaldi.git /opt/kaldi && \
     cd /opt/kaldi/tools && \
     make -j $(nproc) && \
     cd /opt/kaldi/src && \
-    ./configure --shared --use-cuda && \
+    ./configure --shared --use-cuda=yes && \
     make depend -j $(nproc) && \
     make -j $(nproc) && \
     find /opt/kaldi  -type f \( -name "*.o" -o -name "*.la" -o -name "*.a" \) -exec rm {} \; && \
