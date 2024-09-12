@@ -3,6 +3,7 @@ name: Docker Image CI
 on:
   schedule:
   - cron: '37 2 * * 1'
+
   workflow_dispatch:
     inputs:
       logLevel:
@@ -14,6 +15,7 @@ on:
           - info
           - warning
           - debug
+
 #  pull_request: #for debugging purposes
 #    branches: [ "master" ]
 
@@ -52,7 +54,6 @@ jobs:
         run: |
           echo "Free space:"
           df -h
-
 
   enable_build:
     if: github.repository == 'kaldi-asr/kaldi'
