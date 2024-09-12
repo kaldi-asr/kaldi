@@ -5,10 +5,10 @@ ifndef CUDATKDIR
 $(error CUDATKDIR not defined.)
 endif
 
-CXXFLAGS += -DHAVE_CUDA -I$(CUDATKDIR)/include -fPIC -pthread -isystem $(OPENFSTINC)
+CXXFLAGS += -DHAVE_CUDA -DOPENFST_VER=$(OPENFSTVER) -I$(CUDATKDIR)/include -fPIC -pthread -isystem $(OPENFSTINC)
 
 CUDA_INCLUDE= -I$(CUDATKDIR)/include -I$(CUBROOT) -I.. -isystem $(OPENFSTINC)
-CUDA_FLAGS = --compiler-options -fPIC --machine 64 -DHAVE_CUDA \
+CUDA_FLAGS = --compiler-options -fPIC --machine 64 -DHAVE_CUDA -DOPENFST_VER=$(OPENFSTVER)\
              -ccbin $(lastword $(CXX)) -DKALDI_DOUBLEPRECISION=$(DOUBLE_PRECISION) \
              -std=c++14 -DCUDA_API_PER_THREAD_DEFAULT_STREAM -lineinfo \
              --verbose -Wno-deprecated-gpu-targets
