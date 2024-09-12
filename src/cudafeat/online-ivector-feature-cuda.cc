@@ -26,7 +26,7 @@
 #endif
 #define CUBLAS_FILL_MODE_LOWER HIPSOLVER_FILL_MODE_LOWER
 #else
-#include <nvToolsExt.h>
+#include <nvtx3/nvToolsExt.h>
 #endif
 #endif
 
