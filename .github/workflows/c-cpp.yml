@@ -16,7 +16,7 @@ jobs:
       CC: "ccache gcc"
 
     steps:
-      - uses: actions/checkout@v4
+    - uses: actions/checkout@v4
     - name: Install sox
       run: sudo apt-get install -y sox intel-mkl
     - name: Install python2
