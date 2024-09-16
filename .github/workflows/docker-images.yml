@@ -16,45 +16,10 @@ on:
           - warning
           - debug
 
-  pull_request: #for debugging purposes
+#  pull_request: #for debugging purposes
 #    branches: [ "master" ]
 
 jobs:
-  pre-build:
-    name: Build my artifact
-    runs-on: ubuntu-latest
-    steps:
-      - name: Pre-build
-        run: |
-          echo "Free space:"
-          df -h
-          ls -al /mnt/
-      
-      - name: Maximize build space
-        uses: AdityaGarg8/remove-unwanted-software@v4.1
-        with:
-          remove-android: 'true'
-          remove-dotnet: 'true'
-          remove-haskell: 'true'
-          remove-codeql: 'true'
-          remove-docker-images: 'true'
-          remove-large-packages: 'true'
-          remove-cached-tools: 'true'
-          remove-swapfile: 'true'
-          verbose: 'true'
-      
-      - name: BuildA
-        run: |
-          echo "Free space:"
-          df -h
-
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: BuildB
-        run: |
-          echo "Free space:"
-          df -h
 
   enable_build:
     #if: github.repository == 'kaldi-asr/kaldi'
@@ -80,7 +45,7 @@ jobs:
           echo "enabled=${enabled}" >> $GITHUB_OUTPUT
 
 
-  docker-buildx-gpu:
+  docker-buildx-gpu-12:
     needs: enable_build
     if: needs.enable_build.outputs.enabled == 'true' || github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
@@ -118,7 +83,7 @@ jobs:
       - name: Build and push
         run: |
           cd docker/ubuntu22.04-cuda12
-          docker build --tag kaldiasr/kaldi:gpu-latest --tag kaldiasr/kaldi:gpu-ubuntu22.04-cuda12 --tag kaldiasr/kaldi:gpu-ubuntu22.04-cuda12-$(date +%F) .
+          docker build --push  --tag kaldiasr/kaldi:gpu-latest --tag kaldiasr/kaldi:gpu-ubuntu22.04-cuda12 --tag kaldiasr/kaldi:gpu-ubuntu22.04-cuda12-$(date +%F) .
 
   docker-buildx-gpu-cuda11:
     needs: enable_build
@@ -158,9 +123,9 @@ jobs:
       - name: Build and push
         run: |
           cd docker/ubuntu20.04-cuda11
-          docker build  --tag kaldiasr/kaldi:gpu-ubuntu20.04-cuda11 --tag kaldiasr/kaldi:gpu-ubuntu20.04-cuda11-$(date +%F) .
+          docker build --push  --tag kaldiasr/kaldi:gpu-ubuntu20.04-cuda11 --tag kaldiasr/kaldi:gpu-ubuntu20.04-cuda11-$(date +%F) .
 
-  docker-buildx-cpu:
+  docker-buildx-cpu-openblas:
     needs: enable_build
     if: needs.enable_build.outputs.enabled == 'true' || github.event_name == 'push' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
@@ -186,11 +151,12 @@ jobs:
       - name: Build and push
         run: |
           cd docker/debian12-cpu/
-          docker build \
+          docker build --push \
                        --tag kaldiasr/kaldi:latest \
                        --tag kaldiasr/kaldi:cpu-latest  \
-                       --tag kaldiasr/kaldi:cpu-debian12 \
-                       --tag kaldiasr/kaldi:cpu-debian12-$(date +%F) .
+                       --tag kaldiasr/kaldi:cpu-latest-openblas  \
+                       --tag kaldiasr/kaldi:cpu-debian12-openblas \
+                       --tag kaldiasr/kaldi:cpu-debian12-openblas-$(date +%F) .
 
   docker-buildx-cpu-mkl:
     needs: enable_build
@@ -218,7 +184,7 @@ jobs:
       - name: Build and push
         run: |
           cd docker/debian12-cpu-mkl/
-          docker build \
+          docker build --push \
                        --tag kaldiasr/kaldi:cpu-latest-mkl  \
                        --tag kaldiasr/kaldi:cpu-debian12-mkl \
                        --tag kaldiasr/kaldi:cpu-debian12-mkl-$(date +%F) .
