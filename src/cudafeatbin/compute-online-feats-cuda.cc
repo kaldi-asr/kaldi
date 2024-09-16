@@ -17,7 +17,7 @@
 
 #if HAVE_CUDA == 1
 #ifndef __IS_HIP_COMPILE__
-#include <nvToolsExt.h>
+#include <nvtx3/nvToolsExt.h>
 #endif
 #endif
 #include "base/kaldi-common.h"

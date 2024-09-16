@@ -25,7 +25,7 @@
 
 #include "hipify.h"
 #else
-#include <nvToolsExt.h>
+#include <nvtx3/nvToolsExt.h>
 #endif
 
 namespace kaldi {

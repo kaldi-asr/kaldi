@@ -44,7 +44,7 @@
 #include "hipify.h"
 #else
 #include <cuda_runtime_api.h>
-#include <nvToolsExt.h>
+#include <nvtx3/nvToolsExt.h>
 #endif
 
 #include "base/kaldi-utils.h"
