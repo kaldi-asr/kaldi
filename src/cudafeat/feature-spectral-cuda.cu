@@ -24,7 +24,7 @@
 
 #include "hipify.h"
 #else
-#include <nvToolsExt.h>
+#include <nvtx3/nvToolsExt.h>
 #include <cub/cub.cuh>
 #endif
 

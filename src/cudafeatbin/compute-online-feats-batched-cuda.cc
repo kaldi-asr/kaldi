@@ -18,7 +18,7 @@
 #if HAVE_CUDA
 #ifndef __IS_HIP_COMPILE__
 #include <cuda_profiler_api.h>
-#include <nvToolsExt.h>
+#include <nvtx3/nvToolsExt.h>
 #endif
 #endif
 
