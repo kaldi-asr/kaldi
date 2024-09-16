@@ -41,5 +41,6 @@ jobs:
     - name: upload logs if failure
       if: ${{ failure() }}
       uses: actions/upload-artifact@v4
+      with:
          name: fail-logs
          path: ${{ github.workspace }}/src/**/*testlog
