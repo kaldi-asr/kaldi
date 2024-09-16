@@ -22,8 +22,8 @@ on:
 jobs:
 
   enable_build:
-    #if: github.repository == 'kaldi-asr/kaldi'
-    if: github.repository_owner == 'jtrmal' || github.repository_owner == 'kaldi-asr'
+    #if: github.repository_owner == 'jtrmal' || github.repository_owner == 'kaldi-asr'
+    if: github.repository_owner == 'kaldi-asr'
     runs-on: ubuntu-latest
     outputs:
       enabled: ${{ steps.set-enabled.outputs.enabled }}
