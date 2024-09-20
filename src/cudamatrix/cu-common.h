@@ -44,7 +44,7 @@
 #include <cuda_runtime_api.h>
 #include <curand.h>
 #include <cusparse.h>
-#include <nvToolsExt.h>
+#include <nvtx3/nvToolsExt.h>
 
 #define GPU_WARP_SIZE 32
 #define GPU_MAX_THREADS_PER_BLOCK 1024

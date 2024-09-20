@@ -76,7 +76,7 @@ int main() {
     kaldi::UnitTestError();
     KALDI_ASSERT(0); // should not happen.
     exit(1);
-  } catch (kaldi::KaldiFatalError &e) {
+  } catch (const kaldi::KaldiFatalError &e) {
     std::cout << "The error we generated was: '" << e.KaldiMessage() << "'\n";
   }
 }

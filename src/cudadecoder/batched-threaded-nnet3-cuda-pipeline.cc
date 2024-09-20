@@ -31,7 +31,7 @@
 
 #include "hipify.h"
 #else
-#include <nvToolsExt.h>
+#include <nvtx3/nvToolsExt.h>
 #endif
 
 #include "base/kaldi-utils.h"

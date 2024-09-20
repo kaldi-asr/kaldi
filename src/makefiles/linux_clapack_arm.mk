@@ -13,9 +13,10 @@ ifndef OPENFSTLIBS
 $(error OPENFSTLIBS not defined.)
 endif
 
-CXXFLAGS = -std=c++14 -I.. -isystem $(OPENFSTINC) -O1 $(EXTRA_CXXFLAGS) \
+CXXFLAGS = -std=$(CXXLANGVERSION) -I.. -isystem $(OPENFSTINC) -O1 $(EXTRA_CXXFLAGS) \
            -Wall -Wno-sign-compare -Wno-unused-local-typedefs \
            -Wno-deprecated-declarations -Winit-self \
+           -DOPENFST_VER=$(OPENFSTVER) \
            -DKALDI_DOUBLEPRECISION=$(DOUBLE_PRECISION) \
            -DHAVE_EXECINFO_H=1 -DHAVE_CXXABI_H -DHAVE_CLAPACK -I../../tools/CLAPACK \
            -ftree-vectorize -mfloat-abi=hard -mfpu=neon -pthread \

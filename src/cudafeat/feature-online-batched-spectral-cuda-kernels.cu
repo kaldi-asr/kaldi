@@ -25,7 +25,7 @@
 #include "hipify.h"
 #else
 #include <cub/cub.cuh>
-#include <nvToolsExt.h>
+#include <nvtx3/nvToolsExt.h>
 #endif
 
 #include "cudafeat/lane-desc.h"

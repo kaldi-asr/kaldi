@@ -22,7 +22,7 @@
 
 #include "hipify.h"
 #else
-#include <nvToolsExt.h>
+#include <nvtx3/nvToolsExt.h>
 #endif
 
 #include "matrix/matrix-functions.h"
