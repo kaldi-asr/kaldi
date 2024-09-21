@@ -15,20 +15,28 @@ RUN apt-get update && \
         libtool \
         git \
         python3 \
+	python3-dev \
         zlib1g-dev \
         ca-certificates \
         patch \
         python-is-python3 && \
     rm -rf /var/lib/apt/lists/*
 
+ENV LD_LIBRARY_PATH=/opt/kaldi/tools/openfst/lib:$LD_LIBRARY_PATH
+ENV CPLUS_INCLUDE_PATH=/opt/kaldi/tools/openfst/include:$CPLUS_INCLUDE_PATH
+ENV LIBRARY_PATH=/opt/kaldi/tools/openfst/lib:$LIBRARY_PATH
 
-RUN git clone --depth 1 https://github.com/kaldi-asr/kaldi.git /opt/kaldi #EOL
+RUN ldconfig
+
+RUN git clone --depth 1 https://github.com/andrikaro/kaldi.git /opt/kaldi #EOL
 RUN    cd /opt/kaldi/tools && \
        ./extras/install_openblas.sh  && \
-       make -j 5 && \
+       make -j $(nproc) && \
        cd /opt/kaldi/src && \
        ./configure --shared --mathlib=OPENBLAS && \
        make depend -j $(nproc) && \
-       make -j 5 
+       make -j $(nproc) && \ 
+       ldconfig
+
 
 WORKDIR /opt/kaldi/
