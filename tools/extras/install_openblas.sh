@@ -32,7 +32,7 @@ fi
 tar xzf $tarball
 mv OpenMathLib-OpenBLAS-* OpenBLAS
 
-make PREFIX=$(pwd)/OpenBLAS/install USE_LOCKING=1 USE_THREAD=0 -C OpenBLAS all install
+make TARGET=$TARGET PREFIX=$(pwd)/OpenBLAS/install USE_LOCKING=1 USE_THREAD=0 -C OpenBLAS all install 
 if [ $? -eq 0 ]; then
    echo "OpenBLAS is installed successfully."
    rm $tarball
