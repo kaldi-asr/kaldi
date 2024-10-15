@@ -70,6 +70,6 @@ Platform specific notes
 ### Web Assembly
 
 - Kaldi supports cross compiling for Web Assembly for in-browser execution
-  using [emscripten](https://emscripten.org/) and CLAPACK.
+  using [emscripten](https://emscripten.org) and OpenBLAS
 - See [this post](https://gitlab.inria.fr/kaldi.web/kaldi-wasm/-/wikis/build_details.md)
   for a step-by-step description of the build process.
