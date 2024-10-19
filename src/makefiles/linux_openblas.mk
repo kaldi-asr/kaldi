@@ -53,4 +53,6 @@ ifneq ($(ARCH), WASM)
   CXXFLAGS += -pthread
   LDLIBS += -lpthread
   LDFLAGS += -rdynamic
+else 
+  CXXFLAGS += -DKALDI_WASM
 endif
