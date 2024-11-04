@@ -17,7 +17,7 @@
 # ./configure --atlas-root=../tools/ATLAS/build
 # ./configure --use-cuda=no   # disable CUDA detection (will build cpu-only
 #                             # version of kaldi even on CUDA-enabled machine.
-# ./configure --use-cuda --cudatk-dir=/usr/local/cuda/ --cuda-arch=-arch=sm_70
+# ./configure --use-cuda=yes --cudatk-dir=/usr/local/cuda/ --cuda-arch=-arch=sm_70
 #        # Use cuda in /usr/local/cuda and set the arch to sm_70
 # ./configure --static --fst-root=/opt/cross/armv8hf \
 #   --atlas-root=/opt/cross/armv8hf --host=armv8-rpi3-linux-gnueabihf
@@ -69,7 +69,7 @@ Configuration options:
   --version             Display the version of 'configure' and exit
   --static              Build and link against static libraries [default=no]
   --shared              Build and link against shared libraries [default=no]
-  --use-cuda            Build with CUDA [default=yes]
+  --use-cuda            Build with CUDA [default=no]
   --with-cudadecoder    Build with CUDA decoder [default=yes]
   --cudatk-dir=DIR      CUDA toolkit directory
   --cuda-arch=FLAGS     Override the default CUDA_ARCH flags. See:
