@@ -20,9 +20,25 @@ if(CONDA_ROOT)
 
 endif()
 
-include(third_party/get_third_party)
+option(BuildForFedora "Build for Fedora. Means that everything is build with Border tools" NO)
 
-include(cmake/third_party/openfst.cmake)
+if(BuildForFedora)
+
+    # You also need to install sudo dnf install lapack-devel openfst-devel
+    set(CMAKE_CXX_STANDARD 17)
+    set(CMAKE_CXX_STANDARD_REQUIRED ON)
+    set(CMAKE_CXX_EXTENSIONS OFF)
+
+    #find_package(PkgConfig REQUIRED)
+
+    #pkg_check_modules(FST REQUIRED fst)
+
+else()
+    include(third_party/get_third_party)
+
+    include(cmake/third_party/openfst.cmake)
+endif()
+
 
 find_package(PythonInterp)
 if(NOT PYTHON_EXECUTABLE)
@@ -43,8 +59,11 @@ execute_process(COMMAND ${PYTHON_EXECUTABLE}
 )
 unset(IS_LIB_SHARE)
 
-set(CMAKE_CXX_STANDARD 14)
-set(CMAKE_CXX_EXTENSIONS OFF)
+if(BuildForFedora)
+else()
+    set(CMAKE_CXX_STANDARD 14)
+    set(CMAKE_CXX_EXTENSIONS OFF)
+endif()
 set(CMAKE_INSTALL_MESSAGE LAZY) # hide "-- Up-to-date: ..."
 if(BUILD_SHARED_LIBS)
     set(CMAKE_POSITION_INDEPENDENT_CODE ON)
@@ -228,7 +247,18 @@ endif()
 #            PATHS "${CMAKE_CURRENT_SOURCE_DIR}/tools/openfst/include"
 #            REQUIRED)
 
+if(BuildForFedora)
+    # Version used used by Fedora 41 is 1.83
+    # TODO: Detect the right version and put it here.
+    add_definitions(-DOPENFST_VER=18300)
+#    link_directories(/usr/lib64)
+#    include_directories(/usr/include/fst)    
+endif()
+
 link_libraries(fst)
+
+
+
 
 # add all native libraries
 add_subdirectory(src/base) # NOTE, we need to patch the target with version from outside
