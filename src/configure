@@ -894,6 +894,12 @@ if is_set $HOST; then
     fi
   else
     TARGET_ARCH="$HOST"
+    if ! $static_fst || ! $static_math || $dynamic_kaldi; then
+      echo "WARNING: Dynamic libraries are not currently supported when compiling to WASM. Overriding --static, --static-math, and --static-fst."
+    fi
+    dynamic_kaldi=false
+    static_math=true
+    static_fst=true
   fi
 
   HOST_CXX="$HOST-c++"
@@ -1360,14 +1366,6 @@ or try another math library, e.g. --mathlib=OPENBLAS (Kaldi may be slower)."
 ** You can also use other matrix algebra libraries. For information, see:
 **   http://kaldi-asr.org/doc/matrixwrap.html"
     fi
-    if [ -f $OPENBLASROOT/lib/libopenblas.so ]; then
-      OPENBLASLIBDIR=$OPENBLASROOT/lib
-    elif [ -f $OPENBLASROOT/lib64/libopenblas.so ]; then
-      # in REDHAT/CentOS package installs, the library is located here
-      OPENBLASLIBDIR=$OPENBLASROOT/lib64
-    else
-      failure "Expected to find the file $OPENBLASROOT/lib/libopenblas.so"
-    fi
     if [ -f $OPENBLASROOT/include/cblas.h ] ; then
       OPENBLASINCDIR=$OPENBLASROOT/include
     elif [ -f $OPENBLASROOT/include/openblas/cblas.h ] ; then
@@ -1381,18 +1379,35 @@ or try another math library, e.g. --mathlib=OPENBLAS (Kaldi may be slower)."
       echo "** if it is a package-based install)."
       OPENBLASINCDIR="/usr/include"
     fi
+    if $static_math; then
+      if [ -f $OPENBLASROOT/lib/libopenblas.a ]; then
+        OPENBLASLIBDIR=$OPENBLASROOT/lib
+      else
+        failure "Expected to find the file $OPENBLASROOT/lib/libopenblas.a"
+      fi
+      echo "Configuring static OpenBlas since --static-math=yes"
+      OPENBLASLIBS="-L$OPENBLASLIBDIR -l:libopenblas.a"
+      # No Fortran for OpenBLAS
+      if [[ "$HOST" != WASM ]]; then
+        OPENBLASLIBS+="-lgfortran"
+      fi
+    else
+      if [ -f $OPENBLASROOT/lib/libopenblas.so ]; then
+        OPENBLASLIBDIR=$OPENBLASROOT/lib
+      elif [ -f $OPENBLASROOT/lib64/libopenblas.so ]; then
+        # in REDHAT/CentOS package installs, the library is located here
+        OPENBLASLIBDIR=$OPENBLASROOT/lib64
+      else
+        failure "Expected to find the file $OPENBLASROOT/lib/libopenblas.so"
+      fi
+      echo "Configuring dynamically loaded OpenBlas since --static-math=no (the default)"
+      OPENBLASLIBS="-L$OPENBLASLIBDIR -lopenblas -lgfortran -Wl,-rpath=$OPENBLASLIBDIR"
+    fi
     echo "Your math library seems to be OpenBLAS from $OPENBLASROOT.  Configuring appropriately."
     # TODO(kkm): Probably, OpenBLAS required libgfortran.so.3 at some point, but
     # no longer does. *My* linker does not complain about a missing library, but
     # is it safe to keep the reference if no longer required? Try to figure out
     # how long ago the dependency was dropped.
-    if $static_math; then
-      echo "Configuring static OpenBlas since --static-math=yes"
-      OPENBLASLIBS="-L$OPENBLASLIBDIR -l:libopenblas.a -lgfortran"
-    else
-      echo "Configuring dynamically loaded OpenBlas since --static-math=no (the default)"
-      OPENBLASLIBS="-L$OPENBLASLIBDIR -lopenblas -lgfortran -Wl,-rpath=$OPENBLASLIBDIR"
-    fi
     echo "OPENBLASINC = $OPENBLASINCDIR" >> kaldi.mk
     echo "OPENBLASLIBS = $OPENBLASLIBS" >> kaldi.mk
     echo >> kaldi.mk

@@ -22,8 +22,14 @@
 #include "util/kaldi-thread.h"
 
 namespace kaldi {
-int32 g_num_threads = 8;  // Initialize this global variable.
 
+int32 g_num_threads = 
+#ifdef KALDI_WASM
+0 // Everything will run on the main thread for WASM
+#else 
+8  // Initialize this global variable.
+#endif
+;
 MultiThreadable::~MultiThreadable() {
   // default implementation does nothing
 }

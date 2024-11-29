@@ -44,10 +44,11 @@ ifeq ($(findstring clang,$(COMPILER)),clang)
 CXXFLAGS += -Wno-mismatched-tags
 endif
 
-LDFLAGS = $(EXTRA_LDFLAGS) $(OPENFSTLDFLAGS) -rdynamic
+LDFLAGS = $(EXTRA_LDFLAGS) $(OPENFSTLDFLAGS)
 LDLIBS = $(EXTRA_LDLIBS) $(OPENFSTLIBS) $(CLAPACKLIBS) -lm -ldl
 
 ifneq ($(ARCH), WASM)
+    LDFLAGS += -rdynamic
     CXXFLAGS += -pthread
     LDLIBS += -lpthread
 endif
