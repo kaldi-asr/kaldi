@@ -64,7 +64,7 @@ then build the package as follows:
 
 ```
 cmake -S ./ -Bbuild/Release -DFETCHCONTENT_FULLY_DISCONNECTED=ON -DBuildForFedora=ON
-cmake --build /home/gerhard/workspace/kaldi/build/Release
+cmake --build ./build/Release
 ```
 
 
