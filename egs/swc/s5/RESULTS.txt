@@ -1,0 +1,51 @@
+============= IHM (headset) ===========
+
+SA1/tri3a/decode_dev_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7/ascore_9/dev.ctm.filt.sys:|   Sum/Avg  |   8523       61310   |   55.3       35.5         9.2        6.2       50.9       76.9   |
+SA1/tri3a/decode_eval_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7/ascore_9/eval.ctm.filt.sys:|   Sum/Avg  |   8400        59123   |   55.0       36.4         8.6        6.7       51.8        76.4   |
+
+
+SA1/tri4a/decode_dev_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7/ascore_9/dev.ctm.filt.sys:|   Sum/Avg  |   8523       61310   |   57.4       34.3         8.3        6.1       48.7       75.3   |
+SA1/tri4a/decode_eval_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7/ascore_9/eval.ctm.filt.sys:|   Sum/Avg  |   8400        59123   |   57.8       34.4         7.8        6.6       48.8        75.4   |
+
+SA1/tri4a_mmi_b0.1/decode_dev_4.mdl_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7/ascore_9/dev.ctm.filt.sys:|    Sum/Avg   |    8523        61310    |    56.8         34.2          9.0         5.6         48.8         75.5    |
+SA1/tri4a_mmi_b0.1/decode_eval_4.mdl_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7/ascore_9/eval.ctm.filt.sys:|    Sum/Avg   |    8400         59123    |    56.8         34.7          8.6          5.9         49.1         75.5    |
+
+
+SA1/dnn4noSAT_pretrain-dbn_dnn/decode_dev_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7/ascore_9/dev.ctm.filt.sys:|   Sum/Avg  |   8523       61310   |   59.7       30.5        9.9        4.1       44.4       73.9   |
+SA1/dnn4noSAT_pretrain-dbn_dnn/decode_eval_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7/ascore_9/eval.ctm.filt.sys:|   Sum/Avg  |   8400       59123   |   59.9       30.6         9.5        4.2       44.3       73.2   |
+
+SA1/dnn4noSAT_pretrain-dbn_dnn_smbr/decode_dev_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7_it4/ascore_9/dev.ctm.filt.sys:|    Sum/Avg   |    8523         61310    |    62.8         29.5          7.7          4.9         42.0         71.7    |
+SA1/dnn4noSAT_pretrain-dbn_dnn_smbr/decode_eval_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7_it4/ascore_9/eval.ctm.filt.sys:|    Sum/Avg   |    8400         59123    |    63.1         29.5           7.4          5.1         42.0         71.0    |
+
+
+SA1/dnn4_pretrain-dbn_dnn/decode_dev_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7/ascore_9/dev.ctm.filt.sys:|  Sum/Avg  |   8523      61310   |   55.6      32.8       11.6       3.7       48.1      76.3   |
+SA1/dnn4_pretrain-dbn_dnn/decode_eval_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7/ascore_9/eval.ctm.filt.sys:|   Sum/Avg  |  8400       59123   |  55.7       33.0      11.2        3.9      48.1       75.9   |
+
+SA1/dnn4_pretrain-dbn_dnn_smbr/decode_dev_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7_it4/ascore_9/dev.ctm.filt.sys:|   Sum/Avg  |   8523        61310   |   58.8        31.1       10.0         3.8       44.9        72.9   |
+SA1/dnn4_pretrain-dbn_dnn_smbr/decode_eval_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7_it4/ascore_9/eval.ctm.filt.sys:|   Sum/Avg   |   8400       59123    |   59.1       31.3         9.6        3.9        44.8       72.2    |
+
+
+
+============= SDM (TBL1-01) ===========
+
+SA1/dnn4noSAT_pretrain-dbn_dnn/decode_dev_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7/ascore_9/dev_o4.ctm.filt.sys:| Sum/Avg           |   10525   58553 |    25.0     52.7     22.3     4.0     78.9    70.2 |  -24.356  |
+SA1/dnn4noSAT_pretrain-dbn_dnn/decode_eval_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7/ascore_9/eval_o4.ctm.filt.sys:| Sum/Avg           |   9999   56091 |    24.3     55.2     20.5     4.8     80.5    74.0 |  -25.062  |
+
+SA1/dnn4noSAT_pretrain-dbn_dnn_smbr/decode_dev_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7_it4/ascore_9/dev_o4.ctm.filt.sys:| Sum/Avg           |   10010   59572 |    25.8     38.4     35.8     2.2     76.4    73.1 |  -21.942  |
+SA1/dnn4noSAT_pretrain-dbn_dnn_smbr/decode_eval_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7_it4/ascore_9/eval_o4.ctm.filt.sys:| Sum/Avg           |   10262   56454 |    25.0     39.8     35.1     2.3     77.3    70.9 |  -22.225  |
+
+
+
+============= MDM (TBL1-01~TBL1-08, BeamformIt) ===========
+
+SA1/dnn4noSAT_pretrain-dbn_dnn/decode_dev_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7/ascore_9/dev_o4.ctm.filt.sys:| Sum/Avg           |   9647   58153 |    29.1     52.2     18.8     5.0     76.0    76.4 |  -23.558  |
+SA1/dnn4noSAT_pretrain-dbn_dnn/decode_eval_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7/ascore_9/eval_o4.ctm.filt.sys:| Sum/Avg           |   10399   56091 |    28.1     54.4    17.5     6.0     77.9    71.4 |  -24.130  |
+
+SA1/dnn4noSAT_pretrain-dbn_dnn_smbr/decode_dev_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7_it4/ascore_9/dev_o4.ctm.filt.sys:| Sum/Avg           |   9815   59773 |    28.4     35.4     36.2     2.2     73.8    75.0 |  -21.471  |
+SA1/dnn4noSAT_pretrain-dbn_dnn_smbr/decode_eval_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7_it4/ascore_9/eval_o4.ctm.filt.sys:| Sum/Avg           |   9797   56454 |    27.7     36.6     35.7     2.6     74.9    74.1 |  -21.608  |
+
+
+
+
+
+
