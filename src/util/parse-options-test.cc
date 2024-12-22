@@ -120,7 +120,7 @@ void UnitTestParseOptions() {
     po4.Register("option", &val, "My boolean");
     po4.Read(argc4, argv4);
     assert(false); // Should not reach this part of code.
-  } catch(std::exception e) {
+  } catch(const std::exception &e) {
     KALDI_LOG << "Failed to read option (this is expected).";
   }
 
@@ -144,7 +144,7 @@ void UnitTestParseOptions() {
     po4.Register("option", &val, "My string");
     po4.Read(argc4, argv4);
     assert(false); // Should not reach this part of code.
-  } catch(std::exception e) {
+  } catch(const std::exception &e) {
     KALDI_LOG << "Failed to read option (this is expected).";
   }
 
@@ -186,7 +186,7 @@ void UnitTestParseOptions() {
     po4.Read(argc4, argv4);
     KALDI_ASSERT(val == "bar");
   }
-  
+
   try {   // test error with --float=string
     int argc4 = 2;
     const char *argv4[2] = { "program_name", "--option=foo"};
@@ -195,7 +195,7 @@ void UnitTestParseOptions() {
     po4.Register("option", &val, "My float");
     po4.Read(argc4, argv4);
     assert(false); // Should not reach this part of code.
-  } catch(std::exception e) {
+  } catch(const std::exception &e) {
     KALDI_LOG << "Failed to read option (this is expected).";
   }
 
@@ -208,7 +208,7 @@ void UnitTestParseOptions() {
     po4.Register("option", &val, "My int");
     po4.Read(argc4, argv4);
     assert(false); // Should not reach this part of code.
-  } catch(std::exception e) {
+  } catch(const std::exception &e) {
     KALDI_LOG << "Failed to read option (this is expected).";
   }
 
@@ -220,7 +220,7 @@ void UnitTestParseOptions() {
     po4.Register("option", &val, "My int");
     po4.Read(argc4, argv4);
     assert(false); // Should not reach this part of code.
-  } catch(std::exception e) {
+  } catch(const std::exception &e) {
     KALDI_LOG << "Failed to read option (this is expected).";
   }
 
@@ -232,7 +232,7 @@ void UnitTestParseOptions() {
     po4.Register("option", &val, "My int");
     po4.Read(argc4, argv4);
     assert(false); // Should not reach this part of code.
-  } catch(std::exception e) {
+  } catch(const std::exception &e) {
     KALDI_LOG << "Failed to read option (this is expected)xxx.";
   }
 
@@ -244,7 +244,7 @@ void UnitTestParseOptions() {
     po4.Register("option", &val, "My bool");
     po4.Read(argc4, argv4);
     assert(false); // Should not reach this part of code.
-  } catch(std::exception e) {
+  } catch(const std::exception &e) {
     KALDI_LOG << "Failed to read option (this is expected).";
   }
 
@@ -258,7 +258,7 @@ void UnitTestParseOptions() {
     po4.Register("num", &num, "My int32 variable");
     po4.Read(argc4, argv4);
     KALDI_ASSERT(num == 0);
-  } catch(std::exception e) {
+  } catch(const std::exception &e) {
     KALDI_LOG << "Failed to read option (this is expected).";
   }
 

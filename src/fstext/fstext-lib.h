@@ -20,6 +20,9 @@
 #ifndef KALDI_FSTEXT_FSTEXT_LIB_H_
 #define KALDI_FSTEXT_FSTEXT_LIB_H_
 #include "fst/fstlib.h"
+
+#include "fstext/openfst_compat.h"
+
 #include "fstext/context-fst.h"
 #include "fstext/determinize-star.h"
 #include "fstext/factor.h"

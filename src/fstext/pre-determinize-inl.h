@@ -235,8 +235,13 @@ inline bool HasBannedPrefixPlusDigits(SymbolTable *symTable, std::string prefix,
   assert(symTable != NULL);
   const char *prefix_ptr = prefix.c_str();
   size_t prefix_len = strlen(prefix_ptr);  // allowed to be zero but not encouraged.
+#if OPENFST_VER >= 10800
+  for (SymbolTable::iterator siter = symTable->begin(); siter != symTable->end(); ++siter) {
+    const std::string &sym = siter->Symbol();
+#else
   for (SymbolTableIterator siter(*symTable); !siter.Done(); siter.Next()) {
     const std::string &sym = siter.Symbol();
+#endif
     if (!strncmp(prefix_ptr, sym.c_str(), prefix_len)) {  // has prefix.
       if (isdigit(sym[prefix_len])) {  // we don't allow prefix followed by a digit, as a symbol.
         // Has at least one digit.
@@ -411,8 +416,6 @@ void PreDeterminize(MutableFst<Arc> *fst,
   std::vector<bool> d_vec(max_state+1, false);  // "done vector".  Purely for debugging.
 
 
-  size_t num_extra_det_states = 0;
-
   // (D)(v)
   while (Q.size() != 0) {
 
@@ -491,7 +494,6 @@ void PreDeterminize(MutableFst<Arc> *fst,
                 assert(m_map.count(this_pr.first) == 0);
                 m_map[this_pr.first] = k;
                 k++;
-                num_extra_det_states++;
               }
             } else {  // Create the set V_t.
               V_t.insert(this_pr.second);
@@ -689,11 +691,9 @@ typename Arc::StateId CreateSuperFinal(MutableFst<Arc> *fst) {
   typedef typename Arc::Weight Weight;
   assert(fst != NULL);
   StateId num_states = fst->NumStates();
-  StateId num_final = 0;
   std::vector<StateId> final_states;
   for (StateId s = 0; s < num_states; s++) {
     if (fst->Final(s) != Weight::Zero()) {
-      num_final++;
       final_states.push_back(s);
     }
   }

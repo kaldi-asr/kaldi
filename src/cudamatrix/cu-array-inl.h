@@ -28,7 +28,13 @@
 #include <algorithm>
 
 #if HAVE_CUDA == 1
+#ifdef __IS_HIP_COMPILE__
+#include <hip/hip_runtime_api.h>
+
+#include "hipify.h"
+#else
 #include <cuda_runtime_api.h>
+#endif
 #include "cudamatrix/cu-common.h"
 #include "cudamatrix/cu-device.h"
 #include "cudamatrix/cu-kernels.h"

@@ -16,30 +16,41 @@ fi
 ! command -v gawk > /dev/null && \
    echo "GNU awk is not installed so SRILM will probably not work correctly: refusing to install" && exit 1;
 
-if [ $# -ne 3 ]; then
-    echo "SRILM download requires some information about you"
-    echo
-    echo "Usage: $0 <name> <organization> <email>"
-    exit 1
-fi
+if [ ! -f srilm.tgz ] && [ ! -f srilm.tar.gz ] && [ ! -d srilm ]; then
+  if [ $# -ne 4 ]; then
+      echo "SRILM download requires some information about you"
+      echo
+      echo "Usage: $0 <name> <organization> <email> <address>"
+      exit 1
+  fi
 
-srilm_url="http://www.speech.sri.com/projects/srilm/srilm_download.php"
-post_data="WWW_file=srilm-1.7.3.tar.gz&WWW_name=$1&WWW_org=$2&WWW_email=$3"
+  srilm_url="http://www.speech.sri.com/projects/srilm/srilm_download2.php"
+  post_data="file=1.7.3&name=$1&org=$2&email=$3&address=$4&license=on"
 
-if ! wget --post-data "$post_data" -O ./srilm.tar.gz "$srilm_url"; then
-    echo 'There was a problem downloading the file.'
-    echo 'Check you internet connection and try again.'
-    exit 1
+  if ! wget --post-data "$post_data" -O ./srilm.tar.gz "$srilm_url"; then
+      echo 'There was a problem downloading the file.'
+      echo 'Check your internet connection and try again.'
+      exit 1
+  fi
+
+  if [ ! -s srilm.tar.gz ]; then
+      echo 'The file is empty. There was a problem downloading the file.'
+      exit 1
+  fi
 fi
 
 mkdir -p srilm
 cd srilm
 
-
 if [ -f ../srilm.tgz ]; then
-    tar -xvzf ../srilm.tgz # Old SRILM format
-elif [  -f ../srilm.tar.gz ]; then
-    tar -xvzf ../srilm.tar.gz # Changed format type from tgz to tar.gz
+    tar -xvzf ../srilm.tgz || exit 1 # Old SRILM format
+elif [ -f ../srilm.tar.gz ]; then
+    tar -xvzf ../srilm.tar.gz || exit 1 # Changed format type from tgz to tar.gz
+fi
+
+if [ ! -f RELEASE ]; then
+    echo 'The file RELEASE does not exist. There was a problem extracting.'
+    exit 1
 fi
 
 major=`gawk -F. '{ print $1 }' RELEASE`

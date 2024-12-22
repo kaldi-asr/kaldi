@@ -23,6 +23,7 @@
 
 #include "fst/fstlib.h"
 #include "base/kaldi-common.h"
+#include "fstext/openfst_compat.h"
 
 namespace fst {
 
@@ -396,8 +397,8 @@ inline bool ApproxEqual(const LatticeWeightTpl<FloatType> &w1,
 template <class FloatType>
 inline std::ostream &operator <<(std::ostream &strm, const LatticeWeightTpl<FloatType> &w) {
   LatticeWeightTpl<FloatType>::WriteFloatType(strm, w.Value1());
-  CHECK(FLAGS_fst_weight_separator.size() == 1);
-  strm << FLAGS_fst_weight_separator[0]; // comma by default;
+  CHECK(FST_FLAGS_fst_weight_separator.size() == 1);
+  strm << FST_FLAGS_fst_weight_separator[0]; // comma by default;
   // may or may not be settable from Kaldi programs.
   LatticeWeightTpl<FloatType>::WriteFloatType(strm, w.Value2());
   return strm;
@@ -405,9 +406,9 @@ inline std::ostream &operator <<(std::ostream &strm, const LatticeWeightTpl<Floa
 
 template <class FloatType>
 inline std::istream &operator >>(std::istream &strm, LatticeWeightTpl<FloatType> &w1) {
-  CHECK(FLAGS_fst_weight_separator.size() == 1);
+  CHECK(FST_FLAGS_fst_weight_separator.size() == 1);
   // separator defaults to ','
-  return w1.ReadNoParen(strm, FLAGS_fst_weight_separator[0]);
+  return w1.ReadNoParen(strm, FST_FLAGS_fst_weight_separator[0]);
 }
 
 
@@ -438,11 +439,9 @@ class CompactLatticeWeightTpl {
   CompactLatticeWeightTpl(const WeightType &w, const std::vector<IntType> &s):
       weight_(w), string_(s) { }
 
-  CompactLatticeWeightTpl &operator=(const CompactLatticeWeightTpl<WeightType, IntType> &w) {
-    weight_ = w.weight_;
-    string_ = w.string_;
-    return *this;
-  }
+  CompactLatticeWeightTpl(const CompactLatticeWeightTpl &compactLatticeWeightTpl) = default;
+
+  CompactLatticeWeightTpl &operator=(const CompactLatticeWeightTpl &w) = default;
 
   const W &Weight() const { return weight_; }
 
@@ -728,8 +727,8 @@ inline CompactLatticeWeightTpl<WeightType, IntType> Divide(const CompactLatticeW
 template <class WeightType, class IntType>
 inline std::ostream &operator <<(std::ostream &strm, const CompactLatticeWeightTpl<WeightType, IntType> &w) {
   strm << w.Weight();
-  CHECK(FLAGS_fst_weight_separator.size() == 1);
-  strm << FLAGS_fst_weight_separator[0]; // comma by default.
+  CHECK(FST_FLAGS_fst_weight_separator.size() == 1);
+  strm << FST_FLAGS_fst_weight_separator[0]; // comma by default.
   for(size_t i = 0; i < w.String().size(); i++) {
     strm << w.String()[i];
     if (i+1 < w.String().size())
@@ -745,8 +744,8 @@ inline std::istream &operator >>(std::istream &strm, CompactLatticeWeightTpl<Wei
   if (strm.fail()) {
     return strm;
   }
-  CHECK(FLAGS_fst_weight_separator.size() == 1);
-  size_t pos = s.find_last_of(FLAGS_fst_weight_separator); // normally ","
+  CHECK(FST_FLAGS_fst_weight_separator.size() == 1);
+  size_t pos = s.find_last_of(FST_FLAGS_fst_weight_separator); // normally ","
   if (pos == std::string::npos) {
     strm.clear(std::ios::badbit);
     return strm;

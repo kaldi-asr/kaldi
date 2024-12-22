@@ -675,7 +675,7 @@ void AutomaticallyObtainQuestions(BuildTreeStatsType &stats,
 
   for (int32 i = 0; static_cast<size_t>(i) < summed_stats.size(); i++) {  // A check.
     if (summed_stats[i] != NULL &&
-        !binary_search(phones.begin(), phones.end(), i)) {
+        !std::binary_search(phones.begin(), phones.end(), i)) {
       KALDI_WARN << "Phone "<< i << " is present in stats but is not in phone list [make sure you intended this].";
     }
   }
@@ -795,7 +795,7 @@ void KMeansClusterPhones(BuildTreeStatsType &stats,
   for (int32 i = 0; static_cast<size_t>(i) < summed_stats.size(); i++) {
     // just a check.
     if (summed_stats[i] != NULL &&
-        !binary_search(phones.begin(), phones.end(), i)) {
+        !std::binary_search(phones.begin(), phones.end(), i)) {
       KALDI_WARN << "Phone "<< i << " is present in stats but is not in phone list [make sure you intended this].";
     }
   }

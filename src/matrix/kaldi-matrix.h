@@ -87,14 +87,14 @@ class MatrixBase {
   inline  Real* RowData(MatrixIndexT i) {
     KALDI_ASSERT(static_cast<UnsignedMatrixIndexT>(i) <
                  static_cast<UnsignedMatrixIndexT>(num_rows_));
-    return data_ + i * stride_;
+    return data_ + static_cast<size_t>(i) * static_cast<size_t>(stride_);
   }
 
   /// Returns pointer to data for one row (const)
   inline const Real* RowData(MatrixIndexT i) const {
     KALDI_ASSERT(static_cast<UnsignedMatrixIndexT>(i) <
                  static_cast<UnsignedMatrixIndexT>(num_rows_));
-    return data_ + i * stride_;
+    return data_ + static_cast<size_t>(i) * static_cast<size_t>(stride_);
   }
 
   /// Indexing operator, non-const
@@ -104,7 +104,7 @@ class MatrixBase {
                           static_cast<UnsignedMatrixIndexT>(num_rows_) &&
                           static_cast<UnsignedMatrixIndexT>(c) <
                           static_cast<UnsignedMatrixIndexT>(num_cols_));
-    return *(data_ + r * stride_ + c);
+    return *(data_ + static_cast<size_t>(r) * static_cast<size_t>(stride_) + c);
   }
   /// Indexing operator, provided for ease of debugging (gdb doesn't work
   /// with parenthesis operator).
@@ -117,7 +117,7 @@ class MatrixBase {
                           static_cast<UnsignedMatrixIndexT>(num_rows_) &&
                           static_cast<UnsignedMatrixIndexT>(c) <
                           static_cast<UnsignedMatrixIndexT>(num_cols_));
-    return *(data_ + r * stride_ + c);
+    return *(data_ + static_cast<size_t>(r) * static_cast<size_t>(stride_) + c);
   }
 
   /*   Basic setting-to-special values functions. */
@@ -188,14 +188,14 @@ class MatrixBase {
   inline const SubVector<Real> Row(MatrixIndexT i) const {
     KALDI_ASSERT(static_cast<UnsignedMatrixIndexT>(i) <
                  static_cast<UnsignedMatrixIndexT>(num_rows_));
-    return SubVector<Real>(data_ + (i * stride_), NumCols());
+    return SubVector<Real>(data_ + (static_cast<size_t>(i) * static_cast<size_t>(stride_)), NumCols());
   }
 
   /// Return specific row of matrix.
   inline SubVector<Real> Row(MatrixIndexT i) {
     KALDI_ASSERT(static_cast<UnsignedMatrixIndexT>(i) <
                  static_cast<UnsignedMatrixIndexT>(num_rows_));
-    return SubVector<Real>(data_ + (i * stride_), NumCols());
+    return SubVector<Real>(data_ + (static_cast<size_t>(i) * static_cast<size_t>(stride_)), NumCols());
   }
 
   /// Return a sub-part of matrix.
@@ -1006,11 +1006,11 @@ class SubMatrix : public MatrixBase<Real> {
             MatrixIndexT num_cols,
             MatrixIndexT stride);
 
-  ~SubMatrix<Real>() {}
+  ~SubMatrix() {}
 
   /// This type of constructor is needed for Range() to work [in Matrix base
   /// class]. Cannot make it explicit.
-  SubMatrix<Real> (const SubMatrix &other):
+  SubMatrix(const SubMatrix &other):
   MatrixBase<Real> (other.data_, other.num_cols_, other.num_rows_,
                     other.stride_) {}
 

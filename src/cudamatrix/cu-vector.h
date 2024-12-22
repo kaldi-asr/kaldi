@@ -243,7 +243,7 @@ class CuVectorBase {
 
   /// Default constructor: make it protected so the user cannot
   /// instantiate this class.
-  CuVectorBase<Real>(): data_(NULL), dim_(0) { }
+  CuVectorBase(): data_(NULL), dim_(0) { }
 
   Real *data_; ///< GPU data pointer (or regular data pointer
                ///< if CUDA is not compiled in or we have no GPU).

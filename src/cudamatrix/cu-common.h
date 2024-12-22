@@ -31,11 +31,25 @@
 
 #if HAVE_CUDA
 
+#ifdef __IS_HIP_COMPILE__
+#include <hip/hip_runtime_api.h>
+#include <hipblas/hipblas.h>
+#include <hiprand/hiprand.h>
+#include <hipsparse/hipsparse.h>
+#include <roctracer/roctx.h>
+
+#include "hipify.h"
+#else
 #include <cublas_v2.h>
 #include <cuda_runtime_api.h>
 #include <curand.h>
 #include <cusparse.h>
-#include <nvToolsExt.h>
+#include <nvtx3/nvToolsExt.h>
+
+#define GPU_WARP_SIZE 32
+#define GPU_MAX_THREADS_PER_BLOCK 1024
+#define GPU_MAX_WARPS_PER_BLOCK (GPU_MAX_THREADS_PER_BLOCK / GPU_WARP_SIZE)
+#endif
 
 #define CU_SAFE_CALL(fun) \
 { \

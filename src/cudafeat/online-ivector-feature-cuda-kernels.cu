@@ -15,22 +15,32 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#ifdef __IS_HIP_COMPILE__
+#include <hipcub/hipcub.hpp>
+
+#include "hipify.h"
+#else
 #include <cub/cub.cuh>
+#endif
+
 #include "cudafeat/online-ivector-feature-cuda-kernels.h"
 #include "cudamatrix/cu-common.h"
 namespace kaldi {
 
-// Meant to be called with blockDim= 32x32
+// Meant to be called with blockDim = GPU_WARP_SIZE x GPU_MAX_WARPS_PER_BLOCK
 __global__ void batched_gemv_reduce_kernel(int rows, int cols,
                                            const float* __restrict__ A, int lda,
                                            const float* __restrict__ X, int ldx,
                                            float* C) {
   // Specialize WarpReduce for type float
   typedef cub::WarpReduce<float> WarpReduce;
-  // Allocate WarpReduce shared memory for 32 warps
-  __shared__ typename WarpReduce::TempStorage temp_storage[32];
+  // Allocate WarpReduce shared memory for GPU_MAX_WARPS_PER_BLOCK warps
+  __shared__
+      typename WarpReduce::TempStorage temp_storage[GPU_MAX_WARPS_PER_BLOCK];
 
-  __shared__ float s_A[32][32 + 1];  //+1 to avoid bank conflicts on transpose
+  __shared__ float
+      s_A[GPU_MAX_WARPS_PER_BLOCK]
+         [GPU_WARP_SIZE + 1];  //+1 to avoid bank conflicts on transpose
 
   int bid = blockIdx.x;   // batch id
   int tid = threadIdx.x;  // thread id
@@ -41,13 +51,15 @@ __global__ void batched_gemv_reduce_kernel(int rows, int cols,
   // Offset to input vector to starting column for batch
   const float* __restrict__ X_in = X + bid * ldx;
 
-  for (int i = 0; i < cols; i += 32) {  // threadIdx.x, keep all threads present
+  for (int i = 0; i < cols;
+       i += GPU_WARP_SIZE) {  // threadIdx.x, keep all threads present
     int c = i + tid;
 
     float sum = 0.0f;
     // Perform dot product
     for (int j = 0; j < rows;
-         j += 32) {  // threadIdx.y, keep all threads present
+         j +=
+         GPU_MAX_WARPS_PER_BLOCK) {  // threadIdx.y, keep all threads present
       int r = j + wid;
 
       float val = 0.0f;
@@ -133,9 +145,11 @@ __global__ void get_matrix_sum_double_buffer_kernel(int32_t b, int32_t num_rows,
                                                     int32_t lda, float scale,
                                                     float* retval) {
   // Specialize WarpReduce for type float
-  typedef cub::BlockReduce<float, 32, cub::BLOCK_REDUCE_WARP_REDUCTIONS, 32>
+  typedef cub::BlockReduce<float, GPU_WARP_SIZE,
+                           cub::BLOCK_REDUCE_WARP_REDUCTIONS,
+                           GPU_MAX_WARPS_PER_BLOCK>
       BlockReduce;
-  // Allocate WarpReduce shared memory for 32 warps
+  // Allocate WarpReduce shared memory for GPU_MAX_WARPS_PER_BLOCK warps
   __shared__ typename BlockReduce::TempStorage temp_storage;
 
   float sum = 0.0f;
@@ -201,7 +215,8 @@ __global__ void update_linear_and_quadratic_terms_kernel(
 void batched_gemv_reduce(int batch_size, int rows, int cols, int A_stride,
                          const float* AT, int B_stride, const float* B,
                          float* C) {
-  batched_gemv_reduce_kernel<<<batch_size, dim3(32, 32)>>>(
+  batched_gemv_reduce_kernel<<<batch_size,
+                               dim3(GPU_WARP_SIZE, GPU_MAX_WARPS_PER_BLOCK)>>>(
       rows, cols, AT, A_stride, B, B_stride, C);
   CU_SAFE_CALL(cudaGetLastError());
 }
@@ -209,8 +224,11 @@ void batched_gemv_reduce(int batch_size, int rows, int cols, int A_stride,
 void splice_features(int32_t num_frames, int32_t feat_dim, int32_t left,
                      int32_t size, const float* feats, int32_t ldf,
                      float* sfeats, int32_t lds) {
-  int threads = (feat_dim + 31) / 32 * 32;  // round up to the nearest warp size
-  if (threads > 1024) threads = 1024;       // Max block size is 1024 threads
+  int threads = (feat_dim + GPU_WARP_SIZE - 1) / GPU_WARP_SIZE *
+                GPU_MAX_WARPS_PER_BLOCK;  // round up to the nearest warp size
+  if (threads > GPU_MAX_THREADS_PER_BLOCK)
+    threads = GPU_MAX_THREADS_PER_BLOCK;  // Max block size is
+                                          // GPU_MAX_THREADS_PER_BLOCK threads
 
   splice_features_kernel<<<num_frames, threads>>>(
       num_frames, feat_dim, left, size, feats, ldf, sfeats, lds);
@@ -232,7 +250,7 @@ void update_linear_and_quadratic_terms(int32_t n, float old_num_frames,
 void get_matrix_sum_double_buffer(int32_t b, int32_t num_rows, int32_t num_cols,
                                   float* A, int32_t lda, float scale,
                                   float* sum) {
-  dim3 threads(32, 32);
+  dim3 threads(GPU_WARP_SIZE, GPU_MAX_WARPS_PER_BLOCK);
   dim3 blocks((num_cols + threads.x - 1) / threads.x,
               (num_rows + threads.y - 1) / threads.y);
 
@@ -243,7 +261,7 @@ void get_matrix_sum_double_buffer(int32_t b, int32_t num_rows, int32_t num_cols,
 
 void square_matrix(int32_t num_rows, int32_t num_cols, const float* feats,
                    int32_t ldf, float* feats_sq, int32_t lds) {
-  dim3 threads(32, 32);
+  dim3 threads(GPU_WARP_SIZE, GPU_MAX_WARPS_PER_BLOCK);
   dim3 blocks((num_cols + threads.x - 1) / threads.x,
               (num_rows + threads.y - 1) / threads.y);
 

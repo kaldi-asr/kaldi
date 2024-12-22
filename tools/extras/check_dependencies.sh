@@ -82,61 +82,73 @@ if ! have libtoolize && ! have glibtoolize; then
   add_packages libtool
 fi
 
-if ! have svn; then
-  echo "$0: subversion is not installed"
-  add_packages subversion
-fi
-
 if ! have awk; then
   echo "$0: awk is not installed"
   add_packages gawk
 fi
 
-pythonok=true
+pythonok=false
+python3=false
+python27=false
+
+
 if ! have python2.7; then
   echo "$0: python2.7 is not installed"
-  add_packages python27 python2.7
-  pythonok=false
+else
+  echo "$0: python2.7 present"
+  python27=true
+  pythonok=true
 fi
 
 if ! have python3; then
   echo "$0: python3 is not installed"
   add_packages python3
-  pythonok=false
+else
+  echo "$0: python3 present"
+  python3=true
+  pythonok=true
 fi
 
 (
 #Use a subshell so that sourcing env.sh does not have an influence on the rest of the script
 [ -f ./env.sh ] && . ./env.sh
-if $pythonok && ! have python2; then
-  mkdir -p $PWD/python
-  echo "$0: python2.7 is installed, but the python2 binary does not exist." \
-       "Creating a symlink and adding this to tools/env.sh"
-  ln -s $(command -v python2.7) $PWD/python/python2
-  echo "export PATH=$PWD/python:\${PATH}" >> env.sh
-fi
-
-if [[ -f $PWD/python/.use_default_python && -f $PWD/python/python ]]; then
-  rm $PWD/python/python
-fi
-
-if $pythonok && have python && [[ ! -f $PWD/python/.use_default_python ]]; then
-  version=$(python 2>&1 --version | awk '{print $2}')
-  if [[ $version != "2.7"* ]] ; then
-    echo "$0: WARNING python 2.7 is not the default python. We fixed this by" \
-         "adding a correct symlink more prominently on the path."
-    echo " ... If you really want to use python $version as default, add an" \
+rm -f $PWD/python/python*
+if ! [ -f $PWD/python/.use_default_python ]; then
+  echo "$0: Configuring python"
+  echo "$0: ... If you really want to avoid this, add an" \
          "empty file $PWD/python/.use_default_python and run this script again."
-    mkdir -p $PWD/python
+  if $python27 ; then
+    echo "$0: ... python2.7 found, making it default (python, python2, python2.7)"
     ln -s $(command -v python2.7) $PWD/python/python
-    echo "export PATH=$PWD/python:\${PATH}" >> env.sh
+    ln -s $(command -v python2.7) $PWD/python/python2
+    ln -s $(command -v python2.7) $PWD/python/python2.7
+  fi
+
+  if $python3 ; then
+    echo "$0: ... python3 found, making symlink (python3)"
+    ln -s $(command -v python3) $PWD/python/python3
+    if ! $python27 ; then
+      echo "$0: ... ... python2.7 not found, using python3 as python"
+      ln -s $(command -v python3) $PWD/python/python
+    fi
+  fi
+else
+  echo "$0: Not configuring python(s) -- using system defaults"
+  if ! have python ; then
+    echo "$0: WARNING: 'python' executable not present, configuring"
+    if $python27 ; then
+      ln -s $(command -v python2.7) $PWD/python/python
+    elif $python3 ; then
+      ln -s $(command -v python3) $PWD/python/python
+    fi
   fi
 fi
+
 )
 
 mathlib_missing=false
-case $(uname -m) in
-  x86_64)  # Suggest MKL on an Intel64 system (not supported on i?86 hosts).
+case "$(uname -m)-$(uname -s)" in
+  x86_64*)  # Suggest MKL on an Intel64 system (not supported on i?86 hosts).
     # Respect user-supplied MKL_ROOT environment variable.
     MKL_ROOT="${MKL_ROOT:-/opt/intel/mkl}"
        # Check the well-known mkl.h file location.
@@ -155,6 +167,9 @@ case $(uname -m) in
       mathlib_missing=true
     fi
       ;;
+  arm64-Darwin)  ## Apple Silicon
+    echo "$0: Relying on Acceleration framework"
+    ;;
   *)  # Suggest OpenBLAS on other hardware.
     if [ ! -f $(pwd)/OpenBLAS/install/include/openblas_config.h ] &&
          ! echo '#include <openblas_config.h>' |

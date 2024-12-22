@@ -105,13 +105,12 @@ class CuArrayBase {
  protected:
   /// Default constructor: make it protected so the user cannot
   /// instantiate this class.
-  CuArrayBase<T>(): data_(NULL), dim_(0) { }
+  CuArrayBase(): data_(NULL), dim_(0) { }
 
 
   T *data_;  ///< GPU data pointer (if GPU not available,
              ///< will point to CPU memory).
   MatrixIndexT dim_;     ///< dimension of the vector
-
 };
 
 /**
@@ -123,22 +122,21 @@ class CuArrayBase {
 template<typename T>
 class CuArray: public CuArrayBase<T> {
  public:
-
   /// Default constructor, initialized data_ to NULL and dim_ to 0 via
   /// constructor of CuArrayBase.
-  CuArray<T>() { }
+  CuArray() { }
 
   /// Constructor with memory initialisation.  resize_type may be kSetZero or
   /// kUndefined.
-  explicit CuArray<T>(MatrixIndexT dim, MatrixResizeType resize_type = kSetZero)
+  explicit CuArray(MatrixIndexT dim, MatrixResizeType resize_type = kSetZero)
      { Resize(dim, resize_type); }
 
   /// Constructor from CPU-based int vector
-  explicit CuArray<T>(const std::vector<T> &src) { CopyFromVec(src); }
+  explicit CuArray(const std::vector<T> &src) { CopyFromVec(src); }
 
   /// Copy constructor.  We don't make this explicit because we want to be able
   /// to create a std::vector<CuArray>.
-  CuArray<T>(const CuArray<T> &src) { CopyFromArray(src); }
+  CuArray(const CuArray<T> &src) { CopyFromArray(src); }
 
   /// Destructor
   ~CuArray() { Destroy(); }
@@ -172,7 +170,6 @@ class CuArray: public CuArrayBase<T> {
   /// I/O
   void Read(std::istream &is, bool binary);
   void Write(std::ostream &is, bool binary) const;
-
 };
 
 
@@ -182,7 +179,7 @@ class CuSubArray: public CuArrayBase<T> {
   /// Constructor as a range of an existing CuArray or CuSubArray.  Note: like
   /// similar constructors in class CuVector and others, it can be used to evade
   /// 'const' constraints; don't do that.
-  explicit CuSubArray<T>(const CuArrayBase<T> &src,
+  explicit CuSubArray(const CuArrayBase<T> &src,
                          MatrixIndexT offset, MatrixIndexT dim);
 
   /// Construct from raw pointers

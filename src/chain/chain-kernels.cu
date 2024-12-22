@@ -20,6 +20,11 @@
 #include <cfloat>
 #include "chain/chain-kernels-ansi.h"
 
+#ifdef __IS_HIP_COMPILE__
+#define __CUDA_ARCH__ 800
+#include <hip/hip_runtime.h>
+#endif
+
 #if defined(__CUDA_ARCH__) && __CUDA_ARCH__ < 200
 #error - Kaldi no longer supports CC1.x devices. Please use a newer GPU or \
          configure with --use-cuda=no (this will disable the use of GPU).

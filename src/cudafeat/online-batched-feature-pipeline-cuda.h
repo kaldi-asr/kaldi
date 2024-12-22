@@ -23,6 +23,10 @@
 #include <string>
 #include <vector>
 
+#ifdef __IS_HIP_COMPILE__
+#include "hipify.h"
+#endif
+
 #include "base/kaldi-error.h"
 #include "feat/feature-window.h"
 #include "matrix/matrix-lib.h"

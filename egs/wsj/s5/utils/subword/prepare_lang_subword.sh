@@ -163,7 +163,7 @@ if $position_dependent_phones; then
   if "$silprob"; then
     echo "$0: Currently we do not support word-dependent silence probability" && exit 1;
   else
-    utils/lang/make_position_dependent_subword_lexicon.py $srcdir/lexiconp.txt > $tmpdir/lexiconp.txt || exit 1;
+    utils/lang/make_position_dependent_subword_lexicon.py --separator $separator $srcdir/lexiconp.txt > $tmpdir/lexiconp.txt || exit 1;
   fi
 
   # create $tmpdir/phone_map.txt

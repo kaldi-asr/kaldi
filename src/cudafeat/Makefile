@@ -2,12 +2,14 @@ all: ;
 
 include ../kaldi.mk
 
-ifeq ($(CUDA), true)
+ifeq ($(IS_GPU_BUILD), true)
 ifeq ($(WITH_CUDADECODER), true)
 
 # Make sure we have CUDA_ARCH from kaldi.mk,
+ifeq ($(CUDA), true)
 ifndef CUDA_ARCH
   $(error CUDA_ARCH is undefined, run 'src/configure')
+endif
 endif
 
 TESTFILES =
@@ -37,9 +39,14 @@ LDLIBS += $(CUDA_LDLIBS)
 
 
 # Implicit rule for kernel compilation
+ifeq ($(CUDA), true)
 %.o : %.cu
 	$(CUDATKDIR)/bin/nvcc -c -g $< -o $@ $(CUDA_INCLUDE) $(CUDA_FLAGS) $(CUDA_ARCH) -I../ -I$(OPENFSTINC)
-
+endif
+ifeq ($(ROCM), true)
+%.o : %.cu
+	$(HIPCC) -c -x hip $< -o $@ $(ROCM_INCLUDE) $(ROCM_FLAGS) $(ROCM_ARCH_FLAGS) -I../ -I$(OPENFSTINC)
+endif
 else
 all:
 		$(warning "Not building cudadecoder extension -- to build with it, configure with --with-cudadecoder[=true]")

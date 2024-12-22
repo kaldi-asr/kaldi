@@ -20,7 +20,13 @@
 
 #if HAVE_CUDA
 
+#ifdef __IS_HIP_COMPILE__
+#include <hip/hip_runtime_api.h>
+
+#include "hipify.h"
+#else
 #include <cuda_runtime_api.h>
+#endif
 
 #include <atomic>
 #include <cfloat>

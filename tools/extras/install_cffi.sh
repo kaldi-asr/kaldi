@@ -35,7 +35,7 @@ echo "**** Installing Cffi and dependencies"
 
 echo "Checking for Python-Dev"
 # copied from https://stackoverflow.com/questions/4848566/check-for-existence-of-python-dev-files-from-bash-script
-if [ ! -e $(python -c 'from distutils.sysconfig import get_makefile_filename as m; print m()') ]; then
+if [ ! -e $(python -c 'from sysconfig import get_makefile_filename as m; print m()') ]; then
     echo "On Debian/Ubuntu like system install by 'sudo apt-get python-dev' package."
     echo "On Fedora by 'yum install python-devel'"
     echo "On Mac OS X by 'brew install python'"

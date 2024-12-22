@@ -37,8 +37,15 @@
 #include <utility>
 #include <vector>
 
+#ifdef __IS_HIP_COMPILE__
+#include <hip/hip_runtime_api.h>
+#include <roctracer/roctx.h>
+
+#include "hipify.h"
+#else
 #include <cuda_runtime_api.h>
-#include <nvToolsExt.h>
+#include <nvtx3/nvToolsExt.h>
+#endif
 
 #include "base/kaldi-utils.h"
 #include "cudadecoder/cuda-decoder-kernels.h"
@@ -184,35 +191,36 @@ void CudaDecoder::AllocateDeviceData() {
 void CudaDecoder::AllocateHostData() {
   channel_to_compute_.resize(nlanes_);
   KALDI_DECODER_CUDA_API_CHECK_ERROR(cudaMallocHost(
-      &h_extra_and_acoustic_cost_concat_,
+      (void **)&h_extra_and_acoustic_cost_concat_,
       nlanes_ * main_q_capacity_ * sizeof(*h_extra_and_acoustic_cost_concat_)));
   KALDI_DECODER_CUDA_API_CHECK_ERROR(cudaMallocHost(
-      &h_acoustic_cost_concat_,
+      (void **)&h_acoustic_cost_concat_,
       nlanes_ * main_q_capacity_ * sizeof(*h_acoustic_cost_concat_)));
   KALDI_DECODER_CUDA_API_CHECK_ERROR(cudaMallocHost(
-      &h_extra_prev_tokens_concat_,
+      (void **)&h_extra_prev_tokens_concat_,
       nlanes_ * main_q_capacity_ * sizeof(*h_extra_prev_tokens_concat_)));
   KALDI_DECODER_CUDA_API_CHECK_ERROR(cudaMallocHost(
-      &h_infotoken_concat_,
+      (void **)&h_infotoken_concat_,
       nlanes_ * main_q_capacity_ * sizeof(*h_infotoken_concat_)));
   KALDI_DECODER_CUDA_API_CHECK_ERROR(
-      cudaMallocHost(&h_extra_and_acoustic_cost_concat_tmp_,
+      cudaMallocHost((void **)&h_extra_and_acoustic_cost_concat_tmp_,
                      nlanes_ * main_q_capacity_ *
                          sizeof(*h_extra_and_acoustic_cost_concat_tmp_)));
   KALDI_DECODER_CUDA_API_CHECK_ERROR(cudaMallocHost(
-      &h_acoustic_cost_concat_tmp_,
+      (void **)&h_acoustic_cost_concat_tmp_,
       nlanes_ * main_q_capacity_ * sizeof(*h_acoustic_cost_concat_tmp_)));
   KALDI_DECODER_CUDA_API_CHECK_ERROR(cudaMallocHost(
-      &h_extra_prev_tokens_concat_tmp_,
+      (void **)&h_extra_prev_tokens_concat_tmp_,
       nlanes_ * main_q_capacity_ * sizeof(*h_extra_prev_tokens_concat_tmp_)));
   KALDI_DECODER_CUDA_API_CHECK_ERROR(cudaMallocHost(
-      &h_infotoken_concat_tmp_,
+      (void **)&h_infotoken_concat_tmp_,
       nlanes_ * main_q_capacity_ * sizeof(*h_infotoken_concat_tmp_)));
   h_lanes_counters_.Resize(
       nlanes_ + 1,
       1);  // +1 because we sometimes need last+1 value (for offsets)
-  KALDI_DECODER_CUDA_API_CHECK_ERROR(cudaMallocHost(
-      &h_channels_counters_, nchannels_ * sizeof(*h_channels_counters_)));
+  KALDI_DECODER_CUDA_API_CHECK_ERROR(
+      cudaMallocHost((void **)&h_channels_counters_,
+                     nchannels_ * sizeof(*h_channels_counters_)));
 
   h_all_tokens_extra_prev_tokens_extra_and_acoustic_cost_.resize(nchannels_);
   h_all_tokens_acoustic_cost_.resize(nchannels_);

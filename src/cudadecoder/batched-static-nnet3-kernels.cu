@@ -17,6 +17,11 @@
 
 #include "cudadecoder/batched-static-nnet3-kernels.h"
 
+#ifdef __IS_HIP_COMPILE__
+#include "hip/hip_runtime.h"
+#include "hipify.h"
+#endif
+
 #include <stdio.h>
 namespace kaldi {
 namespace cuda_decoder {

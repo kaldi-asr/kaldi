@@ -25,6 +25,8 @@
 #include "lat/kaldi-lattice.h"
 #include "lat/lattice-functions.h"
 
+#include "fstext/openfst_compat.h"
+
 namespace kaldi {
 
  using std::string;
@@ -257,7 +259,7 @@ int main(int argc, char *argv[]) {
     }
 
     int32 n_done = 0, n_fail = 0;
-    int32 tot_correct = 0, tot_substitutions = 0,
+    int32 tot_substitutions = 0,
           tot_insertions = 0, tot_deletions = 0, tot_words = 0;
 
     for (; !lattice_reader.Done(); lattice_reader.Next()) {
@@ -320,7 +322,6 @@ int main(int argc, char *argv[]) {
         KALDI_LOG << "%WER " << (100.*tot_errs) / num_words << " [ " << tot_errs
                   << " / " << num_words << ", " << insertions << " insertions, "
                   << deletions << " deletions, " << substitutions << " sub ]";
-        tot_correct += correct;
         tot_substitutions += substitutions;
         tot_insertions += insertions;
         tot_deletions += deletions;

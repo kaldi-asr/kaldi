@@ -36,7 +36,7 @@ grep -q $separator $word_text && echo "$0: Error, word text file contains separa
 glossaries_opt=
 [ -z $glossaires ] && glossaries_opt="--glossaries $glossaries"
 cut -d ' ' -f2- $word_text | \
-  utils/lang/bpe/apply_bpe.py -c $pair_code --separator $separator $glossaires_opt > ${word_text}.sub
+  utils/lang/bpe/apply_bpe.py -c $pair_code --separator $separator $glossaries_opt > ${word_text}.sub
   if [ $word_text == $subword_text ]; then
     mv $word_text ${word_text}.old
     cut -d ' ' -f1 ${word_text}.old | paste -d ' ' - ${word_text}.sub > $subword_text

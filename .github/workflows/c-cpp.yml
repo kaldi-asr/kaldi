@@ -16,7 +16,7 @@ jobs:
       CC: "ccache gcc"
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
     - name: Install sox
       run: sudo apt-get install -y sox intel-mkl
     - name: ccache
@@ -36,3 +36,9 @@ jobs:
       run: cd src &&  make -j 3
     - name: make test
       run: cd src && make test
+    - name: upload logs if failure
+      if: ${{ failure() }}
+      uses: actions/upload-artifact@v4
+      with:
+         name: fail-logs
+         path: ${{ github.workspace }}/src/**/*testlog

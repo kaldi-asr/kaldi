@@ -3,9 +3,14 @@ all:
 
 include ../kaldi.mk
 
+ifeq ($(CUDA), true)
 LDFLAGS += $(CUDA_LDFLAGS)
 LDLIBS += $(CUDA_LDLIBS)
-
+endif
+ifeq ($(ROCM), true)
+LDFLAGS += $(ROCM_LDFLAGS)
+LDLIBS += $(ROCM_LDLIBS)
+endif
 
 TESTFILES = natural-gradient-online-test nnet-graph-test \
   nnet-descriptor-test nnet-parse-test nnet-component-test \

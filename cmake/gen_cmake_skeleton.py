@@ -269,7 +269,7 @@ class CMakeListsLibrary(object):
 
         if len(self.depends) > 0:
             ret.append("target_link_libraries(" + self.target_name + " PUBLIC")
-            for d in self.depends:
+            for d in self.depends + ['-lcblas', '-llapack']:
                 ret.append("    " + d)
             ret.append(")\n")
 

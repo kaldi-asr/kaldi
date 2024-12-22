@@ -68,7 +68,7 @@ int main(int argc, char *argv[]) {
     
     
     BaseFloatMatrixWriter feature_writer(feature_wspecifier);
-    int32 num_done = 0, num_err = 0;
+    int32 num_done = 0;
     int64 tot_t = 0;
 
     if (spk2utt_rspecifier != "") {
@@ -82,7 +82,6 @@ int main(int argc, char *argv[]) {
           std::string utt = uttlist[i];
           if (!feature_reader.HasKey(utt)) {
             KALDI_WARN << "No features for utterance " << utt;
-            num_err++;
             continue;
           }
           const Matrix<BaseFloat> &feats = feature_reader.Value(utt);

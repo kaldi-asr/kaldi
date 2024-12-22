@@ -1,0 +1,8 @@
+%WER 46.16 [ 15522 / 33628, 380 ins, 2208 del, 12934 sub ] exp/mono/decode_test/wer_10_0.0
+%WER 24.60 [ 8274 / 33628, 330 ins, 860 del, 7084 sub ] exp/tri1/decode_test/wer_13_0.0
+%WER 24.42 [ 8213 / 33628, 323 ins, 847 del, 7043 sub ] exp/tri2/decode_test/wer_13_0.0
+%WER 22.93 [ 7712 / 33628, 336 ins, 814 del, 6562 sub ] exp/tri3a/decode_test/wer_12_0.0
+%WER 20.17 [ 6783 / 33628, 275 ins, 764 del, 5744 sub ] exp/tri4a/decode_test/wer_15_0.0
+%WER 19.03 [ 6400 / 33628, 292 ins, 667 del, 5441 sub ] exp/tri5a/decode_test/wer_14_0.0
+%WER 15.45 [ 5196 / 33628, 229 ins, 646 del, 4321 sub ] exp/nnet3/tdnn_sp/decode_test/wer_16_0.0
+%WER 15.57 [ 5235 / 33628, 244 ins, 575 del, 4416 sub ] exp/chain/tdnn_1a_sp/decode_test/wer_11_0.0

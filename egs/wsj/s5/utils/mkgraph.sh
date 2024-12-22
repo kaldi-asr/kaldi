@@ -50,7 +50,6 @@ dir=$3
 
 mkdir -p $dir
 
-# If $lang/tmp/LG.fst does not exist or is older than its sources, make it...
 # (note: the [[ ]] brackets make the || type operators work (inside [ ], we
 # would have to use -o instead),  -f means file exists, and -ot means older than).
 
@@ -93,6 +92,8 @@ fi
 
 mkdir -p $lang/tmp
 trap "rm -f $lang/tmp/LG.fst.$$" EXIT HUP INT PIPE TERM
+
+# If $lang/tmp/LG.fst does not exist or is older than its sources, make it...
 # Note: [[ ]] is like [ ] but enables certain extra constructs, e.g. || in
 # place of -o
 if [[ ! -s $lang/tmp/LG.fst || $lang/tmp/LG.fst -ot $lang/G.fst || \

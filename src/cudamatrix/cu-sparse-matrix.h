@@ -121,13 +121,13 @@ public:
 
   /// Default constructor
   CuSparseMatrix() :
-      num_rows_(0), num_cols_(0), nnz_(0), csr_row_ptr_col_idx_(NULL), csr_val_(
+    num_rows_(0), num_cols_(0), nnz_(0), csr_row_ptr_(NULL), csr_col_idx_(NULL), csr_val_(
           NULL) {
   }
 
   /// Constructor from CPU-based sparse matrix.
   explicit CuSparseMatrix(const SparseMatrix<Real> &smat) :
-      num_rows_(0), num_cols_(0), nnz_(0), csr_row_ptr_col_idx_(NULL), csr_val_(
+    num_rows_(0), num_cols_(0), nnz_(0), csr_row_ptr_(NULL), csr_col_idx_(NULL), csr_val_(
       NULL) {
     this->CopyFromSmat(smat);
   }
@@ -135,7 +135,7 @@ public:
   /// Constructor from GPU-based sparse matrix (supports transposition).
   CuSparseMatrix(const CuSparseMatrix<Real> &smat, MatrixTransposeType trans =
                      kNoTrans) :
-      num_rows_(0), num_cols_(0), nnz_(0), csr_row_ptr_col_idx_(NULL), csr_val_(
+    num_rows_(0), num_cols_(0), nnz_(0), csr_row_ptr_(NULL), csr_col_idx_(NULL), csr_val_(
       NULL) {
     this->CopyFromSmat(smat, trans);
   }
@@ -200,19 +200,19 @@ protected:
   /// indices of the first nonzero element in the i-th row, while the last entry
   /// contains nnz_, as zero-based CSR format is used.
   const int* CsrRowPtr() const {
-    return csr_row_ptr_col_idx_;
+    return csr_row_ptr_;
   }
   int* CsrRowPtr() {
-    return csr_row_ptr_col_idx_;
+    return csr_row_ptr_;
   }
 
   /// Returns pointer to the integer array of length nnz_ that contains
   /// the column indices of the corresponding elements in array CsrVal()
   const int* CsrColIdx() const {
-    return csr_row_ptr_col_idx_ + num_rows_ + 1;
+    return csr_col_idx_;
   }
   int* CsrColIdx() {
-    return csr_row_ptr_col_idx_ + num_rows_ + 1;
+    return csr_col_idx_;
   }
 
 private:
@@ -238,9 +238,10 @@ private:
   // number of non-zeros
   MatrixIndexT nnz_;
 
-  // csr row ptrs and col indices in a single int array
-  // of the length (num_rows_ + 1 + nnz_)
-  int* csr_row_ptr_col_idx_;
+  // length num_rows_ + 1
+  int* csr_row_ptr_;
+  // length nnz_
+  int* csr_col_idx_;
 
   // csr value array of the length nnz_
   Real* csr_val_;

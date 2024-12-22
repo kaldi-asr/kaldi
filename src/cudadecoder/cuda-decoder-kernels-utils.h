@@ -137,7 +137,7 @@ __device__ __inline__ void atomicMinI2(int2 *ptr, int2 val) {
   value.i2 = val;
   if (old.i2.x <= val.x) return;
   do {
-    assumed = old;
+    assumed.ull = old.ull;
     old.ull = atomicCAS(ptr64, assumed.ull, value.ull);
   } while (old.ull != assumed.ull && old.i2.x > value.i2.x);
 }
@@ -148,7 +148,7 @@ __device__ void atomicSubI2(int2 *ptr, int2 sub) {
   UInt64UnionInt2 old, assumed, value;
   old.ull = *ptr64;
   do {
-    assumed = old;
+    assumed.ull = old.ull;
     value.i2.x = assumed.i2.x - sub.x;
     value.i2.y = assumed.i2.y - sub.y;
     old.ull = atomicCAS(ptr64, assumed.ull, value.ull);

@@ -28,14 +28,27 @@
 #include <string>
 #include <iostream>
 
+#ifdef __IS_HIP_COMPILE__
+#include <hip/hip_runtime.h>
+#include <hip/hip_runtime_api.h>
+#include <hipblas/hipblas.h>
+#include <hiprand/hiprand.h>
+#include <hipsparse/hipsparse.h>
+
+#include "hipify.h"
+#else
 #include <cublas_v2.h>
 #include <cuda.h>
 #include <cuda_runtime_api.h>
 #include <curand.h>
 #include <cusparse.h>
-
+#endif
 #if CUDA_VERSION >= 9010
+#ifdef __IS_HIP_COMPILE__
+#include <hipsolver/hipsolver.h>
+#else
 #include <cusolverDn.h>
+#endif
 #else
 // cusolver not supported.
 // Setting a few types to minimize compiler guards.

@@ -145,11 +145,16 @@ ifneq ($(CC_SRCS),)
 CC_DEP_COMMAND=$(CXX) -M $(CXXFLAGS) $(CC_SRCS)
 endif
 
-ifeq ($(CUDA), true)
+ifeq ($(IS_GPU_BUILD), true)
 CUDA_SRCS=$(wildcard *.cu)
 # Check if any CUDA .cu sources exist to run dependency commands on.
 ifneq ($(CUDA_SRCS),)
+ifeq ($(CUDA), true)
 NVCC_DEP_COMMAND = $(CUDATKDIR)/bin/nvcc -M $(CUDA_FLAGS) $(CUDA_INCLUDE) $(CUDA_SRCS)
+endif
+ifeq ($(ROCM), true)
+HIPCC_DEP_COMMAND = $(HIPCC) -M $(ROCM_FLAGS) $(ROCM_INCLUDE) $(CUDA_SRCS)
+endif
 endif
 endif
 
@@ -161,6 +166,9 @@ ifneq ($(CC_DEP_COMMAND),)
 endif
 ifneq ($(NVCC_DEP_COMMAND),)
 	-$(NVCC_DEP_COMMAND) >> .depend.mk
+endif
+ifneq ($(HIPCC_DEP_COMMAND),)
+	-$(HIPCC_DEP_COMMAND) >> .depend.mk
 endif
 
 # removing automatic making of "depend" as it's quite slow.

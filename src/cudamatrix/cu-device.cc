@@ -23,10 +23,17 @@
 
 
 #if HAVE_CUDA == 1
+#ifdef __IS_HIP_COMPILE__
+#include <hip/hip_runtime.h>
+#include <hip/hip_runtime_api.h>
+#include <hipblas/hipblas.h>
+
+#include "hipify.h"
+#else
 #include <cublas_v2.h>
 #include <cuda.h>
 #include <cuda_runtime_api.h>
-
+#endif  // __IS_HIP_COMPILE__
 #include <string>
 #include <vector>
 #include <algorithm>
@@ -240,8 +247,12 @@ void CuDevice::SelectGpuId(std::string use_gpu) {
     return;
   } else {
     // Suggest to use compute exclusive mode
+#ifdef __IS_HIP_COMPILE__
+    KALDI_WARN << "Not in compute-exclusive mode.";
+#else
     KALDI_WARN << "Not in compute-exclusive mode.  Suggestion: use "
         "'nvidia-smi -c 3' to set compute exclusive mode";
+#endif
     // We want to choose the device more carefully, so release the CUDA context.
     e = cudaDeviceReset();
     if (e != cudaSuccess) {

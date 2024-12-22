@@ -16,8 +16,20 @@
 // limitations under the License.
 
 #if HAVE_CUDA == 1
-#include <nvToolsExt.h>
+#ifdef __IS_HIP_COMPILE__
+#include <roctracer/roctx.h>
+
+#include "hipify.h"
+// The BLAS enumerators are used instead of the SOLVER ones.
+#ifdef CUBLAS_FILL_MODE_LOWER
+#undef CUBLAS_FILL_MODE_LOWER
 #endif
+#define CUBLAS_FILL_MODE_LOWER HIPSOLVER_FILL_MODE_LOWER
+#else
+#include <nvtx3/nvToolsExt.h>
+#endif
+#endif
+
 #include <iostream>
 
 #include "base/io-funcs.h"

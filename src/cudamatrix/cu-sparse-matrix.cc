@@ -22,8 +22,15 @@
 
 
 #if HAVE_CUDA == 1
+#ifdef __IS_HIP_COMPILE__
+#include <hip/hip_runtime_api.h>
+#include <hipblas/hipblas.h>
+
+#include "hipify.h"
+#else
 #include <cuda_runtime_api.h>
 #include <cublas_v2.h>
+#endif
 #endif
 
 #include <utility>
@@ -138,7 +145,7 @@ void CuSparseMatrix<Real>::SelectRows(const CuArray<int32> &row_indexes,
     // We use warpSize threads per row to access only the nnz elements.
     // Every CU1DBLOCK/warpSize rows share one thread block.
     // 1D grid to cover all selected rows.
-    const int warpSize = 32;
+    const int warpSize = GPU_WARP_SIZE;
     dim3 dimBlock(warpSize, CU1DBLOCK / warpSize);
     dim3 dimGrid(n_blocks(row_indexes.Dim(), dimBlock.y));
 
@@ -161,7 +168,7 @@ void CuSparseMatrix<Real>::SelectRows(const CuArray<int32> &row_indexes,
 template<typename Real>
 CuSparseMatrix<Real>::CuSparseMatrix(const CuArray<int32> &indexes, int32 dim,
                                      MatrixTransposeType trans) :
-    num_rows_(0), num_cols_(0), nnz_(0), csr_row_ptr_col_idx_(NULL), csr_val_(
+  num_rows_(0), num_cols_(0), nnz_(0), csr_row_ptr_(NULL), csr_col_idx_(NULL), csr_val_(
     NULL) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
@@ -194,8 +201,8 @@ template<typename Real>
 CuSparseMatrix<Real>::CuSparseMatrix(const CuArray<int32> &indexes,
                                      const CuVectorBase<Real> &weights,
                                      int32 dim, MatrixTransposeType trans) :
-    num_rows_(0), num_cols_(0), nnz_(0), csr_row_ptr_col_idx_(NULL), csr_val_(
-    NULL) {
+  num_rows_(0), num_cols_(0), nnz_(0), csr_row_ptr_(NULL), csr_col_idx_(NULL), 
+  csr_val_(NULL) {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     Resize(indexes.Dim(), dim, indexes.Dim(), kUndefined);
@@ -266,8 +273,9 @@ void CuSparseMatrix<Real>::Resize(const MatrixIndexT num_rows,
       num_rows_ = 0;
       num_cols_ = 0;
       nnz_ = 0;
-      csr_row_ptr_col_idx_ = static_cast<int*>(CuDevice::Instantiate().Malloc(
+      csr_row_ptr_ = static_cast<int*>(CuDevice::Instantiate().Malloc(
           1 * sizeof(int)));
+      csr_col_idx_ = NULL;   // may be freed, but this is allowed.
       csr_val_ = NULL;
     } else {
       KALDI_ASSERT(num_rows > 0);
@@ -277,10 +285,16 @@ void CuSparseMatrix<Real>::Resize(const MatrixIndexT num_rows,
       num_rows_ = num_rows;
       num_cols_ = num_cols;
       nnz_ = nnz;
-      csr_row_ptr_col_idx_ = static_cast<int*>(CuDevice::Instantiate().Malloc(
-          (num_rows + 1 + nnz) * sizeof(int)));
-      csr_val_ = static_cast<Real*>(CuDevice::Instantiate().Malloc(
+      csr_row_ptr_ = static_cast<int*>(CuDevice::Instantiate().Malloc((num_rows + 1) * sizeof(int)));
+      if (nnz > 0) {
+	csr_col_idx_ = static_cast<int*>(CuDevice::Instantiate().Malloc(
+          nnz * sizeof(int)));
+	csr_val_ = static_cast<Real*>(CuDevice::Instantiate().Malloc(
           nnz * sizeof(Real)));
+      } else {
+	csr_col_idx_ = NULL;
+	csr_val_ = NULL;
+      }
       CuSubArray<int> row_ptr(CsrRowPtr(), NumRows() + 1);
       row_ptr.Set(nnz);
       if (resize_type == kSetZero) {
@@ -302,8 +316,11 @@ void CuSparseMatrix<Real>::Destroy() {
 #if HAVE_CUDA == 1
   if (CuDevice::Instantiate().Enabled()) {
     CuTimer tim;
-    if (csr_row_ptr_col_idx_) {
-      CuDevice::Instantiate().Free(csr_row_ptr_col_idx_);
+    if (csr_row_ptr_) {
+      CuDevice::Instantiate().Free(csr_row_ptr_);
+    }
+    if (csr_col_idx_) {
+      CuDevice::Instantiate().Free(csr_col_idx_);
     }
     if (csr_val_) {
       CuDevice::Instantiate().Free(csr_val_);
@@ -311,7 +328,8 @@ void CuSparseMatrix<Real>::Destroy() {
     num_rows_ = 0;
     num_cols_ = 0;
     nnz_ = 0;
-    csr_row_ptr_col_idx_ = NULL;
+    csr_row_ptr_ = NULL;
+    csr_col_idx_ = NULL;    
     csr_val_ = NULL;
     CuDevice::Instantiate().AccuProfile(__func__, tim);
   } else
@@ -378,11 +396,17 @@ void CuSparseMatrix<Real>::CopyFromSmat(const CuSparseMatrix<Real>& smat,
       CuSubVector<Real> val_from(smat.CsrVal(), smat.NumElements());
       val_to.CopyFromVec(val_from);
 
-      CuSubArray<int> idx_to(csr_row_ptr_col_idx_,
-                             NumRows() + 1 + NumElements());
-      CuSubArray<int> idx_from(smat.csr_row_ptr_col_idx_,
-                               smat.NumRows() + 1 + smat.NumElements());
-      idx_to.CopyFromArray(idx_from);
+      {
+	CuSubArray<int> idx_to(csr_row_ptr_, NumRows() + 1);
+	CuSubArray<int> idx_from(smat.csr_row_ptr_, NumRows() + 1);
+	idx_to.CopyFromArray(idx_from);
+      }
+
+      {
+	CuSubArray<int> idx_to(csr_col_idx_, NumElements());
+	CuSubArray<int> idx_from(smat.csr_col_idx_, NumElements());
+	idx_to.CopyFromArray(idx_from);
+      }
 
     } else {
       Resize(smat.NumCols(), smat.NumRows(), smat.NumElements(), kUndefined);
@@ -413,9 +437,14 @@ void CuSparseMatrix<Real>::CopyToSmat(SparseMatrix<OtherReal> *smat) const {
       smat->Resize(0, 0);
       return;
     }
-    CuSubArray<int> idx(csr_row_ptr_col_idx_, NumRows() + 1 + NumElements());
-    std::vector<int> idx_cpu;
-    idx.CopyToVec(&idx_cpu);
+    CuSubArray<int> row_ptr(csr_row_ptr_, NumRows() + 1);
+    std::vector<int> row_ptr_cpu;
+    row_ptr.CopyToVec(&row_ptr_cpu);
+
+
+    CuSubArray<int> col_idx(csr_col_idx_, NumElements());
+    std::vector<int> col_idx_cpu;
+    col_idx.CopyToVec(&col_idx_cpu);
 
     CuSubVector<Real> val(CsrVal(), NumElements());
     Vector<OtherReal> val_cpu(NumElements(), kUndefined);
@@ -425,8 +454,8 @@ void CuSparseMatrix<Real>::CopyToSmat(SparseMatrix<OtherReal> *smat) const {
         NumRows());
     int n = 0;
     for (int i = 0; i < NumRows(); ++i) {
-      for (; n < idx_cpu[i + 1]; ++n) {
-        const MatrixIndexT j = idx_cpu[NumRows() + 1 + n];
+      for (; n < row_ptr_cpu[i + 1]; ++n) {
+        const MatrixIndexT j = col_idx_cpu[n];
         pairs[i].push_back( { j, val_cpu(n) });
       }
     }
@@ -484,7 +513,8 @@ void CuSparseMatrix<Real>::Swap(CuSparseMatrix<Real> *smat) {
     std::swap(num_rows_, smat->num_rows_);
     std::swap(num_cols_, smat->num_cols_);
     std::swap(nnz_, smat->nnz_);
-    std::swap(csr_row_ptr_col_idx_, smat->csr_row_ptr_col_idx_);
+    std::swap(csr_row_ptr_, smat->csr_row_ptr_);
+    std::swap(csr_col_idx_, smat->csr_col_idx_);
     std::swap(csr_val_, smat->csr_val_);
   } else
 #endif
@@ -548,7 +578,7 @@ Real TraceMatSmat(const CuMatrixBase<Real> &A,
     // We use warpSize threads per row to access only the nnz elements.
     // Every CU1DBLOCK/warpSize rows share one thread block.
     // 1D grid to cover all rows of B.
-    const int warpSize = 32;
+    const int warpSize = GPU_WARP_SIZE;
     dim3 dimBlock(warpSize, CU1DBLOCK / warpSize);
     dim3 dimGrid(n_blocks(B.NumRows(), dimBlock.y));
 
@@ -638,7 +668,7 @@ void CuSparseMatrix<Real>::CopyToMat(CuMatrixBase<OtherReal> *M,
     // We use warpSize threads per row to access only the nnz elements.
     // Every CU1DBLOCK/warpSize rows share one thread block.
     // 1D grid to cover all rows.
-    const int warpSize = 32;
+    const int warpSize = GPU_WARP_SIZE;
     dim3 dimBlock(warpSize, CU1DBLOCK / warpSize);
     dim3 dimGrid(n_blocks(NumRows(), dimBlock.y));
 
