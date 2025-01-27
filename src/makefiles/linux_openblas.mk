@@ -25,7 +25,7 @@ CXXFLAGS = -std=$(CXXLANGVERSION) -I.. -isystem $(OPENFSTINC) -O1 $(EXTRA_CXXFLA
            -DOPENFST_VER=$(OPENFSTVER) \
            -DKALDI_DOUBLEPRECISION=$(DOUBLE_PRECISION) \
            -DHAVE_EXECINFO_H=1 -DHAVE_CXXABI_H -DHAVE_OPENBLAS -I$(OPENBLASINC) \
-           -msse -msse2 -pthread \
+           -msse -msse2 \
            -g
 
 ifeq ($(KALDI_FLAVOR), dynamic)
@@ -46,5 +46,13 @@ ifeq ($(findstring clang,$(COMPILER)),clang)
 CXXFLAGS += -Wno-mismatched-tags
 endif
 
-LDFLAGS = $(EXTRA_LDFLAGS) $(OPENFSTLDFLAGS) -rdynamic
-LDLIBS = $(EXTRA_LDLIBS) $(OPENFSTLIBS) $(OPENBLASLIBS) -lm -lpthread -ldl
+LDFLAGS = $(EXTRA_LDFLAGS) $(OPENFSTLDFLAGS)
+LDLIBS = $(EXTRA_LDLIBS) $(OPENFSTLIBS) $(OPENBLASLIBS) -lm -ldl
+
+ifneq ($(ARCH), WASM)
+  CXXFLAGS += -pthread
+  LDLIBS += -lpthread
+  LDFLAGS += -rdynamic
+else 
+  CXXFLAGS += -DKALDI_WASM
+endif
