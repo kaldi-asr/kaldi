@@ -78,7 +78,7 @@ int main(int argc, char *argv[]) {
         // extra states because already removed alignments.
         ConvertLattice(lat, &fst); // this adds up the (lm,acoustic) costs to get
         // the normal (tropical) costs.
-        Project(&fst, fst::PROJECT_OUTPUT); // Because in the standard Lattice format,
+        Project(&fst, fst::ProjectType::OUTPUT); // Because in the standard Lattice format,
         // the words are on the output, and we want the word labels.
       }
       if (rm_eps) RemoveEpsLocal(&fst);

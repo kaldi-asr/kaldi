@@ -299,7 +299,7 @@ class LatticeWordAligner {
       syms_to_remove.push_back(info_.silence_label);
     if (!syms_to_remove.empty()) {
       RemoveSomeInputSymbols(syms_to_remove, lat_out_);
-      Project(lat_out_, fst::PROJECT_INPUT);
+      Project(lat_out_, fst::ProjectType::INPUT);
     }
   }
 
@@ -890,7 +890,7 @@ class WordAlignedLatticeTester {
       std::vector<int32> to_remove;
       to_remove.push_back(info_.silence_label);
       RemoveSomeInputSymbols(to_remove, &aligned_lat);
-      Project(&aligned_lat, fst::PROJECT_INPUT);
+      Project(&aligned_lat, fst::ProjectType::INPUT);
     }
 
     if (!RandEquivalent(lat_, aligned_lat, 5/*paths*/, 1.0e+10/*delta*/, Rand()/*seed*/,
