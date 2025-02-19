@@ -52,6 +52,22 @@ Development pattern for contributors
 Platform specific notes
 -----------------------
 
+### Fedora 41 (and later)
+
+In order to build it on Fedora 41 using the libraries that are provided by the distro, you need to install the development libraries and dependencies with
+
+```
+sudo dnf install lapack-devel openfst-devel
+```
+
+then build the package as follows:
+
+```
+cmake -S ./ -Bbuild/Release -DFETCHCONTENT_FULLY_DISCONNECTED=ON -DBuildForFedora=ON
+cmake --build /home/gerhard/workspace/kaldi/build/Release
+```
+
+
 ### PowerPC 64bits little-endian (ppc64le)
 
 - Kaldi is expected to work out of the box in RHEL >= 7 and Ubuntu >= 16.04 with
@@ -70,6 +86,6 @@ Platform specific notes
 ### Web Assembly
 
 - Kaldi supports cross compiling for Web Assembly for in-browser execution
-  using [emscripten](https://emscripten.org/) and CLAPACK.
-- See [this post](https://gitlab.inria.fr/kaldi.web/kaldi-wasm/-/wikis/build_details.md)
+  using [emscripten](https://emscripten.org) and OpenBLAS
+- See [this repo](https://github.com/msqr1/kaldi-wasm2)
   for a step-by-step description of the build process.
