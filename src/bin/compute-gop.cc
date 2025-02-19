@@ -1,6 +1,7 @@
 // bin/compute-gop.cc
 
 // Copyright 2019  Junbo Zhang
+//           2024  Jiun-Ting Li (National Taiwan Normal University)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -107,11 +108,14 @@ int main(int argc, char *argv[]) {
     const char *usage =
         "Compute Goodness Of Pronunciation (GOP) from a matrix of "
         "probabilities (e.g. from nnet3-compute).\n"
-        "Usage:  compute-gop [options] <model> <alignments-rspecifier> "
+        "Usage:  compute-gop [options] <model> "
+        "<transition-alignments-respecifier> "
+        "<phoneme-alignments-rspecifier> "
         "<prob-matrix-rspecifier> <gop-wspecifier> "
-        "[<phone-feature-wspecifier>]\n"
+        "<phone-feature-wspecifier>\n"
         "e.g.:\n"
-        " nnet3-compute [args] | compute-gop 1.mdl ark:ali-phone.1 ark:-"
+        " nnet3-compute [args] | compute-gop 1.mdl ark:ali.1 ark:ali-phone.1 "
+        " ark:output.1.ark "
         " ark:gop.1 ark:phone-feat.1\n";
 
     ParseOptions po(usage);
@@ -130,16 +134,17 @@ int main(int argc, char *argv[]) {
 
     po.Read(argc, argv);
 
-    if (po.NumArgs() != 4 && po.NumArgs() != 5) {
+    if (po.NumArgs() != 6) {
       po.PrintUsage();
       exit(1);
     }
 
     std::string model_filename = po.GetArg(1),
-                alignments_rspecifier = po.GetArg(2),
-                prob_rspecifier = po.GetArg(3),
-                gop_wspecifier = po.GetArg(4),
-                feat_wspecifier = po.GetArg(5);
+                transition_alignments_rspecifier = po.GetArg(2),
+                phoneme_alignments_rspecifier = po.GetArg(3),
+                prob_rspecifier = po.GetArg(4),
+                gop_wspecifier = po.GetArg(5),
+                feat_wspecifier = po.GetArg(6);
 
     TransitionModel trans_model;
     {
@@ -174,7 +179,8 @@ int main(int argc, char *argv[]) {
       }
     }
 
-    RandomAccessInt32VectorReader alignment_reader(alignments_rspecifier);
+    RandomAccessInt32VectorReader phoneme_alignments_reader(phoneme_alignments_rspecifier);
+    RandomAccessInt32VectorReader transition_alignments_reader(transition_alignments_rspecifier);
     SequentialBaseFloatMatrixReader prob_reader(prob_rspecifier);
     PosteriorWriter gop_writer(gop_wspecifier);
     BaseFloatVectorWriter feat_writer(feat_wspecifier);
@@ -182,25 +188,41 @@ int main(int argc, char *argv[]) {
     int32 num_done = 0;
     for (; !prob_reader.Done(); prob_reader.Next()) {
       std::string key = prob_reader.Key();
-      if (!alignment_reader.HasKey(key)) {
-        KALDI_WARN << "No alignment for utterance " << key;
+      if (!phoneme_alignments_reader.HasKey(key)) {
+        KALDI_WARN << "No phoneme alignment for utterance " << key;
         continue;
       }
-      auto alignment = alignment_reader.Value(key);
+      if (!transition_alignments_reader.HasKey(key)) {
+        KALDI_WARN << "No transition alignment for utterance " << key;
+        continue;
+      }
+      auto phoneme_alignment = phoneme_alignments_reader.Value(key);
+      auto transition_alignment = transition_alignments_reader.Value(key);
       Matrix<BaseFloat> &probs = prob_reader.Value();
       if (log_applied) probs.ApplyExp();
+
+      std::vector<std::vector<int32> > split;
+      SplitToPhones(trans_model, transition_alignment, &split);
+
+      std::vector<int32> phone_boundary;
+      for (int32 i = 0; i < split.size(); i++) {
+        for (int32 j = 0; j < split[i].size(); j++) {
+          phone_boundary.push_back(i);
+        }
+      }
 
       Matrix<BaseFloat> lpps;
       ComputeLpps(probs, pdf2phones, &lpps);
 
-      int32 frame_num = alignment.size();
-      if (alignment.size() != probs.NumRows()) {
+      int32 frame_num = phoneme_alignment.size();
+      if (phoneme_alignment.size() != probs.NumRows()) {
         KALDI_WARN << "The frame numbers of alignment and prob are not equal.";
         if (frame_num > probs.NumRows()) frame_num = probs.NumRows();
       }
 
       KALDI_ASSERT(frame_num > 0);
-      int32 cur_phone_id = alignment[0];
+      int32 cur_phone_id = phoneme_alignment[0];
+      int32 cur_phone_pos = phone_boundary[0];
       int32 duration = 0;
       Vector<BaseFloat> phone_level_feat(1 + phone_num * 2);  // [phone LPPs LPRs]
       SubVector<BaseFloat> lpp_part(phone_level_feat, 1, phone_num);
@@ -220,8 +242,9 @@ int main(int argc, char *argv[]) {
         lpp_part.AddVec(1, frame_level_lpp);
         duration++;
 
-        int32 next_phone_id = (i < frame_num - 1) ? alignment[i + 1]: -1;
-        if (next_phone_id != cur_phone_id) {
+        int32 next_phone_id = (i < frame_num - 1) ? phoneme_alignment[i + 1]: -1;
+        int32 next_phone_pos = (i < frame_num - 1) ? phone_boundary[i + 1]: -1;
+        if (next_phone_pos != cur_phone_pos) {
           int32 phone_id = phone_map.empty() ? cur_phone_id : phone_map[cur_phone_id];
 
           // The current phone's feature have been ready
@@ -248,6 +271,7 @@ int main(int argc, char *argv[]) {
           duration = 0;
         }
         cur_phone_id = next_phone_id;
+        cur_phone_pos = next_phone_pos;
       }
 
       // Write GOPs and the GOP-based features

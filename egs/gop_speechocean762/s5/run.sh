@@ -2,6 +2,7 @@
 
 # Copyright      2019  Junbo Zhang
 #           2020-2021  Xiaomi Corporation (Author: Junbo Zhang, Yongqing Wang)
+#                2024  Jiun-Ting Li (National Taiwan Normal University)
 # Apache 2.0
 
 # This script shows how to calculate Goodness of Pronunciation (GOP) and
@@ -175,6 +176,7 @@ if [ $stage -le 12 ]; then
       compute-gop --phone-map=data/lang_nosp/phone-to-pure-phone.int \
         --skip-phones-string=0:1:2 \
         $model/final.mdl \
+        "ark,t:gunzip -c exp/ali_$part/ali.JOB.gz|" \
         "ark,t:gunzip -c exp/ali_$part/ali-phone.JOB.gz|" \
         "ark:exp/probs_$part/output.JOB.ark" \
         "ark,scp:exp/gop_$part/gop.JOB.ark,exp/gop_$part/gop.JOB.scp" \
