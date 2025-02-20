@@ -1,0 +1,11 @@
+#!/bin/sed -f
+s:<NOISE>::g
+s:<SPOKEN_NOISE>::g
+s:<UNK>::g
+s/://g
+s/\*//g
+s/-HOLDER/HOLDER/g
+s/COMPAIGN/CAMPAIGN/g
+s/APPROACHES-/APPROACHES/g
+s/RESEACHERS/RESEARCHERS/g
+
