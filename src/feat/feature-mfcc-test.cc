@@ -95,8 +95,8 @@ static void UnitTestSimple() {
   op.frame_opts.round_to_power_of_two = true;
   op.mel_opts.low_freq = 0.0;
   op.mel_opts.htk_mode = true;
+  op.mel_opts.modified = (Rand() % 2 == 0 ? true : false);
   op.htk_compat = true;
-
   Mfcc mfcc(op);
   // use default parameters
 
@@ -613,42 +613,29 @@ static void UnitTestHTKCompare6() {
   }
 
   std::cout << "Test passed :)\n\n";
-  
+
   unlink("tmp.test.wav.fea_kaldi.6");
 }
 
 void UnitTestVtln() {
   // Test the function VtlnWarpFreq.
-  BaseFloat low_freq = 10, high_freq = 7800,
-      vtln_low_cutoff = 20, vtln_high_cutoff = 7400;
-
+  BaseFloat low_freq = 10, high_freq = 7800;
+  MelBanksOptions mel_opts;
+  mel_opts.low_freq = low_freq, mel_opts.high_freq = high_freq;
+  FrameExtractionOptions frame_opts;
+  MelBanks melfbank(mel_opts, frame_opts, 0.9);
   for (size_t i = 0; i < 100; i++) {
     BaseFloat freq = 5000, warp_factor = 0.9 + RandUniform() * 0.2;
-    AssertEqual(MelBanks::VtlnWarpFreq(vtln_low_cutoff, vtln_high_cutoff,
-                             low_freq, high_freq, warp_factor,
-                             freq),
-                freq / warp_factor);
+    AssertEqual(melfbank.VtlnWarpFreq(warp_factor, freq), freq / warp_factor);
 
-    AssertEqual(MelBanks::VtlnWarpFreq(vtln_low_cutoff, vtln_high_cutoff,
-                             low_freq, high_freq, warp_factor,
-                             low_freq),
-                low_freq);
-    AssertEqual(MelBanks::VtlnWarpFreq(vtln_low_cutoff, vtln_high_cutoff,
-                             low_freq, high_freq, warp_factor,
-                             high_freq),
-                high_freq);
+    AssertEqual(melfbank.VtlnWarpFreq(warp_factor, low_freq), low_freq);
+    AssertEqual(melfbank.VtlnWarpFreq(warp_factor, high_freq), high_freq);
     BaseFloat freq2 = low_freq + (high_freq-low_freq) * RandUniform(),
         freq3 = freq2 +  (high_freq-freq2) * RandUniform();  // freq3>=freq2
-    BaseFloat w2 = MelBanks::VtlnWarpFreq(vtln_low_cutoff, vtln_high_cutoff,
-                                low_freq, high_freq, warp_factor,
-                                freq2);
-    BaseFloat w3 = MelBanks::VtlnWarpFreq(vtln_low_cutoff, vtln_high_cutoff,
-                                low_freq, high_freq, warp_factor,
-                                freq3);
+    BaseFloat w2 = melfbank.VtlnWarpFreq(warp_factor, freq2);
+    BaseFloat w3 = melfbank.VtlnWarpFreq(warp_factor, freq3);
     KALDI_ASSERT(w3 >= w2);  // increasing function.
-    BaseFloat w3dash = MelBanks::VtlnWarpFreq(vtln_low_cutoff, vtln_high_cutoff,
-                                    low_freq, high_freq, 1.0,
-                                    freq3);
+    BaseFloat w3dash = melfbank.VtlnWarpFreq(1.0, freq3);
     AssertEqual(w3dash, freq3);
   }
 }
