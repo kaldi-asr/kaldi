@@ -64,6 +64,7 @@ config_to_layer = {
         'attention-relu-renorm-layer': xlayers.XconfigAttentionLayer,
         'attention-relu-batchnorm-layer': xlayers.XconfigAttentionLayer,
         'relu-renorm-attention-layer': xlayers.XconfigAttentionLayer,
+        'residual-attention-layer': xlayers.XconfigResidualAttentionLayer,
         'gru-layer' : xlayers.XconfigGruLayer,
         'pgru-layer' : xlayers.XconfigPgruLayer,
         'opgru-layer' : xlayers.XconfigOpgruLayer,
