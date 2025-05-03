@@ -49,16 +49,16 @@ void LanguageModelEstimator::AddCounts(const std::vector<int32> &sentence) {
 void LanguageModelEstimator::IncrementCount(const std::vector<int32> &history,
                                             int32 next_phone) {
   int32 lm_state_index = FindOrCreateLmStateIndexForHistory(history);
-  if (lm_states_[lm_state_index].tot_count == 0) {
+  if (lm_states_[lm_state_index].tot_count == 0.0) {
     num_active_lm_states_++;
   }
-  lm_states_[lm_state_index].AddCount(next_phone, 1);
+  lm_states_[lm_state_index].AddCount(next_phone, 1.0);
 }
 
 void LanguageModelEstimator::SetParentCounts() {
   int32 num_lm_states = lm_states_.size();
   for (int32 l = 0; l < num_lm_states; l++) {
-    int32 this_count = lm_states_[l].tot_count;
+    BaseFloat this_count = lm_states_[l].tot_count;
     int32 l_iter = l;
     while (l_iter != -1) {
       lm_states_[l_iter].tot_count_with_parents += this_count;
@@ -76,7 +76,7 @@ int32 LanguageModelEstimator::CheckActiveStates() const {
       num_lm_states = lm_states_.size(),
       num_basic_lm_states = 0;
   for (int32 l = 0; l < num_lm_states; l++) {
-    if (lm_states_[l].tot_count != 0)
+    if (lm_states_[l].tot_count != 0.0)
       num_active_states++;
     if (lm_states_[l].history.size() == opts_.no_prune_ngram_order - 1)
       num_basic_lm_states++;
@@ -98,7 +98,7 @@ int32 LanguageModelEstimator::FindNonzeroLmStateIndexForHistory(
     std::vector<int32> hist) const {
   while (1) {
     int32 l = FindLmStateIndexForHistory(hist);
-    if (l == -1 || lm_states_[l].tot_count == 0) {
+    if (l == -1 || lm_states_[l].tot_count == 0.0) {
       // no such state or state has zero count.
       if (hist.empty())
         KALDI_ERR << "Error looking up LM state index for history "
@@ -133,8 +133,8 @@ int32 LanguageModelEstimator::FindOrCreateLmStateIndexForHistory(
   return ans;
 }
 
-void LanguageModelEstimator::LmState::AddCount(int32 phone, int32 count) {
-  std::map<int32, int32>::iterator iter = phone_to_count.find(phone);
+void LanguageModelEstimator::LmState::AddCount(int32 phone, BaseFloat count) {
+  std::map<int32, BaseFloat>::iterator iter = phone_to_count.find(phone);
   if (iter == phone_to_count.end())
     phone_to_count[phone] = count;
   else
@@ -144,7 +144,7 @@ void LanguageModelEstimator::LmState::AddCount(int32 phone, int32 count) {
 
 void LanguageModelEstimator::LmState::Add(const LmState &other) {
   KALDI_ASSERT(&other != this);
-  std::map<int32, int32>::const_iterator iter = other.phone_to_count.begin(),
+  std::map<int32, BaseFloat>::const_iterator iter = other.phone_to_count.begin(),
       end = other.phone_to_count.end();
   for (; iter != end; ++iter)
     AddCount(iter->first, iter->second);
@@ -152,23 +152,25 @@ void LanguageModelEstimator::LmState::Add(const LmState &other) {
 
 void LanguageModelEstimator::LmState::Clear() {
   phone_to_count.clear();
-  tot_count = 0;
-  tot_count_with_parents = false;
+  tot_count = 0.0;
+  tot_count_with_parents = 0.0;
+  total_discount = 0.0;
   backoff_allowed = false;
 }
 
 BaseFloat LanguageModelEstimator::LmState::LogLike() const {
   double ans = 0.0;
-  int32 tot_count_check = 0;
-  std::map<int32, int32>::const_iterator iter = phone_to_count.begin(),
+  BaseFloat tot_count_check = 0;
+  std::map<int32, BaseFloat>::const_iterator iter = phone_to_count.begin(),
       end = phone_to_count.end();
   for (; iter != end; ++iter) {
-    int32 count = iter->second;
+    BaseFloat count = iter->second;
     tot_count_check += count;
-    double prob = count * 1.0 / tot_count;
+    double prob = count / tot_count;
     ans += log(prob) * count;
   }
-  KALDI_ASSERT(tot_count_check == tot_count);
+  KALDI_ASSERT(tot_count_check == tot_count);  // TODO(hhadian): should be tot_count - total_discount
+                                               // but it is never checked anyway
   return ans;
 }
 
@@ -190,11 +192,11 @@ BaseFloat LanguageModelEstimator::BackoffLogLikelihoodChange(
   KALDI_ASSERT(lm_state.backoff_allowed && lm_state.backoff_lmstate_index >= 0);
   const LmState &backoff_lm_state = lm_states_.at(
       lm_state.backoff_lmstate_index);
-  KALDI_ASSERT(lm_state.tot_count != 0);
+  KALDI_ASSERT(lm_state.tot_count != 0.0);
   // if the backoff state has zero count, there would naturally be a zero
   // cost, but return -1e15 * (count of this lm state)... this encourages the
   // lowest-count state to be backed off first.
-  if (backoff_lm_state.tot_count == 0)
+  if (backoff_lm_state.tot_count == 0.0)
     return -1.0e-15 * lm_state.tot_count;
   LmState sum_state(backoff_lm_state);
   sum_state.Add(lm_state);
@@ -211,7 +213,7 @@ BaseFloat LanguageModelEstimator::BackoffLogLikelihoodChange(
 }
 
 
-void LanguageModelEstimator::DoBackoff() {
+void LanguageModelEstimator::PruneStates() {
   int32 initial_active_states = num_active_lm_states_,
       target_num_lm_states = num_basic_lm_states_ + opts_.num_extra_lm_states;
 
@@ -245,7 +247,7 @@ void LanguageModelEstimator::DoBackoff() {
       } else {
         KALDI_VLOG(2) << "Backing off state with like-change = "
                       << recomputed_like_change;
-        BackOffState(lm_state);
+        CompletelyDiscountState(lm_state);
       }
     }
   }
@@ -256,14 +258,14 @@ void LanguageModelEstimator::DoBackoff() {
             << num_active_lm_states_;
 }
 
-void LanguageModelEstimator::BackOffState(int32 l) {
+void LanguageModelEstimator::CompletelyDiscountState(int32 l) {
   LmState &lm_state = lm_states_.at(l);
   KALDI_ASSERT(lm_state.backoff_allowed);
   KALDI_ASSERT(lm_state.backoff_lmstate_index >= 0);
-  KALDI_ASSERT(lm_state.tot_count > 0);  // or shouldn't be backing it off.
+  KALDI_ASSERT(lm_state.tot_count > 0.0);  // or shouldn't be backing it off.
   LmState &backoff_lm_state = lm_states_.at(lm_state.backoff_lmstate_index);
   bool backoff_state_had_backoff_allowed = backoff_lm_state.backoff_allowed;
-  if (backoff_lm_state.tot_count != 0)
+  if (backoff_lm_state.tot_count != 0.0)
     num_active_lm_states_--;
   // add the counts of lm_state to backoff_lm_state.
   backoff_lm_state.Add(lm_state);
@@ -288,10 +290,81 @@ int32 LanguageModelEstimator::AssignFstStates() {
   int32 num_lm_states = lm_states_.size();
   int32 current_fst_state = 0;
   for (int32 l = 0; l < num_lm_states; l++)
-    if (lm_states_[l].tot_count != 0)
+    if (lm_states_[l].tot_count != 0.0)
       lm_states_[l].fst_state = current_fst_state++;
   KALDI_ASSERT(current_fst_state == num_active_lm_states_);
   return current_fst_state;
+}
+
+void LanguageModelEstimator::PrintInfo(bool full) {
+  int32 num_lm_states = lm_states_.size();
+  std::cout << "lm_states_.size():" << num_lm_states << "\n";
+  std::cout << "num_active_lm_states_:" << num_active_lm_states_ << "\n";
+  std::cout << "num_basic_lm_states_:" << num_basic_lm_states_ << "\n";
+  if (!full)
+    return;
+  std::cout << "==========================================================\n";
+  for (int32 l = 0; l < num_lm_states; l++) {
+    std::cout << "---------------- lm state " << l << " -------------------\n";
+    lm_states_[l].PrintInfo();
+  }
+}
+
+void LanguageModelEstimator::LmState::PrintInfo() {
+  std::cout << '[';
+  for (int32 i = 0; i < history.size(); i++)
+    std::cout << (char)(history[i] + 96) << ' ';
+  std::cout << "]\n";
+  std::map<int32, BaseFloat>::const_iterator
+    iter = phone_to_count.begin(),
+    end = phone_to_count.end();
+  for (; iter != end; ++iter) {
+    int32 phone = iter->first;
+    BaseFloat count = iter->second;
+    std::cout << (char)(phone + 96) << ": " << count << "   ";
+  }
+  std::cout << "\n";
+  std::cout << "tot count: " << tot_count << "\n";
+  std::cout << "tot count with parents: " << tot_count_with_parents << "\n";
+  std::cout << "backoff lmstate index: " << backoff_lmstate_index << "\n";
+  std::cout << "num parents: " << num_parents << "\n";
+  std::cout << "fst state: " << fst_state << "\n";
+  std::cout << "boff allowed: " << (backoff_allowed?"true":"false") << "\n\n";
+}
+
+void LanguageModelEstimator::DoKneserNeyDiscounting() {
+  if (opts_.discount == 0.0)
+    return;
+  int32 num_lm_states = lm_states_.size();
+  for (int32 order = opts_.ngram_order - 1;
+       order >= opts_.no_prune_ngram_order;
+       order--) {
+    for (int32 l = 0; l < num_lm_states; l++) {
+      LmState &lm_state = lm_states_[l];
+      if (lm_state.tot_count == 0.0 ||
+	        lm_state.history.size() != order)
+	      continue;   // olny cosider lm-states which are active with a hist size
+	                  // of 'order'
+      KALDI_ASSERT(lm_state.backoff_lmstate_index != -1);
+      LmState &backoff_state = lm_states_[lm_state.backoff_lmstate_index];
+      lm_state.total_discount = 0.0;
+      std::map<int32, BaseFloat>::iterator
+	    iter = lm_state.phone_to_count.begin(),
+	    end = lm_state.phone_to_count.end();
+      for (; iter != end;) {
+	      int32 phone = iter->first;
+	      KALDI_ASSERT(iter->second >= opts_.discount);
+	      iter->second -= opts_.discount;  // TODO(hhadian): maybe make the iterator
+	                                       //  const and do this in another fucntion
+	      lm_state.total_discount += opts_.discount;
+	      backoff_state.AddCount(phone, opts_.discount);
+	      if (iter->second == 0.0)  // erase it
+	        lm_state.phone_to_count.erase(iter++);
+	      else
+	        iter++;
+      }
+    }
+  }
 }
 
 void LanguageModelEstimator::Estimate(fst::StdVectorFst *fst) {
@@ -301,7 +374,8 @@ void LanguageModelEstimator::Estimate(fst::StdVectorFst *fst) {
             << opts_.num_extra_lm_states;
   SetParentCounts();
   num_basic_lm_states_ = CheckActiveStates();
-  DoBackoff();
+  PruneStates();
+  DoKneserNeyDiscounting();
   int32 num_fst_states = AssignFstStates();
   OutputToFst(num_fst_states, fst);
 }
@@ -321,13 +395,13 @@ bool LanguageModelEstimator::BackoffAllowed(int32 l) const {
   KALDI_ASSERT(lm_state.tot_count <= lm_state.tot_count_with_parents);
   if (lm_state.tot_count != lm_state.tot_count_with_parents)
     return false;
-  if (lm_state.tot_count == 0)
+  if (lm_state.tot_count == 0.0)
     return false;
   // the next if-statement is an optimization where we skip the
   // following test if we know that it must always be true.
   if (lm_state.history.size() == opts_.ngram_order - 1)
     return true;
-  std::map<int32, int32>::const_iterator
+  std::map<int32, BaseFloat>::const_iterator
       iter = lm_state.phone_to_count.begin(),
       end = lm_state.phone_to_count.end();
   for (; iter != end; ++iter) {
@@ -337,7 +411,7 @@ bool LanguageModelEstimator::BackoffAllowed(int32 l) const {
       next_hist.push_back(phone);
       int32 next_lmstate = FindLmStateIndexForHistory(next_hist);
       if (next_lmstate != -1 &&
-          lm_states_[next_lmstate].tot_count_with_parents != 0) {
+          lm_states_[next_lmstate].tot_count_with_parents != 0.0) {
         // backoff is not allowed because we need all the context we have
         // in order to make this transition; we can't afford to discard
         // the leftmost phone.
@@ -357,8 +431,12 @@ void LanguageModelEstimator::OutputToFst(
     fst->AddState();
   fst->SetStart(FindInitialFstState());
 
-  int64 tot_count = 0;
+  double tot_count = 0.0;
   double tot_logprob = 0.0;
+
+  // these two are just for checking
+  int64 tot_int_count = 0;
+  double tot_float_count = 0.0;
 
   int32 num_lm_states = lm_states_.size();
   // note: not all lm-states end up being 'active'.
@@ -366,16 +444,21 @@ void LanguageModelEstimator::OutputToFst(
     const LmState &lm_state = lm_states_[l];
     if (lm_state.fst_state == -1)
       continue;
-    int32 state_count = lm_state.tot_count;
-    KALDI_ASSERT(state_count != 0);
-    std::map<int32, int32>::const_iterator
+    BaseFloat state_count = lm_state.tot_count;
+    KALDI_ASSERT(state_count != 0.0);
+    std::map<int32, BaseFloat>::const_iterator
         iter = lm_state.phone_to_count.begin(),
         end = lm_state.phone_to_count.end();
     for (; iter != end; ++iter) {
-      int32 phone = iter->first, count = iter->second;
+      int32 phone = iter->first;
+      BaseFloat count = iter->second;
       BaseFloat logprob = log(count * 1.0 / state_count);
       tot_count += count;
       tot_logprob += logprob * count;
+      if (floorf(count) == count)
+        tot_int_count += static_cast<int64>(count);
+      else
+        tot_float_count += count;
       if (phone == 0) {  // Interpret as final-prob.
         fst->SetFinal(lm_state.fst_state, fst::TropicalWeight(-logprob));
       } else {  // It becomes a transition.
@@ -389,7 +472,27 @@ void LanguageModelEstimator::OutputToFst(
                                 dest_fst_state));
       }
     }
+	  // take care of Kneser-Ney interpolating:
+    if (opts_.discount != 0.0 && lm_state.backoff_lmstate_index != -1) {
+      int32 backoff_fst_state =
+        lm_states_[lm_state.backoff_lmstate_index].fst_state;
+      KALDI_ASSERT(backoff_fst_state != -1);
+      KALDI_ASSERT(lm_state.total_discount != 0.0);
+      BaseFloat backoff_logprob =
+        log(lm_state.total_discount / state_count);
+      fst->AddArc(lm_state.fst_state,
+                  fst::StdArc(0, 0, fst::TropicalWeight(-backoff_logprob),
+                            backoff_fst_state));
+      tot_count += lm_state.total_discount;
+      tot_logprob += backoff_logprob * lm_state.total_discount;
+      if (floorf(lm_state.total_discount) == lm_state.total_discount)
+        tot_int_count += static_cast<int64>(lm_state.total_discount);
+      else
+        tot_float_count += lm_state.total_discount;
+    }
   }
+  KALDI_ASSERT(static_cast<double>(tot_int_count) + tot_float_count
+               == tot_count);
   BaseFloat perplexity = exp(-(tot_logprob / tot_count));
   KALDI_LOG << "Total number of phone instances seen was " << tot_count;
   KALDI_LOG << "Perplexity on training data is: " << perplexity;

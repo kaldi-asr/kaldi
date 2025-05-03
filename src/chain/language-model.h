@@ -49,11 +49,12 @@ struct LanguageModelOptions {
                                // history-state has 2 known left phones)... this
                                // tends to make for a more compact graph (since
                                // the context FST anyway expands to trigram).
-
+  BaseFloat discount;  // the discount value used for Kneser-Ney
+                       // interpolating/backoff
   LanguageModelOptions():
       ngram_order(4),
       num_extra_lm_states(1000),
-      no_prune_ngram_order(3) { }
+      no_prune_ngram_order(3), discount(0.0) { }
 
   void Register(OptionsItf *opts) {
     opts->Register("ngram-order", &ngram_order, "n-gram order for the phone "
@@ -66,6 +67,8 @@ struct LanguageModelOptions {
                    "probably be set the same as your --context-width for phone "
                    "context in tree building, to make the graph as compact as "
                    "possible)");
+    opts->Register("discount", &discount,
+		   "Kneser-Ney smoothing discount value (i.e. D)");
   }
 };
 
@@ -96,21 +99,23 @@ class LanguageModelEstimator {
   // Estimates the LM and outputs it as an FST.  Note: there is
   // no concept here of backoff arcs.
   void Estimate(fst::StdVectorFst *fst);
-
+  void PrintInfo(bool full);
  protected:
   struct LmState {
     // the phone history associated with this state (length can vary).
     std::vector<int32> history;
     // maps from
-    std::map<int32, int32> phone_to_count;
+    std::map<int32, BaseFloat> phone_to_count;
     // total count of this state.  As we back off states to lower-order states
     // (and note that this is a hard backoff where we completely remove un-needed
     // states) this tot_count may become zero.
-    int32 tot_count;
+    BaseFloat tot_count;
+
+    BaseFloat total_discount;
 
     // total count of this state plus all states that back off to this state.
     // only valid after SetParentCounts() is called.
-    int32 tot_count_with_parents;
+    BaseFloat tot_count_with_parents;
 
     // LM-state index of the backoff LM state (if it exists, else -1)...
     // provided for convenience.  The backoff state exist if and only
@@ -135,8 +140,8 @@ class LanguageModelEstimator {
     // count, and
     bool backoff_allowed;
 
-    void AddCount(int32 phone, int32 count);
-
+    void AddCount(int32 phone, BaseFloat count);
+    void PrintInfo();
     // Log-likelihood of data in this case, summed, not averaged:
     // i.e. sum(phone in phones) count(phone) * log-prob(phone | this state).
     BaseFloat LogLike() const;
@@ -144,7 +149,7 @@ class LanguageModelEstimator {
     void Add(const LmState &other);
     // Clear all counts from this state.
     void Clear();
-    LmState(): tot_count(0), tot_count_with_parents(0),  backoff_lmstate_index(-1),
+    LmState(): tot_count(0), total_discount(0.0), tot_count_with_parents(0),  backoff_lmstate_index(-1),
                fst_state(-1), backoff_allowed(false) { }
     LmState(const LmState &other):
         history(other.history), phone_to_count(other.phone_to_count),
@@ -217,15 +222,16 @@ class LanguageModelEstimator {
   // >= no_prune_ngram_order.
   void InitializeQueue();
 
-  // does the logic of pruning/backing-off states.
-  void DoBackoff();
+  // does the logic of pruning states.
+  void PruneStates();
+  void DoKneserNeyDiscounting();
 
   // This function, will back off the counts of this lm_state to its
   // backoff state, and update num_active_lm_states_ as appropriate.
   // If the count of the backoff state was previously zero, and the backoff
   // state's history-length is >= no_prune_ngram_order, the backoff
   // state will get added to the queue.
-  void BackOffState(int32 lm_state);
+  void CompletelyDiscountState(int32 lm_state);
 
   // Check, that num_active_lm_states_ is accurate, and returns
   // the number of 'basic' LM-states (i.e. the number of lm-states whose history
