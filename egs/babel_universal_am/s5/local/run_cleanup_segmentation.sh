@@ -1,0 +1,1 @@
+../../../babel/s5d/local/run_cleanup_segmentation.sh
