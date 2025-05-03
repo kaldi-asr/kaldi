@@ -1,0 +1,81 @@
+The results below are acquired with the improved recipe in the "s5b" folder,
+and they differ very slightly with the published results based on the recipe
+in the "s5" folder.		(Yulan Liu, 22 Feb 2017)
+
+
+======================
+IHM:
+
+1. Without speaker adaptation
+
+- DNN
+%WER 43.5 | 8523 61310 | 60.3 29.8 9.9 3.9 43.5 73.3 | exp/ihm/SA1/dnn4noSAT_pretrain-dbn_dnn/decode_dev_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7/ascore_9/dev.ctm.filt.sys
+%WER 44.0 | 8400 59123 | 60.2 30.2 9.5 4.2 44.0 73.4 | exp/ihm/SA1/dnn4noSAT_pretrain-dbn_dnn/decode_eval_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7/ascore_9/eval.ctm.filt.sys
+
+- DNN+SMBR
+%WER 41.5 | 8523 61310 | 62.6 28.9 8.5 4.1 41.5 71.7 | exp/ihm/SA1/dnn4noSAT_pretrain-dbn_dnn_smbr/decode_dev_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7_it4/ascore_10/dev.ctm.filt.sys
+%WER 41.7 | 8400 59123 | 62.7 29.2 8.2 4.4 41.7 71.2 | exp/ihm/SA1/dnn4noSAT_pretrain-dbn_dnn_smbr/decode_eval_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7_it4/ascore_10/eval.ctm.filt.sys
+
+
+2. With speaker adaptation
+
+- DNN
+%WER 43.1 | 8523 61310 | 61.1 29.5 9.3 4.3 43.1 73.7 | exp/ihm/SA1/dnn4_pretrain-dbn_dnn/decode_dev_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7/ascore_9/dev.ctm.filt.sys
+%WER 43.3 | 8400 59123 | 60.8 29.7 9.5 4.1 43.3 73.2 | exp/ihm/SA1/dnn4_pretrain-dbn_dnn/decode_eval_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7/ascore_10/eval.ctm.filt.sys
+
+- DNN+SMBR
+%WER 41.1 | 8523 61310 | 63.6 28.7 7.8 4.7 41.1 72.1 | exp/ihm/SA1/dnn4_pretrain-dbn_dnn_smbr/decode_dev_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7_it4/ascore_9/dev.ctm.filt.sys
+%WER 41.4 | 8400 59123 | 63.2 28.8 8.1 4.6 41.4 71.6 | exp/ihm/SA1/dnn4_pretrain-dbn_dnn_smbr/decode_eval_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7_it4/ascore_10/eval.ctm.filt.sys
+
+
+======================
+SDM: (TBL1-01)
+
+1. Without speaker adaptation
+
+- DNN
+%WER 79.0 | 9758 58361 | 25.0 53.3 21.7 4.0 79.0 75.7 | -24.432 | exp/sdm1/SA1/dnn4noSAT_pretrain-dbn_dnn/decode_dev_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7/ascore_9/dev_o4.ctm.filt.sys
+%WER 80.4 | 9906 56091 | 23.6 53.8 22.6 4.0 80.4 74.8 | -24.907 | exp/sdm1/SA1/dnn4noSAT_pretrain-dbn_dnn/decode_eval_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7/ascore_10/eval_o4.ctm.filt.sys
+
+- DNN+SMBR
+%WER 76.5 | 9307 58553 | 26.8 49.2 24.0 3.3 76.5 78.8 | -23.331 | exp/sdm1/SA1/dnn4noSAT_pretrain-dbn_dnn_smbr/decode_dev_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7_it4/ascore_10/dev_o4.ctm.filt.sys
+%WER 77.9 | 10318 56260 | 24.9 48.4 26.7 2.9 77.9 70.9 | -23.513 | exp/sdm1/SA1/dnn4noSAT_pretrain-dbn_dnn_smbr/decode_eval_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7_it4/ascore_11/eval_o4.ctm.filt.sys
+
+
+2. With speaker adaptation
+
+- DNN
+%WER 79.5 | 10311 58361 | 24.3 52.1 23.6 3.7 79.5 72.5 | -24.385 | exp/sdm1/SA1/dnn4_pretrain-dbn_dnn/decode_dev_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7/ascore_10/dev_o4.ctm.filt.sys
+%WER 80.7 | 9919 56091 | 23.3 52.6 24.1 4.0 80.7 74.9 | -24.760 | exp/sdm1/SA1/dnn4_pretrain-dbn_dnn/decode_eval_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7/ascore_11/eval_o4.ctm.filt.sys
+
+- DNN+SMBR
+%WER 77.4 | 9959 58553 | 25.9 49.0 25.2 3.2 77.4 74.5 | -23.462 | exp/sdm1/SA1/dnn4_pretrain-dbn_dnn_smbr/decode_dev_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7_it4/ascore_11/dev_o4.ctm.filt.sys
+%WER 78.9 | 9932 56260 | 24.4 49.1 26.5 3.3 78.9 74.4 | -23.791 | exp/sdm1/SA1/dnn4_pretrain-dbn_dnn_smbr/decode_eval_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7_it4/ascore_12/eval_o4.ctm.filt.sys
+
+
+======================
+MDM: (TBL1, 8 channel, BeamformIt)
+
+1. Without speaker adaptation
+
+- DNN
+%WER 75.7 | 10492 58553 | 28.4 50.6 21.0 4.1 75.7 70.3 | -23.321 | exp/mdm8/SA1/dnn4noSAT_pretrain-dbn_dnn/decode_dev_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7/ascore_10/dev_o4.ctm.filt.sys
+%WER 77.2 | 9951 56091 | 27.7 52.7 19.6 4.9 77.2 73.9 | -23.818 | exp/mdm8/SA1/dnn4noSAT_pretrain-dbn_dnn/decode_eval_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7/ascore_10/eval_o4.ctm.filt.sys
+
+- DNN+SMBR
+%WER 72.9 | 10477 58545 | 31.1 48.1 20.8 4.0 72.9 69.9 | -22.662 | exp/mdm8/SA1/dnn4noSAT_pretrain-dbn_dnn_smbr/decode_dev_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7_it4/ascore_10/dev_o4.ctm.filt.sys
+%WER 74.6 | 9866 56091 | 29.2 47.6 23.2 3.8 74.6 73.7 | -22.781 | exp/mdm8/SA1/dnn4noSAT_pretrain-dbn_dnn_smbr/decode_eval_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7_it4/ascore_11/eval_o4.ctm.filt.sys
+
+
+2. With speaker adaptation
+
+- DNN
+%WER 75.6 | 9338 58361 | 28.7 50.2 21.1 4.3 75.6 79.5 | -23.266 | exp/mdm8/SA1/dnn4_pretrain-dbn_dnn/decode_dev_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7/ascore_10/dev_o4.ctm.filt.sys
+%WER 77.4 | 9069 56260 | 26.4 49.8 23.8 3.9 77.4 81.8 | -23.533 | exp/mdm8/SA1/dnn4_pretrain-dbn_dnn/decode_eval_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7/ascore_12/eval_o4.ctm.filt.sys
+
+- DNN+SMBR
+%WER 73.4 | 9373 58361 | 30.7 47.7 21.6 4.1 73.4 78.5 | -22.653 | exp/mdm8/SA1/dnn4_pretrain-dbn_dnn_smbr/decode_dev_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7_it4/ascore_10/dev_o4.ctm.filt.sys
+%WER 75.4 | 10621 56091 | 28.8 47.7 23.5 4.2 75.4 69.1 | -22.909 | exp/mdm8/SA1/dnn4_pretrain-dbn_dnn_smbr/decode_eval_30k-4gram-int-swc.swc.v2.30k-combilex.4g-int.arpa.pr1-7_it4/ascore_11/eval_o4.ctm.filt.sys
+
+
+====================== 
