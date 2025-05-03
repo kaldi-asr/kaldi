@@ -521,7 +521,6 @@ double ComputeLatticeAlphasAndBetas(const CompactLattice &lat,
                                     vector<double> *beta);
 
 
-
 /// This is used in CompactLatticeLimitDepth.
 struct LatticeArcRecord {
   BaseFloat logprob; // logprob <= 0 is the best Viterbi logprob of this arc,
@@ -1876,5 +1875,91 @@ void ReplaceAcousticScoresFromMap(
     }
   }
 }
+
+
+void SampleFromLattice(const Lattice &lat, 
+                       vector<Lattice> *nbest_lats, int32 n) {
+  KALDI_ASSERT(nbest_lats);
+  nbest_lats->clear();
+  nbest_lats->resize(n);
+
+  vector<double> alpha, beta;
+  
+  ComputeLatticeAlphasAndBetas(lat, false, &alpha, &beta);
+  
+  typedef Lattice::Arc Arc;
+  typedef Arc::Weight Weight;
+  typedef Arc::StateId StateId;
+
+  KALDI_ASSERT(lat.Properties(fst::kTopSorted, true) == fst::kTopSorted);
+  KALDI_ASSERT(lat.Start() == 0);
+
+  vector<int32> state_times;
+  int32 max_time = LatticeStateTimes(lat, &state_times);
+
+  for (int32 i = 0; i < n; i++) {
+    StateId s = 0;
+    StateId out_state = 0;
+    Lattice &this_nbest = (*nbest_lats)[i];
+    this_nbest.AddState();
+    this_nbest.SetStart(out_state);
+
+    bool reached_final = false;
+    for (int32 t = 0; t <= lat.NumStates(); t++) {
+      double r = RandUniform(), cum_prob = 0;
+
+      Weight f = lat.Final(s);
+      if (f != Weight::Zero()) {
+        KALDI_ASSERT(state_times[s] == max_time &&
+                     "Lattice is inconsistent (final-prob not at max_time)");
+
+        double final_like = -(f.Value1() + f.Value2());
+        double prob = Exp(final_like - beta[s]);
+        cum_prob += prob;
+
+        if (cum_prob > r) {
+          this_nbest.SetFinal(out_state, f);
+          reached_final = true;
+          break;
+        }
+      }
+
+      bool sampled_arc = false;
+      for (fst::ArcIterator<Lattice> aiter(lat, s); !aiter.Done(); aiter.Next()) {
+        const Arc &arc = aiter.Value();
+        double arc_like = -ConvertToCost(arc.weight);
+        double prob = Exp(arc_like + beta[arc.nextstate] - beta[s]);
+        cum_prob += prob;
+
+        if (cum_prob > r) {
+          this_nbest.AddState();
+          this_nbest.AddArc(out_state, Arc(arc.ilabel, arc.olabel, arc.weight, 
+                                           out_state + 1));
+          out_state++;
+          s = arc.nextstate; 
+          sampled_arc = true;
+          break;
+        }
+      }
+
+      if (!sampled_arc) {
+        KALDI_ERR << "Could not sample an arc from state " << s << " at time "
+                  << state_times[s] << "; Something wrong with the lattice.";
+      }
+    }
+
+    KALDI_ASSERT(this_nbest.NumStates() == out_state + 1);
+    {
+      vector<int32> this_nbest_state_times;
+      KALDI_ASSERT(LatticeStateTimes(this_nbest, &this_nbest_state_times) == max_time);
+    }
+
+    if (!reached_final) {
+      KALDI_ERR << "Did not reach final state after " << lat.NumStates() << " steps; "
+                << "Something went wrong with the lattice.";
+    }
+  }
+}
+
 
 }  // namespace kaldi

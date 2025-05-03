@@ -397,6 +397,19 @@ void ReplaceAcousticScoresFromMap(
                                         PairHasher<int32> > &acoustic_scores,
     Lattice *lat);
 
+/// This function samples 'n' paths from a lattice by the probability of 
+/// those paths in the lattice. This function returns a vector of paths 
+/// stored in Lattice format.
+///
+///  @param [in] lat     Input lattice
+///  @param [out] nbest_lats
+///                      Pointer to a vector of Lattice into which the 
+///                      n sampled paths will be stored
+///  @param [in] n       Number of paths to be sampled
+void SampleFromLattice(const Lattice &lat, 
+                       std::vector<Lattice> *nbest_lats, int32 n = 1);
+
+
 }  // namespace kaldi
 
 #endif  // KALDI_LAT_LATTICE_FUNCTIONS_H_
