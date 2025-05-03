@@ -181,7 +181,8 @@ def train_one_iteration(dir, iter, srand, egs_dir,
                         shrinkage_value=1.0, dropout_edit_string="",  train_opts="",
                         get_raw_nnet_from_am=True, use_multitask_egs=False,
                         backstitch_training_scale=0.0, backstitch_training_interval=1,
-                        compute_per_dim_accuracy=False):
+                        compute_per_dim_accuracy=False,
+                        compute_prob_minibatch_size_str="1:64"):
     """ Called from steps/nnet3/train_*.py scripts for one iteration of neural
     network training
 
@@ -225,13 +226,15 @@ def train_one_iteration(dir, iter, srand, egs_dir,
         run_opts=run_opts,
         get_raw_nnet_from_am=get_raw_nnet_from_am,
         use_multitask_egs=use_multitask_egs,
-        compute_per_dim_accuracy=compute_per_dim_accuracy)
+        compute_per_dim_accuracy=compute_per_dim_accuracy,
+        compute_prob_minibatch_size_str=compute_prob_minibatch_size_str)
 
     if iter > 0:
         # Runs in the background
         compute_progress(dir=dir, iter=iter, egs_dir=egs_dir,
                          run_opts=run_opts,
-                         get_raw_nnet_from_am=get_raw_nnet_from_am)
+                         get_raw_nnet_from_am=get_raw_nnet_from_am,
+                         compute_prob_minibatch_size_str=compute_prob_minibatch_size_str)
 
     do_average = (iter > 0)
 
@@ -380,7 +383,8 @@ def compute_preconditioning_matrix(dir, egs_dir, num_lda_jobs, run_opts,
 def compute_train_cv_probabilities(dir, iter, egs_dir, run_opts,
                                    get_raw_nnet_from_am=True,
                                    use_multitask_egs=False,
-                                   compute_per_dim_accuracy=False):
+                                   compute_per_dim_accuracy=False,
+                                   compute_prob_minibatch_size_str="1:64"):
     if get_raw_nnet_from_am:
         model = "{dir}/{iter}.mdl".format(dir=dir, iter=iter)
     else:
@@ -405,13 +409,14 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, run_opts,
                 nnet3-compute-prob "{model}" \
                 "ark,bg:nnet3-copy-egs {multitask_egs_opts} \
                     {egs_rspecifier} ark:- | \
-                    nnet3-merge-egs --minibatch-size=1:64 ark:- \
+                    nnet3-merge-egs --minibatch-size={minibatch_size} ark:- \
                     ark:- |" """.format(command=run_opts.command,
                                         dir=dir,
                                         iter=iter,
                                         egs_rspecifier=egs_rspecifier,
                                         opts=' '.join(opts), model=model,
-                                        multitask_egs_opts=multitask_egs_opts))
+                                        multitask_egs_opts=multitask_egs_opts,
+                                        minibatch_size=compute_prob_minibatch_size_str))
 
     egs_rspecifier = ("{0}:{1}/train_diagnostic{2}".format(
         scp_or_ark, egs_dir, egs_suffix))
@@ -426,13 +431,15 @@ def compute_train_cv_probabilities(dir, iter, egs_dir, run_opts,
                 nnet3-compute-prob {opts} "{model}" \
                 "ark,bg:nnet3-copy-egs {multitask_egs_opts} \
                     {egs_rspecifier} ark:- | \
-                    nnet3-merge-egs --minibatch-size=1:64 ark:- \
+                    nnet3-merge-egs --minibatch-size={minibatch_size} ark:- \
                     ark:- |" """.format(command=run_opts.command,
                                         dir=dir,
                                         iter=iter,
                                         egs_rspecifier=egs_rspecifier,
                                         opts=' '.join(opts), model=model,
-                                        multitask_egs_opts=multitask_egs_opts))
+                                        multitask_egs_opts=multitask_egs_opts,
+                                        minibatch_size=compute_prob_minibatch_size_str))
+>>>>>>> origin/master
 
 
 def compute_progress(dir, iter, egs_dir,
@@ -479,7 +486,8 @@ def combine_models(dir, num_iters, models_to_combine, egs_dir,
                    chunk_width=None, get_raw_nnet_from_am=True,
                    max_objective_evaluations=30,
                    use_multitask_egs=False,
-                   compute_per_dim_accuracy=False):
+                   compute_per_dim_accuracy=False,
+                   compute_prob_minibatch_size_str="1:64"):
     """ Function to do model combination
 
     In the nnet3 setup, the logic
@@ -550,14 +558,15 @@ def combine_models(dir, num_iters, models_to_combine, egs_dir,
         compute_train_cv_probabilities(
             dir=dir, iter='combined', egs_dir=egs_dir,
             run_opts=run_opts, use_multitask_egs=use_multitask_egs,
-            compute_per_dim_accuracy=compute_per_dim_accuracy)
+            compute_per_dim_accuracy=compute_per_dim_accuracy,
+            compute_prob_minibatch_size_str=compute_prob_minibatch_size_str)
     else:
         compute_train_cv_probabilities(
             dir=dir, iter='final', egs_dir=egs_dir,
             run_opts=run_opts, get_raw_nnet_from_am=False,
             use_multitask_egs=use_multitask_egs,
-            compute_per_dim_accuracy=compute_per_dim_accuracy)
-
+            compute_per_dim_accuracy=compute_per_dim_accuracy,
+            compute_prob_minibatch_size_str=compute_prob_minibatch_size_str)
 
 def get_realign_iters(realign_times, num_iters,
                       num_jobs_initial, num_jobs_final):
@@ -664,7 +673,8 @@ def adjust_am_priors(dir, input_model, avg_posterior_vector, output_model,
 
 def compute_average_posterior(dir, iter, egs_dir, num_archives,
                               prior_subset_size,
-                              run_opts, get_raw_nnet_from_am=True):
+                              run_opts, get_raw_nnet_from_am=True,
+                              compute_prob_minibatch_size_str="128"):
     """ Computes the average posterior of the network
     """
     for file in glob.glob('{0}/post.{1}.*.vec'.format(dir, iter)):
@@ -685,7 +695,7 @@ def compute_average_posterior(dir, iter, egs_dir, num_archives,
                 ark:{egs_dir}/egs.{egs_part}.ark ark:- \| \
                 nnet3-subset-egs --srand=JOB --n={prior_subset_size} \
                 ark:- ark:- \| \
-                nnet3-merge-egs --minibatch-size=128 ark:- ark:- \| \
+                nnet3-merge-egs --minibatch-size={minibatch_size} ark:- ark:- \| \
                 nnet3-compute-from-egs {prior_gpu_opt} --apply-exp=true \
                 "{model}" ark:- ark:- \| \
                 matrix-sum-rows ark:- ark:- \| vector-sum ark:- \
@@ -696,7 +706,8 @@ def compute_average_posterior(dir, iter, egs_dir, num_archives,
                     prior_queue_opt=run_opts.prior_queue_opt,
                     iter=iter, prior_subset_size=prior_subset_size,
                     egs_dir=egs_dir, egs_part=egs_part,
-                    prior_gpu_opt=run_opts.prior_gpu_opt))
+                    prior_gpu_opt=run_opts.prior_gpu_opt,
+                    minibatch_size=compute_prob_minibatch_size_str))
 
     # make sure there is time for $dir/post.{iter}.*.vec to appear.
     time.sleep(5)
