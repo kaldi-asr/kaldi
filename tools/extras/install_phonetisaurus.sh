@@ -14,47 +14,13 @@ fi
 ! [ `basename $PWD` == tools ] && \
   echo "You must call this script from the tools/ directory" && exit 1;
 
-# Install python-devel package if not already available
-# first, makes sure sysconfig is usable
-# We are not currently compiling the bindings by default, but it seems
-# worth it to keep this section as we do have them and they will
-# probably be used.
-if ! $(python -c "import sysconfig" &> /dev/null); then
-    echo "$0: WARNING: python library sysconfig not usable, this is necessary to figure out the path of Python.h." >&2
-    echo "Proceeding with installation." >&2
-else
-  # get include path for this python version
-  INCLUDE_PY=$(python -c "import sysconfig as s; print(s.get_path('include'))")
-  if [ ! -f "${INCLUDE_PY}/Python.h" ]; then
-      echo "$0 : ERROR: python-devel/python-dev not installed" >&2
-      if which yum >&/dev/null; then
-        # this is a red-hat system
-        echo "$0: we recommend that you run (our best guess):"
-        echo " sudo yum install python-devel"
-      fi
-      if which apt-get >&/dev/null; then
-        # this is a debian system
-        echo "$0: we recommend that you run (our best guess):"
-        echo " sudo apt-get install python-dev"
-      fi
-      exit 1
-  fi
-fi
-
 
 if [ ! -d ./phonetisaurus-g2p ] ; then
-  $GIT clone https://github.com/AdolfVonKleist/Phonetisaurus.git phonetisaurus-g2p ||
+  $GIT clone https://github.com/danijel3/Phonetisaurus.git phonetisaurus-g2p ||
   {
-    echo  >&2 "$0: Warning: git clone operation ended unsuccessfully"
-    echo  >&2 "  I will assume this is because you don't have https support"
-    echo  >&2 "  compiled into your git "
-    $GIT clone https://github.com/AdolfVonKleist/Phonetisaurus.git phonetisaurus-g2p
-
-    if [ $? -ne 0 ]; then
-      echo  >&2 "$0: Error git clone operation ended unsuccessfully"
-      echo  >&2 "  Clone the github repository (https://github.com/AdolfVonKleist/Phonetisaurus.git)"
-      echo  >&2 "  manually make and install in accordance with directions."
-    fi
+    echo  >&2 "$0: Error git clone operation ended unsuccessfully"
+    echo  >&2 "  Clone the github repository (https://github.com/danijel3/Phonetisaurus.git)"
+    echo  >&2 "  manually make and install in accordance with directions."
   }
 fi
 
