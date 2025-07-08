@@ -382,74 +382,70 @@ inline void mul_elements(
 
 // add clapack here
 #if !defined(HAVE_ATLAS)
-inline void clapack_Xtptri(KaldiBlasInt *num_rows, float *Mdata, KaldiBlasInt *result) {
-  stptri_(const_cast<char *>("U"), const_cast<char *>("N"), num_rows, Mdata, result);
-}
-inline void clapack_Xtptri(KaldiBlasInt *num_rows, double *Mdata, KaldiBlasInt *result) {
-  dtptri_(const_cast<char *>("U"), const_cast<char *>("N"), num_rows, Mdata, result);
-}
-// 
-inline void clapack_Xgetrf2(KaldiBlasInt *num_rows, KaldiBlasInt *num_cols, 
-                            float *Mdata, KaldiBlasInt *stride, KaldiBlasInt *pivot, 
-                            KaldiBlasInt *result) {
-  sgetrf_(num_rows, num_cols, Mdata, stride, pivot, result);
-}
-inline void clapack_Xgetrf2(KaldiBlasInt *num_rows, KaldiBlasInt *num_cols, 
-                            double *Mdata, KaldiBlasInt *stride, KaldiBlasInt *pivot, 
-                            KaldiBlasInt *result) {
-  dgetrf_(num_rows, num_cols, Mdata, stride, pivot, result);
+inline void clapack_Xgesvd(char jobu, char jobvt, KaldiBlasInt m, KaldiBlasInt n,
+                           float *A, KaldiBlasInt lda, float *S,
+                           float *U, KaldiBlasInt ldu, float *VT, KaldiBlasInt ldvt,
+                           float *work, KaldiBlasInt lwork, KaldiBlasInt *info) {
+  *info = LAPACKE_sgesvd(LAPACK_ROW_MAJOR, jobu, jobvt, m, n,
+                         A, lda, S, U, ldu, VT, ldvt);
 }
 
-// 
+inline void clapack_Xgesvd(char jobu, char jobvt, KaldiBlasInt m, KaldiBlasInt n,
+                           double *A, KaldiBlasInt lda, double *S,
+                           double *U, KaldiBlasInt ldu, double *VT, KaldiBlasInt ldvt,
+                           double *work, KaldiBlasInt lwork, KaldiBlasInt *info) {
+  *info = LAPACKE_dgesvd(LAPACK_ROW_MAJOR, jobu, jobvt, m, n,
+                         A, lda, S, U, ldu, VT, ldvt);
+}
+
+inline void clapack_Xtptri(KaldiBlasInt n, float *A, KaldiBlasInt *info) {
+  *info = LAPACKE_stptri(LAPACK_ROW_MAJOR, 'U', 'N', n, A);
+}
+
+inline void clapack_Xtptri(KaldiBlasInt n, double *A, KaldiBlasInt *info) {
+  *info = LAPACKE_dtptri(LAPACK_ROW_MAJOR, 'U', 'N', n, A);
+}
+
+inline void clapack_Xsptri(KaldiBlasInt n, float *ap, KaldiBlasInt *ipiv, float *work, KaldiBlasInt *info) {
+  *info = LAPACKE_ssptri(LAPACK_ROW_MAJOR, 'U', n, ap, ipiv);
+}
+
+inline void clapack_Xsptri(KaldiBlasInt n, double *ap, KaldiBlasInt *ipiv, double *work, KaldiBlasInt *info) {
+  *info = LAPACKE_dsptri(LAPACK_ROW_MAJOR, 'U', n, ap, ipiv);
+}
+
+inline void clapack_Xsptrf(KaldiBlasInt n, float *ap, KaldiBlasInt *ipiv, KaldiBlasInt *info) {
+  *info = LAPACKE_ssptrf(LAPACK_ROW_MAJOR, 'U', n, ap, ipiv);
+}
+
+inline void clapack_Xsptrf(KaldiBlasInt n, double *ap, KaldiBlasInt *ipiv, KaldiBlasInt *info) {
+  *info = LAPACKE_dsptrf(LAPACK_ROW_MAJOR, 'U', n, ap, ipiv);
+}
+
+inline void clapack_Xgetrf2(KaldiBlasInt *num_rows, KaldiBlasInt *num_cols,
+                            float *Mdata, KaldiBlasInt *stride, KaldiBlasInt *pivot,
+                            KaldiBlasInt *info) {
+  *info = LAPACKE_sgetrf(LAPACK_ROW_MAJOR, *num_rows, *num_cols, Mdata, *stride, pivot);
+}
+
+inline void clapack_Xgetrf2(KaldiBlasInt *num_rows, KaldiBlasInt *num_cols,
+                            double *Mdata, KaldiBlasInt *stride, KaldiBlasInt *pivot,
+                            KaldiBlasInt *info) {
+  *info = LAPACKE_dgetrf(LAPACK_ROW_MAJOR, *num_rows, *num_cols, Mdata, *stride, pivot);
+}
+
 inline void clapack_Xgetri2(KaldiBlasInt *num_rows, float *Mdata, KaldiBlasInt *stride,
-                           KaldiBlasInt *pivot, float *p_work, 
-                           KaldiBlasInt *l_work, KaldiBlasInt *result) {
-  sgetri_(num_rows, Mdata, stride, pivot, p_work, l_work, result);
+                            KaldiBlasInt *pivot, float *p_work,
+                            KaldiBlasInt *l_work, KaldiBlasInt *info) {
+  *info = LAPACKE_sgetri(LAPACK_ROW_MAJOR, *num_rows, Mdata, *stride, pivot);
 }
+
 inline void clapack_Xgetri2(KaldiBlasInt *num_rows, double *Mdata, KaldiBlasInt *stride,
-                           KaldiBlasInt *pivot, double *p_work, 
-                           KaldiBlasInt *l_work, KaldiBlasInt *result) {
-  dgetri_(num_rows, Mdata, stride, pivot, p_work, l_work, result);
+                            KaldiBlasInt *pivot, double *p_work,
+                            KaldiBlasInt *l_work, KaldiBlasInt *info) {
+  *info = LAPACKE_dgetri(LAPACK_ROW_MAJOR, *num_rows, Mdata, *stride, pivot);
 }
-//
-inline void clapack_Xgesvd(char *v, char *u, KaldiBlasInt *num_cols,
-                           KaldiBlasInt *num_rows, float *Mdata, KaldiBlasInt *stride,
-                           float *sv, float *Vdata, KaldiBlasInt *vstride,
-                           float *Udata, KaldiBlasInt *ustride, float *p_work,
-                           KaldiBlasInt *l_work, KaldiBlasInt *result) {
-  sgesvd_(v, u,
-          num_cols, num_rows, Mdata, stride,
-          sv, Vdata, vstride, Udata, ustride, 
-          p_work, l_work, result); 
-}
-inline void clapack_Xgesvd(char *v, char *u, KaldiBlasInt *num_cols,
-                           KaldiBlasInt *num_rows, double *Mdata, KaldiBlasInt *stride,
-                           double *sv, double *Vdata, KaldiBlasInt *vstride,
-                           double *Udata, KaldiBlasInt *ustride, double *p_work,
-                           KaldiBlasInt *l_work, KaldiBlasInt *result) {
-  dgesvd_(v, u,
-          num_cols, num_rows, Mdata, stride,
-          sv, Vdata, vstride, Udata, ustride,
-          p_work, l_work, result); 
-}
-//
-void inline clapack_Xsptri(KaldiBlasInt *num_rows, float *Mdata, 
-                           KaldiBlasInt *ipiv, float *work, KaldiBlasInt *result) {
-  ssptri_(const_cast<char *>("U"), num_rows, Mdata, ipiv, work, result);
-}
-void inline clapack_Xsptri(KaldiBlasInt *num_rows, double *Mdata, 
-                           KaldiBlasInt *ipiv, double *work, KaldiBlasInt *result) {
-  dsptri_(const_cast<char *>("U"), num_rows, Mdata, ipiv, work, result);
-}
-//
-void inline clapack_Xsptrf(KaldiBlasInt *num_rows, float *Mdata,
-                           KaldiBlasInt *ipiv, KaldiBlasInt *result) {
-  ssptrf_(const_cast<char *>("U"), num_rows, Mdata, ipiv, result);
-}
-void inline clapack_Xsptrf(KaldiBlasInt *num_rows, double *Mdata,
-                           KaldiBlasInt *ipiv, KaldiBlasInt *result) {
-  dsptrf_(const_cast<char *>("U"), num_rows, Mdata, ipiv, result);
-}
+
 #else
 inline void clapack_Xgetrf(MatrixIndexT num_rows, MatrixIndexT num_cols,
                            float *Mdata, MatrixIndexT stride, 
