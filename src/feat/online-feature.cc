@@ -428,8 +428,10 @@ void OnlineCmvn::GetFrame(int32 frame,
   if (frozen_state_.NumRows() != 0) {  // the CMVN state has been frozen.
     stats.CopyFromMat(frozen_state_);
   } else {
-    // first get the raw CMVN stats (this involves caching..)
-    this->ComputeStatsForFrame(frame, &stats);
+    if ((*feat)(0) > opts_.min_energy) {
+        // first get the raw CMVN stats (this involves caching..)
+        this->ComputeStatsForFrame(frame, &stats);
+    }
     // now smooth them.
     SmoothOnlineCmvnStats(orig_state_.speaker_cmvn_stats,
                           orig_state_.global_cmvn_stats,

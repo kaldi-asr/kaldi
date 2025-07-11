@@ -73,8 +73,8 @@ esac
 
 # fstproject replaces the disambiguation symbol #0, which only appears on the
 # input side, with the <eps> that appears in the corresponding arcs on the output side.
-oldlm_cmd="fstproject --project_output=true $oldlm_fst | fstarcsort --sort_type=ilabel |"
-newlm_cmd="fstproject --project_output=true $newlm_fst | fstarcsort --sort_type=ilabel |"
+oldlm_cmd="fstproject --project_type=output $oldlm_fst | fstarcsort --sort_type=ilabel |"
+newlm_cmd="fstproject --project_type=output $newlm_fst | fstarcsort --sort_type=ilabel |"
 
 $cmd JOB=1:$nj $dir/log/decode.JOB.log \
  gmm-latgen-biglm-faster --max-active=$maxactive --beam=$beam --lattice-beam=$lattice_beam \

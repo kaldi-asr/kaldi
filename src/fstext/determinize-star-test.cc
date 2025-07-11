@@ -24,7 +24,6 @@
 #include "fstext/trivial-factor-weight.h"
 #include "fstext/fst-test-utils.h"
 
-#include "fstext/openfst_compat.h"
 
 namespace fst
 {
@@ -39,7 +38,7 @@ template<class Arc> void TestDeterminizeGeneral() {
     std::cout << "FST before determinizing is:\n";
     {
       FstPrinter<Arc> fstprinter(*fst, NULL, NULL, NULL, false, true, "\t");
-      printer_print(std::cout, fstprinter, "standard output");
+      fstprinter.Print(std::cout, "standard output");
     }
     VectorFst<Arc> ofst;
     try {
@@ -47,7 +46,7 @@ template<class Arc> void TestDeterminizeGeneral() {
       std::cout << "FST after determinizing is:\n";
       {
         FstPrinter<Arc> fstprinter(ofst, NULL, NULL, NULL, false, true, "\t");
-        printer_print(std::cout, fstprinter, "standard output");
+        fstprinter.Print(std::cout, "standard output");
       }
       assert(RandEquivalent(*fst, ofst, 5/*paths*/, 0.01/*delta*/, kaldi::Rand()/*seed*/, 100/*path length, max*/));
     } catch (...) {
@@ -102,7 +101,7 @@ template<class Arc>  void TestDeterminize() {
   std::cout <<" printing before trimming\n";
   {
     FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true, "\t");
-    printer_print(std::cout, fstprinter, "standard output");
+    fstprinter.Print(std::cout, "standard output");
   }
   // Trim resulting FST.
   Connect(fst);
@@ -110,7 +109,7 @@ template<class Arc>  void TestDeterminize() {
   std::cout <<" printing after trimming\n";
   {
     FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true, "\t");
-    printer_print(std::cout, fstprinter, "standard output");
+    fstprinter.Print(std::cout, "standard output");
   }
 
   VectorFst<Arc> *fst_copy_orig = new VectorFst<Arc>(*fst);
@@ -123,7 +122,7 @@ template<class Arc>  void TestDeterminize() {
   std::cout <<" printing after predeterminization\n";
   {
     FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true, "\t");
-    printer_print(std::cout, fstprinter, "standard output");
+    fstprinter.Print(std::cout, "standard output");
   }
 
 
@@ -139,7 +138,7 @@ template<class Arc>  void TestDeterminize() {
   std::cout <<" printing after epsilon removal\n";
   {
     FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true, "\t");
-    printer_print(std::cout, fstprinter, "standard output");
+    fstprinter.Print(std::cout, "standard output");
   }
   VectorFst<Arc> ofst_orig;
   VectorFst<Arc> ofst_star;
@@ -158,14 +157,14 @@ template<class Arc>  void TestDeterminize() {
   {
     std::cout <<" printing after determinization [baseline]\n";
     FstPrinter<Arc> fstprinter(ofst_orig, sptr, sptr, NULL, false, true, "\t");
-    printer_print(std::cout, fstprinter, "standard output");
+    fstprinter.Print(std::cout, "standard output");
     assert(ofst_orig.Properties(kIDeterministic, true) == kIDeterministic);
   }
 
   {
     std::cout <<" printing after determinization [star]\n";
     FstPrinter<Arc> fstprinter(ofst_star, sptr, sptr, NULL, false, true, "\t");
-    printer_print(std::cout, fstprinter, "standard output");
+    fstprinter.Print(std::cout, "standard output");
     assert(ofst_star.Properties(kIDeterministic, true) == kIDeterministic);
   }
 
@@ -175,7 +174,7 @@ template<class Arc>  void TestDeterminize() {
   std::cout <<" printing after removing "<<num_removed<<" instances of extra symbols\n";
   {
     FstPrinter<Arc> fstprinter(ofst_star, sptr, sptr, NULL, false, true, "\t");
-    printer_print(std::cout, fstprinter, "standard output");
+    fstprinter.Print(std::cout, "standard output");
   }
 
   std::cout <<" Checking equivalent to original FST.\n";
@@ -243,7 +242,7 @@ template<class Arc>  void TestPush() {
   std::cout <<" printing before trimming\n";
   {
     FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true, "\t");
-    printer_print(std::cout, fstprinter, "standard output");
+    fstprinter.Print(std::cout, "standard output");
   }
   // Trim resulting FST.
   Connect(fst);
@@ -251,7 +250,7 @@ template<class Arc>  void TestPush() {
   std::cout <<" printing after trimming\n";
   {
     FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true, "\t");
-    printer_print(std::cout, fstprinter, "standard output");
+    fstprinter.Print(std::cout, "standard output");
   }
 
   VectorFst<Arc> *fst_copy_orig = new VectorFst<Arc>(*fst);
@@ -268,7 +267,7 @@ template<class Arc>  void TestPush() {
   std::cout <<" printing after pushing\n";
   {
     FstPrinter<Arc> fstprinter(fst_pushed, sptr, sptr, NULL, false, true, "\t");
-    printer_print(std::cout, fstprinter, "standard output");
+    fstprinter.Print(std::cout, "standard output");
   }
 
   assert(RandEquivalent(*fst, fst_pushed, 5/*paths*/, 0.01/*delta*/, kaldi::Rand()/*seed*/, 100/*path length-- max?*/));
@@ -321,7 +320,7 @@ template<class Arc>  void TestMinimize() {
   std::cout <<" printing before trimming\n";
   {
     FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true, "\t");
-    printer_print(std::cout, fstprinter, "standard output");
+    fstprinter.Print(std::cout, "standard output");
   }
   // Trim resulting FST.
   Connect(fst);
@@ -329,7 +328,7 @@ template<class Arc>  void TestMinimize() {
   std::cout <<" printing after trimming\n";
   {
     FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true, "\t");
-    printer_print(std::cout, fstprinter, "standard output");
+    fstprinter.Print(std::cout, "standard output");
   }
 
   VectorFst<Arc> *fst_copy_orig = new VectorFst<Arc>(*fst);
@@ -342,7 +341,7 @@ template<class Arc>  void TestMinimize() {
   std::cout <<" printing after predeterminization\n";
   {
     FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true, "\t");
-    printer_print(std::cout, fstprinter, "standard output");
+    fstprinter.Print(std::cout, "standard output");
   }
 
 
@@ -358,7 +357,7 @@ template<class Arc>  void TestMinimize() {
   std::cout <<" printing after epsilon removal\n";
   {
     FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true, "\t");
-    printer_print(std::cout, fstprinter, "standard output");
+    fstprinter.Print(std::cout, "standard output");
   }
   VectorFst<Arc> ofst_orig;
   VectorFst<Arc> ofst_star;
@@ -371,7 +370,7 @@ template<class Arc>  void TestMinimize() {
   {
     std::cout <<" printing after determinization [baseline]\n";
     FstPrinter<Arc> fstprinter(ofst_orig, sptr, sptr, NULL, false, true, "\t");
-    printer_print(std::cout, fstprinter, "standard output");
+    fstprinter.Print(std::cout, "standard output");
   }
 
 
@@ -383,7 +382,7 @@ template<class Arc>  void TestMinimize() {
     {
       std::cout <<" printing after determinization by DeterminizeStar [in gallic]\n";
       FstPrinter<GallicArc< Arc> > fstprinter(gallic_fst, sptr, sptr, NULL, false, true, "\t");
-      printer_print(std::cout, fstprinter, "standard output");
+      fstprinter.Print(std::cout, "standard output");
     }
 
 
@@ -393,7 +392,7 @@ template<class Arc>  void TestMinimize() {
     {
       std::cout <<" printing after pushing weights [in gallic]\n";
       FstPrinter<GallicArc< Arc> > fstprinter(gallic_fst, sptr, sptr, NULL, false, true, "\t");
-      printer_print(std::cout, fstprinter, "standard output");
+      fstprinter.Print(std::cout, "standard output");
     }
 
 
@@ -402,7 +401,7 @@ template<class Arc>  void TestMinimize() {
     {
       std::cout <<" printing after  minimization [in gallic]\n";
       FstPrinter<GallicArc< Arc> > fstprinter(gallic_fst, sptr, sptr, NULL, false, true, "\t");
-      printer_print(std::cout, fstprinter, "standard output");
+      fstprinter.Print(std::cout, "standard output");
     }
 
     printf("Converting gallic back to regular [my approach]\n");
@@ -411,7 +410,7 @@ template<class Arc>  void TestMinimize() {
     {
       std::cout <<" printing factor-weight FST\n";
       FstPrinter<GallicArc< Arc> > fstprinter(fwfst, sptr, sptr, NULL, false, true, "\t");
-      printer_print(std::cout, fstprinter, "standard output");
+      fstprinter.Print(std::cout, "standard output");
     }
 
     Map(fwfst, &ofst_star, FromGallicMapper<Arc, GALLIC_LEFT>());
@@ -419,7 +418,7 @@ template<class Arc>  void TestMinimize() {
     {
       std::cout <<" printing after converting back to regular FST\n";
       FstPrinter<Arc> fstprinter(ofst_star, sptr, sptr, NULL, false, true, "\t");
-      printer_print(std::cout, fstprinter, "standard output");
+      fstprinter.Print(std::cout, "standard output");
     }
 
   }
@@ -432,7 +431,7 @@ template<class Arc>  void TestMinimize() {
   std::cout <<" printing after removing "<<num_removed<<" instances of extra symbols\n";
   {
     FstPrinter<Arc> fstprinter(ofst_star, sptr, sptr, NULL, false, true, "\t");
-    printer_print(std::cout, fstprinter, "standard output");
+    fstprinter.Print(std::cout, "standard output");
   }
 
   std::cout <<" Checking equivalent to original FST.\n";

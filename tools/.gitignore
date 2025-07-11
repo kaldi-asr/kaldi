@@ -12,6 +12,7 @@ CLAPACK_include
 Miniconda3-latest-Linux-x86_64.sh
 OpenBLAS/
 bazel/
+clapack/
 cub
 cub-*/
 faster-rnnlm/

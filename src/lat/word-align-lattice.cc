@@ -102,7 +102,7 @@ class LatticeWordAligner {
     void OutputArcForce(const WordBoundaryInfo &info,
                         const TransitionInformation &tmodel,
                         CompactLatticeArc *arc_out,
-                        bool *error);
+                        bool *error, bool allow_partial);
 
     size_t Hash() const {
       VectorHasher<int32> vh;
@@ -184,7 +184,7 @@ class LatticeWordAligner {
       // have returned false or we wouldn't have been called, so we have to
       // force it out.
       CompactLatticeArc lat_arc;
-      tuple.comp_state.OutputArcForce(info_, tmodel_, &lat_arc, &error_);
+      tuple.comp_state.OutputArcForce(info_, tmodel_, &lat_arc, &error_, allow_partial_);
       // True in the next line means add it to the queue.
       lat_arc.nextstate = GetStateForTuple(tuple, true);
       // The final-prob stuff will get called again from ProcessQueueElement().
@@ -330,6 +330,10 @@ class LatticeWordAligner {
     return !error_;
   }
 
+  void AllowPartial(bool allow) {
+    allow_partial_ = allow;
+  }
+
   CompactLattice lat_;
   const TransitionInformation &tmodel_;
   const WordBoundaryInfo &info_in_;
@@ -343,7 +347,7 @@ class LatticeWordAligner {
 
   MapType map_; // map from tuples to StateId.
   bool error_;
-
+  bool allow_partial_;
 };
 
 bool LatticeWordAligner::ComputationState::OutputSilenceArc(
@@ -563,7 +567,7 @@ static bool IsPlausibleWord(const WordBoundaryInfo &info,
 
 void LatticeWordAligner::ComputationState::OutputArcForce(
     const WordBoundaryInfo &info, const TransitionInformation &tmodel,
-    CompactLatticeArc *arc_out,  bool *error) {
+    CompactLatticeArc *arc_out,  bool *error, bool allow_partial) {
 
   KALDI_ASSERT(!IsEmpty());
   if (!word_labels_.empty()
@@ -572,7 +576,7 @@ void LatticeWordAligner::ComputationState::OutputArcForce(
     // and failed, so this means we didn't see the end of that
     // word.
     int32 word = word_labels_[0];
-    if (! *error && !IsPlausibleWord(info, tmodel, transition_ids_)) {
+    if (!allow_partial && ! *error && !IsPlausibleWord(info, tmodel, transition_ids_)) {
       *error = true;
       KALDI_WARN << "Invalid word at end of lattice [partial lattice, forced out?]";
     }
@@ -626,13 +630,17 @@ void LatticeWordAligner::ComputationState::OutputArcForce(
       *arc_out = CompactLatticeArc(info.silence_label, info.silence_label,
                                    cw, fst::kNoStateId);
     } else {
+
       // Not silence phone -- treat as partial word (with no word label).
       // This is in itself an error condition, i.e. the lattice was maybe
       // forced out.
-      if (! *error) {
+      // In many cases it is not really a error, we just want to
+      // word-align partial lattice
+      if (!allow_partial && ! *error) {
         *error = true;
         KALDI_WARN << "Partial word detected at end of utterance";
       }
+
       CompactLatticeWeight cw(weight_, transition_ids_);
       *arc_out = CompactLatticeArc(info.partial_word_label, info.partial_word_label,
                                    cw, fst::kNoStateId);
@@ -728,7 +736,15 @@ bool WordAlignLattice(const CompactLattice &lat,
   return aligner.AlignLattice();
 }
 
-
+bool WordAlignLatticePartial(const CompactLattice &lat,
+                      const TransitionInformation &tmodel,
+                      const WordBoundaryInfo &info,
+                      int32 max_states,
+                      CompactLattice *lat_out) {
+  LatticeWordAligner aligner(lat, tmodel, info, max_states, lat_out);
+  aligner.AllowPartial(true);
+  return aligner.AlignLattice();
+}
 
 class WordAlignedLatticeTester {
  public:

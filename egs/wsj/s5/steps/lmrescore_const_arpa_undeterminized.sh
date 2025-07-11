@@ -70,7 +70,7 @@ if ! cmp -s $oldlang/words.txt $newlang/words.txt; then
   echo "$0: $oldlang/words.txt and $newlang/words.txt differ: make sure you know what you are doing.";
 fi
 
-oldlmcommand="fstproject --project_output=true $oldlm |"
+oldlmcommand="fstproject --project_type=output $oldlm |"
 
 mkdir -p $outdir/log
 nj=`cat $indir/num_jobs` || exit 1;

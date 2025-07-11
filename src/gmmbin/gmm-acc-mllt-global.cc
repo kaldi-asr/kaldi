@@ -72,7 +72,7 @@ int main(int argc, char *argv[]) {
     SequentialBaseFloatMatrixReader feature_reader(feature_rspecifier);
     RandomAccessInt32VectorVectorReader gselect_reader(gselect_rspecifier);
     
-    int32 num_done = 0;
+    int32 num_done = 0, num_err = 0;
     for (; !feature_reader.Done(); feature_reader.Next()) {
       std::string utt = feature_reader.Key();
       const Matrix<BaseFloat> &mat = feature_reader.Value();      
@@ -88,6 +88,7 @@ int main(int argc, char *argv[]) {
       } else {
         if (!gselect_reader.HasKey(utt)) {
           KALDI_WARN << "No gselect information for utterance " << utt;
+          num_err++;
           continue;
         }
         const std::vector<std::vector<int32> > &gselect= gselect_reader.Value(utt);
@@ -95,6 +96,7 @@ int main(int argc, char *argv[]) {
           KALDI_WARN << "Gselect information has wrong size for utterance "
                      << utt << ", " << gselect.size() << " vs. "
                      << mat.NumRows();
+          num_err++;
           continue;
         }
         

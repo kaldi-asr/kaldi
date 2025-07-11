@@ -158,7 +158,7 @@ if [ $stage -le 6 ]; then
   echo "$0: will print costs with the two FSTs, for one random path."
   fstrandgen $tree_dir/grammar1/HCLG.fst > path.fst
   for x in 1 2; do
-    fstproject --project_output=false path.fst | fstcompose - $tree_dir/grammar${x}/HCLG.fst | fstcompose - <(fstproject --project_output=true path.fst) > composed.fst
+    fstproject --project_output=false path.fst | fstcompose - $tree_dir/grammar${x}/HCLG.fst | fstcompose - <(fstproject --project_type=output path.fst) > composed.fst
     start_state=$(fstprint composed.fst | head -n 1 | awk '{print $1}')
     fstshortestdistance --reverse=true composed.fst | awk -v s=$start_state '{if($1 == s) { print $2; }}'
   done

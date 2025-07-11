@@ -152,6 +152,7 @@ class BatchedThreadedNnet3CudaPipeline2 {
  public:
   BatchedThreadedNnet3CudaPipeline2(
       const BatchedThreadedNnet3CudaPipeline2Config &config,
+      OnlineNnet2FeaturePipelineInfo &info,
       const fst::Fst<fst::StdArc> &decode_fst,
       const nnet3::AmNnetSimple &am_nnet, const TransitionModel &trans_model);
 

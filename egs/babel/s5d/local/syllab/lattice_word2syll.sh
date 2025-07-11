@@ -30,25 +30,25 @@ if [ -f $olang/lex.words2syllabs.fst ] ; then
 
   $cmd JOB=1:$nj $output/log/convert.JOB.log \
     lattice-push --push-strings ark:"gunzip -c $input/lat.JOB.gz|" ark:- \| \
-      lattice-lmrescore --lm-scale=-1.0 ark:- "fstproject --project_output=true $ilang/G.fst|" ark:- \| \
+      lattice-lmrescore --lm-scale=-1.0 ark:- "fstproject --project_type=output $ilang/G.fst|" ark:- \| \
       lattice-compose ark:- $output/L.fst  ark:- \| \
       lattice-determinize-pruned --beam=8 --acoustic-scale=0.1 ark:-  ark:- \| \
       lattice-minimize ark:- "ark:|gzip -c > $output/lat.JOB.gz"
       #lattice-minimize ark:- ark:- \| \
-      #lattice-lmrescore --lm-scale=1.0 ark:- "fstproject --project_output=true $olang/G.fst|" "ark:|gzip -c > $output/lat.JOB.gz"
+      #lattice-lmrescore --lm-scale=1.0 ark:- "fstproject --project_type=output $olang/G.fst|" "ark:|gzip -c > $output/lat.JOB.gz"
 else
   #for phonemes.... (IIRC)
   fstreverse $olang/L.fst | fstminimize | fstreverse > $output/L.fst
   $cmd JOB=1:$nj $output/log/convert.JOB.log \
     lattice-push --push-strings ark:"gunzip -c $input/lat.JOB.gz|" ark:- \| \
-      lattice-lmrescore --lm-scale=-1.0 ark:- "fstproject --project_output=true $ilang/G.fst|" ark:- \| \
+      lattice-lmrescore --lm-scale=-1.0 ark:- "fstproject --project_type=output $ilang/G.fst|" ark:- \| \
       lattice-align-words $ilang/phones/word_boundary.int $input/../final.mdl ark:- ark:-  \| \
       lattice-to-phone-lattice --replace-words $input/../final.mdl ark:- ark:- \| \
       lattice-align-phones $input/../final.mdl  ark:- ark:- \| \
       lattice-compose ark:- $output/L.fst ark:- \|\
       lattice-determinize-pruned --beam=$beam --acoustic-scale=$acwt ark:-  ark:-\| \
       lattice-minimize ark:- "ark:|gzip -c > $output/lat.JOB.gz"
-      #lattice-lmrescore --lm-scale=1.0 ark:- "fstproject --project_output=true $olang/G.fst|" ark:"|gzip -c > $output/lat.JOB.gz"
+      #lattice-lmrescore --lm-scale=1.0 ark:- "fstproject --project_type=output $olang/G.fst|" ark:"|gzip -c > $output/lat.JOB.gz"
 fi
 
   #lattice-1best ark:- ark:-| nbest-to-linear ark:- ark:/dev/null ark,t:- \

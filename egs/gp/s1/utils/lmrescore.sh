@@ -85,8 +85,8 @@ newlm=$newlang/G.fst
 ! ls $indir/lat.*.gz >/dev/null && echo "No lattices input directory $indir" && exit 1;
 
 
-oldlmcommand="fstproject --project_output=true $oldlm |"
-newlmcommand="fstproject --project_output=true $newlm |"
+oldlmcommand="fstproject --project_type=output $oldlm |"
+newlmcommand="fstproject --project_type=output $newlm |"
 
 mkdir -p $outdir;
 
@@ -124,10 +124,10 @@ case "$mode" in
     submit_jobs.sh "$qcmd" --njobs=$nj --log=$outdir/rescorelm.TASK_ID.log \
       $sjopts gunzip -c $lat \| \
       lattice-scale --acoustic-scale=-1 --lm-scale=-1 ark:- ark:- \| \
-      lattice-compose ark:- "fstproject --project_output=true $oldlm |" ark:- \
+      lattice-compose ark:- "fstproject --project_type=output $oldlm |" ark:- \
       \| lattice-determinize ark:- ark:- \| \
       lattice-scale --acoustic-scale=-1 --lm-scale=-1 ark:- ark:- \| \
-      lattice-compose ark:- "fstproject --project_output=true $newlm |" ark:- \
+      lattice-compose ark:- "fstproject --project_type=output $newlm |" ark:- \
       \| lattice-determinize ark:- ark:- \| \
       gzip -c \>$newlat || error_exit "Error doing LM rescoring."
     ;;
@@ -138,7 +138,7 @@ case "$mode" in
     submit_jobs.sh "$qcmd" --njobs=$nj --log=$outdir/rescorelm.TASK_ID.log \
       $sjopts gunzip -c $lat \| \
       lattice-scale --acoustic-scale=-1 --lm-scale=-1 ark:- ark:- \| \
-      lattice-compose ark:- "fstproject --project_output=true $oldlm |" ark:- \
+      lattice-compose ark:- "fstproject --project_type=output $oldlm |" ark:- \
       \| \ lattice-determinize ark:- ark:- \| \
       lattice-scale --acoustic-scale=-1 --lm-scale=-1 ark:- ark:- \| \
       lattice-compose --phi-label=$phi ark:- $newlm ark:- \| \

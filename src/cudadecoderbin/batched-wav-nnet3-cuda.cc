@@ -17,15 +17,9 @@
 
 #if HAVE_CUDA == 1
 
-#ifdef __IS_HIP_COMPILE__
-#include "hip/hip_runtime.h"
-#include "hipify.h"
-#include "roctracer/roctx.h"
-#else
 #include <cuda.h>
 #include <cuda_profiler_api.h>
-#include <nvtx3/nvToolsExt.h>
-#endif
+#include <nvToolsExt.h>
 #include <sstream>
 #include "cudadecoder/batched-threaded-nnet3-cuda-pipeline.h"
 #include "cudamatrix/cu-allocator.h"

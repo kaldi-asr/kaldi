@@ -67,7 +67,7 @@ int main(int argc, char *argv[]) {
         RemoveAlignmentsFromCompactLattice(&clat);
         Lattice lat;
         ConvertLattice(clat, &lat);
-        fst::Project(&lat, fst::PROJECT_OUTPUT); // project on words.        
+        fst::Project(&lat, fst::ProjectType::OUTPUT); // project on words.        
         lattice_writer.Write(key, lat);
         n_done++;
       }

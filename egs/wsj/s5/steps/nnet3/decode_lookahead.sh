@@ -20,10 +20,6 @@ min_active=200
 ivector_scale=1.0
 lattice_beam=8.0 # Beam we use in lattice generation.
 iter=final
-use_gpu=false # If true, will use a GPU, with nnet3-latgen-faster-batch.
-              # In that case it is recommended to set num-threads to a large
-              # number, e.g. 20 if you have that many free CPU slots on a GPU
-              # node, and to use a small number of jobs.
 scoring_opts=
 skip_diagnostics=false
 skip_scoring=false
@@ -52,10 +48,6 @@ if [ $# -ne 3 ]; then
   echo "  --beam <beam>                            # Decoding beam; default 15.0"
   echo "  --iter <iter>                            # Iteration of model to decode; default is final."
   echo "  --scoring-opts <string>                  # options to local/score.sh"
-  echo "  --num-threads <n>                        # number of threads to use, default 1."
-  echo "  --use-gpu <true|false>                   # default: false.  If true, we recommend"
-  echo "                                           # to use large --num-threads as the graph"
-  echo "                                           # search becomes the limiting factor."
   exit 1;
 fi
 
@@ -80,7 +72,6 @@ done
 
 sdata=$data/split$nj;
 cmvn_opts=`cat $srcdir/cmvn_opts` || exit 1;
-thread_string=
 
 mkdir -p $dir/log
 [[ -d $sdata && $data/feats.scp -ot $sdata ]] || split_data.sh $data $nj || exit 1;

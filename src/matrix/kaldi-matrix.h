@@ -1006,11 +1006,11 @@ class SubMatrix : public MatrixBase<Real> {
             MatrixIndexT num_cols,
             MatrixIndexT stride);
 
-  ~SubMatrix() {}
+  ~SubMatrix<Real>() {}
 
   /// This type of constructor is needed for Range() to work [in Matrix base
   /// class]. Cannot make it explicit.
-  SubMatrix(const SubMatrix &other):
+  SubMatrix<Real> (const SubMatrix &other):
   MatrixBase<Real> (other.data_, other.num_cols_, other.num_rows_,
                     other.stride_) {}
 

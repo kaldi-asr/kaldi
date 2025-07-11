@@ -22,15 +22,8 @@
 #include "cudadecoder/cuda-fst.h"
 #include "cudamatrix/cu-common.h"
 
-#ifdef __IS_HIP_COMPILE__
-#include <hip/hip_runtime_api.h>
-#include <roctracer/roctx.h>
-
-#include "hipify.h"
-#else
 #include <cuda_runtime_api.h>
-#include <nvtx3/nvToolsExt.h>
-#endif
+#include <nvToolsExt.h>
 
 namespace kaldi {
 namespace cuda_decoder {

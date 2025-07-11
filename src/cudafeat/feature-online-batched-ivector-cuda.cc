@@ -15,28 +15,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifdef __IS_HIP_COMPILE__
-#include "hipify.h"
-// The BLAS enumerators are used instead of the SOLVER ones.
-#ifdef CUBLAS_FILL_MODE_LOWER
-#undef CUBLAS_FILL_MODE_LOWER
-#endif
-#define CUBLAS_FILL_MODE_LOWER HIPSOLVER_FILL_MODE_LOWER
-#ifdef CUDA_R_32F
-#undef CUDA_R_32F
-#endif
-#define CUDA_R_32F HIPBLAS_R_32F
-#endif
-
 #include "cudafeat/feature-online-batched-ivector-cuda.h"
 #include "cudafeat/feature-online-batched-ivector-cuda-kernels.h"
 
 namespace kaldi {
 BatchedIvectorExtractorCuda::BatchedIvectorExtractorCuda(
-    const OnlineIvectorExtractionConfig &config,
+    const OnlineIvectorExtractionInfo &info,
     int32_t feat_dim, int32_t chunk_size,
     int32_t num_lanes, int32_t num_channels)
-    : cmvn_(NULL),
+    : info_(info),
+      cmvn_(NULL),
       feat_dim_(feat_dim),
       chunk_size_(chunk_size),
       max_lanes_(num_lanes),
@@ -46,8 +34,7 @@ BatchedIvectorExtractorCuda::BatchedIvectorExtractorCuda(
   // upgrade to a more recent CUDA version.
   KALDI_ERR << "BatchedIvectorExtractorCuda requires CUDA 9.1 or newer.";
 #endif
-  info_.Init(config);
-  Read(config);
+  Read();
 
   naive_cmvn_state_ = OnlineCmvnState(info_.global_cmvn_stats);
   // TODO parameterize coarsening factor?
@@ -113,63 +100,35 @@ BatchedIvectorExtractorCuda::~BatchedIvectorExtractorCuda() {
   CuDevice::Instantiate().Free(ivec_array_);
 }
 
-void BatchedIvectorExtractorCuda::Read(
-    const kaldi::OnlineIvectorExtractionConfig &config) {
-  // read ubm
-  DiagGmm gmm;
-  ReadKaldiObject(config.diag_ubm_rxfilename, &gmm);
-  ubm_gconsts_.Resize(gmm.NumGauss());
-  ubm_gconsts_.CopyFromVec(gmm.gconsts());
-  ubm_means_inv_vars_.Resize(gmm.NumGauss(), gmm.Dim());
-  ubm_means_inv_vars_.CopyFromMat(gmm.means_invvars());
-  ubm_inv_vars_.Resize(gmm.NumGauss(), gmm.Dim());
-  ubm_inv_vars_.CopyFromMat(gmm.inv_vars());
-  num_gauss_ = gmm.NumGauss();
+void BatchedIvectorExtractorCuda::Read() {
 
-  // read extractor (copied from ivector/ivector-extractor.cc)
-  bool binary;
-  Input input(config.ivector_extractor_rxfilename, &binary);
-  Matrix<float> w;
-  Vector<float> w_vec;
-  std::vector<Matrix<float> > ie_M;
-  std::vector<SpMatrix<float> > ie_Sigma_inv;
+  // Pick gmm values
+  ubm_gconsts_.Resize(info_.diag_ubm.NumGauss());
+  ubm_gconsts_.CopyFromVec(info_.diag_ubm.gconsts());
+  ubm_means_inv_vars_.Resize(info_.diag_ubm.NumGauss(), info_.diag_ubm.Dim());
+  ubm_means_inv_vars_.CopyFromMat(info_.diag_ubm.means_invvars());
+  ubm_inv_vars_.Resize(info_.diag_ubm.NumGauss(), info_.diag_ubm.Dim());
+  ubm_inv_vars_.CopyFromMat(info_.diag_ubm.inv_vars());
+  num_gauss_ = info_.diag_ubm.NumGauss();
 
-  ExpectToken(input.Stream(), binary, "<IvectorExtractor>");
-  ExpectToken(input.Stream(), binary, "<w>");
-  w.Read(input.Stream(), binary);
-  ExpectToken(input.Stream(), binary, "<w_vec>");
-  w_vec.Read(input.Stream(), binary);
-  ExpectToken(input.Stream(), binary, "<M>");
-  int32 size;
-  ReadBasicType(input.Stream(), binary, &size);
-  KALDI_ASSERT(size > 0);
-  ie_M.resize(size);
-  for (int32 i = 0; i < size; i++) {
-    ie_M[i].Read(input.Stream(), binary);
-  }
-  ExpectToken(input.Stream(), binary, "<SigmaInv>");
-  ie_Sigma_inv.resize(size);
-  for (int32 i = 0; i < size; i++) {
-    ie_Sigma_inv[i].Read(input.Stream(), binary);
-  }
-  ExpectToken(input.Stream(), binary, "<IvectorOffset>");
-  ReadBasicType(input.Stream(), binary, &prior_offset_);
-  ExpectToken(input.Stream(), binary, "</IvectorExtractor>");
+  // Pick and recompute values
+  const std::vector<Matrix<double> > &ie_M = info_.extractor.M_;
+  const std::vector<SpMatrix<double> > &ie_Sigma_inv = info_.extractor.Sigma_inv_;
+  prior_offset_ = info_.extractor.prior_offset_;
 
   // compute derived variables
   ivector_dim_ = ie_M[0].NumCols();
   lda_dim_ = ie_M[0].NumRows();
 
   ie_Sigma_inv_M_f_.Resize(num_gauss_ * lda_dim_, ivector_dim_, kUndefined);
-
   ie_U_.Resize(num_gauss_, ivector_dim_ * (ivector_dim_ + 1) / 2);
 
-  SpMatrix<float> tmp_sub_U(ivector_dim_);
-  Matrix<float> tmp_Sigma_inv_M(lda_dim_, ivector_dim_);
+  SpMatrix<double> tmp_sub_U(ivector_dim_);
+  Matrix<double> tmp_Sigma_inv_M(lda_dim_, ivector_dim_);
   for (int32 i = 0; i < num_gauss_; i++) {
     // compute matrix ie_Sigma_inv_M[i]
     tmp_sub_U.AddMat2Sp(1, ie_M[i], kTrans, ie_Sigma_inv[i], 0);
-    SubVector<float> tmp_U_vec(tmp_sub_U.Data(),
+    SubVector<double> tmp_U_vec(tmp_sub_U.Data(),
                                ivector_dim_ * (ivector_dim_ + 1) / 2);
     ie_U_.Row(i).CopyFromVec(tmp_U_vec);
 

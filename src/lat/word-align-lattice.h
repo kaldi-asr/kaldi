@@ -194,7 +194,11 @@ bool WordAlignLattice(const CompactLattice &lat,
                       int32 max_states,
                       CompactLattice *lat_out);
 
-
+bool WordAlignLatticePartial(const CompactLattice &lat,
+                      const TransitionInformation &tmodel,
+                      const WordBoundaryInfo &info,
+                      int32 max_states,
+                      CompactLattice *lat_out);
 
 /// This function is designed to crash if something went wrong with the
 /// word-alignment of the lattice.  It verifies
