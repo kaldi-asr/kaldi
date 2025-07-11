@@ -385,7 +385,7 @@ bool ProtoSupervisionToSupervision(
   if (convert_to_pdfs) {
     // at this point supervision->fst will have pdf-ids plus one as the olabels,
     // but still transition-ids as the ilabels.  Copy olabels to ilabels.
-    fst::Project(&(supervision->fst), fst::ProjectType::OUTPUT);
+    fst::Project(&(supervision->fst), fst::ProjectType::PROJECT_OUTPUT);
   }
 
   KALDI_ASSERT(supervision->fst.Properties(fst::kIEpsilons, true) == 0);

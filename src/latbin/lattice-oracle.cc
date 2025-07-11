@@ -67,7 +67,7 @@ void ConvertLatticeToUnweightedAcceptor(const kaldi::Lattice &ilat,
   fst::ConvertLattice(ilat, ofst);
   // remove weights, project to output, sort according to input arg
   fst::Map(ofst, fst::RmWeightMapper<fst::StdArc>());
-  fst::Project(ofst, fst::ProjectType::OUTPUT);  // The words are on the output side
+  fst::Project(ofst, fst::ProjectType::PROJECT_OUTPUT);  // The words are on the output side
   fst::Relabel(ofst, wildcards, wildcards);
   fst::RmEpsilon(ofst);   // Don't tolerate epsilons as they make it hard to
                           // tally errors
@@ -366,7 +366,7 @@ int main(int argc, char *argv[]) {
           fst::ArcSort(&clat, fst::ILabelCompare<CompactLatticeArc>());
           fst::Compose(oracle_clat_mask, clat, &oracle_clat_mask);
           fst::ShortestPath(oracle_clat_mask, &oracle_clat);
-          fst::Project(&oracle_clat, fst::ProjectType::OUTPUT);
+          fst::Project(&oracle_clat, fst::ProjectType::PROJECT_OUTPUT);
           TopSortCompactLatticeIfNeeded(&oracle_clat);
 
           if (oracle_clat.Start() == fst::kNoStateId) {
