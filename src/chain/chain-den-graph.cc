@@ -312,7 +312,7 @@ void CreateDenominatorFst(const ContextDependency &ctx_dep,
     // previously an acceptor, so we project, i.e. copy the ilabels to the
     // olabels
     AddSubsequentialLoop(subsequential_symbol, &phone_lm);
-    fst::Project(&phone_lm, fst::PROJECT_INPUT);
+    fst::Project(&phone_lm, fst::INPUT);
   }
   std::vector<int32> disambig_syms;  // empty list of disambiguation symbols.
 
@@ -330,7 +330,7 @@ void CreateDenominatorFst(const ContextDependency &ctx_dep,
   // at this point, context_dep_lm will have indexes into 'ilabels' as its
   // input symbol (representing context-dependent phones), and phones on its
   // output.  We don't need the phones, so we'll project.
-  fst::Project(&context_dep_lm, fst::PROJECT_INPUT);
+  fst::Project(&context_dep_lm, fst::INPUT);
 
   KALDI_LOG << "Number of states and arcs in context-dependent LM FST is "
             << context_dep_lm.NumStates() << " and " << NumArcs(context_dep_lm);
@@ -365,7 +365,7 @@ void CreateDenominatorFst(const ContextDependency &ctx_dep,
   // context-dependent phones (indexes into IlabelInfo()) as its olabels.
   // Discard the context-dependent phones by projecting on the input, keeping
   // only the transition-ids.
-  fst::Project(&transition_id_fst, fst::PROJECT_INPUT);
+  fst::Project(&transition_id_fst, fst::INPUT);
 
   MapFstToPdfIdsPlusOne(trans_model, &transition_id_fst);
   KALDI_LOG << "Number of states and arcs in transition-id FST is "

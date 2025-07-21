@@ -80,7 +80,7 @@ int main(int argc, char *argv[]) {
 
         Lattice lat2;
         ConvertLattice(clat2, &lat2);
-        fst::Project(&lat2, fst::ProjectType::PROJECT_OUTPUT); // project on words.
+        fst::Project(&lat2, fst::ProjectType::OUTPUT); // project on words.
         ScaleLattice(fst::LatticeScale(1.0-alpha, 1.0-alpha), &lat2);
         ArcSort(&lat2, fst::ILabelCompare<LatticeArc>());
 

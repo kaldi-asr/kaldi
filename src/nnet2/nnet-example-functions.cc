@@ -264,7 +264,7 @@ void DiscriminativeExampleSplitter::CollapseTransitionIds() {
 void DiscriminativeExampleSplitter::PrepareLattice(bool first_time) {
   ::fst::ConvertLattice(eg_.den_lat, &lat_);
 
-  Project(&lat_, fst::PROJECT_INPUT); // Get rid of the word labels and put the
+  Project(&lat_, fst::INPUT); // Get rid of the word labels and put the
                                       // transition-ids on both sides.
   
   RmEpsilon(&lat_); // Remove epsilons.. this simplifies

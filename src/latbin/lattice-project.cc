@@ -67,7 +67,7 @@ int main(int argc, char *argv[]) {
         RemoveAlignmentsFromCompactLattice(&clat);
         Lattice lat;
         ConvertLattice(clat, &lat);
-        fst::Project(&lat, fst::ProjectType::PROJECT_OUTPUT); // project on words.        
+        fst::Project(&lat, fst::ProjectType::OUTPUT); // project on words.        
         lattice_writer.Write(key, lat);
         n_done++;
       }
@@ -78,7 +78,7 @@ int main(int argc, char *argv[]) {
         std::string key = lattice_reader.Key();
         Lattice lat = lattice_reader.Value();
         lattice_reader.FreeCurrent();
-        fst::Project(&lat, fst::PROJECT_INPUT);
+        fst::Project(&lat, fst::INPUT);
         lattice_writer.Write(key, lat);
         n_done++;
       }
