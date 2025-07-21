@@ -202,7 +202,7 @@ template<class Arc>  void TestAcceptorMinimize() {
 
   VectorFst<Arc> *fst = RandFst<Arc>();
 
-  Project(fst, INPUT);
+  Project(fst, fst::ProjectType::INPUT);
   RemoveWeights(fst);
 
   VectorFst<Arc> fst2(*fst);
@@ -309,7 +309,7 @@ template<class Arc>  void TestMakeLoopFst() {
   for (int i = 0; i < num_fsts; i++) {
     if (kaldi::Rand() % 2 == 0) {  // put an fst there.
       VectorFst<Arc> *fst = RandFst<Arc>();
-      Project(fst, INPUT);  // make input & output labels the same.
+      Project(fst, fst::ProjectType::INPUT);  // make input & output labels the same.
       fsts[i] = fst;
     } else { // this is to test that it works with the caching.
       fsts[i] = fsts[i/2];
@@ -377,7 +377,7 @@ void TestRemoveUselessArcs() {
     RandGenOptions<UniformArcSelector<Arc> > randgen_opts(selector);
     VectorFst<Arc> fst_path;
     RandGen(*fst, &fst_path, randgen_opts);
-    Project(&fst_path, INPUT);
+    Project(&fst_path, fst::ProjectType::INPUT);
     // Print(fst_path, "[testremoveuselessarcs]:fstpath:");
 
     VectorFst<Arc> fst_nouseless(*fst);

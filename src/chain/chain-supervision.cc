@@ -306,7 +306,7 @@ bool ProtoSupervisionToSupervision(
     // previously an acceptor, so we project, i.e. copy the ilabels to the
     // olabels
     AddSubsequentialLoop(subsequential_symbol, &phone_fst);
-    fst::Project(&phone_fst, fst::INPUT);
+    fst::Project(&phone_fst, fst::ProjectType::INPUT);
   }
 
   // inv_cfst will be expanded on the fly, as needed.
@@ -325,7 +325,7 @@ bool ProtoSupervisionToSupervision(
   // 'inv_cfst.IlabelInfo()' as its input symbol (representing context-dependent
   // phones), and phones on its output.  We don't need the phones, so we'll
   // project.
-  fst::Project(&context_dep_fst, fst::INPUT);
+  fst::Project(&context_dep_fst, fst::ProjectType::INPUT);
 
   std::vector<int32> disambig_syms_h; // disambiguation symbols on input side of
                                       // H -- will be empty, as there were no
@@ -364,7 +364,7 @@ bool ProtoSupervisionToSupervision(
   // context-dependent phones (indexes into ILabelInfo()) as its olabels.
   // Discard the context-dependent phones by projecting on the input, keeping
   // only the transition-ids.
-  fst::Project(&transition_id_fst, fst::INPUT);
+  fst::Project(&transition_id_fst, fst::ProjectType::INPUT);
   if (transition_id_fst.Properties(fst::kIEpsilons, true) != 0) {
     // remove epsilons, if there are any.
     fst::RmEpsilon(&transition_id_fst);

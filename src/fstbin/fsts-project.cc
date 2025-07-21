@@ -67,7 +67,7 @@ int main(int argc, char *argv[]) {
       std::string key = fst_reader.Key();
       VectorFst<StdArc> fst(fst_reader.Value());
 
-      Project(&fst, project_output ? OUTPUT : INPUT);
+      Project(&fst, project_output ? fst::ProjectType::OUTPUT : fst::ProjectType::INPUT);
 
       fst_writer.Write(key, fst);
       n_done++;

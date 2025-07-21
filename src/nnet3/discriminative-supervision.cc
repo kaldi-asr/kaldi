@@ -326,7 +326,7 @@ void DiscriminativeSupervisionSplitter::CreateRangeLattice(
 
   // Get rid of the word labels and put the
   // transition-ids on both sides.
-  fst::Project(out_lat, fst::INPUT);
+  fst::Project(out_lat, fst::ProjectType::INPUT);
   fst::RmEpsilon(out_lat);
 
   if (config_.collapse_transition_ids)

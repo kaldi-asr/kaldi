@@ -155,8 +155,8 @@ int main(int argc, char *argv[]) {
       Compose(proxy, *L2xE, &tmp_proxy);
 
       // Processing KxL2xE.
-      KALDI_VLOG(1) << "Project(KxL2xE, OUTPUT)";
-      Project(&tmp_proxy, OUTPUT);
+      KALDI_VLOG(1) << "Project(KxL2xE, fst::ProjectType::OUTPUT)";
+      Project(&tmp_proxy, fst::ProjectType::OUTPUT);
       if (phone_beam >= 0) {
         KALDI_VLOG(1) << "Prune(KxL2xE, " << phone_beam << ")";
         Prune(&tmp_proxy, phone_beam);
@@ -187,8 +187,8 @@ int main(int argc, char *argv[]) {
         ComposeFst<StdArc> lazy_compose(proxy, *L1);
         proxy.DeleteStates();
 
-        KALDI_VLOG(1) << "Project(KxL2xExL1', OUTPUT)";
-        ProjectFst<StdArc> lazy_project(lazy_compose, OUTPUT);
+        KALDI_VLOG(1) << "Project(KxL2xExL1', fst::ProjectType::OUTPUT)";
+        ProjectFst<StdArc> lazy_project(lazy_compose, fst::ProjectType::OUTPUT);
 
         // This will likely be the most time consuming part, we use a special
         // pruning algorithm where we don't expand the full FST.
@@ -200,8 +200,8 @@ int main(int argc, char *argv[]) {
         Compose(proxy, *L1, &tmp_proxy);
         proxy.DeleteStates();
 
-        KALDI_VLOG(1) << "Project(KxL2xExL1', OUTPUT)";
-        Project(&tmp_proxy, OUTPUT);
+        KALDI_VLOG(1) << "Project(KxL2xExL1', fst::ProjectType::OUTPUT)";
+        Project(&tmp_proxy, fst::ProjectType::OUTPUT);
       }
       if (proxy_nbest > 0) {
         KALDI_VLOG(1) << "ShortestPath(KxL2xExL1', " << proxy_nbest << ")";

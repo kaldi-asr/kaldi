@@ -78,7 +78,7 @@ int main(int argc, char *argv[]) {
         std::string key = lattice_reader.Key();
         Lattice lat = lattice_reader.Value();
         lattice_reader.FreeCurrent();
-        fst::Project(&lat, fst::INPUT);
+        fst::Project(&lat, fst::ProjectType::INPUT);
         lattice_writer.Write(key, lat);
         n_done++;
       }
