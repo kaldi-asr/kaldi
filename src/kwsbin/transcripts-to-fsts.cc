@@ -141,11 +141,11 @@ int main(int argc, char *argv[]) {
       }
 
       if (project_input) {
-        Project(&fst, PROJECT_INPUT);
+        Project(&fst, fst::ProjectType::INPUT);
       }
 
       if (project_output) {
-        Project(&fst, PROJECT_OUTPUT);
+        Project(&fst, fst::ProjectType::OUTPUT);
       }
 
       fst_writer.Write(key, fst);

@@ -22,7 +22,8 @@
 #include "fstext/fst-test-utils.h"
 #include "fstext/fstext-utils.h"
 
-#include "fstext/openfst_compat.h"
+// Just check that it compiles, for now.
+
 namespace fst
 {
   using std::vector;
@@ -72,7 +73,7 @@ template<class Arc>  void TestPreDeterminize() {
   std::cout <<" printing before trimming\n";
   {
     FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true, "\t");
-    printer_print(std::cout, fstprinter, "standard output");
+    fstprinter.Print(std::cout, "standard output");
   }
   // Trim resulting FST.
   Connect(fst);
@@ -80,7 +81,7 @@ template<class Arc>  void TestPreDeterminize() {
   std::cout <<" printing after trimming\n";
   {
     FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true, "\t");
-    printer_print(std::cout, fstprinter, "standard output");
+    fstprinter.Print(std::cout, "standard output");
   }
 
   VectorFst<Arc> *fst_copy_orig = new VectorFst<Arc>(*fst);
@@ -94,7 +95,7 @@ template<class Arc>  void TestPreDeterminize() {
   std::cout <<" printing after predeterminization\n";
   {
     FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true, "\t");
-    printer_print(std::cout, fstprinter, "standard output");
+    fstprinter.Print(std::cout, "standard output");
   }
 
 
@@ -110,7 +111,7 @@ template<class Arc>  void TestPreDeterminize() {
   std::cout <<" printing after epsilon removal\n";
   {
     FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true, "\t");
-    printer_print(std::cout, fstprinter, "standard output");
+    fstprinter.Print(std::cout, "standard output");
   }
 
 
@@ -120,14 +121,14 @@ template<class Arc>  void TestPreDeterminize() {
   std::cout <<" printing after determinization\n";
   {
     FstPrinter<Arc> fstprinter(ofst, sptr, sptr, NULL, false, true, "\t");
-    printer_print(std::cout, fstprinter, "standard output");
+    fstprinter.Print(std::cout, "standard output");
   }
 
   int64 num_removed = DeleteISymbols(&ofst, extra_syms);
   std::cout <<" printing after removing "<<num_removed<<" instances of extra symbols\n";
   {
     FstPrinter<Arc> fstprinter(ofst, sptr, sptr, NULL, false, true, "\t");
-    printer_print(std::cout, fstprinter, "standard output");
+    fstprinter.Print(std::cout, "standard output");
   }
 
   std::cout <<" Checking equivalent to original FST.\n";
@@ -179,7 +180,7 @@ template<class Arc>  void TestAddSelfLoops() {
   std::cout <<" printing before adding self-loops\n";
   {
     FstPrinter<Arc> fstprinter(*fst, ilabels, olabels, NULL, false, true, "\t");
-    printer_print(std::cout, fstprinter, "standard output");
+    fstprinter.Print(std::cout, "standard output");
   }
 
 
@@ -198,7 +199,7 @@ template<class Arc>  void TestAddSelfLoops() {
   std::cout <<" printing after adding self-loops\n";
   {
     FstPrinter<Arc> fstprinter(*fst, ilabels, olabels, NULL, false, true, "\t");
-    printer_print(std::cout, fstprinter, "standard output");
+    fstprinter.Print(std::cout, "standard output");
   }
 
   delete fst;

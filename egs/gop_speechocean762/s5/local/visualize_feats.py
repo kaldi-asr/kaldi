@@ -8,7 +8,6 @@ import argparse
 import random
 import kaldi_io
 import seaborn as sns
-import numpy as np
 from collections import Counter
 from sklearn.manifold import TSNE
 from utils import load_human_scores, load_phone_symbol_table
@@ -62,9 +61,6 @@ def main():
     sampled_paris = random.sample(list(zip(features, lables)),
                                   min(args.samples, len(lables)))
     features, lables = list(zip(*sampled_paris))
-
-    # Convert the tuple of arrays to a single 2D array
-    features = np.vstack(features)
 
     # Draw scatters
     label_counter = Counter(lables)

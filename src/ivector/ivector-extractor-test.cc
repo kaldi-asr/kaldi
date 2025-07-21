@@ -94,10 +94,11 @@ void TestIvectorExtraction(const IvectorExtractor &extractor,
       ivector_dim = extractor.IvectorDim();
   Posterior post(num_frames);
 
+  double tot_log_like = 0.0;
   for (int32 t = 0; t < num_frames; t++) {
     SubVector<BaseFloat> frame(feats, t);
     Vector<BaseFloat> posterior(fgmm.NumGauss(), kUndefined);
-    fgmm.ComponentPosteriors(frame, &posterior);
+    tot_log_like += fgmm.ComponentPosteriors(frame, &posterior);
     for (int32 i = 0; i < posterior.Dim(); i++)
       post[t].push_back(std::make_pair(i, posterior(i)));
   }

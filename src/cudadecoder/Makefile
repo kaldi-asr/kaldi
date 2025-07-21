@@ -3,14 +3,12 @@ all: ;
 EXTRA_CXXFLAGS = -Wno-sign-compare
 include ../kaldi.mk
 
-ifeq ($(IS_GPU_BUILD), true)
+ifeq ($(CUDA), true)
 ifeq ($(WITH_CUDADECODER), true)
 
 # Make sure we have CUDA_ARCH from kaldi.mk,
-ifeq ($(CUDA), true)
 ifndef CUDA_ARCH
   $(error CUDA_ARCH is undefined, run 'src/configure')
-endif
 endif
 
 TESTFILES =
@@ -36,14 +34,8 @@ LDLIBS += $(CUDA_LDLIBS)
 
 
 # Implicit rule for kernel compilation
-ifeq ($(CUDA), true)
 %.o : %.cu
 	$(CUDATKDIR)/bin/nvcc -c $< -o $@ $(CUDA_INCLUDE) $(CUDA_FLAGS) $(CUDA_ARCH) -I../ -I$(OPENFSTINC)
-endif
-ifeq ($(ROCM), true)
-%.o : %.cu
-	$(HIPCC) -c -x hip $< -o $@ $(ROCM_INCLUDE) $(ROCM_FLAGS) $(ROCM_ARCH_FLAGS) -I../ -I$(OPENFSTINC)
-endif
 
 else
 all:

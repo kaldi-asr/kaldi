@@ -725,7 +725,7 @@ void DeterminizerStar<F>::EpsilonClosure::
 
   {
     // this sorting is based on StateId
-    std::sort(ecinfo_.begin(), ecinfo_.end());
+    sort(ecinfo_.begin(), ecinfo_.end());
 
     output_subset->clear();
 

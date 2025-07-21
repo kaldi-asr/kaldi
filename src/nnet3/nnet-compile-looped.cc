@@ -342,8 +342,8 @@ void CompileLooped(const Nnet &nnet,
     if (CompileLoopedInternal(nnet, optimize_opts,
                              request1, request2, request3,
                              num_requests, computation)) {
-      KALDI_LOG << "Spent " << timer.Elapsed()
-                << " seconds in looped compilation.";
+      KALDI_VLOG(2) << "Spent " << timer.Elapsed()
+                   << " seconds in looped compilation.";
       return;
     } else {
       KALDI_VLOG(2) << "Looped compilation failed with "

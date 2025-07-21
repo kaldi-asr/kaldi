@@ -49,8 +49,8 @@ if ! cmp -s $oldlang/words.txt $newlang/words.txt; then
   echo "$0: $oldlang/words.txt and $newlang/words.txt differ: make sure you know what you are doing.";
 fi
 
-oldlmcommand="fstproject --project_output=true $oldlm |"
-newlmcommand="fstproject --project_output=true $newlm |"
+oldlmcommand="fstproject --project_type=output $oldlm |"
+newlmcommand="fstproject --project_type=output $newlm |"
 
 mkdir -p $outdir/log
 
@@ -84,10 +84,10 @@ case "$mode" in
     $cmd JOB=1:$nj $outdir/log/rescorelm.JOB.log \
       gunzip -c $indir/lat.JOB.gz \| \
       lattice-scale --acoustic-scale=-1 --lm-scale=-1 ark:- ark:- \| \
-      lattice-compose ark:- "fstproject --project_output=true $oldlm |" ark:- \| \
+      lattice-compose ark:- "fstproject --project_type=output $oldlm |" ark:- \| \
       lattice-determinize ark:- ark:- \| \
       lattice-scale --acoustic-scale=-1 --lm-scale=-1 ark:- ark:- \| \
-      lattice-compose ark:- "fstproject --project_output=true $newlm |" ark:- \| \
+      lattice-compose ark:- "fstproject --project_type=output $newlm |" ark:- \| \
       lattice-determinize ark:- ark:- \| \
       gzip -c \>$outdir/lat.JOB.gz || exit 1;
     ;;
@@ -98,7 +98,7 @@ case "$mode" in
     $cmd JOB=1:$nj $outdir/log/rescorelm.JOB.log \
       gunzip -c $indir/lat.JOB.gz \| \
       lattice-scale --acoustic-scale=-1 --lm-scale=-1 ark:- ark:- \| \
-      lattice-compose ark:- "fstproject --project_output=true $oldlm |" ark:- \| \
+      lattice-compose ark:- "fstproject --project_type=output $oldlm |" ark:- \| \
       lattice-determinize ark:- ark:- \| \
       lattice-scale --acoustic-scale=-1 --lm-scale=-1 ark:- ark:- \| \
       lattice-compose --phi-label=$phi ark:- $newlm ark:- \| \

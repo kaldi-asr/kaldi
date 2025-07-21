@@ -67,6 +67,7 @@ struct CudaOnlineBinaryOptions {
       wav_rspecifier, clat_wspecifier;
   std::string lattice_postprocessor_config_rxfilename;
   BatchedThreadedNnet3CudaOnlinePipelineConfig batched_decoder_config;
+  OnlineNnet2FeaturePipelineConfig feature_config;
 };
 
 inline int SetUpAndReadCmdLineOptions(int argc, char *argv[],
@@ -107,6 +108,7 @@ inline int SetUpAndReadCmdLineOptions(int argc, char *argv[],
   CuDevice::RegisterDeviceOptions(&po);
   RegisterCuAllocatorOptions(&po);
   opts.batched_decoder_config.Register(&po);
+  opts.feature_config.Register(&po);
 
   po.Read(argc, argv);
 

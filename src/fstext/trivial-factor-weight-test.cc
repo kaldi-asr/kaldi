@@ -22,8 +22,7 @@
 #include "fstext/determinize-star.h"
 #include "fstext/trivial-factor-weight.h"
 #include "fstext/fst-test-utils.h"
-
-#include "fstext/openfst_compat.h"
+// Just check that it compiles, for now.
 
 namespace fst
 {
@@ -74,7 +73,7 @@ template<class Arc>  void TestFactor() {
   std::cout <<" printing before trimming\n";
   {
     FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true, "\t");
-    printer_print(std::cout, fstprinter, "standard output");
+    fstprinter.Print(std::cout, "standard output");
   }
   // Trim resulting FST.
   Connect(fst);
@@ -82,7 +81,7 @@ template<class Arc>  void TestFactor() {
   std::cout <<" printing after trimming\n";
   {
     FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true, "\t");
-    printer_print(std::cout, fstprinter, "standard output");
+    fstprinter.Print(std::cout, "standard output");
   }
 
   vector<Label> extra_syms;
@@ -93,7 +92,7 @@ template<class Arc>  void TestFactor() {
   std::cout <<" printing after predeterminization\n";
   {
     FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true, "\t");
-    printer_print(std::cout, fstprinter, "standard output");
+    fstprinter.Print(std::cout, "standard output");
   }
 
 
@@ -109,7 +108,7 @@ template<class Arc>  void TestFactor() {
   std::cout <<" printing after double-epsilon removal\n";
   {
     FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true, "\t");
-    printer_print(std::cout, fstprinter, "standard output");
+    fstprinter.Print(std::cout, "standard output");
   }
   VectorFst<Arc> ofst_star;
 
@@ -128,7 +127,7 @@ template<class Arc>  void TestFactor() {
     {
       std::cout <<" printing gallic FST\n";
       FstPrinter<GallicArc<Arc> >  fstprinter(gallic_fst, sptr, sptr, NULL, false, true, "\t");
-      printer_print(std::cout, fstprinter, "standard output");
+      fstprinter.Print(std::cout, "standard output");
     }
 
 
@@ -140,7 +139,7 @@ template<class Arc>  void TestFactor() {
     {
       std::cout <<" printing factor-weight FST\n";
       FstPrinter<GallicArc<Arc> >  fstprinter(fwfst, sptr, sptr, NULL, false, true, "\t");
-      printer_print(std::cout, fstprinter, "standard output");
+      fstprinter.Print(std::cout, "standard output");
     }
 
     Map(fwfst, &ofst_star, FromGallicMapper<Arc, GALLIC_LEFT>());
@@ -148,7 +147,7 @@ template<class Arc>  void TestFactor() {
     {
       std::cout <<" printing after converting back to regular FST\n";
       FstPrinter<Arc> fstprinter(ofst_star, sptr, sptr, NULL, false, true, "\t");
-      printer_print(std::cout, fstprinter, "standard output");
+      fstprinter.Print(std::cout, "standard output");
     }
 
 

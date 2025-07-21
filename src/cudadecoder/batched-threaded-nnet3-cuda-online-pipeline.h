@@ -89,7 +89,6 @@ struct BatchedThreadedNnet3CudaOnlinePipelineConfig {
         "reset-on-endpoint", &reset_on_endpoint,
         "Reset a decoder channel when endpoint detected. Do not close stream");
 
-    feature_opts.Register(po);
     decoder_opts.Register(po);
     det_opts.Register(po);
     compute_opts.Register(po);
@@ -102,7 +101,6 @@ struct BatchedThreadedNnet3CudaOnlinePipelineConfig {
   bool use_gpu_feature_extraction;
   bool reset_on_endpoint;
 
-  OnlineNnet2FeaturePipelineConfig feature_opts;
   CudaDecoderConfig decoder_opts;
   fst::DeterminizeLatticePhonePrunedOptions det_opts;
   nnet3::NnetSimpleComputationOptions compute_opts;
@@ -132,12 +130,14 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
 
   BatchedThreadedNnet3CudaOnlinePipeline(
       const BatchedThreadedNnet3CudaOnlinePipelineConfig &config,
+      OnlineNnet2FeaturePipelineInfo &feature_info,
       const fst::Fst<fst::StdArc> &decode_fst,
       const nnet3::AmNnetSimple &am_nnet, const TransitionModel &trans_model)
       : config_(config),
         max_batch_size_(config.max_batch_size),
 	num_channels_(std::max(max_batch_size_ * KALDI_CUDA_DECODER_MIN_NCHANNELS_FACTOR, config_.num_channels)),
         channels_info_(num_channels_),
+        feature_info_(feature_info),
         trans_model_(&trans_model),
         am_nnet_(&am_nnet),
         available_channels_(num_channels_),
@@ -388,10 +388,12 @@ class BatchedThreadedNnet3CudaOnlinePipeline {
   int32 num_channels_;
 
   std::vector<ChannelInfo> channels_info_;
+
+  // Features
+  OnlineNnet2FeaturePipelineInfo &feature_info_;
   // Models
   const TransitionModel *trans_model_;
   const nnet3::AmNnetSimple *am_nnet_;
-  std::unique_ptr<OnlineNnet2FeaturePipelineInfo> feature_info_;
 
   // Decoder channels currently available, w/ mutex
   std::vector<int32> available_channels_;

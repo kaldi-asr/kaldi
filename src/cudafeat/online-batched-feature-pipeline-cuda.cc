@@ -20,20 +20,14 @@
 
 #include "cudafeat/online-batched-feature-pipeline-cuda.h"
 
-#ifdef __IS_HIP_COMPILE__
-#include <roctracer/roctx.h>
-
-#include "hipify.h"
-#else
-#include <nvtx3/nvToolsExt.h>
-#endif
+#include <nvToolsExt.h>
 
 namespace kaldi {
 
 OnlineBatchedFeaturePipelineCuda::OnlineBatchedFeaturePipelineCuda(
-    const OnlineNnet2FeaturePipelineConfig &config,
+    const OnlineNnet2FeaturePipelineInfo &info,
     int32_t max_chunk_size_samples, int32_t max_lanes, int32_t num_channels)
-    : info_(config),
+    : info_(info),
       cmvn_(NULL),
       max_chunk_size_samples_(max_chunk_size_samples),
       max_lanes_(max_lanes),
@@ -87,12 +81,7 @@ OnlineBatchedFeaturePipelineCuda::OnlineBatchedFeaturePipelineCuda(
   }
 
   if (info_.use_ivectors) {
-    OnlineIvectorExtractionConfig ivector_extraction_opts;
-    ReadConfigFromFile(config.ivector_extraction_config,
-                       &ivector_extraction_opts);
-    info_.ivector_extractor_info.Init(ivector_extraction_opts);
-
-    ivector_ = new BatchedIvectorExtractorCuda(ivector_extraction_opts,
+    ivector_ = new BatchedIvectorExtractorCuda(info_.ivector_extractor_info,
                                                FeatureDim(),
                                                max_chunk_size_frames_,
                                                max_lanes_, num_channels_);
@@ -101,8 +90,7 @@ OnlineBatchedFeaturePipelineCuda::OnlineBatchedFeaturePipelineCuda(
   current_samples_stash_ = new int32_t[num_channels_];
 
   // allocated pinned memory for storing channel desc
-  CU_SAFE_CALL(
-      cudaMallocHost((void **)&h_lanes_, sizeof(LaneDesc) * max_lanes_));
+  CU_SAFE_CALL(cudaMallocHost(&h_lanes_, sizeof(LaneDesc) * max_lanes_));
 
   // allocate device memory
   lanes_ =

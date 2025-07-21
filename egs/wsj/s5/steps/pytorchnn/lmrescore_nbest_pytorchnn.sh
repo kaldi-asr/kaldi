@@ -128,7 +128,7 @@ if [ "$oldlm" == "$oldlang/G.fst" ]; then
       # original lattice.
       $cmd JOB=1:$nj $dir/log/remove_old.JOB.log \
         lattice-scale --acoustic-scale=-1 --lm-scale=-1 "ark:gunzip -c $dir/nbest1.JOB.gz|" ark:- \| \
-        lattice-compose ark:- "fstproject --project_output=true $oldlm |" ark:- \| \
+        lattice-compose ark:- "fstproject --project_type=output $oldlm |" ark:- \| \
         lattice-1best ark:- ark:- \| \
         lattice-scale --acoustic-scale=-1 --lm-scale=-1 ark:- "ark:|gzip -c >$dir/nbest2.JOB.gz" \
         || exit 1;

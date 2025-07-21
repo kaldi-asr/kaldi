@@ -21,13 +21,7 @@
 
 #include "cudadecoder/batched-threaded-nnet3-cuda-online-pipeline.h"
 
-#ifdef __IS_HIP_COMPILE__
-#include <roctracer/roctx.h>
-
-#include "hipify.h"
-#else
-#include <nvtx3/nvToolsExt.h>
-#endif
+#include <nvToolsExt.h>
 
 #include <mutex>
 #include <numeric>
@@ -115,7 +109,7 @@ void BatchedThreadedNnet3CudaOnlinePipeline::AllocateAndInitializeData(
   // Feature extraction
   if (config_.use_gpu_feature_extraction) {
     gpu_feature_pipeline_.reset(new OnlineBatchedFeaturePipelineCuda(
-        config_.feature_opts, samples_per_chunk_, config_.max_batch_size,
+        feature_info_, samples_per_chunk_, config_.max_batch_size,
         num_channels_));
   } else {
     feature_pipelines_.resize(num_channels_);
@@ -130,7 +124,7 @@ void BatchedThreadedNnet3CudaOnlinePipeline::AllocateAndInitializeData(
         thread_pool_.get(), config_.num_decoder_copy_threads);
   }
 
-  decoder_frame_shift_seconds_ = feature_info_->FrameShiftInSeconds() *
+  decoder_frame_shift_seconds_ = feature_info_.FrameShiftInSeconds() *
                                  config_.compute_opts.frame_subsampling_factor;
   cuda_decoder_->SetOutputFrameShiftInSeconds(decoder_frame_shift_seconds_);
 
@@ -236,7 +230,7 @@ bool BatchedThreadedNnet3CudaOnlinePipeline::TryInitCorrID(
   if (!config_.use_gpu_feature_extraction) {
     KALDI_ASSERT(!feature_pipelines_[ichannel]);
     feature_pipelines_[ichannel].reset(
-        new OnlineNnet2FeaturePipeline(*feature_info_));
+        new OnlineNnet2FeaturePipeline(feature_info_));
   }
 
   channels_info_[ichannel].Reset();
@@ -699,16 +693,12 @@ void BatchedThreadedNnet3CudaOnlinePipeline::RunDecoder(
 }
 
 void BatchedThreadedNnet3CudaOnlinePipeline::ReadParametersFromModel() {
-  feature_info_.reset(new OnlineNnet2FeaturePipelineInfo(config_.feature_opts));
-  feature_info_->ivector_extractor_info.use_most_recent_ivector = true;
-  feature_info_->ivector_extractor_info.greedy_ivector_extractor = true;
-
-  OnlineNnet2FeaturePipeline feature(*feature_info_);
+  OnlineNnet2FeaturePipeline feature(feature_info_);
   use_ivectors_ = (feature.IvectorFeature() != NULL);
   input_dim_ = feature.InputFeature()->Dim();
   if (use_ivectors_) ivector_dim_ = feature.IvectorFeature()->Dim();
-  model_frequency_ = feature_info_->GetSamplingFrequency();
-  BaseFloat frame_shift_seconds = feature_info_->FrameShiftInSeconds();
+  model_frequency_ = feature_info_.GetSamplingFrequency();
+  BaseFloat frame_shift_seconds = feature_info_.FrameShiftInSeconds();
   input_frames_per_chunk_ = config_.compute_opts.frames_per_chunk;
   seconds_per_chunk_ = input_frames_per_chunk_ * frame_shift_seconds;
   int32 samp_per_frame =

@@ -351,8 +351,7 @@ void UnitTestTableSequentialInt32(bool binary) {
     k2.push_back(sbr.Key());
     v2.push_back(sbr.Value());
   }
-  ans = sbr.Close();
-  KALDI_ASSERT(ans);
+  KALDI_ASSERT(sbr.Close());
   KALDI_ASSERT(k2 == k);
   KALDI_ASSERT(v2 == v);
 }
@@ -385,8 +384,7 @@ void UnitTestTableSequentialBool(bool binary) {
     k2.push_back(sbr.Key());
     v2.push_back(sbr.Value());
   }
-  ans = sbr.Close();
-  KALDI_ASSERT(ans);
+  KALDI_ASSERT(sbr.Close());
   KALDI_ASSERT(k2 == k);
   KALDI_ASSERT(v2 == v);
 }
@@ -420,8 +418,7 @@ void UnitTestTableSequentialDouble(bool binary) {
     k2.push_back(sbr.Key());
     v2.push_back(sbr.Value());
   }
-  ans = sbr.Close();
-  KALDI_ASSERT(ans);
+  KALDI_ASSERT(sbr.Close());
   KALDI_ASSERT(k2 == k);
   if (binary) {
     KALDI_ASSERT(v2 == v);
@@ -465,8 +462,7 @@ void UnitTestTableSequentialDoubleBoth(bool binary, bool read_scp) {
     k2.push_back(sbr.Key());
     v2.push_back(sbr.Value());
   }
-  ans = sbr.Close();
-  KALDI_ASSERT(ans);
+  KALDI_ASSERT(sbr.Close());
   KALDI_ASSERT(k2 == k);
   if (binary) {
     KALDI_ASSERT(v2 == v);
@@ -515,8 +511,7 @@ void UnitTestTableSequentialInt32VectorBoth(bool binary, bool read_scp) {
     k2.push_back(sbr.Key());
     v2.push_back(sbr.Value());
   }
-  ans = sbr.Close();
-  KALDI_ASSERT(ans);
+  KALDI_ASSERT(sbr.Close());
   KALDI_ASSERT(k2 == k);
   KALDI_ASSERT(v2 == v);
 }
@@ -556,8 +551,7 @@ void UnitTestTableSequentialInt32PairVectorBoth(bool binary, bool read_scp) {
     k2.push_back(sbr.Key());
     v2.push_back(sbr.Value());
   }
-  ans = sbr.Close();
-  KALDI_ASSERT(ans);
+  KALDI_ASSERT(sbr.Close());
   KALDI_ASSERT(k2 == k);
   KALDI_ASSERT(v2 == v);
 }
@@ -600,8 +594,7 @@ void UnitTestTableSequentialInt32VectorVectorBoth(bool binary, bool read_scp) {
     k2.push_back(sbr.Key());
     v2.push_back(sbr.Value());
   }
-  ans = sbr.Close();
-  KALDI_ASSERT(ans);
+  KALDI_ASSERT(sbr.Close());
   KALDI_ASSERT(k2 == k);
   KALDI_ASSERT(v2 == v);
 }
@@ -648,8 +641,7 @@ void UnitTestTableSequentialInt32Script(bool binary) {
     k2.push_back(sbr.Key());
     v2.push_back(sbr.Value());
   }
-  ans = sbr.Close();
-  KALDI_ASSERT(ans);
+  KALDI_ASSERT(sbr.Close());
 
   unlink("tmp.scp");
   for (size_t i = 0; i < script.size(); i++) {
@@ -692,8 +684,7 @@ void UnitTestTableSequentialDoubleMatrixBoth(bool binary, bool read_scp) {
     k2.push_back(sbr.Key());
     v2.push_back(new Matrix<double>(sbr.Value()));
   }
-  ans = sbr.Close();
-  KALDI_ASSERT(ans);
+  KALDI_ASSERT(sbr.Close());
   KALDI_ASSERT(k2 == k);
   if (binary) {
     for (size_t i = 0; i < v2.size(); i++)
@@ -747,8 +738,7 @@ void UnitTestTableSequentialBaseFloatVectorBoth(bool binary, bool read_scp) {
     k2.push_back(sbr.Key());
     v2.push_back(new Vector<BaseFloat>(sbr.Value()));
   }
-  ans = sbr.Close();
-  KALDI_ASSERT(ans);
+  KALDI_ASSERT(sbr.Close());
   KALDI_ASSERT(k2 == k);
   if (binary) {
     for (size_t i = 0; i < v2.size(); i++)
@@ -841,11 +831,10 @@ void UnitTestTableRandomBothDouble(bool binary, bool read_scp,
         bool ans = sbr.HasKey(cur_key);
         KALDI_ASSERT(ans == true);
       }
-      auto v2 = sbr.Value(cur_key);
       if (binary) {
-        KALDI_ASSERT(value == v2);
+        KALDI_ASSERT(value == sbr.Value(cur_key));
       } else {
-        KALDI_ASSERT(ApproxEqual(value, v2));
+        KALDI_ASSERT(ApproxEqual(value, sbr.Value(cur_key)));
       }
     }
   }
@@ -1050,11 +1039,10 @@ void UnitTestTableRandomBothDoubleMatrix(bool binary, bool read_scp,
         bool ans = sbr.HasKey(cur_key);
         KALDI_ASSERT(ans == true);
       }
-      auto v2 = sbr.Value(cur_key);
       if (binary) {
-        KALDI_ASSERT(value_ptr->ApproxEqual(v2, 1.0e-10));
+        KALDI_ASSERT(value_ptr->ApproxEqual(sbr.Value(cur_key), 1.0e-10));
       } else {
-        KALDI_ASSERT(value_ptr->ApproxEqual(v2, 0.01));
+        KALDI_ASSERT(value_ptr->ApproxEqual(sbr.Value(cur_key), 0.01));
       }
     }
   }

@@ -100,7 +100,7 @@ fi
 
 if [ -f $g_fst ] && [ "$g_fst_weight" != "0" ] ; then
 	echo "Applying negative rescoring with lm $g_fst, weight $g_fst_weight"
-	lattice_reader="gunzip -c $prunned_lats/lat.JOB.gz | lattice-lmrescore --lm-scale=$g_fst_weight ark:- 'fstproject --project_output=true $g_fst |' ark,t:-"
+	lattice_reader="gunzip -c $prunned_lats/lat.JOB.gz | lattice-lmrescore --lm-scale=$g_fst_weight ark:- 'fstproject --project_type=output $g_fst |' ark,t:-"
 else
 	lattice_reader="gunzip -c $prunned_lats/lat.JOB.gz | lattice-copy ark:- ark,t:- "
 fi

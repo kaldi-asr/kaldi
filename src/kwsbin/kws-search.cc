@@ -25,8 +25,6 @@
 #include "fstext/kaldi-fst-io.h"
 #include "kws/kaldi-kws.h"
 
-#include "fstext/openfst_compat.h"
-
 namespace kaldi {
 
 typedef KwsLexicographicArc Arc;
@@ -289,6 +287,7 @@ int main(int argc, char *argv[]) {
     ArcSort(&index, fst::ILabelCompare<KwsLexicographicArc>());
 
     int32 n_done = 0;
+    int32 n_fail = 0;
     for (; !keyword_reader.Done(); keyword_reader.Next()) {
       std::string key = keyword_reader.Key();
       VectorFst<StdArc> keyword = keyword_reader.Value();
@@ -317,7 +316,7 @@ int main(int argc, char *argv[]) {
                                  &stats_writer);
       }
 
-      Project(&result_fst, PROJECT_OUTPUT);
+      Project(&result_fst, fst::ProjectType::OUTPUT);
       Minimize(&result_fst, (KwsLexicographicFst *) nullptr, kDelta, true);
       ShortestPath(result_fst, &result_fst, n_best);
       RmEpsilon(&result_fst);
@@ -337,6 +336,7 @@ int main(int argc, char *argv[]) {
         if (result_fst.Final(arc.nextstate) != Weight::One()) {
           KALDI_WARN << "The resulting FST does not have "
                      << "the expected structure for key " << key;
+          n_fail++;
           continue;
         }
 

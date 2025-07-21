@@ -16,9 +16,7 @@
 // limitations under the License.
 
 #if HAVE_CUDA == 1
-#ifndef __IS_HIP_COMPILE__
-#include <nvtx3/nvToolsExt.h>
-#endif
+#include <nvToolsExt.h>
 #endif
 #include "base/kaldi-common.h"
 #include "util/common-utils.h"

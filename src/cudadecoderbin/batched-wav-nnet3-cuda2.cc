@@ -18,17 +18,9 @@
 #include <atomic>
 #if HAVE_CUDA == 1
 
-#ifdef __IS_HIP_COMPILE__
-#include <hip/hip_runtime.h>
-#include <hip/hip_runtime_api.h>
-#include <roctracer/roctx.h>
-
-#include "hipify.h"
-#else
 #include <cuda.h>
 #include <cuda_profiler_api.h>
-#include <nvtx3/nvToolsExt.h>
-#endif
+#include <nvToolsExt.h>
 
 #include <sstream>
 
@@ -101,9 +93,11 @@ int main(int argc, char *argv[]) {
 
     // Multi-threaded CPU and batched GPU decoder
     BatchedThreadedNnet3CudaPipeline2Config batched_decoder_config;
+    OnlineNnet2FeaturePipelineConfig feature_config;
     CuDevice::RegisterDeviceOptions(&po);
     RegisterCuAllocatorOptions(&po);
     batched_decoder_config.Register(&po);
+    feature_config.Register(&po);
 
     po.Read(argc, argv);
 
@@ -121,6 +115,8 @@ int main(int argc, char *argv[]) {
     std::shared_ptr<TransitionModel> trans_model(new TransitionModel());
 
     nnet3::AmNnetSimple am_nnet;
+    // Read feature info
+    OnlineNnet2FeaturePipelineInfo feature_info(feature_config);
 
     // read transition model and nnet
     bool binary;
@@ -145,7 +141,7 @@ int main(int argc, char *argv[]) {
           KALDI_CUDA_DECODER_BIN_MAX_SEGMENT_LENGTH_S;
     }
     BatchedThreadedNnet3CudaPipeline2 cuda_pipeline(
-        batched_decoder_config, *decode_fst, am_nnet, *trans_model);
+        batched_decoder_config, feature_info, *decode_fst, am_nnet, *trans_model);
 
     delete decode_fst;
 

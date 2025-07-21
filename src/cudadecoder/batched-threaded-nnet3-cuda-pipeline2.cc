@@ -23,13 +23,7 @@
 
 #include <atomic>
 
-#ifdef __IS_HIP_COMPILE__
-#include <roctracer/roctx.h>
-
-#include "hipify.h"
-#else
-#include <nvtx3/nvToolsExt.h>
-#endif
+#include <nvToolsExt.h>
 
 namespace kaldi {
 namespace cuda_decoder {
@@ -39,10 +33,11 @@ const float kSleepForNewTask = 100e-6;
 
 BatchedThreadedNnet3CudaPipeline2::BatchedThreadedNnet3CudaPipeline2(
     const BatchedThreadedNnet3CudaPipeline2Config &config,
+    OnlineNnet2FeaturePipelineInfo &feature_info,
     const fst::Fst<fst::StdArc> &decode_fst, const nnet3::AmNnetSimple &am_nnet,
     const TransitionModel &trans_model)
     : config_(config),
-      cuda_online_pipeline_(config.cuda_online_pipeline_opts, decode_fst,
+      cuda_online_pipeline_(config.cuda_online_pipeline_opts, feature_info, decode_fst,
                             am_nnet, trans_model),
       use_online_features_(config_.use_online_features),
       corr_id_cnt_(0),
@@ -67,8 +62,7 @@ BatchedThreadedNnet3CudaPipeline2::BatchedThreadedNnet3CudaPipeline2(
     n_input_per_chunk_ = cuda_online_pipeline_.GetNSampsPerChunk();
   } else {
     n_input_per_chunk_ = cuda_online_pipeline_.GetNInputFramesPerChunk();
-    cuda_features_.reset(new OnlineCudaFeaturePipeline(
-        config_.cuda_online_pipeline_opts.feature_opts));
+    cuda_features_.reset(new OnlineCudaFeaturePipeline(feature_info));
     wave_buffer_.reset(new HostDeviceVector());
     next_wave_buffer_.reset(new HostDeviceVector());
   }
