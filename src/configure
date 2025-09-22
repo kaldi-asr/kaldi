@@ -1351,7 +1351,7 @@ or try another math library, e.g. --mathlib=OPENBLAS (Kaldi may be slower)."
       # --openblas-root fails fatally if the path does not exist, so we trust
       # that if set, the variable contains the existing path, converted to
       # absolute form).
-      OPENBLASROOT="$(rel2abs ../tools/OpenBLAS/install)" ||
+      OPENBLASROOT="$(rel2abs ../tools/extras/OpenBLAS/install)" ||
         Die "OpenBLAS not found in '../tools/OpenBLAS/install'.
 ** This is the only place we look for it. The best option is to build OpenBLAS
 ** tuned for your system and CPU. To do that, run the following commands:
@@ -1389,7 +1389,7 @@ or try another math library, e.g. --mathlib=OPENBLAS (Kaldi may be slower)."
       OPENBLASLIBS="-L$OPENBLASLIBDIR -l:libopenblas.a"
       # No Fortran for OpenBLAS
       if [[ "$HOST" != WASM ]]; then
-        OPENBLASLIBS+="-lgfortran"
+        OPENBLASLIBS+=" -lgfortran"
       fi
     else
       if [ -f $OPENBLASROOT/lib/libopenblas.so ]; then
