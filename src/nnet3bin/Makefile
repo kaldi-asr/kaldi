@@ -28,7 +28,8 @@ BINFILES = nnet3-init nnet3-info nnet3-get-egs nnet3-copy-egs nnet3-subset-egs \
    nnet3-xvector-compute-batched \
    nnet3-latgen-grammar nnet3-compute-batch nnet3-latgen-faster-batch \
    nnet3-latgen-faster-lookahead cuda-gpu-available cuda-compiled \
-   nnet3-latgen-faster-looped-parallel
+   nnet3-latgen-faster-looped-parallel \
+   nnet3-latgen-faster-compose
 
 OBJFILES =
 
@@ -43,7 +44,7 @@ ADDLIBS = ../nnet3/kaldi-nnet3.a ../chain/kaldi-chain.a \
           ../lat/kaldi-lat.a ../fstext/kaldi-fstext.a ../hmm/kaldi-hmm.a ../feat/kaldi-feat.a \
           ../transform/kaldi-transform.a ../ivector/kaldi-ivector.a ../gmm/kaldi-gmm.a \
           ../tree/kaldi-tree.a ../util/kaldi-util.a \
-          ../matrix/kaldi-matrix.a ../base/kaldi-base.a 
+          ../matrix/kaldi-matrix.a ../base/kaldi-base.a
 
 
 include ../makefiles/default_rules.mk

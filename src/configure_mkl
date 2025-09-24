@@ -1,0 +1,21 @@
+#!/bin/bash
+
+# Get the MKL config,
+#source /usr/local/share/intel/mkl/bin/mklvars.sh intel64 ilp64 # outdated...
+export MKLROOT=/usr/local/share/intel/mkl/2021.4.0
+
+# Use older compiler
+# export CXX=g++-7.4 # CUDA 10.0 works well with version '7.4',
+export CXX=g++-9.4   # CUDA 11.2, recommended gcc version 9.*,
+
+export CXXFLAGS="-march=x86-64" # compile for 'generic' 64bit CPU,
+#export CXXFLAGS="-march=westmere" # oldest architecutre we have at BUT (X5675, Westmere, blade024),
+
+# Use different CUDA,
+# CUDATK=/usr/local/share/cuda-10.2.89 # CUDA 10.0 supports our default gcc 7.4.0,
+# CUDATK=/usr/local/share/cuda-11.0.194
+CUDATK=/usr/local/share/cuda-11.2
+# and add '--cudatk-dir=$CUDATK' to './configure'
+
+# Generate kaldi.mk,
+./configure --mkl-root=$MKLROOT --cudatk-dir=$CUDATK --shared
