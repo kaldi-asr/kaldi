@@ -16,7 +16,7 @@ BINFILES = lattice-best-path lattice-prune lattice-equivalent lattice-to-nbest \
            nbest-to-linear nbest-to-lattice lattice-1best linear-to-nbest \
            lattice-mbr-decode lattice-align-words lattice-to-mpe-post \
            lattice-copy-backoff nbest-to-ctm lattice-determinize-pruned \
-           lattice-to-ctm-conf lattice-combine \
+           lattice-to-ctm-conf lattice-combine lattice-to-ngram-counts \
            lattice-rescore-mapped lattice-depth lattice-align-phones \
            lattice-to-smbr-post lattice-determinize-pruned-parallel \
            lattice-add-penalty lattice-align-words-lexicon lattice-push \
