@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # Copyright  2014  Johns Hopkins University (Author: Daniel Povey)
 #            2014  Guoguo Chen
+#            2024  Tien-Hong Lo
 # Apache 2.0
 
 # Begin configuration section.
@@ -32,7 +33,7 @@ fi
 # As the usage message of nbest-to-prons says, its output has lines that can be interpreted as
 #  <utterance-id> <begin-frame> <num-frames> <word> <phone1> <phone2> ... <phoneN>
 # and you could convert these into text form using a command like:
-# gunzip -c prons.*.gz | utils/sym2int.pl -f 4 words.txt | utils/sym2int.pl -f 5- phones.txt
+# gunzip -c prons.*.gz | utils/int2sym.pl -f 4 words.txt | utils/int2sym.pl -f 5- phones.txt
 
 
 
