@@ -90,6 +90,11 @@ def get_args():
                         choices=["true", "false"], default=False,
                         help="""If true, then the average output of the
                         network is computed and dumped as post.final.vec""")
+    parser.add_argument("--compute-prob-minibatch-size",
+                        type=str, dest='compute_prob_minibatch_size',
+                        default='1:64',
+                        help="Set the minibatch size used in computing the "
+                        "train and valid probabilities.")
 
     # General options
     parser.add_argument("--nj", type=int, default=4,
@@ -415,7 +420,8 @@ def train(args, run_opts):
                 image_augmentation_opts=args.image_augmentation_opts,
                 use_multitask_egs=use_multitask_egs,
                 backstitch_training_scale=args.backstitch_training_scale,
-                backstitch_training_interval=args.backstitch_training_interval)
+                backstitch_training_interval=args.backstitch_training_interval,
+                compute_prob_minibatch_size_str=args.compute_prob_minibatch_size)
 
             if args.cleanup:
                 # do a clean up everything but the last 2 models, under certain
@@ -447,7 +453,8 @@ def train(args, run_opts):
                 minibatch_size_str=args.minibatch_size, run_opts=run_opts,
                 get_raw_nnet_from_am=False,
                 max_objective_evaluations=args.max_objective_evaluations,
-                use_multitask_egs=use_multitask_egs)
+                use_multitask_egs=use_multitask_egs,
+                compute_prob_minibatch_size_str=args.compute_prob_minibatch_size)
         else:
             common_lib.force_symlink("{0}.raw".format(num_iters),
                                      "{0}/final.raw".format(args.dir))

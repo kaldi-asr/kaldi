@@ -11,6 +11,10 @@ cmd=run.pl
 egs_per_archive=25000
 train_subset_egs=5000
 test_mode=false
+crop=false
+crop_size=0
+crop_scale_min=0
+crop_scale_max=0
 stage=0
 # end configuration section
 
@@ -36,6 +40,14 @@ if [ $# != 3 ]; then
   echo "                     each iteration and for combination at the end"
   echo "                     (note: there is no data held-out from training"
   echo "                     data; we use the test or dev set for that.)"
+  echo "  --crop             false. Flag to indicate that the images are not square"
+  echo "                     They will need to be scaled and then croped."
+  echo "                     The scaling is random between [scale-min,scale-max]"
+  echo "  --crop-size        The size of the crop to ensure the inputs are square"
+  echo "  --crop-scale-min   The shortest side of the image is scaled randomly."
+  echo "                     The minimum scale size."
+  echo "  --crop-scale-max   The shortest side of the image is scaled randomly."
+  echo "                     The maximum scale size."
   exit 1;
 fi
 
@@ -98,11 +110,25 @@ if ! [ "$num_classes" -eq "$num_classes_test" ]; then
 fi
 
 if [ $stage -le 0 ]; then
-  $cmd $dir/log/get_train_diagnostic_egs.log \
-       ali-to-post "ark:filter_scp.pl $dir/train_subset_ids.txt $train/labels.txt|" ark:- \| \
-       post-to-smat --dim=$num_classes ark:- ark:- \| \
-       nnet3-get-egs-simple input="scp:filter_scp.pl $dir/train_subset_ids.txt $train/images.scp|" \
-       output=ark:- ark:$dir/train_diagnostic.egs
+  if ! $crop; then
+    $cmd $dir/log/get_train_diagnostic_egs.log \
+         ali-to-post "ark:filter_scp.pl $dir/train_subset_ids.txt $train/labels.txt|" ark:- \| \
+         post-to-smat --dim=$num_classes ark:- ark:- \| \
+         nnet3-get-egs-simple input="scp:filter_scp.pl $dir/train_subset_ids.txt $train/images.scp|" \
+         output=ark:- ark:$dir/train_diagnostic.egs
+  else
+    $cmd $dir/log/get_train_diagnostic_egs.log \
+         ali-to-post "ark:filter_scp.pl $dir/train_subset_ids.txt $train/labels.txt|" ark:- \| \
+         post-to-smat --dim=$num_classes ark:- ark:- \| \
+         nnet3-get-egs-simple input="scp:filter_scp.pl $dir/train_subset_ids.txt $train/images.scp|" \
+           output=ark:- ark:- \| \
+         nnet3-egs-augment-image --crop=true --crop-size=$crop_size \
+           --crop-scale-min=$crop_scale_min \
+           --crop-scale-max=$crop_scale_max \
+           --num-channels=3 \
+           ark:- ark:$dir/train_diagnostic.egs
+
+  fi
 fi
 
 

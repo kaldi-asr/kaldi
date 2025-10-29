@@ -31,6 +31,10 @@ namespace nnet3 {
 enum FillMode { kNearest, kReflect };
 
 struct ImageAugmentationConfig {
+  bool crop;
+  int32 crop_scale_min;
+  int32 crop_scale_max;
+  int32 crop_size;
   int32 num_channels;
   BaseFloat horizontal_flip_prob;
   BaseFloat horizontal_shift;
@@ -40,6 +44,10 @@ struct ImageAugmentationConfig {
   std::string fill_mode_string;
 
   ImageAugmentationConfig():
+      crop(false),
+      crop_scale_min(0),
+      crop_scale_max(0),
+      crop_size(0),
       num_channels(1),
       horizontal_flip_prob(0.0),
       horizontal_shift(0.0),
@@ -50,6 +58,15 @@ struct ImageAugmentationConfig {
 
 
   void Register(ParseOptions *po) {
+    po->Register("crop", &crop, "Option to set if the input images are not square."
+                 "If crop is set to true the image is randomly scaled then cropped."
+                 "The scaling is randomly so that the shortest side is"
+                 "[crop-scale-min,crop-scale-max]");
+    po->Register("crop-scale-min", &crop_scale_min, "Only used if crop is true."
+                 "Scale the shortest side randomly from [scale-min,scale-max].");
+    po->Register("crop-scale-max", &crop_scale_max, "Only used if crop."
+                 "Scale the shortest side ramdomly from [scale-min,scale-max].");
+    po->Register("crop-size", &crop_size, "The size of the window to crop from image after scaling.");
     po->Register("num-channels", &num_channels, "Number of colors in the image."
                  "It is important to specify this (helps interpret the image "
                  "correctly.");
@@ -293,6 +310,81 @@ void PerturbImage(const ImageAugmentationConfig &config,
   ApplyAffineTransform(transform_mat, config.num_channels, image, fill_mode);
 }
 
+/**
+  This function scales the shortest size to a size determined by 'config'
+  It also crops the image to a determined size
+*/
+void ScaleAndCropImage(const ImageAugmentationConfig &config,
+                Matrix<BaseFloat> *image) {
+  int32 width = image->NumRows(),
+      num_channels = config.num_channels,
+      height = image->NumCols() / num_channels,
+      crop_size = config.crop_size;
+  FillMode fill_mode = config.GetFillMode();
+  if (image->NumCols() % num_channels != 0) {
+    KALDI_ERR << "Number of Cols must be divisible by number of channels";
+  }
+  
+  Matrix<BaseFloat> scale_mat(3, 3, kUndefined);
+  scale_mat.SetUnit();
+  int32 scale = RandInt(config.crop_scale_min, config.crop_scale_max);
+  //int32 scale = 256;
+  if (width > height) {
+    scale_mat(0, 0) = (scale * 1.0) / height;
+    scale_mat(1, 1) = (scale * 1.0) / height;
+  } else {
+    scale_mat(0, 0) = (scale * 1.0) / width;
+    scale_mat(1, 1) = (scale * 1.0) / width;
+  }
+
+  int32 new_width = static_cast<int32>(floor(width * scale_mat(0, 0)));
+  int32 new_height = static_cast<int32>(floor(height * scale_mat(1, 1)));
+  int32 start_row = RandInt(0, new_width - crop_size);
+  int32 start_col = RandInt(0, new_height - crop_size);
+  //int32 start_row = new_width - crop_size;
+  //int32 start_col = new_height - crop_size;
+
+  Matrix<BaseFloat> temp_image(crop_size, crop_size * num_channels);
+  temp_image.SetZero();
+  for (int32 r = start_row; r < start_row + crop_size; r++) {
+    for (int32 c = start_col; c < start_col + crop_size; c++) {
+      BaseFloat r_old = r / scale_mat(0, 0);
+      BaseFloat c_old = c / scale_mat(1, 1); 
+      int32 r1 = static_cast<int32>(floor(r_old));
+      int32 c1 = static_cast<int32>(floor(c_old));
+      int32 r2 = r1 + 1;
+      int32 c2 = c1 + 1;
+
+      if (r2 >= width) {
+        r2 = width - 1;
+        if (r1 >= width) r1 = width - 1;
+      }
+      if (c2 >= height) {
+        c2 = height - 1;
+        if (c1 >= height) c1 = height - 1;
+      }
+
+
+      BaseFloat weight_11 = (r2 - r_old)*(c2 - c_old);
+      BaseFloat weight_12 = (r2 - r_old)*(c_old - c1);
+      BaseFloat weight_21 = (r_old - r1)*(c2 - c_old);
+      BaseFloat weight_22 = (r_old - r1)*(c_old - c1);
+
+      for (int32 ch = 0; ch < num_channels; ch++) {
+        BaseFloat p11 = (*image)(r1, num_channels * c1 + ch);
+        BaseFloat p12 = (*image)(r1, num_channels * c2 + ch);
+        BaseFloat p21 = (*image)(r2, num_channels * c1 + ch);
+        BaseFloat p22 = (*image)(r2, num_channels * c2 + ch);
+        temp_image((r - start_row), num_channels * (c - start_col) + ch) = weight_11 * p11
+            + weight_12 * p12
+            + weight_21 * p21
+            + weight_22 * p22;
+      }
+    }
+  }
+  
+  *image = temp_image;
+}
 
 /**
    This function does image perturbation as directed by 'config'
@@ -315,6 +407,23 @@ void PerturbImageInNnetExample(
       // program is intended to be used as part of a pipe, we
       // likely won't be dumping the perturbed data to disk.
       PerturbImage(config, &image);
+
+      if (config.crop) {
+        KALDI_ASSERT(config.crop_size > 0);
+        KALDI_ASSERT(config.crop_scale_min > 0 && config.crop_scale_max >= config.crop_scale_min);
+
+        ScaleAndCropImage(config, &image);
+
+        KALDI_ASSERT(image.NumRows() == config.crop_size);
+        KALDI_ASSERT(image.NumCols() == config.crop_size*config.num_channels);
+
+        // modify the indices
+        int32 num_rows = image.NumRows();
+        io.indexes.resize(num_rows);
+        for (int32 i = 0; i < num_rows; i++) {
+          io.indexes[i].t = i;
+        }
+      }
 
       // modify the 'io' object.
       io.features = image;
