@@ -593,7 +593,7 @@ def train(args, run_opts):
             chain_lib.combine_models(
                 dir=args.dir, num_iters=num_iters,
                 models_to_combine=models_to_combine,
-                num_chunk_per_minibatch_str=args.num_chunk_per_minibatch,
+                num_chunk_per_minibatch_str="1:64",
                 egs_dir=egs_dir,
                 leaky_hmm_coefficient=args.leaky_hmm_coefficient,
                 l2_regularize=args.l2_regularize,
