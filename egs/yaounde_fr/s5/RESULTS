@@ -1,0 +1,22 @@
+#!/bin/bash
+
+for x in exp/*/decode*/; do [ -d "$x" ] && [[ $x =~ "$1" ]] && grep WER $x/wer_* | utils/best_wer.sh; done
+
+for x in exp/chain/*/decode*; do [ -d $x ] && [[ $x =~ "$1" ]] && grep WER $x/wer_* | utils/best_wer.sh; done
+exit 0
+
+| model | dev tgsmall | test tgsmall | devtest tgsmall | dev tgmed | test tgmed | devtest tgmed | dev tglarge | test tglarge | devtest tglarge |
+| mono | 54.58 | 25.67 | 7.86 | 76.18 | 69.64 | 52.09| | | |
+| tri1 | 32.06 | 19.14 | 3.79 | 31.98 | 27.16 | 10.06 | 29.60 | 22.28 | 5.99 |
+| tri2b | 33.02 | 19.01 | 3.85 | 33.26 | 26.36 | 9.91 | 31.48 | 21.27 | 5.53 |
+| tri3b | 26.91 | 18.85 | 3.49 | 25.90 | 24.51 | 8.51 | 23.83 | 20.01 | 4.37 |
+| chain tdnn-f | 24.02 | 17.20 | 1.96 | 22.30 | 33.66 | 16.17 | 20.14 | 18.69 | 3.33 | 
+| chain tdnn-f online | 24.21 | 17.23 | 1.96 | 22.26 | 33.72 | 16.14 | 19.10 | 32.07 | 14.74 |
+
+| model | dev tgsmall | test tgsmall | devtest tgsmall | dev tgmed | test tgmed | devtest tgmed | dev tglarge | test tglarge | devtest tglarge |
+| mono | 54.44 | 22.47 | 4.83 | 61.56 | 35.45 | 18.43 | 58.69  | 30.52 | 12.66 |
+| tri1 | 33.88 | 18.69 | 2.93 | 37.04 | 26.79 | 11.51 | 34.73 | 22.05 | 5.23 |
+| tri3b | 26.28 | 17.62 | 2.63 | 27.31 | 23.62 | 10.29 | 24.80 | 19.14 | 4.10 |
+| tri3b enhanced lexicon | 26.04 | 17.81 | 2.60 | 27.07 | 23.21 | 8.71 | 24.07 | 19.59 | 3.79 |
+| chain tdnn-f | 30.91 | 17.26 | 1.59 | 41.78 | 33.62 | 18.62 |  31.22 | 18.66  | 3.36 |
+| chain tdnn-f online | 30.41 | 17.26 | 1.62 | 41.31 | 33.62 | 18.62 | 38.67 | 31.26 | 15.87 |
