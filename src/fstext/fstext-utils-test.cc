@@ -23,8 +23,6 @@
 #include "util/stl-utils.h"
 #include "base/kaldi-math.h"
 
-#include "fstext/openfst_compat.h"
-
 namespace fst
 {
 using std::vector;
@@ -142,7 +140,7 @@ template<class Arc>  void TestSafeDeterminizeWrapper() {  // also tests SafeDete
   std::cout <<" printing before trimming\n";
   {
     FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true, "\t");
-    printer_print(std::cout, fstprinter, "standard output");
+    fstprinter.Print(std::cout, "standard output");
   }
   // Trim resulting FST.
   Connect(fst);
@@ -150,7 +148,7 @@ template<class Arc>  void TestSafeDeterminizeWrapper() {  // also tests SafeDete
   std::cout <<" printing after trimming\n";
   {
     FstPrinter<Arc> fstprinter(*fst, sptr, sptr, NULL, false, true, "\t");
-    printer_print(std::cout, fstprinter, "standard output");
+    fstprinter.Print(std::cout, "standard output");
   }
 
   VectorFst<Arc> *fst_copy_orig = new VectorFst<Arc>(*fst);
@@ -204,7 +202,7 @@ template<class Arc>  void TestAcceptorMinimize() {
 
   VectorFst<Arc> *fst = RandFst<Arc>();
 
-  Project(fst, PROJECT_INPUT);
+  Project(fst, fst::ProjectType::INPUT);
   RemoveWeights(fst);
 
   VectorFst<Arc> fst2(*fst);
@@ -311,7 +309,7 @@ template<class Arc>  void TestMakeLoopFst() {
   for (int i = 0; i < num_fsts; i++) {
     if (kaldi::Rand() % 2 == 0) {  // put an fst there.
       VectorFst<Arc> *fst = RandFst<Arc>();
-      Project(fst, PROJECT_INPUT);  // make input & output labels the same.
+      Project(fst, fst::ProjectType::INPUT);  // make input & output labels the same.
       fsts[i] = fst;
     } else { // this is to test that it works with the caching.
       fsts[i] = fsts[i/2];
@@ -364,7 +362,7 @@ void TestEqualAlign() {
 template<class Arc> void Print(const Fst<Arc> &fst, std::string message) {
   std::cout << message << "\n";
   FstPrinter<Arc> fstprinter(fst, NULL, NULL, NULL, false, true, "\t");
-  printer_print(std::cout, fstprinter, "standard output");
+  fstprinter.Print(std::cout, "standard output");
 }
 
 
@@ -379,7 +377,7 @@ void TestRemoveUselessArcs() {
     RandGenOptions<UniformArcSelector<Arc> > randgen_opts(selector);
     VectorFst<Arc> fst_path;
     RandGen(*fst, &fst_path, randgen_opts);
-    Project(&fst_path, PROJECT_INPUT);
+    Project(&fst_path, fst::ProjectType::INPUT);
     // Print(fst_path, "[testremoveuselessarcs]:fstpath:");
 
     VectorFst<Arc> fst_nouseless(*fst);

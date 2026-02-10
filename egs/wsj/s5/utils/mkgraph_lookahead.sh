@@ -147,21 +147,21 @@ if [[ -z $arpa ]]; then
       [ ! -f $lang/oov.int ] && \
         echo "$0: --remove-oov option: no file $lang/oov.int" && exit 1;
       fstrmsymbols --remove-arcs=true --apply-to-output=true $lang/oov.int $gr | \
-        fstrelabel --relabel_ipairs=${dir}/relabel | \
+        fstrelabel --relabel_ipairs=${dir}/relabel --relabel_opairs=${dir}/relabel | \
         fstarcsort --sort_type=ilabel | \
         fstconvert --fst_type=const > ${dir}/Gr.fst.$$
     else
-      fstrelabel --relabel_ipairs=${dir}/relabel "$gr" | \
+      fstrelabel --relabel_ipairs=${dir}/relabel --relabel_opairs=${dir}/relabel "$gr" | \
         fstarcsort --sort_type=ilabel | \
         fstconvert --fst_type=const > ${dir}/Gr.fst.$$
     fi
     mv $dir/Gr.fst.$$ $dir/Gr.fst
-    cp $lang/words.txt $dir/ || exit 1;
+    utils/relabel_words.py ${dir}/relabel ${lang}/words.txt > ${dir}/words.txt
   fi
 else
   if [[ ! -s $dir/Gr.fst || $dir/Gr.fst -ot $arpa ]]; then
     # Opengrm builds acceptors, so we need to reorder words in symboltable
-    utils/apply_map.pl --permissive -f 2 ${dir}/relabel < ${lang}/words.txt > ${dir}/words.txt
+    utils/relabel_words.py ${dir}/relabel ${lang}/words.txt > ${dir}/words.txt
     gunzip -c $arpa | ngramread --OOV_symbol=`cat ${lang}/oov.txt` --symbols=${dir}/words.txt --ARPA | \
     fstarcsort --sort_type=ilabel | \
       fstconvert --fst_type=ngram > ${dir}/Gr.fst.$$

@@ -137,6 +137,8 @@ class IvectorExtractor {
  public:
   friend class IvectorExtractorStats;
   friend class OnlineIvectorEstimationStats;
+  friend class BatchedIvectorExtractorCuda;
+  friend class IvectorExtractorFastCuda;
 
   IvectorExtractor(): prior_offset_(0.0) { }
 

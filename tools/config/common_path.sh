@@ -25,3 +25,5 @@ ${KALDI_ROOT}/src/tfrnnlmbin:\
 ${KALDI_ROOT}/src/cudadecoderbin:\
 ${KALDI_ROOT}/src/cudafeatbin:\
 $PATH
+# Required to load Openfst extensions like ngram-fst
+export LD_LIRBRARY_PATH=$LD_LIBRARY_PATH:${KALDI_ROOT}/tools/openfst/lib/fst

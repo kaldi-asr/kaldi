@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-OPENBLAS_VERSION=0.3.13
+OPENBLAS_VERSION=0.3.20
 
 WGET=${WGET:-wget}
 
@@ -32,7 +32,7 @@ fi
 tar xzf $tarball
 mv OpenMathLib-OpenBLAS-* OpenBLAS
 
-make PREFIX=$(pwd)/OpenBLAS/install USE_LOCKING=1 USE_THREAD=0 -C OpenBLAS all install
+make PREFIX=$(pwd)/OpenBLAS/install DYNAMIC_ARCH=1 USE_LOCKING=1 USE_THREAD=0 -C OpenBLAS all install
 if [ $? -eq 0 ]; then
    echo "OpenBLAS is installed successfully."
    rm $tarball

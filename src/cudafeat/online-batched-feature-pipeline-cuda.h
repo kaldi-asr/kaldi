@@ -23,10 +23,6 @@
 #include <string>
 #include <vector>
 
-#ifdef __IS_HIP_COMPILE__
-#include "hipify.h"
-#endif
-
 #include "base/kaldi-error.h"
 #include "feat/feature-window.h"
 #include "matrix/matrix-lib.h"
@@ -43,8 +39,9 @@ namespace kaldi {
 
 class OnlineBatchedFeaturePipelineCuda {
  public:
+
   explicit OnlineBatchedFeaturePipelineCuda(
-      const OnlineNnet2FeaturePipelineConfig &config, int32_t max_chunk_size,
+      const OnlineNnet2FeaturePipelineInfo &feature_info, int32_t max_chunk_size,
       int32_t max_lanes, int32_t num_channels);
 
   // Computes features and ivectors for a batched chunk of audio data.
@@ -111,7 +108,7 @@ class OnlineBatchedFeaturePipelineCuda {
   const FrameExtractionOptions &GetFrameOptions() { return frame_opts_; }
 
  private:
-  OnlineNnet2FeaturePipelineInfo info_;
+  const OnlineNnet2FeaturePipelineInfo &info_;
 
   CudaOnlineBatchedSpectralFeatures *spectral_feat_;
   CudaOnlineBatchedCmvn *cmvn_;

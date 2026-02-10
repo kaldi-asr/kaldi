@@ -60,12 +60,12 @@ static fst::StdVectorFst* CreateGenFst(bool seps, const fst::SymbolTable* pst) {
   }
 
   // Add a loop for each symbol in the table except the four special ones.
-  fst::SymbolTableIterator si(*pst);
-  for (si.Reset(); !si.Done(); si.Next()) {
-    if (si.Value() == kBos || si.Value() == kEos ||
-        si.Value() == kEps || si.Value() == kDisambig)
+
+  for (fst::SymbolTable::iterator si = pst->begin(); si != pst->end(); ++si) {
+    if (si->Label() == kBos || si->Label() == kEos ||
+        si->Label() == kEps || si->Label() == kDisambig)
       continue;
-    genFst->AddArc(midId, fst::StdArc(si.Value(), si.Value(),
+    genFst->AddArc(midId, fst::StdArc(si->Label(), si->Label(),
                                       fst::StdArc::Weight::One(), midId));
   }
   return genFst;

@@ -87,68 +87,15 @@ if ! have awk; then
   add_packages gawk
 fi
 
-pythonok=false
-python3=false
-python27=false
-
-
-if ! have python2.7; then
-  echo "$0: python2.7 is not installed"
-else
-  echo "$0: python2.7 present"
-  python27=true
-  pythonok=true
-fi
-
 if ! have python3; then
   echo "$0: python3 is not installed"
   add_packages python3
-else
-  echo "$0: python3 present"
-  python3=true
-  pythonok=true
+  pythonok=false
 fi
-
-(
-#Use a subshell so that sourcing env.sh does not have an influence on the rest of the script
-[ -f ./env.sh ] && . ./env.sh
-rm -f $PWD/python/python*
-if ! [ -f $PWD/python/.use_default_python ]; then
-  echo "$0: Configuring python"
-  echo "$0: ... If you really want to avoid this, add an" \
-         "empty file $PWD/python/.use_default_python and run this script again."
-  if $python27 ; then
-    echo "$0: ... python2.7 found, making it default (python, python2, python2.7)"
-    ln -s $(command -v python2.7) $PWD/python/python
-    ln -s $(command -v python2.7) $PWD/python/python2
-    ln -s $(command -v python2.7) $PWD/python/python2.7
-  fi
-
-  if $python3 ; then
-    echo "$0: ... python3 found, making symlink (python3)"
-    ln -s $(command -v python3) $PWD/python/python3
-    if ! $python27 ; then
-      echo "$0: ... ... python2.7 not found, using python3 as python"
-      ln -s $(command -v python3) $PWD/python/python
-    fi
-  fi
-else
-  echo "$0: Not configuring python(s) -- using system defaults"
-  if ! have python ; then
-    echo "$0: WARNING: 'python' executable not present, configuring"
-    if $python27 ; then
-      ln -s $(command -v python2.7) $PWD/python/python
-    elif $python3 ; then
-      ln -s $(command -v python3) $PWD/python/python
-    fi
-  fi
-fi
-
-)
 
 mathlib_missing=false
-case "$(uname -m)-$(uname -s)" in
-  x86_64*)  # Suggest MKL on an Intel64 system (not supported on i?86 hosts).
+case $(uname -m) in
+  x86_64)  # Suggest MKL on an Intel64 system (not supported on i?86 hosts).
     # Respect user-supplied MKL_ROOT environment variable.
     MKL_ROOT="${MKL_ROOT:-/opt/intel/mkl}"
        # Check the well-known mkl.h file location.
@@ -167,9 +114,6 @@ case "$(uname -m)-$(uname -s)" in
       mathlib_missing=true
     fi
       ;;
-  arm64-Darwin)  ## Apple Silicon
-    echo "$0: Relying on Acceleration framework"
-    ;;
   *)  # Suggest OpenBLAS on other hardware.
     if [ ! -f $(pwd)/OpenBLAS/install/include/openblas_config.h ] &&
          ! echo '#include <openblas_config.h>' |

@@ -124,7 +124,7 @@ fi
 
 # Rescore the expanded lattice: add neural LM scores first and then remove the
 # old N-gram LM scores. The two models are effectively interpolated.
-oldlm_command="fstproject --project_output=true $oldlm |"
+oldlm_command="fstproject --project_type=output $oldlm |"
 oldlm_weight=$(perl -e "print -1.0 * $weight;")
 nnlm_weight=$(perl -e "print $weight;")
 if [ $stage -le 4 ]; then

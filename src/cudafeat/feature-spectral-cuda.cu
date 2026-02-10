@@ -17,16 +17,8 @@
 
 #include "cudafeat/feature-spectral-cuda.h"
 
-#ifdef __IS_HIP_COMPILE__
-#include <roctracer/roctx.h>
-
-#include <hipcub/hipcub.hpp>
-
-#include "hipify.h"
-#else
-#include <nvtx3/nvToolsExt.h>
+#include <nvToolsExt.h>
 #include <cub/cub.cuh>
-#endif
 
 #include "cudamatrix/cu-rand.h"
 
@@ -136,7 +128,7 @@ __global__ void mel_banks_compute_kernel(int32_t num_frames, float energy_floor,
 
   // perfom local sum
   float sum = 0;
-  for (int idx = tid; idx < size; idx += GPU_WARP_SIZE) {
+  for (int idx = tid; idx < size; idx += 32) {
     sum += v[idx] * w[idx];
   }
 
@@ -495,7 +487,7 @@ void CudaSpectralFeatures::ComputeFinalFeatures(int num_frames, BaseFloat vtln_w
   // mel banks
   int num_bins = bin_size_;
   cu_mel_energies_.Resize(num_frames, num_bins, kUndefined);
-  dim3 mel_threads(GPU_WARP_SIZE, 8);
+  dim3 mel_threads(32, 8);
   dim3 mel_blocks(num_bins, (num_frames + mel_threads.y - 1) / mel_threads.y);
   mel_banks_compute_kernel<<<mel_blocks, mel_threads>>>(
       num_frames, std::numeric_limits<float>::epsilon(), offsets_, sizes_,

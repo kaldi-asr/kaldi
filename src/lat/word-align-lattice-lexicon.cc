@@ -311,7 +311,7 @@ class LatticeLexiconWordAligner {
     std::vector<int32> syms_to_remove;
     syms_to_remove.push_back(kTemporaryEpsilon);
     RemoveSomeInputSymbols(syms_to_remove, lat_out_);
-    Project(lat_out_, fst::PROJECT_INPUT);
+    Project(lat_out_, fst::ProjectType::INPUT);
   }
 
   bool AlignLattice() {

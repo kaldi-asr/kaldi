@@ -15,21 +15,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifdef __IS_HIP_COMPILE__
-#define __CUDA_ARCH__ 800
-#include <hipcub/hipcub.hpp>
-
-#include "hipify.h"
-#else
 #include <cub/cub.cuh>
-#endif
-
 #include "cudafeat/feature-online-cmvn-cuda.h"
 #include "cudamatrix/cu-matrix.h"
 #include "cudamatrix/cu-vector.h"
 
-// HIP builds do not required packed floating point operators definition.
-#ifndef __IS_HIP_COMPILE__
 __host__ __device__ inline float2 operator-(const float2 &a, const float2 &b) {
   float2 retval;
   retval.x = a.x - b.x;
@@ -42,7 +32,6 @@ __host__ __device__ inline float2 operator+(const float2 &a, const float2 &b) {
   retval.y = a.y + b.y;
   return retval;
 }
-#endif
 
 #if __CUDA_ARCH__ == 750
 __launch_bounds__ (1024, 1)
@@ -190,9 +179,8 @@ void CudaOnlineCmvn::ComputeFeatures(const CuMatrixBase<BaseFloat> &feats_in,
       stats.Stride());
   CU_SAFE_CALL(cudaGetLastError());
 
-  threads = (feat_dim + GPU_WARP_SIZE - 1) / GPU_WARP_SIZE *
-            GPU_MAX_WARPS_PER_BLOCK;  // round up to GPU_WARP_SIZE threads
-  if (threads > GPU_MAX_THREADS_PER_BLOCK) threads = GPU_MAX_THREADS_PER_BLOCK;
+  threads = (feat_dim + 31) / 32 * 32;  // round up to 32 threads
+  if (threads > 1024) threads = 1024;
 
   const CuMatrix<float> &gstats = cmvn_state_.global_cmvn_stats;
   const CuMatrix<float> &sstats = cmvn_state_.speaker_cmvn_stats;

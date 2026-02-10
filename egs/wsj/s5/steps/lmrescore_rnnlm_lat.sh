@@ -71,7 +71,7 @@ awk -v n=$0 -v w=$weight 'BEGIN {if (w < 0 || w > 1) {
   print n": Interpolation weight should be in the range of [0, 1]"; exit 1;}}' \
   || exit 1;
 
-oldlm_command="fstproject --project_output=true $oldlm |"
+oldlm_command="fstproject --project_type=output $oldlm |"
 
 mkdir -p $outdir/log
 nj=`cat $indir/num_jobs` || exit 1;

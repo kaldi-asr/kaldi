@@ -151,9 +151,10 @@ template<class Arc, class I>
 LookaheadFst<Arc, I> *LookaheadComposeFst(const Fst<Arc> &ifst1,
                                           const Fst<Arc> &ifst2,
                                           const std::vector<I> &to_remove) {
-  fst::CacheOptions cache_opts(true, 1 << 25LL);
-  fst::CacheOptions cache_opts_map(true, 0);
-  fst::ArcMapFstOptions arcmap_opts(cache_opts);
+  fst::CacheOptions cache_opts(true, 0);
+  fst::CacheOptions cache_opts_map(true, 1 << 26LL);
+  fst::ArcMapFstOptions arcmap_opts(cache_opts_map);
+
   RemoveSomeInputSymbolsMapper<Arc, I> mapper(to_remove);
   return new LookaheadFst<Arc, I>(ComposeFst<Arc>(ifst1, ifst2, cache_opts), mapper, arcmap_opts);
 }
@@ -374,7 +375,6 @@ void GetSymbols(const SymbolTable &symtab,
                 std::vector<I> *syms_out) {
   KALDI_ASSERT(syms_out != NULL);
   syms_out->clear();
-#if OPENFST_VER >= 10800
   for (SymbolTable::iterator iter = symtab.begin();
       iter != symtab.end();
       ++iter) {
@@ -383,16 +383,6 @@ void GetSymbols(const SymbolTable &symtab,
       KALDI_ASSERT(syms_out->back() == iter->Label());  // an integer-range thing.
     }
   }
-#else
-  for (SymbolTableIterator iter(symtab);
-      !iter.Done();
-      iter.Next()) {
-    if (include_eps || iter.Value() != 0) {
-      syms_out->push_back(iter.Value());
-      KALDI_ASSERT(syms_out->back() == iter.Value());  // an integer-range thing.
-    }
-  }
-#endif
 }
 
 template<class Arc>

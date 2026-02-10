@@ -390,11 +390,7 @@ class ArcIterator< TrivialFactorWeightFst<A, F> >
 template <class A, class F>
 inline void TrivialFactorWeightFst<A, F>::InitStateIterator(
     StateIteratorData<A> *data) const {
-#if OPENFST_VER >= 10803
-  data->base.reset(new StateIterator< TrivialFactorWeightFst<A, F> >(*this));
-#else
-  data->base = new StateIterator< TrivialFactorWeightFst<A, F> >(*this);
-#endif
+  data->base = fst::make_unique<StateIterator<TrivialFactorWeightFst<A, F> > >(*this);
 }
 
 

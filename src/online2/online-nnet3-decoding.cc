@@ -79,6 +79,12 @@ void SingleUtteranceNnet3DecoderTpl<FST>::GetLattice(bool end_of_utterance,
 }
 
 template <typename FST>
+void SingleUtteranceNnet3DecoderTpl<FST>::GetRawLattice(bool end_of_utterance,
+                                                        Lattice *lat) const {
+  decoder_.GetRawLattice(lat, end_of_utterance);
+}
+
+template <typename FST>
 void SingleUtteranceNnet3DecoderTpl<FST>::GetBestPath(bool end_of_utterance,
                                               Lattice *best_path) const {
   decoder_.GetBestPath(best_path, end_of_utterance);

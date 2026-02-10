@@ -53,6 +53,10 @@ $(LIBFILE): $(LIBNAME).a
   ifeq ($(shell uname), Darwin)
 	$(CXX) -dynamiclib -o $@ -install_name @rpath/$@ $(LDFLAGS) $(OBJFILES) $(LDLIBS)
 	ln -sf $(shell pwd)/$@ $(KALDILIBDIR)/$@
+  else ifeq ($(LLVM_BUILD), 1)
+        # Building shared library from static (static was compiled with -fPIC) without soname
+	$(CXX) -shared -o $@ -Wl,--as-needed  -Wl,--whole-archive $(LIBNAME).a -Wl,--no-whole-archive $(LDFLAGS) $(LDLIBS)
+	ln -sf $(shell pwd)/$@ $(KALDILIBDIR)/$@
   else ifeq ($(shell uname), Linux)
         # Building shared library from static (static was compiled with -fPIC)
 	$(CXX) -shared -o $@ -Wl,--as-needed  -Wl,-soname=$@,--whole-archive $(LIBNAME).a -Wl,--no-whole-archive $(LDFLAGS) $(LDLIBS)
@@ -145,16 +149,11 @@ ifneq ($(CC_SRCS),)
 CC_DEP_COMMAND=$(CXX) -M $(CXXFLAGS) $(CC_SRCS)
 endif
 
-ifeq ($(IS_GPU_BUILD), true)
+ifeq ($(CUDA), true)
 CUDA_SRCS=$(wildcard *.cu)
 # Check if any CUDA .cu sources exist to run dependency commands on.
 ifneq ($(CUDA_SRCS),)
-ifeq ($(CUDA), true)
 NVCC_DEP_COMMAND = $(CUDATKDIR)/bin/nvcc -M $(CUDA_FLAGS) $(CUDA_INCLUDE) $(CUDA_SRCS)
-endif
-ifeq ($(ROCM), true)
-HIPCC_DEP_COMMAND = $(HIPCC) -M $(ROCM_FLAGS) $(ROCM_INCLUDE) $(CUDA_SRCS)
-endif
 endif
 endif
 
@@ -166,9 +165,6 @@ ifneq ($(CC_DEP_COMMAND),)
 endif
 ifneq ($(NVCC_DEP_COMMAND),)
 	-$(NVCC_DEP_COMMAND) >> .depend.mk
-endif
-ifneq ($(HIPCC_DEP_COMMAND),)
-	-$(HIPCC_DEP_COMMAND) >> .depend.mk
 endif
 
 # removing automatic making of "depend" as it's quite slow.

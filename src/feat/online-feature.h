@@ -215,6 +215,7 @@ struct OnlineCmvnOptions {
                            // modulus.
   std::string skip_dims; // Colon-separated list of dimensions to skip normalization
                          // of, e.g. 13:14:15.
+  float min_energy; // Minimum energy (c0 coefficient) to update frame stats
 
   OnlineCmvnOptions():
       cmn_window(600),
@@ -224,7 +225,8 @@ struct OnlineCmvnOptions {
       normalize_variance(false),
       modulus(20),
       ring_buffer_size(20),
-      skip_dims("") { }
+      skip_dims(""),
+      min_energy(50.0f) { }
 
   void Check() const {
     KALDI_ASSERT(speaker_frames <= cmn_window && global_frames <= speaker_frames
@@ -248,7 +250,9 @@ struct OnlineCmvnOptions {
     po->Register("norm-means", &normalize_mean, "If true, do mean normalization "
                  "(note: you cannot normalize the variance but not the mean)");
     po->Register("skip-dims", &skip_dims, "Dimensions to skip normalization of "
-                 "(colon-separated list of integers)");}
+                 "(colon-separated list of integers)");
+    po->Register("cmn-min-energy", &min_energy, "Minimum energy value (c0 coefficient) "
+                 "to update frame stats.");}
 };
 
 

@@ -7,7 +7,9 @@ CC ?= gcc        # used for sph2pipe
 
 WGET ?= wget
 
-OPENFST_VERSION ?= 1.8.4
+# Note: OpenFst requires a relatively recent C++ compiler with C++17 support,
+# e.g. g++ >= 4.7, Apple clang >= 5.0 or LLVM clang >= 3.3.
+OPENFST_VERSION ?= 1.8.0
 CUB_VERSION ?= 1.8.0
 # No '?=', since there exists only one version of sph2pipe.
 SPH2PIPE_VERSION = 2.5
@@ -76,25 +78,18 @@ else ifeq ($(OS),Windows_NT)
   # This new OS path is confirmed working on Windows 10 / Cygwin64.
   openfst_add_CXXFLAGS = -g -O2 -Wa,-mbig-obj
 else
-  openfst_add_CXXFLAGS = -g -O2
+  openfst_add_CXXFLAGS = -g -O3 -msse -msse2
 endif
 
 openfst-$(OPENFST_VERSION)/Makefile: openfst-$(OPENFST_VERSION)
 	cd openfst-$(OPENFST_VERSION)/ && \
+        autoreconf -i && \
 	./configure --prefix=`pwd` $(OPENFST_CONFIGURE) CXX="$(CXX)" \
 		CXXFLAGS="$(openfst_add_CXXFLAGS) $(CXXFLAGS)" \
 		LDFLAGS="$(LDFLAGS)" LIBS="-ldl"
 
-openfst-$(OPENFST_VERSION): openfst-$(OPENFST_VERSION).tar.gz
-	tar xozf openfst-$(OPENFST_VERSION).tar.gz
-
-openfst-$(OPENFST_VERSION).tar.gz:
-	if [ -d "$(DOWNLOAD_DIR)" ]; then \
-	  cp -p "$(DOWNLOAD_DIR)/openfst-$(OPENFST_VERSION).tar.gz" .; \
-	else \
-	  $(WGET) -nv -T 10 -t 1 http://www.openfst.org/twiki/pub/FST/FstDownload/openfst-$(OPENFST_VERSION).tar.gz || \
-	  $(WGET) -nv -T 10 -t 3 -c https://www.openslr.org/resources/2/openfst-$(OPENFST_VERSION).tar.gz; \
-	fi
+openfst-$(OPENFST_VERSION):
+	git clone --single-branch https://github.com/alphacep/openfst openfst-$(OPENFST_VERSION)
 
 openfst_cleaned:
 	-for d in openfst/ openfst-*/; do \
@@ -121,8 +116,6 @@ sclite sctk_made: sctk/.compiled
 
 sctk/.compiled: sctk
 	rm -f sctk/.compiled
-	sed -i -e '2s/^/#include <unistd.h>\n/' sctk/src/sclite/align.c
-	sed -i -e '99s/^/int TEXT_set_lang_prof(char *lprof);\n/' sctk/src/sclite/text.h
 	$(SCTK_MKENV) $(MAKE) -C sctk config
 	$(SCTK_MKENV) $(MAKE) -C sctk all doc
 	$(MAKE) -C sctk install
@@ -167,11 +160,6 @@ sph2pipe_v$(SPH2PIPE_VERSION)/Makefile: sph2pipe-$(SPH2PIPE_VERSION).tar.gz
 	rm -rf sph2pipe_v*
 	tar -xmzf sph2pipe-$(SPH2PIPE_VERSION).tar.gz
 	mv sph2pipe-$(SPH2PIPE_VERSION) sph2pipe_v$(SPH2PIPE_VERSION)
-	# Workaround for macOS bug <rdar://problem/19363342>
-	if [ `uname` = "Darwin" ]; then \
-		sed -i -e "s/#define _XOPEN_SOURCE 500/#define _XOPEN_SOURCE 600/g" sph2pipe_v$(SPH2PIPE_VERSION)/sph2pipe.c ; \
-		sed -i -e "s/#define _XOPEN_SOURCE 500/#define _XOPEN_SOURCE 600/g" sph2pipe_v$(SPH2PIPE_VERSION)/file_headers.c ; \
-	fi
 
 sph2pipe-$(SPH2PIPE_VERSION).tar.gz:
 	if [ -d "$(DOWNLOAD_DIR)" ]; then \

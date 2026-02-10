@@ -84,6 +84,10 @@ class SingleUtteranceNnet3DecoderTpl {
   void GetLattice(bool end_of_utterance,
                   CompactLattice *clat) const;
 
+  // Extra
+  void GetRawLattice(bool end_of_utterance,
+                     Lattice *lat) const;
+
   /// Outputs an FST corresponding to the single best path through the current
   /// lattice. If "use_final_probs" is true AND we reached the final-state of
   /// the graph then it will include those as final-probs, else it will treat
@@ -97,6 +101,8 @@ class SingleUtteranceNnet3DecoderTpl {
   bool EndpointDetected(const OnlineEndpointConfig &config);
 
   const LatticeFasterOnlineDecoderTpl<FST> &Decoder() const { return decoder_; }
+
+  nnet3::DecodableAmNnetLoopedOnline &Decodable() { return decodable_; }
 
   ~SingleUtteranceNnet3DecoderTpl() { }
  private:

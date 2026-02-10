@@ -22,8 +22,8 @@
 namespace kaldi {
 
 OnlineCudaFeaturePipeline::OnlineCudaFeaturePipeline(
-    const OnlineNnet2FeaturePipelineConfig &config)
-    : info_(config), spectral_feat(NULL), ivector(NULL) {
+    const OnlineNnet2FeaturePipelineInfo &info)
+    : info_(info), spectral_feat(NULL), ivector(NULL) {
   spectral_feat = NULL;
   cmvn = NULL;
   ivector = NULL;
@@ -44,16 +44,7 @@ OnlineCudaFeaturePipeline::OnlineCudaFeaturePipeline(
   }
 
   if (info_.use_ivectors) {
-    OnlineIvectorExtractionConfig ivector_extraction_opts;
-    ReadConfigFromFile(config.ivector_extraction_config,
-                       &ivector_extraction_opts);
-    info_.ivector_extractor_info.Init(ivector_extraction_opts);
-
-    // Only these ivector options are currently supported
-    ivector_extraction_opts.use_most_recent_ivector = true;
-    ivector_extraction_opts.greedy_ivector_extractor = true;
-
-    ivector = new IvectorExtractorFastCuda(ivector_extraction_opts);
+    ivector = new IvectorExtractorFastCuda(info_.ivector_extractor_info);
   }
 }
 

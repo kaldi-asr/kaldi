@@ -17,16 +17,8 @@
 
 #include "cudafeat/feature-online-batched-spectral-cuda-kernels.h"
 
-#ifdef __IS_HIP_COMPILE__
-#include <roctracer/roctx.h>
-
-#include <hipcub/hipcub.hpp>
-
-#include "hipify.h"
-#else
 #include <cub/cub.cuh>
-#include <nvtx3/nvToolsExt.h>
-#endif
+#include <nvToolsExt.h>
 
 #include "cudafeat/lane-desc.h"
 #include "cudamatrix/cu-rand.h"
@@ -70,7 +62,7 @@ __global__ void batched_mel_banks_compute_kernel(
   // perfom local sum
   float sum = 0;
   if (frame < num_frames) {  // exclude frames beyond the end
-    for (int idx = tid; idx < size; idx += GPU_WARP_SIZE) {
+    for (int idx = tid; idx < size; idx += 32) {
       sum += v[idx] * w[idx];
     }
   }
@@ -489,7 +481,7 @@ void cuda_mel_banks_compute(const LaneDesc *lanes, int32_t num_lanes,
                             float energy_floor, int32 *offsets, int32 *sizes,
                             float **vecs, const float *feats, int32_t ldf,
                             float *mels, int32_t ldm, bool use_log) {
-  dim3 Bl(GPU_WARP_SIZE, 8);
+  dim3 Bl(32, 8);
   dim3 Gr(num_bins, (max_chunk_frames + Bl.y - 1) / Bl.y, num_lanes);
   batched_mel_banks_compute_kernel<<<Gr, Bl>>>(
       lanes, num_lanes, max_chunk_frames, energy_floor, offsets, sizes, vecs,

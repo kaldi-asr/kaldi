@@ -23,8 +23,6 @@
 #include "util/kaldi-io.h"
 #include "base/kaldi-math.h"
 
-#include "fstext/openfst_compat.h"
-
 namespace fst
 {
 using std::vector;
@@ -198,7 +196,7 @@ static void TestContextFst(bool verbose, bool use_matcher) {
       std::cout << "Sequence FST is:\n";
       {  // Try to print the fst.
         FstPrinter<Arc> fstprinter(*f, NULL, NULL, NULL, false, true, "\t");
-        printer_print(std::cout, fstprinter, "standard output");
+        fstprinter.Print(std::cout, "standard output");
       }
     }
 
@@ -226,7 +224,7 @@ static void TestContextFst(bool verbose, bool use_matcher) {
       std::cout << "Composed FST is:\n";
       {  // Try to print the fst.
         FstPrinter<Arc> fstprinter(fst_composed, NULL, NULL, NULL, false, true, "\t");
-        printer_print(std::cout, fstprinter, "standard output");
+        fstprinter.Print(std::cout, "standard output");
       }
     }
 

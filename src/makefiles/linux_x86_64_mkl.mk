@@ -17,10 +17,9 @@ ifndef OPENFSTLIBS
 $(error OPENFSTLIBS not defined.)
 endif
 
-CXXFLAGS = -std=$(CXXLANGVERSION) -I.. -isystem $(OPENFSTINC) -O1 \
+CXXFLAGS = -std=c++17 -I.. -isystem $(OPENFSTINC) -O1 \
            -Wall -Wno-sign-compare -Wno-unused-local-typedefs \
            -Wno-deprecated-declarations -Winit-self \
-           -DOPENFST_VER=$(OPENFSTVER) \
            -DKALDI_DOUBLEPRECISION=$(DOUBLE_PRECISION) \
            -DHAVE_EXECINFO_H=1 -DHAVE_CXXABI_H -DHAVE_MKL $(MKL_CXXFLAGS) \
            -m64 -msse -msse2 -pthread -g

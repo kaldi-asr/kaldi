@@ -28,18 +28,14 @@
 namespace kaldi {
 #if HAVE_CUDA == 1
 
-#ifndef CUBLAS_R_32F
-#define CUBLAS_R_32F CUDA_R_32F
-#endif
 inline cublasStatus_t cublas_gemm(
     cublasHandle_t handle, cublasOperation_t transa,
     cublasOperation_t transb, int m, int n,int k, float alpha,
     const float *A, int lda, const float *B, int ldb, float beta,
     float *C, int ldc) {
 #if CUDA_VERSION >= 11000
-  return cublasGemmEx(handle, transa, transb, m, n, k, &alpha, A, CUBLAS_R_32F,
-                      lda, B, CUBLAS_R_32F, ldb, &beta, C, CUBLAS_R_32F, ldc,
-                      CuDevice::Instantiate().GetCublasComputeType(),
+  return cublasGemmEx(handle,transa,transb,m,n,k,&alpha,A,CUDA_R_32F,lda,B,CUDA_R_32F,ldb,&beta,
+                      C,CUDA_R_32F,ldc,CuDevice::Instantiate().GetCublasComputeType(),
                       CuDevice::Instantiate().GetCublasGemmAlgo());
 #else
   return cublasSgemm_v2(handle,transa,transb,m,n,k,&alpha,A,lda,B,ldb,&beta,C,ldc);
@@ -67,11 +63,9 @@ inline cublasStatus_t cublas_gemmBatched(
     const float *A[], int lda, const float *B[], int ldb, float beta,
     float *C[], int ldc, int batchCount) {
 #if CUDA_VERSION >= 11000
-  return cublasGemmBatchedEx(
-      handle, transa, transb, m, n, k, &alpha, (const void **)A, CUBLAS_R_32F,
-      lda, (const void **)B, CUBLAS_R_32F, ldb, &beta, (void **)C, CUBLAS_R_32F,
-      ldc, batchCount, CuDevice::Instantiate().GetCublasComputeType(),
-      CuDevice::Instantiate().GetCublasGemmAlgo());
+  return cublasGemmBatchedEx(handle, transa, transb, m, n, k, &alpha, (const void**)A, CUDA_R_32F,  lda,
+                             (const void**)B, CUDA_R_32F, ldb, &beta, (void**)C, CUDA_R_32F, ldc, batchCount,
+                             CuDevice::Instantiate().GetCublasComputeType(), CuDevice::Instantiate().GetCublasGemmAlgo());
 #else
   return cublasSgemmBatched(handle, transa, transb, m, n, k, &alpha, A, lda, B, ldb, &beta, C, ldc, batchCount);
 #endif
@@ -225,7 +219,6 @@ inline cublasStatus_t cublas_spr(cublasHandle_t handle, cublasFillMode_t uplo,
 // cuSPARSE wrappers
 //
 #if CUDA_VERSION >= 10020
-#ifndef __IS_HIP_COMPILE__
 inline cusparseStatus_t cusparse_csr2csc(cusparseHandle_t handle, int m, int n,
                                          int nnz, const void *csrVal,
                                          const int *csrRowPtr,
@@ -250,7 +243,6 @@ inline cusparseStatus_t cusparse_csr2csc(cusparseHandle_t handle, int m, int n,
 
   return status;
 }
-#endif
 
 inline cusparseStatus_t cusparse_csrmm2(cusparseHandle_t handle,
                                        cusparseOperation_t transA, 
@@ -327,7 +319,7 @@ inline cusparseStatus_t cusparse_csr2csc(cusparseHandle_t handle, int m, int n,
                                          int *cscRowInd, int *cscColPtr,
                                          cusparseAction_t copyValues,
                                          cusparseIndexBase_t idxBase) {
-#if CUDA_VERSION >= 10020 && !defined(__IS_HIP_COMPILE__)
+#if CUDA_VERSION >= 10020
   return cusparse_csr2csc(handle, m, n, nnz, csrVal, csrRowPtr, csrColInd,
                           cscVal, cscRowInd, cscColPtr, CUDA_R_32F, copyValues,
 			  idxBase);
@@ -344,7 +336,7 @@ inline cusparseStatus_t cusparse_csr2csc(cusparseHandle_t handle, int m, int n,
                                          int *cscRowInd, int *cscColPtr,
                                          cusparseAction_t copyValues,
                                          cusparseIndexBase_t idxBase) {
-#if CUDA_VERSION >= 10020 && !defined(__IS_HIP_COMPILE__)
+#if CUDA_VERSION >= 10020
   return cusparse_csr2csc(handle, m, n, nnz, csrVal, csrRowPtr, csrColInd,
                           cscVal, cscRowInd, cscColPtr, CUDA_R_64F, copyValues,
                           idxBase);

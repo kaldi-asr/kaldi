@@ -36,7 +36,7 @@ namespace kaldi {
 class OnlineCudaFeaturePipeline {
  public:
   explicit OnlineCudaFeaturePipeline(
-      const OnlineNnet2FeaturePipelineConfig &config);
+      const OnlineNnet2FeaturePipelineInfo &info);
 
   void ComputeFeatures(const CuVectorBase<BaseFloat> &cu_wave,
                        BaseFloat sample_freq,
@@ -46,7 +46,7 @@ class OnlineCudaFeaturePipeline {
   ~OnlineCudaFeaturePipeline();
 
  private:
-  OnlineNnet2FeaturePipelineInfo info_;
+  const OnlineNnet2FeaturePipelineInfo &info_;
   CudaSpectralFeatures *spectral_feat;
   CudaOnlineCmvn *cmvn;
   IvectorExtractorFastCuda *ivector;

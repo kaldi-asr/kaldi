@@ -19,13 +19,7 @@
 #define KALDI_CUDAFEAT_FEATURE_MFCC_CUDA_H_
 
 #if HAVE_CUDA == 1
-#ifdef __IS_HIP_COMPILE__
-#include <hipfft/hipfft.h>
-
-#include "hipify.h"
-#else
 #include <cufft.h>
-#endif
 #endif
 
 #include "cudafeat/feature-window-cuda.h"

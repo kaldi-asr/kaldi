@@ -17,13 +17,7 @@
 
 #include "cudafeat/feature-window-cuda.h"
 
-#ifdef __IS_HIP_COMPILE__
-#include <roctracer/roctx.h>
-
-#include "hipify.h"
-#else
-#include <nvtx3/nvToolsExt.h>
-#endif
+#include <nvToolsExt.h>
 
 #include "matrix/matrix-functions.h"
 

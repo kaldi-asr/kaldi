@@ -304,7 +304,7 @@ fstcompile $sym_opts <$dir/unk_fst_orig.txt >$dir/unk_orig.fst
 # a lot of final-states that have no transitions out of them.
 fstproject $dir/unk_orig.fst | \
   fstcompose - $dir/constraint.fst | \
-  fstproject --project_output=true | \
+  fstproject --project_type=output | \
   fstpushspecial | \
   fstminimizeencoded | \
   fstrmsymbols --remove-from-output=true <(echo $phone_disambig_int) >$dir/unk.fst

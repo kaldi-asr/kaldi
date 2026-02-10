@@ -123,7 +123,7 @@ class LatticeBiglmFasterDecoder {
     if (!GetRawLattice(&fst, use_final_probs)) return false;
     // std::cout << "Raw lattice is:\n";
     // fst::FstPrinter<LatticeArc> fstprinter(fst, NULL, NULL, NULL, false, true);
-    // fstprinter.Print(&std::cout, "standard output");
+    // fstprinter.Print(std::cout, "standard output");
     ShortestPath(fst, ofst);
     return true;
   }

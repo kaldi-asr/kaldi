@@ -29,20 +29,19 @@ namespace kaldi {
 
 class IvectorExtractorFastCuda {
  public:
-  IvectorExtractorFastCuda(const OnlineIvectorExtractionConfig &config)
-      : b_(0), tot_post_(2) {
-    if (config.use_most_recent_ivector == false) {
+  IvectorExtractorFastCuda(const OnlineIvectorExtractionInfo &info)
+      : info_(info), b_(0), tot_post_(2) {
+    if (info_.use_most_recent_ivector == false) {
       KALDI_WARN
           << "IvectorExractorFastCuda: Ignoring use_most_recent_ivector=false.";
     }
-    if (config.greedy_ivector_extractor == false) {
+    if (info_.greedy_ivector_extractor == false) {
       KALDI_WARN << "IvectorExractorFastCuda: Ignoring "
                     "greedy_ivector_extractor=false.";
     }
 
-    info_.Init(config);
+    Read();
     naive_cmvn_state_ = OnlineCmvnState(info_.global_cmvn_stats);
-    Read(config);
     cu_lda_.Resize(info_.lda_mat.NumRows(), info_.lda_mat.NumCols());
     cu_lda_.CopyFromMat(info_.lda_mat);
 
@@ -84,12 +83,12 @@ class IvectorExtractorFastCuda {
   int32 NumGauss() const { return num_gauss_; }
 
  private:
-  OnlineIvectorExtractionInfo info_;
+  const OnlineIvectorExtractionInfo &info_;
 
   IvectorExtractorFastCuda(IvectorExtractorFastCuda const &);
   IvectorExtractorFastCuda &operator=(IvectorExtractorFastCuda const &);
 
-  void Read(const kaldi::OnlineIvectorExtractionConfig &config);
+  void Read();
 
   void SpliceFeats(const CuMatrixBase<BaseFloat> &feats,
                    CuMatrix<BaseFloat> *spliced_feats);

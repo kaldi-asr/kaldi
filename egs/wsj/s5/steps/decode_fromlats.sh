@@ -77,7 +77,7 @@ esac
 
 $cmd JOB=1:$nj $dir/log/decode_lats.JOB.log \
  lattice-to-fst "ark:gunzip -c $olddir/lat.JOB.gz|" ark:- \| \
-  fsttablecompose "fstproject --project_output=true $lang/G.fst | fstarcsort |" ark:- ark:- \| \
+  fsttablecompose "fstproject --project_type=output $lang/G.fst | fstarcsort |" ark:- ark:- \| \
   fstdeterminizestar ark:- ark:- \| \
   compile-train-graphs-fsts --read-disambig-syms=$lang/phones/disambig.int \
     --batch-size=$batch_size $scale_opts $srcdir/tree $srcdir/final.mdl $lang/L_disambig.fst ark:- ark:- \|  \
