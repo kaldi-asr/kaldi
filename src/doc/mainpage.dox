@@ -43,6 +43,7 @@
    - \subpage versions
    - \subpage dependencies
    - \subpage legal
+   - \subpage example_decode_one_file
    - \subpage tutorial
    - \subpage kaldi_for_dummies
    - \subpage examples
