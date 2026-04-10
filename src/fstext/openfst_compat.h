@@ -10,8 +10,8 @@
 #endif
 
 namespace fst {
-#if OPENFST_VER >= 10800
 
+#if OPENFST_VER >= 10800
 
 template <typename... Args>
 auto Map(Args&&... args) -> decltype(ArcMap(std::forward<Args>(args)...)) {
@@ -23,6 +23,10 @@ using MapFstOptions=ArcMapFstOptions;
 template <class A, class B, class C>
 using MapFst = ArcMapFst<A, B, C>;
 
+#endif
+
+#if OPENFST_VER >= 10704
+
 template<typename Printer, typename Stream>
 void printer_print(Stream &os, Printer &printer, const std::string &s) {
   printer.Print(os, s);
@@ -32,7 +36,7 @@ void printer_print(Stream &os, Printer &printer, const std::string &s) {
 
 template<typename Printer, typename Stream>
 void printer_print(Stream &os, Printer &printer, const std::string &s) {
-  printer.Print(&os, s);
+  printer.Print(os, s);
 }
 
 #endif
