@@ -82,8 +82,9 @@ endif
 openfst-$(OPENFST_VERSION)/Makefile: openfst-$(OPENFST_VERSION)
 	cd openfst-$(OPENFST_VERSION)/ && \
 	./configure --prefix=`pwd` $(OPENFST_CONFIGURE) CXX="$(CXX)" \
-		CXXFLAGS="$(openfst_add_CXXFLAGS) $(CXXFLAGS)" \
-		LDFLAGS="$(LDFLAGS)" LIBS="-ldl"
+		CXXFLAGS="$(openfst_add_CXXFLAGS) $(CXXFLAGS) -pthread" \
+		LDFLAGS="$(LDFLAGS) -pthread" \
+		LIBS="-ldl -lpthread"
 
 openfst-$(OPENFST_VERSION): openfst-$(OPENFST_VERSION).tar.gz
 	tar xozf openfst-$(OPENFST_VERSION).tar.gz
