@@ -16,24 +16,23 @@ if ! command -v gfortran 2>/dev/null; then
   exit 1
 fi
 
-
 tarball=OpenBLAS-$OPENBLAS_VERSION.tar.gz
 
-rm -rf OpenMathLib-OpenBLAS-* OpenBLAS OpenBLAS-*.tar.gz
+rm -rf OpenMathLib-OpenBLAS-* OpenBLAS OpenBLAS-* OpenBLAS-*.tar.gz
 
-if [ -d "$DOWNLOAD_DIR" ]; then
+if [ -n "${DOWNLOAD_DIR:-}" ] && [ -d "$DOWNLOAD_DIR" ]; then
   cp -p "$DOWNLOAD_DIR/$tarball" .
 else
-  url=$($WGET -qO- "https://api.github.com/repos/OpenMathLib/OpenBLAS/releases/tags/v${OPENBLAS_VERSION}" | python3 -c 'import sys,json;print(json.load(sys.stdin)["tarball_url"])')
-  test -n "$url"
-  $WGET -t3 -nv -O $tarball "$url"
+  url="https://github.com/OpenMathLib/OpenBLAS/archive/refs/tags/v${OPENBLAS_VERSION}.tar.gz"
+  $WGET -t3 -nv -O "$tarball" "$url"
 fi
 
-tar xzf $tarball
-mv OpenMathLib-OpenBLAS-* OpenBLAS
+tar xzf "$tarball"
+
+src_dir=$(tar tzf "$tarball" | head -1 | cut -d/ -f1)
+mv "$src_dir" OpenBLAS
 
 make PREFIX=$(pwd)/OpenBLAS/install USE_LOCKING=1 USE_THREAD=0 -C OpenBLAS all install
-if [ $? -eq 0 ]; then
-   echo "OpenBLAS is installed successfully."
-   rm $tarball
-fi
+
+echo "OpenBLAS is installed successfully."
+rm "$tarball"
