@@ -215,8 +215,9 @@ __global__ void update_linear_and_quadratic_terms_kernel(
 void batched_gemv_reduce(int batch_size, int rows, int cols, int A_stride,
                          const float* AT, int B_stride, const float* B,
                          float* C) {
+  KALDI_WARP_GEOMETRY(warp, warps_per_block);
   batched_gemv_reduce_kernel<<<batch_size,
-                               dim3(GPU_WARP_SIZE, GPU_MAX_WARPS_PER_BLOCK)>>>(
+                               dim3(warp, warps_per_block)>>>(
       rows, cols, AT, A_stride, B, B_stride, C);
   CU_SAFE_CALL(cudaGetLastError());
 }
@@ -224,8 +225,9 @@ void batched_gemv_reduce(int batch_size, int rows, int cols, int A_stride,
 void splice_features(int32_t num_frames, int32_t feat_dim, int32_t left,
                      int32_t size, const float* feats, int32_t ldf,
                      float* sfeats, int32_t lds) {
-  int threads = (feat_dim + GPU_WARP_SIZE - 1) / GPU_WARP_SIZE *
-                GPU_MAX_WARPS_PER_BLOCK;  // round up to the nearest warp size
+  KALDI_WARP_GEOMETRY(warp, warps_per_block);
+  int threads = (feat_dim + warp - 1) / warp *
+                warps_per_block;  // round up to the nearest warp size
   if (threads > GPU_MAX_THREADS_PER_BLOCK)
     threads = GPU_MAX_THREADS_PER_BLOCK;  // Max block size is
                                           // GPU_MAX_THREADS_PER_BLOCK threads
@@ -250,7 +252,8 @@ void update_linear_and_quadratic_terms(int32_t n, float old_num_frames,
 void get_matrix_sum_double_buffer(int32_t b, int32_t num_rows, int32_t num_cols,
                                   float* A, int32_t lda, float scale,
                                   float* sum) {
-  dim3 threads(GPU_WARP_SIZE, GPU_MAX_WARPS_PER_BLOCK);
+  KALDI_WARP_GEOMETRY(warp, warps_per_block);
+  dim3 threads(warp, warps_per_block);
   dim3 blocks((num_cols + threads.x - 1) / threads.x,
               (num_rows + threads.y - 1) / threads.y);
 
@@ -261,7 +264,8 @@ void get_matrix_sum_double_buffer(int32_t b, int32_t num_rows, int32_t num_cols,
 
 void square_matrix(int32_t num_rows, int32_t num_cols, const float* feats,
                    int32_t ldf, float* feats_sq, int32_t lds) {
-  dim3 threads(GPU_WARP_SIZE, GPU_MAX_WARPS_PER_BLOCK);
+  KALDI_WARP_GEOMETRY(warp, warps_per_block);
+  dim3 threads(warp, warps_per_block);
   dim3 blocks((num_cols + threads.x - 1) / threads.x,
               (num_rows + threads.y - 1) / threads.y);
 

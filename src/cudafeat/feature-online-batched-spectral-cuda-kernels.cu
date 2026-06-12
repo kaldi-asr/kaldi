@@ -489,7 +489,7 @@ void cuda_mel_banks_compute(const LaneDesc *lanes, int32_t num_lanes,
                             float energy_floor, int32 *offsets, int32 *sizes,
                             float **vecs, const float *feats, int32_t ldf,
                             float *mels, int32_t ldm, bool use_log) {
-  dim3 Bl(GPU_WARP_SIZE, 8);
+  dim3 Bl(KALDI_WARP_WIDTH(), 8);
   dim3 Gr(num_bins, (max_chunk_frames + Bl.y - 1) / Bl.y, num_lanes);
   batched_mel_banks_compute_kernel<<<Gr, Bl>>>(
       lanes, num_lanes, max_chunk_frames, energy_floor, offsets, sizes, vecs,

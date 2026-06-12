@@ -9,6 +9,7 @@
 //           2016-2018  Shiyin Kang
 //                2017  Hossein Hadian, Daniel Galvez
 //                2019  Yiwen Shao
+//                2026  Advanced Micro Devices, Inc. (author: Jeff Daily)
 
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -28,15 +29,21 @@
 #include <cfloat>
 #include <limits>
 #ifdef __IS_HIP_COMPILE__
-#define __CUDA_ARCH__ 800
 #include <hip/hip_math_constants.h>
 #include <hip/hip_runtime.h>
 
 #include <hipcub/hipcub.hpp>
 #include <hipcub/block/block_reduce.hpp>
 
+#include "cudamatrix/cu-common.h"
 #include "cudamatrix/cu-kernels-ansi.h"
 #include "hipify.h"
+// Define __CUDA_ARCH__ AFTER the rocPRIM/hipCUB headers are parsed: on ROCm 7.2.1
+// rocprim/config.hpp keys its target detection on the compiler's __gfx90a__ macro,
+// and defining __CUDA_ARCH__ before it is included suppresses that arch macro in the
+// device pass (rocprim then hits its "128-bit atomics not implemented" #error). Set it
+// here so kaldi's own #if __CUDA_ARCH__ >= 600 device-intrinsic branches still fire.
+#define __CUDA_ARCH__ 800
 #else
 #include <math_constants.h>
 #include "cudamatrix/cu-common.h"
@@ -44,6 +51,22 @@
 #include <cub/block/block_reduce.cuh>
 #include <cuda.h> // for CUDA_VERSION
 #endif            //__IS_HIP_COMPILE__
+
+#ifdef __IS_HIP_COMPILE__
+// These shared-memory tiling kernels are templated on the warp/wavefront width
+// (TileDim == blockDim.x). Dispatch to the matching instantiation based on the
+// block-x dimension the host computed from the runtime warp size.
+#define KALDI_LAUNCH_WARP_TILED(KERNEL, GR, BL, ...)        \
+  do {                                                      \
+    if ((BL).x >= 64)                                       \
+      KERNEL<64><<<(GR), (BL)>>>(__VA_ARGS__);              \
+    else                                                    \
+      KERNEL<32><<<(GR), (BL)>>>(__VA_ARGS__);              \
+  } while (0)
+#else
+#define KALDI_LAUNCH_WARP_TILED(KERNEL, GR, BL, ...) \
+  KERNEL<GPU_WARP_SIZE><<<(GR), (BL)>>>(__VA_ARGS__)
+#endif  // __IS_HIP_COMPILE__
 
 /***********************************************************************
  * Generic __device__ functions
@@ -1115,19 +1138,12 @@ __global__ void _frobenius_norm_atomic(Real * result,
       myAtomicAdd(result, aggregate);
 }
 
-template <typename Real>
-void trace_mat_mat_trans_atomic(Real *d_result,
-                                const Real *A, const Real *B,
-                                MatrixDim dA, int B_stride,
-                                cudaStream_t stream) {
-  // Assuming *d_result is set to zero already
-
-  constexpr int THREADS_X = GPU_WARP_SIZE;
-  constexpr int THREADS_Y = GPU_MAX_WARPS_PER_BLOCK / 2;
-
+template <typename Real, int THREADS_X, int THREADS_Y>
+static void launch_trace_mat_mat_trans_atomic(Real *d_result, const Real *A,
+                                              const Real *B, MatrixDim dA,
+                                              int B_stride, bool isSameAB,
+                                              cudaStream_t stream) {
   dim3 thrds(THREADS_X, THREADS_Y);
-
-  bool isSameAB = (A == B);
 
   int elemsPerThread = (dA.rows + static_cast<int>(thrds.y) - 1) / static_cast<int>(thrds.y);
   elemsPerThread = (elemsPerThread > 8) ? 8 : elemsPerThread;
@@ -1140,6 +1156,33 @@ void trace_mat_mat_trans_atomic(Real *d_result,
   else
     _trace_mat_mat_trans_atomic<Real, THREADS_X, THREADS_Y, 4><<<nblks, thrds, 0, stream>>>(d_result,
                                                   A, B, dA, B_stride);
+}
+
+template <typename Real>
+void trace_mat_mat_trans_atomic(Real *d_result,
+                                const Real *A, const Real *B,
+                                MatrixDim dA, int B_stride,
+                                cudaStream_t stream) {
+  // Assuming *d_result is set to zero already
+  // THREADS_X is the block-x extent and the cub::BlockReduce BLOCK_DIM_X; both
+  // must equal the launched blockDim.x. The block holds a fixed
+  // GPU_MAX_THREADS_PER_BLOCK/2 threads regardless of arch, with the x extent
+  // set to the warp width so warp reductions stay aligned.
+  bool isSameAB = (A == B);
+#ifdef __IS_HIP_COMPILE__
+  // Multi-arch fat binary: pick the tiling for the active device's runtime warp
+  // size (CDNA wave64 vs RDNA wave32) rather than a compile-time constant.
+  if (::kaldi::KaldiHipWarpSize() >= 64)
+    launch_trace_mat_mat_trans_atomic<Real, 64, GPU_MAX_THREADS_PER_BLOCK / 64 / 2>(
+        d_result, A, B, dA, B_stride, isSameAB, stream);
+  else
+    launch_trace_mat_mat_trans_atomic<Real, 32, GPU_MAX_THREADS_PER_BLOCK / 32 / 2>(
+        d_result, A, B, dA, B_stride, isSameAB, stream);
+#else
+  launch_trace_mat_mat_trans_atomic<Real, GPU_WARP_SIZE,
+                                    GPU_MAX_WARPS_PER_BLOCK / 2>(
+      d_result, A, B, dA, B_stride, isSameAB, stream);
+#endif
 }
 
 // _trace_mat_mat_trans reduce the partial sum to
@@ -3798,9 +3841,17 @@ static void _diff_lstm_nonlinearity(const int cell_dim, const int have_dropout_m
 
     // need to update self_repair_sum_out before deriv_sum_out, because
     // deriv_sum_out and deriv_sum_in might point to the same memory.
-    if (i0 < 5 && j < cell_dim) {
-      self_repair_sum_out[i0 * self_repair_sum_out_stride + j] =
-          update_sr[i0] ? num_rows : 0;
+    // The 5 self-repair rows are written by the threadIdx.y==0 lane: update_sr[]
+    // depends only on the column j (not on threadIdx.y), so any lane in the
+    // column holds the right values. The original `i0 < 5` form needs
+    // blockDim.y >= 5, which holds on wave32 (CU1DBLOCK/32 = 8) but NOT on wave64
+    // (CU1DBLOCK/64 = 4), where row 4 was never written and left stale.
+    if (threadIdx.y == 0 && j < cell_dim) {
+#     pragma unroll
+      for (int s = 0; s < 5; s++) {
+        self_repair_sum_out[s * self_repair_sum_out_stride + j] =
+            update_sr[s] ? num_rows : 0;
+      }
     }
 
     // compute derive_sum_out
@@ -4391,7 +4442,7 @@ void cudaF_trace_mat_mat_trans(const float* A, const float* B,
 
 void cudaF_trace_mat_mat(dim3 Gr, dim3 Bl, const float* A, const float* B,
                          MatrixDim dA, int B_stride, float* value) {
-  _trace_mat_mat<GPU_WARP_SIZE><<<Gr, Bl>>>(A, B, dA, B_stride, value);
+  KALDI_LAUNCH_WARP_TILED(_trace_mat_mat, Gr, Bl, A, B, dA, B_stride, value);
 }
 
 void cudaF_add_diag_mat_mat_MNT(int Gr, int Bl, const float alpha,
@@ -5106,7 +5157,7 @@ void cudaD_trace_mat_mat_trans(const double* A,
 
 void cudaD_trace_mat_mat(dim3 Gr, dim3 Bl, const double* A, const double* B,
                          MatrixDim dA, int B_stride, double* value) {
-  _trace_mat_mat<GPU_WARP_SIZE><<<Gr, Bl>>>(A, B, dA, B_stride, value);
+  KALDI_LAUNCH_WARP_TILED(_trace_mat_mat, Gr, Bl, A, B, dA, B_stride, value);
 }
 
 void cudaD_add_diag_mat_mat_MNT(int Gr, int Bl, const double alpha,
@@ -5517,25 +5568,25 @@ void cuda_copy_from_mat_dd(dim3 Gr, dim3 Bl, double *mat_out,
 void cuda_copy_from_mat_df_trans(dim3 Gr, dim3 Bl, double* mat_out,
                                  const float* mat_in, MatrixDim d_out,
                                  MatrixDim d_in) {
-  _copy_from_mat_trans<GPU_WARP_SIZE><<<Gr, Bl>>>(mat_out, mat_in, d_out, d_in);
+  KALDI_LAUNCH_WARP_TILED(_copy_from_mat_trans, Gr, Bl, mat_out, mat_in, d_out, d_in);
 }
 
 void cuda_copy_from_mat_ff_trans(dim3 Gr, dim3 Bl, float* mat_out,
                                  const float* mat_in, MatrixDim d_out,
                                  MatrixDim d_in) {
-  _copy_from_mat_trans<GPU_WARP_SIZE><<<Gr, Bl>>>(mat_out, mat_in, d_out, d_in);
+  KALDI_LAUNCH_WARP_TILED(_copy_from_mat_trans, Gr, Bl, mat_out, mat_in, d_out, d_in);
 }
 
 void cuda_copy_from_mat_fd_trans(dim3 Gr, dim3 Bl, float *mat_out,
                                  const double* mat_in, MatrixDim d_out,
                                  MatrixDim d_in) {
-  _copy_from_mat_trans<GPU_WARP_SIZE><<<Gr, Bl>>>(mat_out, mat_in, d_out, d_in);
+  KALDI_LAUNCH_WARP_TILED(_copy_from_mat_trans, Gr, Bl, mat_out, mat_in, d_out, d_in);
 }
 
 void cuda_copy_from_mat_dd_trans(dim3 Gr, dim3 Bl, double *mat_out,
                                  const double* mat_in, MatrixDim d_out,
                                  MatrixDim d_in) {
-  _copy_from_mat_trans<GPU_WARP_SIZE><<<Gr, Bl>>>(mat_out, mat_in, d_out, d_in);
+  KALDI_LAUNCH_WARP_TILED(_copy_from_mat_trans, Gr, Bl, mat_out, mat_in, d_out, d_in);
 }
 
 void cuda_copy_from_smat_ff(dim3 Gr, dim3 Bl, float* mat, MatrixDim mat_dim,
@@ -5849,10 +5900,11 @@ void cudaF_mat_copy_range_clamped(
    float *dst, int32_t ldd) {
 
   int32_t num_rows =  row_end - row_start;
-  dim3 threads(GPU_WARP_SIZE, GPU_MAX_WARPS_PER_BLOCK);
+  KALDI_WARP_GEOMETRY(warp, warps_per_block);
+  dim3 threads(warp, warps_per_block);
   dim3 blocks(
-      (num_cols + GPU_WARP_SIZE - 1) / GPU_WARP_SIZE,
-      (num_rows + GPU_MAX_WARPS_PER_BLOCK - 1) / GPU_MAX_WARPS_PER_BLOCK);
+      (num_cols + warp - 1) / warp,
+      (num_rows + warps_per_block - 1) / warps_per_block);
 
   _cuda_mat_copy_range_clamped<float><<<blocks,threads>>>(row_start, row_end, num_cols,
       src, lds, clamp_low, clamp_high, dst, ldd);
@@ -5865,10 +5917,11 @@ void cudaD_mat_copy_range_clamped(
    double *dst, int32_t ldd) {
 
   int32_t num_rows =  row_end - row_start;
-  dim3 threads(GPU_WARP_SIZE, GPU_MAX_WARPS_PER_BLOCK);
+  KALDI_WARP_GEOMETRY(warp, warps_per_block);
+  dim3 threads(warp, warps_per_block);
   dim3 blocks(
-      (num_cols + GPU_WARP_SIZE - 1) / GPU_WARP_SIZE,
-      (num_rows + GPU_MAX_WARPS_PER_BLOCK - 1) / GPU_MAX_WARPS_PER_BLOCK);
+      (num_cols + warp - 1) / warp,
+      (num_rows + warps_per_block - 1) / warps_per_block);
 
   _cuda_mat_copy_range_clamped<double><<<blocks,threads>>>(row_start, row_end, num_cols,
       src, lds, clamp_low, clamp_high, dst, ldd);
@@ -5877,10 +5930,11 @@ void cudaD_mat_copy_range_clamped(
 void cudaF_batched_copy_mats(int32_t num_mats, int32_t *num_rows,
     int32_t *num_cols, const float **inputs, int32_t *ldi, float **outputs,
     int32_t *ldo) {
-  dim3 threads(GPU_WARP_SIZE, GPU_MAX_WARPS_PER_BLOCK);
+  KALDI_WARP_GEOMETRY(warp, warps_per_block);
+  dim3 threads(warp, warps_per_block);
   int32_t total_rows=0, total_cols=0;
-  
-  BatchedMatrixCopyDesc<float> batch_desc; 
+
+  BatchedMatrixCopyDesc<float> batch_desc;
   const int32_t MAX_BATCH_SIZE=batch_desc.MAX_BATCH_SIZE;
 
   int i;
@@ -5904,8 +5958,8 @@ void cudaF_batched_copy_mats(int32_t num_mats, int32_t *num_rows,
       int32_t rows = ceilf(total_rows / (float)MAX_BATCH_SIZE);
       int32_t cols = ceilf(total_cols / (float)MAX_BATCH_SIZE);
       dim3 blocks(
-          (cols + GPU_WARP_SIZE - 1) / GPU_WARP_SIZE,
-          (rows + GPU_MAX_WARPS_PER_BLOCK - 1) / GPU_MAX_WARPS_PER_BLOCK,
+          (cols + warp - 1) / warp,
+          (rows + warps_per_block - 1) / warps_per_block,
           MAX_BATCH_SIZE);
 
       // no memcpy needed here.  Memory will be passed down directly
@@ -5928,8 +5982,8 @@ void cudaF_batched_copy_mats(int32_t num_mats, int32_t *num_rows,
       int32_t cols = ceilf(total_cols / (float)remaining);
 
       dim3 blocks(
-          (cols + GPU_WARP_SIZE - 1) / GPU_WARP_SIZE,
-          (rows + GPU_MAX_WARPS_PER_BLOCK - 1) / GPU_MAX_WARPS_PER_BLOCK,
+          (cols + warp - 1) / warp,
+          (rows + warps_per_block - 1) / warps_per_block,
           remaining);
 
       // no memcpy needed here.  Memory will be passed down directly
@@ -5943,10 +5997,11 @@ void cudaF_batched_copy_mats(int32_t num_mats, int32_t *num_rows,
 void cudaD_batched_copy_mats(int32_t num_mats, int32_t *num_rows,
     int32_t *num_cols, const double **inputs, int32_t *ldi, double **outputs,
     int32_t *ldo) {
-  dim3 threads(GPU_WARP_SIZE, GPU_MAX_WARPS_PER_BLOCK);
+  KALDI_WARP_GEOMETRY(warp, warps_per_block);
+  dim3 threads(warp, warps_per_block);
   int32_t total_rows=0, total_cols=0;
-  
-  BatchedMatrixCopyDesc<double> batch_desc; 
+
+  BatchedMatrixCopyDesc<double> batch_desc;
   const int32_t MAX_BATCH_SIZE=batch_desc.MAX_BATCH_SIZE;
 
   int i;
@@ -5970,8 +6025,8 @@ void cudaD_batched_copy_mats(int32_t num_mats, int32_t *num_rows,
       int32_t rows = ceilf(total_rows / (float)MAX_BATCH_SIZE);
       int32_t cols = ceilf(total_cols / (float)MAX_BATCH_SIZE);
       dim3 blocks(
-          (cols + GPU_WARP_SIZE - 1) / GPU_WARP_SIZE,
-          (rows + GPU_MAX_WARPS_PER_BLOCK - 1) / GPU_MAX_WARPS_PER_BLOCK,
+          (cols + warp - 1) / warp,
+          (rows + warps_per_block - 1) / warps_per_block,
           MAX_BATCH_SIZE);
 
       // no memcpy needed here.  Memory will be passed down directly
@@ -5994,8 +6049,8 @@ void cudaD_batched_copy_mats(int32_t num_mats, int32_t *num_rows,
       int32_t cols = ceilf(total_cols / (float)remaining);
 
       dim3 blocks(
-          (cols + GPU_WARP_SIZE - 1) / GPU_WARP_SIZE,
-          (rows + GPU_MAX_WARPS_PER_BLOCK - 1) / GPU_MAX_WARPS_PER_BLOCK,
+          (cols + warp - 1) / warp,
+          (rows + warps_per_block - 1) / warps_per_block,
           remaining);
 
       // no memcpy needed here.  Memory will be passed down directly

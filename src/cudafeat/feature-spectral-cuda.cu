@@ -495,7 +495,7 @@ void CudaSpectralFeatures::ComputeFinalFeatures(int num_frames, BaseFloat vtln_w
   // mel banks
   int num_bins = bin_size_;
   cu_mel_energies_.Resize(num_frames, num_bins, kUndefined);
-  dim3 mel_threads(GPU_WARP_SIZE, 8);
+  dim3 mel_threads(KALDI_WARP_WIDTH(), 8);
   dim3 mel_blocks(num_bins, (num_frames + mel_threads.y - 1) / mel_threads.y);
   mel_banks_compute_kernel<<<mel_blocks, mel_threads>>>(
       num_frames, std::numeric_limits<float>::epsilon(), offsets_, sizes_,

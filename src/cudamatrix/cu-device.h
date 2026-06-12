@@ -2,6 +2,7 @@
 
 // Copyright 2009-2012  Karel Vesely
 //           2012-2015  Johns Hopkins University (author: Daniel Povey)
+//                2026  Advanced Micro Devices, Inc. (author: Jeff Daily)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -105,6 +106,17 @@ class CuDevice {
       ans.Initialize();
     return ans;
   }
+
+#ifdef __IS_HIP_COMPILE__
+  // Warp/wavefront size of the active device, queried at runtime from the
+  // device properties. On ROCm this is per-device (64 on CDNA gfx9xx, 32 on
+  // RDNA gfx10xx/gfx11xx), so in a multi-arch fat binary the host must size
+  // launch geometry from this rather than a compile-time constant. Returns
+  // GPU_WARP_SIZE when no device is selected, as a safe default.
+  int32 WarpSize() const {
+    return Enabled() ? properties_.warpSize : GPU_WARP_SIZE;
+  }
+#endif
 
   cublasHandle_t GetCublasHandle() const { return cublas_handle_; }
   cusparseHandle_t GetCusparseHandle() const { return cusparse_handle_; }
@@ -423,6 +435,18 @@ inline cusparseHandle_t GetCusparseHandle() {
 
 inline curandGenerator_t GetCurandHandle() {
   return CuDevice::Instantiate().GetCurandHandle();
+}
+
+// Warp/wavefront size to use when computing host-side launch geometry.
+// On ROCm this is the active device's runtime warpSize so a multi-arch fat
+// binary picks the right value per device; on CUDA it is the compile-time
+// GPU_WARP_SIZE (unchanged behavior).
+inline int32 GpuWarpSize() {
+#ifdef __IS_HIP_COMPILE__
+  return CuDevice::Instantiate().WarpSize();
+#else
+  return GPU_WARP_SIZE;
+#endif
 }
 
 

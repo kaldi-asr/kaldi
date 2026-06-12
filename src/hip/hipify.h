@@ -2,6 +2,12 @@
 #define __HIPIFY_H__
 
 #ifdef __HIPCC__
+#include <hip/hip_version.h>
+// HIP gained a native, wave-correct __syncwarp (fence + __builtin_amdgcn_wave_barrier,
+// correct on wave32 and wave64) in ROCm 6.2; defining our own there makes a bare
+// __syncwarp() call ambiguous (amd_warp_sync_functions.h vs this shim). Only provide
+// the shim on older HIP that lacks the builtin.
+#if HIP_VERSION < 60200000
 inline __device__ void __syncwarp(unsigned mask = 0xffffffff) {
   // On CDNA hardware wave-fronts (warps) execute always in
   // lock step. Though it might still be important to signal
@@ -15,6 +21,7 @@ inline __device__ void __syncwarp(unsigned mask = 0xffffffff) {
   // __asm__("s_waitcnt lgkmcnt(0)"); Í
   // to explicitly do a memory fence.
 }
+#endif
 // AMDGCN only support this rounding mode.
 #define __fdiv_rd __fdiv_rn
 #else
@@ -24,13 +31,13 @@ inline __device__ void __syncwarp(unsigned mask = 0xffffffff) {
 //
 // HIP types
 //
-#define CUBLAS_COMPUTE_32F HIPBLAS_R_32F
-#define CUBLAS_COMPUTE_32F_FAST_16F \
-  HIPBLAS_R_32F  // TODO: Verify that plain float compute are viable
-                 // replacements for the tensor cores alternative.
-#define CUBLAS_COMPUTE_32F_FAST_TF32 \
-  HIPBLAS_R_32F  // TODO: Verify that plain float compute are viable
-                 // replacements for the tensor cores alternative.
+// hipBLAS v2 (ROCm >= 6) introduced a dedicated hipblasComputeType_t for the
+// GemmEx compute precision; the GemmEx operand types stay hipDataType (HIP_R_*)
+// via the CUBLAS_R_* / CUDA_R_* aliases below. The pre-v2 spelling mapped these
+// to the operand datatype HIPBLAS_R_32F, which no longer type-checks.
+#define CUBLAS_COMPUTE_32F HIPBLAS_COMPUTE_32F
+#define CUBLAS_COMPUTE_32F_FAST_16F HIPBLAS_COMPUTE_32F_FAST_16F
+#define CUBLAS_COMPUTE_32F_FAST_TF32 HIPBLAS_COMPUTE_32F_FAST_TF32
 #define CUBLAS_DIAG_NON_UNIT HIPBLAS_DIAG_NON_UNIT
 #define CUBLAS_FILL_MODE_LOWER HIPBLAS_FILL_MODE_LOWER
 #define CUBLAS_FILL_MODE_UPPER HIPBLAS_FILL_MODE_UPPER
@@ -98,7 +105,7 @@ inline __device__ void __syncwarp(unsigned mask = 0xffffffff) {
 #define CUSPARSE_STATUS_ZERO_PIVOT HIPSPARSE_STATUS_ZERO_PIVOT
 #define cuDeviceGetName hipDeviceGetName
 #define cuMemGetInfo_v2 hipMemGetInfo
-#define cublasComputeType_t hipblasDatatype_t
+#define cublasComputeType_t hipblasComputeType_t
 #define cublasCreate hipblasCreate
 #define cublasDasum_v2 hipblasDasum
 #define cublasDaxpy_v2 hipblasDaxpy
@@ -277,7 +284,19 @@ inline __device__ void __syncwarp(unsigned mask = 0xffffffff) {
 //
 // GPU static hardware characteristics.
 //
+// GPU_WARP_SIZE: 64 on CDNA (gfx9xx, wave64); 32 on RDNA (gfx10xx/gfx11xx, wave32).
+// Device code: __GFX9__ is set by the compiler for the actual offload arch.
+// Host code: HIP_WARP_SIZE is injected via -DHIP_WARP_SIZE=<N> from configure
+// (ROCM_WARP_SIZE in kaldi.mk, set to 64 for gfx9* targets, 32 otherwise).
+#ifdef __HIP_DEVICE_COMPILE__
+#if defined(__GFX9__)
 #define GPU_WARP_SIZE 64
+#else
+#define GPU_WARP_SIZE 32
+#endif
+#else
+#define GPU_WARP_SIZE HIP_WARP_SIZE
+#endif
 #define GPU_MAX_THREADS_PER_BLOCK 1024
 #define GPU_MAX_WARPS_PER_BLOCK (GPU_MAX_THREADS_PER_BLOCK / GPU_WARP_SIZE)
 #endif  //__HIPIFY_H__

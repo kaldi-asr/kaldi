@@ -14,7 +14,7 @@ CXXFLAGS += $(ROCM_USEROCTX) -DHAVE_CUDA=1 \
             -D__HIP_PLATFORM_AMD__=1 \
             -D__IS_HIP_COMPILE__=1 \
             -DROCM_MAJOR_VERSION=$(ROCM_MAJOR_VERSION) -DROCM_MINOR_VERSION=$(ROCM_MINOR_VERSION) \
-            -DCUDA_VERSION=11000 \
+            -DCUDA_VERSION=11000 -DHIP_WARP_SIZE=$(ROCM_WARP_SIZE) \
 	          -I$(ROCMDIR)/hipsparse/include \
 	          -I$(ROCMDIR)/hipfft/include \
 	          -I$(ROCMDIR)/hipblas/include \
@@ -39,7 +39,9 @@ ROCM_FLAGS = $(ROCM_USEROCTX) -fPIC -DHAVE_CUDA=1 \
              -D__HIP_PLATFORM_AMD__=1 \
              -DROCM_MAJOR_VERSION=$(ROCM_MAJOR_VERSION) -DROCM_MINOR_VERSION=$(ROCM_MINOR_VERSION) \
              -D__CUDACC_VER_MAJOR__=11 -DCUDA_VERSION=11000 \
-	         -DKALDI_DOUBLEPRECISION=$(DOUBLE_PRECISION) -std=c++14 -munsafe-fp-atomics  \
+             -DOPENFST_VER=$(OPENFSTVER) \
+             -DHIP_WARP_SIZE=$(ROCM_WARP_SIZE) \
+	         -DKALDI_DOUBLEPRECISION=$(DOUBLE_PRECISION) -std=c++17 -munsafe-fp-atomics  \
              -fgpu-default-stream=per-thread \
              $(EXTRA_ROCM_FLAGS)
              

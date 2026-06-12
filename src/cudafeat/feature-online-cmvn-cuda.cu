@@ -16,10 +16,13 @@
 // limitations under the License.
 
 #ifdef __IS_HIP_COMPILE__
-#define __CUDA_ARCH__ 800
 #include <hipcub/hipcub.hpp>
 
 #include "hipify.h"
+// Define __CUDA_ARCH__ after rocPRIM/hipCUB headers: defining it earlier suppresses
+// the compiler's __gfx90a__ macro in the device pass, breaking rocprim/config.hpp arch
+// detection on ROCm 7.2.1 (its "128-bit atomics not implemented" #error).
+#define __CUDA_ARCH__ 800
 #else
 #include <cub/cub.cuh>
 #endif
@@ -190,8 +193,9 @@ void CudaOnlineCmvn::ComputeFeatures(const CuMatrixBase<BaseFloat> &feats_in,
       stats.Stride());
   CU_SAFE_CALL(cudaGetLastError());
 
-  threads = (feat_dim + GPU_WARP_SIZE - 1) / GPU_WARP_SIZE *
-            GPU_MAX_WARPS_PER_BLOCK;  // round up to GPU_WARP_SIZE threads
+  KALDI_WARP_GEOMETRY(warp, warps_per_block);
+  threads = (feat_dim + warp - 1) / warp *
+            warps_per_block;  // round up to warp threads
   if (threads > GPU_MAX_THREADS_PER_BLOCK) threads = GPU_MAX_THREADS_PER_BLOCK;
 
   const CuMatrix<float> &gstats = cmvn_state_.global_cmvn_stats;

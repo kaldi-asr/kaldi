@@ -2,6 +2,7 @@
 
 // Copyright 2009-2011  Karel Vesely
 //                      Johns Hopkins University (author: Daniel Povey)
+//                2026  Advanced Micro Devices, Inc. (author: Jeff Daily)
 
 // See ../../COPYING for clarification regarding multiple authors
 //
@@ -125,6 +126,35 @@ public:
 inline int32 n_blocks(int32 size, int32 block_size) {
   return size / block_size + ((size % block_size == 0)? 0 : 1);
 }
+
+#ifdef __IS_HIP_COMPILE__
+// Warp/wavefront size of the active device, queried at runtime. On ROCm this is
+// per-device (64 on CDNA gfx9xx, 32 on RDNA gfx10xx/gfx11xx). In a multi-arch
+// fat binary, host-side launch geometry must be sized from this so the block
+// dimensions match the device-pass GPU_WARP_SIZE of whichever slice runs; a
+// compile-time constant bakes one wavefront width and mismatches the other.
+inline int KaldiHipWarpSize() {
+  int device = 0;
+  if (hipGetDevice(&device) != hipSuccess) return GPU_WARP_SIZE;
+  int warp_size = GPU_WARP_SIZE;
+  if (hipDeviceGetAttribute(&warp_size, hipDeviceAttributeWarpSize, device)
+      != hipSuccess)
+    return GPU_WARP_SIZE;
+  return warp_size;
+}
+// Declare the warp width and warps-per-block (WARP * WARPS_PER_BLOCK threads)
+// for a host launch, runtime on ROCm and compile-time on CUDA.
+#define KALDI_WARP_GEOMETRY(WARP, WARPS_PER_BLOCK)      \
+  const int WARP = ::kaldi::KaldiHipWarpSize();         \
+  const int WARPS_PER_BLOCK = GPU_MAX_THREADS_PER_BLOCK / WARP
+// Warp width alone for a host launch (block height is fixed independently).
+#define KALDI_WARP_WIDTH() (::kaldi::KaldiHipWarpSize())
+#else
+#define KALDI_WARP_GEOMETRY(WARP, WARPS_PER_BLOCK)      \
+  const int WARP = GPU_WARP_SIZE;                       \
+  const int WARPS_PER_BLOCK = GPU_MAX_WARPS_PER_BLOCK
+#define KALDI_WARP_WIDTH() (GPU_WARP_SIZE)
+#endif  // __IS_HIP_COMPILE__
 
 cublasOperation_t KaldiTransToCuTrans(MatrixTransposeType kaldi_trans);
 

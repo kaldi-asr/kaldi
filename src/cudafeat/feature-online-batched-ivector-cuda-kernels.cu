@@ -51,7 +51,8 @@ void square_batched_matrix(int32_t chunk_frames, int32_t num_cols,
                            const float *feats, int32_t ldf, int32_t stridef,
                            float *feats_sq, int32_t lds, int32_t strides,
                            const LaneDesc *lanes, int32_t num_lanes) {
-  dim3 threads(GPU_WARP_SIZE, GPU_MAX_WARPS_PER_BLOCK);
+  KALDI_WARP_GEOMETRY(warp, warps_per_block);
+  dim3 threads(warp, warps_per_block);
   dim3 blocks((num_cols + threads.x - 1) / threads.x,
               (chunk_frames + threads.y - 1) / threads.y, num_lanes);
 
@@ -102,10 +103,11 @@ void zero_invalid_posteriors(int32_t num_chunk_frames, int32_t num_gauss,
                              float *posteriors, int32_t ldp, int32_t stridep,
                              int32_t right, const LaneDesc *lanes,
                              int32_t num_lanes) {
-  dim3 threads(GPU_WARP_SIZE, GPU_MAX_WARPS_PER_BLOCK);
-  dim3 blocks((num_gauss + GPU_WARP_SIZE - 1) / GPU_WARP_SIZE,
-              (num_chunk_frames + GPU_MAX_WARPS_PER_BLOCK - 1) /
-                  GPU_MAX_WARPS_PER_BLOCK,
+  KALDI_WARP_GEOMETRY(warp, warps_per_block);
+  dim3 threads(warp, warps_per_block);
+  dim3 blocks((num_gauss + warp - 1) / warp,
+              (num_chunk_frames + warps_per_block - 1) /
+                  warps_per_block,
               num_lanes);
 
   zero_invalid_posteriors_kernel<<<blocks, threads>>>(
@@ -219,8 +221,9 @@ void splice_features_batched(int32_t num_chunk_frames, int32_t feat_dim,
                              int32_t stridest, float *spliced_feats,
                              int32_t lds, int32_t strides,
                              const LaneDesc *lanes, int32_t num_lanes) {
-  int threads = (feat_dim + GPU_WARP_SIZE - 1) / GPU_WARP_SIZE *
-                GPU_MAX_WARPS_PER_BLOCK;  // round up to the nearest warp size
+  KALDI_WARP_GEOMETRY(warp, warps_per_block);
+  int threads = (feat_dim + warp - 1) / warp *
+                warps_per_block;  // round up to the nearest warp size
   if (threads > GPU_MAX_THREADS_PER_BLOCK)
     threads = GPU_MAX_THREADS_PER_BLOCK;  // Max block size is
                                           // GPU_MAX_THREADS_PER_BLOCK threads
@@ -318,10 +321,11 @@ void stash_feats(int32_t chunk_size, const float *feats, int32_t feat_dim,
     // First we need to shift feats to handle the case where num_chunk_frames
     // is less than stash size
 
-    KALDI_ASSERT(stash_size <= GPU_WARP_SIZE);
-    // This only works if stash size is <= GPU_WARP_SIZE as we rely on
+    KALDI_WARP_GEOMETRY(warp, warps_per_block);
+    KALDI_ASSERT(stash_size <= warp);
+    // This only works if stash size is <= the warp width as we rely on
     // __syncthreads() to avoid read/write hazards when reading/writing in-place
-    dim3 threads(GPU_WARP_SIZE, GPU_MAX_WARPS_PER_BLOCK);
+    dim3 threads(warp, warps_per_block);
     dim3 blocks(num_lanes);
 
     shift_feats_kernel<<<blocks, threads>>>(chunk_size, feats, feat_dim, ldf,
@@ -330,8 +334,9 @@ void stash_feats(int32_t chunk_size, const float *feats, int32_t feat_dim,
   }
 
   {
-    int threads = (feat_dim + GPU_WARP_SIZE - 1) / GPU_WARP_SIZE *
-                  GPU_MAX_WARPS_PER_BLOCK;  // round up to the nearest warp size
+    KALDI_WARP_GEOMETRY(warp, warps_per_block);
+    int threads = (feat_dim + warp - 1) / warp *
+                  warps_per_block;  // round up to the nearest warp size
     if (threads > GPU_MAX_THREADS_PER_BLOCK)
       threads = GPU_MAX_THREADS_PER_BLOCK;  // Max block size is
                                             // GPU_MAX_THREADS_PER_BLOCK threads
@@ -516,9 +521,10 @@ __global__ void batched_convert_sp_to_dense_kernel(int32_t n, float *A_sp,
 void batched_convert_sp_to_dense(int n, float *A_sp, int32_t strides, float *A,
                                  int32_t lda, int32_t stridea,
                                  const LaneDesc *lanes, int32_t num_lanes) {
-  dim3 threads(GPU_WARP_SIZE, GPU_MAX_WARPS_PER_BLOCK);
+  KALDI_WARP_GEOMETRY(warp, warps_per_block);
+  dim3 threads(warp, warps_per_block);
   int block =
-      (n + GPU_WARP_SIZE - 1) / GPU_WARP_SIZE;  // blocks in x and y dimensions
+      (n + warp - 1) / warp;  // blocks in x and y dimensions
   dim3 blocks(block, block, num_lanes);
 
   batched_convert_sp_to_dense_kernel<<<blocks, threads>>>(
@@ -594,7 +600,8 @@ void initialize_channels(int32_t num_gauss, int32_t feat_dim, float *gamma,
                          int32_t strideg, float *X, int32_t ldx,
                          int32_t stridex, const LaneDesc *lanes,
                          int32_t num_lanes) {
-  dim3 threads(GPU_WARP_SIZE, GPU_MAX_WARPS_PER_BLOCK);
+  KALDI_WARP_GEOMETRY(warp, warps_per_block);
+  dim3 threads(warp, warps_per_block);
   int32_t blocks = num_lanes;
 
   initialize_channels_kernel<<<blocks, threads>>>(
@@ -639,7 +646,8 @@ void apply_and_update_stash(int32_t num_gauss, int32_t feat_dim, float *gamma,
                             int32_t ldx, int32_t stridex, float *X_stash,
                             int32_t lds, int32_t strides, const LaneDesc *lanes,
                             int32_t num_lanes) {
-  dim3 threads(GPU_WARP_SIZE, GPU_MAX_WARPS_PER_BLOCK);
+  KALDI_WARP_GEOMETRY(warp, warps_per_block);
+  dim3 threads(warp, warps_per_block);
   int32_t blocks = num_lanes;
 
   apply_and_update_stash_kernel<<<blocks, threads>>>(

@@ -19,6 +19,8 @@
 #                             # version of kaldi even on CUDA-enabled machine.
 # ./configure --use-cuda=yes --cudatk-dir=/usr/local/cuda/ --cuda-arch=-arch=sm_70
 #        # Use cuda in /usr/local/cuda and set the arch to sm_70
+# ./configure --use-rocm --rocm-dir=/opt/rocm --rocm-targets=gfx90a,gfx1100
+#        # Build the GPU code with ROCm/HIP for AMD GPUs (here gfx90a and gfx1100).
 # ./configure --static --fst-root=/opt/cross/armv8hf \
 #   --atlas-root=/opt/cross/armv8hf --host=armv8-rpi3-linux-gnueabihf
 #        # Cross-compile for armv8hf. This assumes that you have OpenFST built
@@ -282,11 +284,14 @@ function configure_rocm {
 
   echo "CUDA_ARCH = " >> kaldi.mk
   echo "ROCM_ARCH_FLAGS = " >> kaldi.mk
+  ROCM_WARP_SIZE=32
   for i in ${ROCM_TARGETS//,/ } ; do
     echo "Targetting ROCm arch $i"
     echo "ROCM_ARCH_FLAGS += --offload-arch=$i" >> kaldi.mk
+    case "$i" in gfx9*) ROCM_WARP_SIZE=64 ;; esac
   done
-  
+  echo "ROCM_WARP_SIZE = $ROCM_WARP_SIZE" >> kaldi.mk
+
   echo "HOST_ARCH = `uname -m`" >> kaldi.mk
   echo >> kaldi.mk
   

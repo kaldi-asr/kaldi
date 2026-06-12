@@ -26,6 +26,13 @@
 #undef CUDA_R_32F
 #endif
 #define CUDA_R_32F HIPBLAS_R_32F
+// hipBLAS v2 GemmStridedBatchedEx takes a dedicated hipblasComputeType_t for
+// the compute precision (the operand types remain CUDA_R_32F == HIP_R_32F
+// above). NVIDIA still accepts a cudaDataType compute type, so keep CUDA_R_32F
+// there.
+#define KALDI_GEMMEX_COMPUTE_32F HIPBLAS_COMPUTE_32F
+#else
+#define KALDI_GEMMEX_COMPUTE_32F CUDA_R_32F
 #endif
 
 #include "cudafeat/feature-online-batched-ivector-cuda.h"
@@ -335,7 +342,8 @@ void BatchedIvectorExtractorCuda::ComputeIvectorStats(
   CUBLAS_SAFE_CALL(cublasGemmStridedBatchedEx(
       GetCublasHandle(), CUBLAS_OP_N, CUBLAS_OP_T, m, n, k, &alpha, A,
       CUDA_R_32F, lda, strideA, B, CUDA_R_32F, ldb, strideB, &beta, C,
-      CUDA_R_32F, ldc, strideC, num_lanes, CUDA_R_32F, CUBLAS_GEMM_DEFAULT))
+      CUDA_R_32F, ldc, strideC, num_lanes, KALDI_GEMMEX_COMPUTE_32F,
+      CUBLAS_GEMM_DEFAULT))
 #endif
 
   apply_and_update_stash(
