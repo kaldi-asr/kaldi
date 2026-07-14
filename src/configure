@@ -393,6 +393,13 @@ Either your CUDA is too new or too old."
           MIN_UNSUPPORTED_GCC_VER_NUM=123000
           CUSOLVER=true
         ;;
+        13_*)
+          # CUDA 13.x supports host g++ <= 15 (crt/host_config.h errors on
+          # __GNUC__ > 15).
+          MIN_UNSUPPORTED_GCC_VER="16.0"
+          MIN_UNSUPPORTED_GCC_VER_NUM=160000
+          CUSOLVER=true
+        ;;
         *)
           failure "Unsupported CUDA version ${CUDA_VERSION}.
 Please open an issue at https://github.com/kaldi-asr/kaldi/issues and include\
@@ -422,6 +429,8 @@ Please open an issue at https://github.com/kaldi-asr/kaldi/issues and include\
             11_0) CUDA_ARCH="-gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_70,code=sm_70 -gencode arch=compute_75,code=sm_75 -gencode arch=compute_80,code=sm_80" ;;
             11_*) CUDA_ARCH="-gencode arch=compute_35,code=sm_35 -gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_70,code=sm_70 -gencode arch=compute_75,code=sm_75 -gencode arch=compute_80,code=sm_80 -gencode arch=compute_86,code=sm_86" ;;
             12_*) CUDA_ARCH="-gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_70,code=sm_70 -gencode arch=compute_75,code=sm_75 -gencode arch=compute_80,code=sm_80 -gencode arch=compute_86,code=sm_86 -gencode arch=compute_90,code=sm_90" ;;
+            # CUDA 13 dropped all pre-Turing gencodes (minimum is sm_75).
+            13_*) CUDA_ARCH="-gencode arch=compute_75,code=sm_75 -gencode arch=compute_80,code=sm_80 -gencode arch=compute_86,code=sm_86 -gencode arch=compute_90,code=sm_90 -gencode arch=compute_100,code=sm_100 -gencode arch=compute_120,code=sm_120" ;;
             *) failure \
                  "Unsupported CUDA version ${CUDA_VERSION}. Please open an" \
                  "issue at https://github.com/kaldi-asr/kaldi/issues and" \
@@ -435,6 +444,8 @@ Please open an issue at https://github.com/kaldi-asr/kaldi/issues and include\
             9_*) CUDA_ARCH="-gencode arch=compute_53,code=sm_53 -gencode arch=compute_62,code=sm_62" ;;
             10_*|11_*) CUDA_ARCH="-gencode arch=compute_53,code=sm_53 -gencode arch=compute_62,code=sm_62 -gencode arch=compute_72,code=sm_72" ;;
             12_*) CUDA_ARCH="-gencode arch=compute_50,code=sm_50 -gencode arch=compute_52,code=sm_52 -gencode arch=compute_60,code=sm_60 -gencode arch=compute_61,code=sm_61 -gencode arch=compute_70,code=sm_70 -gencode arch=compute_75,code=sm_75 -gencode arch=compute_80,code=sm_80 -gencode arch=compute_86,code=sm_86 -gencode arch=compute_90,code=sm_90" ;;
+            # CUDA 13 dropped all pre-Turing gencodes (minimum is sm_75).
+            13_*) CUDA_ARCH="-gencode arch=compute_75,code=sm_75 -gencode arch=compute_80,code=sm_80 -gencode arch=compute_86,code=sm_86 -gencode arch=compute_87,code=sm_87 -gencode arch=compute_90,code=sm_90 -gencode arch=compute_110,code=sm_110 -gencode arch=compute_121,code=sm_121" ;;
             *) echo "Unsupported CUDA_VERSION (CUDA_VERSION=$CUDA_VERSION), please report it to Kaldi mailing list, together with 'nvcc -h' or 'ptxas -h' which lists allowed -gencode values..."; exit 1 ;;
           esac
         ;;

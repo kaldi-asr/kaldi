@@ -370,13 +370,16 @@ bool CuDevice::IsComputeExclusive() {
   if (e != cudaSuccess) {
     KALDI_CUDA_ERR(e, "Failed to get current device");
   }
-  struct cudaDeviceProp gpu_prop;
-  e = cudaGetDeviceProperties(&gpu_prop, gpu_id);
+  // CUDA 13 removed cudaDeviceProp::computeMode; query the attribute
+  // directly instead (available since CUDA 5, so safe on all supported
+  // toolkit versions).
+  int compute_mode = cudaComputeModeDefault;
+  e = cudaDeviceGetAttribute(&compute_mode, cudaDevAttrComputeMode, gpu_id);
   if (e != cudaSuccess) {
-    KALDI_CUDA_ERR(e,  "Failed to get device properties");
+    KALDI_CUDA_ERR(e,  "Failed to get device compute mode");
   }
   // find out whether compute exclusive mode is used
-  switch (gpu_prop.computeMode) {
+  switch (compute_mode) {
     case cudaComputeModeExclusive :
       return true;
       break;
